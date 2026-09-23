@@ -937,7 +937,7 @@ function trackGameWindow(): void {
   // Не даём уехать за экран: старый офсет мог быть закреплён при другом
   // режиме окна игры (оконный → полный экран) и вынести оверлей за границу
   // монитора — тогда его просто не видно.
-  const area = screen.getDisplayMatching(found.rect).workArea;
+  const area = screen.getDisplayMatching(physicalRectToDip(found.rect)).workArea;
   x = Math.min(Math.max(x, area.x), area.x + area.width - OVERLAY_WIDTH);
   y = Math.min(Math.max(y, area.y), area.y + Math.max(area.height - overlayHeight, 100));
 
