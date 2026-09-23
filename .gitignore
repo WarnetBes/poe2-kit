@@ -65,6 +65,9 @@ Thumbs.db
 # PoE2 Kit web � build artifacts (������-������ � ��������� �����)
 apps/web/deploy-dist/
 apps/web/deploy/poe2kit/
+apps/web/deploy/*.zip
 
-# Переносимые дистрибутивы для запуска на других ПК (overlay/web)
-deploy/
+# Переносимые дистрибутивы для запуска на других ПК (overlay/web):
+# zip-артефакты игнорируем, исходники пакета переноски — версируем
+deploy/*
+!deploy/poe2k-overlay-transfer-src/
