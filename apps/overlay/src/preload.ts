@@ -15,6 +15,11 @@ export interface OverlayAPI {
   setInteractive(interact: boolean): Promise<boolean>;
   onMoveMode(cb: (state: { unlocked: boolean; resetOffset: boolean }) => void): () => void;
   resetOffset(): Promise<boolean>;
+  onBuildUpdate(cb: (state: unknown) => void): () => void;
+  buildImport(): Promise<boolean>;
+  buildToggle(): Promise<boolean>;
+  buildReset(): Promise<boolean>;
+  buildGet(): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -54,6 +59,20 @@ const api: OverlayAPI = {
   },
 
   resetOffset: () => ipcRenderer.invoke('move:reset'),
+
+  onBuildUpdate: (cb) => {
+    const listener = (_evt: unknown, state: unknown) => cb(state);
+    ipcRenderer.on('build:update', listener);
+    return () => ipcRenderer.removeListener('build:update', listener);
+  },
+
+  buildImport: () => ipcRenderer.invoke('build:import'),
+
+  buildToggle: () => ipcRenderer.invoke('build:toggle'),
+
+  buildReset: () => ipcRenderer.invoke('build:reset'),
+
+  buildGet: () => ipcRenderer.invoke('build:get'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

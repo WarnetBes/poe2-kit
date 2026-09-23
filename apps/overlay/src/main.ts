@@ -73,6 +73,8 @@ teeConsoleToFile();
 const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
 const LEVELING_HOTKEY = 'CommandOrControl+Alt+L';
 const MOVE_HOTKEY = 'CommandOrControl+Alt+D';
+const BUILD_IMPORT_HOTKEY = 'CommandOrControl+Alt+I';
+const BUILD_PANEL_HOTKEY = 'CommandOrControl+Shift+B';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 /** Смещение оверлея относительно «закреплённой» позиции (правый верхний угол игры). */
@@ -88,6 +90,49 @@ let busy = false;
 let moveUnlocked = false;
 /** Пользовательское смещение (DIP) от закреплённой позиции; переживает перезапуск. */
 let userOffset: OverlayOffset | null = null;
+
+// ─── Билд-ассистент: шопинг-лист по билду ────────────────────────────────────
+
+/** Слот билда: целевой предмет, его цена и статус сборки. */
+interface BuildSlotState {
+  slot: string;
+  name: string;
+  baseType: string;
+  rarity: string;
+  /** Медианная оценка (в хаосах), null — ещё не оценён. */
+  median: number | null;
+  confidence: string | null;
+  /** todo — ещё не куплен; bought — отмечен собранным (прайс-чек совпалшего предмета). */
+  status: 'todo' | 'bought';
+  itemText: string;
+}
+
+interface BuildSummaryState {
+  worstEhpType: string | null;
+  worstEhp: number | null;
+  gaps: Array<{ description: string; recommendation: string }>;
+  weapon: string | null;
+  weaponDps: number | null;
+  notes: string[];
+}
+
+interface BuildState {
+  rawInput: string;
+  className?: string;
+  ascendancy?: string;
+  level?: number;
+  skills: string[];
+  importedAt: number;
+  slots: BuildSlotState[];
+  summary: BuildSummaryState | null;
+  metaSkills: Array<{ name: string; count: number }> | null;
+  /** Показана ли панель билда в виджете. */
+  panelVisible: boolean;
+}
+
+let buildState: BuildState | null = null;
+/** Идёт ли фоновый прайсинг слотов билда. */
+let buildPricing = false;
 
 // ─── Геометрия оверлея и привязка к окну игры ──────────────────────────────
 const OVERLAY_WIDTH = 420;
@@ -234,6 +279,287 @@ function resetOverlayOffset(): void {
   saveUserOffset(null);
   lastRectKey = '';
   console.log('[overlay] смещение сброшено');
+}
+
+// ─── Билд-ассистент: импорт из буфера, прайсинг, сопоставление ───────────────
+
+/** Файл состояния билда (переживает перезапуск). */
+function buildStateFile(): string {
+  return path.join(app.getPath('userData'), 'build-state.json');
+}
+
+function loadBuildState(): void {
+  try {
+    const raw = JSON.parse(fs.readFileSync(buildStateFile(), 'utf8'));
+    if (Array.isArray(raw?.slots)) {
+      buildState = {
+        rawInput: String(raw.rawInput ?? ''),
+        className: raw.className,
+        ascendancy: raw.ascendancy,
+        level: raw.level,
+        skills: Array.isArray(raw.skills) ? raw.skills : [],
+        importedAt: Number(raw.importedAt) || Date.now(),
+        slots: raw.slots as BuildSlotState[],
+        summary: raw.summary ?? null,
+        metaSkills: raw.metaSkills ?? null,
+        panelVisible: false,
+      };
+      console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
+    }
+  } catch {
+    /* файла нет — ок */
+  }
+}
+
+function saveBuildState(): void {
+  if (!buildState) return;
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(buildStateFile(), JSON.stringify(buildState), 'utf8');
+  } catch {
+    /* некритично */
+  }
+}
+
+/** Компактный payload панели билда для рендерера. */
+function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record<string, unknown> {
+  if (!buildState) return { status: 'empty', visible: false, build: null };
+  const slots = buildState.slots;
+  const priced = slots.filter((s) => s.median != null);
+  const bought = slots.filter((s) => s.status === 'bought');
+  const remaining = priced.filter((s) => s.status !== 'bought');
+  return {
+    status,
+    visible: buildState.panelVisible,
+    pricing: buildPricing,
+    build: {
+      className: buildState.className,
+      ascendancy: buildState.ascendancy,
+      level: buildState.level,
+      skills: buildState.skills.slice(0, 4),
+      importedAt: buildState.importedAt,
+      slots: slots.map((s) => ({
+        slot: s.slot,
+        name: s.name,
+        rarity: s.rarity,
+        median: s.median,
+        confidence: s.confidence,
+        status: s.status,
+      })),
+      pricedCount: priced.length,
+      totalSlots: slots.length,
+      boughtCount: bought.length,
+      /** Оценка бюджета: сумма цен ещё не купленных предметов. */
+      budgetLeft: remaining.reduce((sum, s) => sum + (s.median ?? 0), 0),
+      budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
+      summary: buildState.summary,
+      metaSkills: buildState.metaSkills,
+    },
+  };
+}
+
+function sendBuildUpdate(
+  extra: { status?: 'ready' | 'importing' | 'empty'; error?: string } = {},
+): void {
+  const payload = buildPayload(extra.status ?? 'ready');
+  if (extra.error) payload.error = extra.error;
+  overlayWindow?.webContents.send('build:update', payload);
+}
+
+function normName(s: string | null | undefined): string {
+  return String(s ?? '').trim().toLowerCase();
+}
+
+/**
+ * Сопоставить предмет из игры (клир-текст) со слотом билда.
+ * Уники — по имени, остальные — по точному совпадению базового типа
+ * (названия должны быть на одном языке: билд и клиент игры).
+ */
+function matchBuildSlot(parsedName: string, parsedBase: string): BuildSlotState | null {
+  if (!buildState) return null;
+  const n = normName(parsedName);
+  const b = normName(parsedBase);
+  if (!n && !b) return null;
+  for (const s of buildState.slots) {
+    const sn = normName(s.name);
+    const sb = normName(s.baseType);
+    if ((n && (n === sn || n === sb)) || (b && (b === sn || b === sb))) return s;
+  }
+  return null;
+}
+
+/**
+ * Импортировать билд из буфера обмена (PoB share-код / XML / ссылка / .build JSON),
+ * оценить каждый слот в фоне и показать панель билда.
+ */
+async function runBuildImport(): Promise<void> {
+  if (buildPricing) {
+    console.warn('[overlay] build import skipped: ещё идёт прайсинг предыдущего билда');
+    return;
+  }
+  const input = clipboard.readText().trim();
+  if (!input) {
+    sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+Alt+I.' });
+    return;
+  }
+  buildPricing = true;
+  try {
+    console.log(`[overlay] build import: ${input.length} chars from clipboard`);
+    sendBuildUpdate({ status: 'importing' });
+
+    const imported = await withTimeout(core.build.importBuild(input), 20_000, 'importBuild');
+    const gear = await withTimeout(core.build.buildCodeToGear(input), 20_000, 'buildCodeToGear');
+    if (!gear.length) throw new Error('в билде не найдено снаряжения');
+
+    buildState = {
+      rawInput: input,
+      className: imported.class,
+      ascendancy: imported.ascendancy,
+      level: imported.level,
+      skills: imported.skills ?? [],
+      importedAt: Date.now(),
+      slots: gear.map((g) => {
+        let rarity = 'other';
+        let baseType = '';
+        try {
+          const p = core.parse.parseItemText(g.itemText);
+          rarity = p.rarity;
+          baseType = p.baseType;
+        } catch {
+          /* не распарсился — билд-таргет с синтетическим текстом */
+        }
+        return {
+          slot: g.slot,
+          name: g.name,
+          baseType: baseType || g.name,
+          rarity,
+          median: null,
+          confidence: null,
+          status: 'todo' as const,
+          itemText: g.itemText,
+        };
+      }),
+      summary: null,
+      metaSkills: null,
+      panelVisible: true,
+    };
+    saveBuildState();
+    sendBuildUpdate({ status: 'ready' });
+    console.log(
+      `[overlay] build imported: ${buildState.slots.length} slots, class=${buildState.className ?? '?'} @${buildState.ascendancy ?? '?'}`,
+    );
+
+    // Живая панель: EHP/дыры защиты и мета — считаем в фоне, не мешая прайсингу.
+    void refreshBuildEstimate();
+    void refreshBuildMeta();
+
+    // Прайсинг слотов: строго последовательно (trade2 — 8 req/min под капотом ядра).
+    for (const slot of buildState.slots) {
+      if (slot.median != null) continue;
+      try {
+        const res = await withTimeout(core.trade.priceCheck(slot.itemText), HOTKEY_TIMEOUT_MS, 'priceCheck');
+        slot.median = res.estimate?.median ?? null;
+        slot.confidence = res.estimate?.confidence ?? null;
+        if (slot.median != null) {
+          slot.name = res.itemName ?? slot.name;
+        }
+      } catch (err) {
+        console.warn(
+          `[overlay] build price failed: slot=${slot.slot} item="${slot.name}": ${err instanceof Error ? err.message : err}`,
+        );
+      }
+      sendBuildUpdate({ status: 'ready' });
+    }
+    saveBuildState();
+    sendBuildUpdate({ status: 'ready' });
+    console.log('[overlay] build pricing done');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[overlay] build import failed:', msg);
+    sendBuildUpdate({
+      error: `Импорт не удался: ${msg}. Нужен PoB share-код, XML, ссылка или .build JSON.`,
+    });
+  } finally {
+    buildPricing = false;
+    sendBuildUpdate({ status: 'ready' });
+  }
+}
+
+/** Оценка собранного комплекта (EHP/дыры) — фон, best-effort. */
+async function refreshBuildEstimate(): Promise<void> {
+  if (!buildState) return;
+  try {
+    const est = await withTimeout(
+      core.estimate.estimateBuild(buildState.slots.map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText }))),
+      30_000,
+      'estimateBuild',
+    );
+    buildState.summary = {
+      worstEhpType: est.worstEhp?.damageType ?? null,
+      worstEhp: est.worstEhp ? Math.round(est.worstEhp.effectiveHp) : null,
+      gaps: est.gaps.slice(0, 3).map((g) => ({ description: g.description, recommendation: g.recommendation })),
+      weapon: est.weapon?.weapon ?? null,
+      weaponDps: est.weapon ? Math.round(est.weapon.totalDps) : null,
+      notes: est.notes.slice(0, 2),
+    };
+    saveBuildState();
+    sendBuildUpdate();
+    console.log(`[overlay] build estimate: worstEhp=${buildState.summary.worstEhp} (${buildState.summary.worstEhpType})`);
+  } catch (err) {
+    console.warn('[overlay] build estimate failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+/** Мета-скиллы топа ладдера текущей лиги — фон, best-effort. */
+async function refreshBuildMeta(): Promise<void> {
+  if (!buildState) return;
+  try {
+    const leagues = await withTimeout(core.ladder.listLadderLeagues(), 15_000, 'listLadderLeagues');
+    const slug = leagues.find((l) => /hardcore/i.test(l))
+      ? leagues[0]
+      : leagues[0];
+    if (!slug) return;
+    const rows = await withTimeout(
+      core.ladder.topLadderBuilds(slug, { limit: 100 }),
+      30_000,
+      'topLadderBuilds',
+    );
+    buildState.metaSkills = core.ladder.popularSkills(rows, 5);
+    saveBuildState();
+    sendBuildUpdate();
+    console.log(`[overlay] build meta: ${buildState.metaSkills.slice(0, 3).map((s) => `${s.name}×${s.count}`).join(', ')}`);
+  } catch (err) {
+    console.warn('[overlay] build meta failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+/** Ctrl+Alt+B: показать/скрыть панель билда (или импортировать, если билда нет). */
+function toggleBuildPanel(): void {
+  if (!buildState) {
+    void runBuildImport();
+    return;
+  }
+  buildState.panelVisible = !buildState.panelVisible;
+  sendBuildUpdate();
+}
+
+/** Сбросить билд (IPC). */
+function resetBuild(): void {
+  buildState = null;
+  try {
+    fs.rmSync(buildStateFile(), { force: true });
+  } catch {
+    /* нет файла — ок */
+  }
+  sendBuildUpdate({ status: 'empty' });
+  console.log('[overlay] build reset');
+}
+
+function markSlotBought(slot: BuildSlotState): void {
+  slot.status = 'bought';
+  saveBuildState();
+  sendBuildUpdate();
+  console.log(`[overlay] build slot bought: ${slot.slot} (${slot.name})`);
 }
 
 async function createOverlayWindow(): Promise<void> {
@@ -445,6 +771,20 @@ async function runPriceCheck(): Promise<unknown> {
       };
     }
 
+    // Билд-ассистент: сопоставить предмет со слотом билда и отметить собранным.
+    if (buildState && itemText.trim()) {
+      try {
+        const parsed = core.parse.parseItemText(itemText);
+        const matched = matchBuildSlot(core.parse.itemDisplayName(parsed), parsed.baseType);
+        if (matched) {
+          (result as { buildMatch?: unknown }).buildMatch = { slot: matched.slot, name: matched.name };
+          markSlotBought(matched);
+        }
+      } catch {
+        /* предмет из игры не парсится — ничего не сопоставляем */
+      }
+    }
+
     await overlayWindow?.webContents.send('price:result', result);
     return result;
   } finally {
@@ -492,9 +832,19 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: Ctrl+Alt+D (перемещение оверлея)');
     toggleMoveMode();
   });
+  const okBI = globalShortcut.register(BUILD_IMPORT_HOTKEY, () => {
+    console.log('[overlay] hotkey fired: Ctrl+Alt+I (импорт билда из буфера)');
+    void runBuildImport();
+  });
+  const okBP = globalShortcut.register(BUILD_PANEL_HOTKEY, () => {
+    console.log(`[overlay] hotkey fired: ${BUILD_PANEL_HOTKEY} (панель билда)`);
+    toggleBuildPanel();
+  });
   console.log(`[overlay] hotkey ${PRICE_HOTKEY} registered=${ok}`);
   console.log(`[overlay] hotkey ${LEVELING_HOTKEY} registered=${okL}`);
   console.log(`[overlay] hotkey ${MOVE_HOTKEY} registered=${okM}`);
+  console.log(`[overlay] hotkey ${BUILD_IMPORT_HOTKEY} registered=${okBI}`);
+  console.log(`[overlay] hotkey ${BUILD_PANEL_HOTKEY} registered=${okBP}`);
 }
 
 function setupIPC(): void {
@@ -527,6 +877,24 @@ function setupIPC(): void {
     return true;
   });
 
+  // Билд-ассистент.
+  ipcMain.handle('build:import', () => {
+    void runBuildImport();
+    return true;
+  });
+
+  ipcMain.handle('build:toggle', () => {
+    toggleBuildPanel();
+    return buildState?.panelVisible ?? false;
+  });
+
+  ipcMain.handle('build:reset', () => {
+    resetBuild();
+    return true;
+  });
+
+  ipcMain.handle('build:get', () => buildPayload());
+
   // Переключатель «кликабельности» оверлея из рендерера.
   ipcMain.handle('interact:set', (_evt, interact: boolean) => {
     overlayWindow?.setIgnoreMouseEvents(!interact, { forward: true });
@@ -552,9 +920,16 @@ app.whenReady().then(async () => {
     }
   }
   if (activeLeague) core.trade.setLeague(activeLeague);
+  // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+Alt+B.
+  loadBuildState();
   setupIPC();
   void createOverlayWindow().then(() => {
     startGameTracker();
+    // После создания окна — выслать текущее состояние билда (если есть).
+    if (buildState) {
+      buildState.panelVisible = false;
+      sendBuildUpdate();
+    }
   });
   registerHotkeys();
 

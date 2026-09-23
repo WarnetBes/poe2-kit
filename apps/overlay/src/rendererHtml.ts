@@ -92,6 +92,27 @@ export const rendererHtml = `<!doctype html>
   }
   #grab .reset { -webkit-app-region: no-drag; cursor: pointer; color: var(--dim);
     text-decoration: underline; font-size: 11px; }
+
+  /* Панель билда (Ctrl+Alt+B). */
+  #buildWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
+  #buildHead { font-size: 12px; color: #fff; font-weight: 700; }
+  #buildHead .sub { font-weight: 400; font-size: 11px; color: var(--dim); }
+  #buildBudget { font-size: 12px; color: var(--accent); font-weight: 700; }
+  #buildBudget .done { color: var(--ok); font-weight: 400; font-size: 11px; }
+  #buildSlots { overflow-y: auto; flex: 1; min-height: 0; }
+  table.bld { width: 100%; font-size: 11px; border-collapse: collapse; }
+  table.bld td { padding: 1px 6px 1px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  table.bld .slot { color: var(--dim); white-space: nowrap; max-width: 80px; overflow: hidden;
+    text-overflow: ellipsis; }
+  table.bld .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
+  table.bld .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.bld tr.bought td { color: var(--ok); }
+  table.bld tr.bought .nm { text-decoration: line-through; }
+  #buildSum { font-size: 11px; color: var(--dim); line-height: 1.45; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3px; }
+  #buildSum b { color: var(--fg); }
+  #buildSum .gap { color: var(--warn); }
+  #buildNote { font-size: 12px; color: var(--ok); }
+  #buildErr { font-size: 11px; color: var(--warn); }
 </style>
 </head>
 <body>
@@ -100,14 +121,16 @@ export const rendererHtml = `<!doctype html>
       ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+Alt+D — закрепить
     </div>
     <div id="idle">
-      Готово. Нажми <b>Ctrl+Alt+Space</b><br/>
-      в игре, чтобы оценить предмет из буфера.
+      Готово. Нажми <b>Ctrl+Alt+Space</b> — прайс предмета из буфера.<br/>
+      <b>Ctrl+Alt+I</b> — импорт билда из PoB-кода,<br/>
+      <b>Ctrl+Shift+B</b> — шопинг-лист билда.
     </div>
     <div id="body" class="hide">
       <div class="head">
         <div class="item-name" id="itemName"></div>
       </div>
       <div id="est" class="est hide"></div>
+      <div id="buildNote" class="hide"></div>
       <div id="busy" class="status-busy hide">Оценка цены…</div>
       <div id="err" class="err-box hide"></div>
       <div id="meta" class="meta hide"></div>
@@ -118,7 +141,14 @@ export const rendererHtml = `<!doctype html>
         <div class="lvl-zone" id="lvlZone"></div>
         <div id="lvlHints"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+Alt+Space · Прокачка: Ctrl+Alt+L · Двигать: Ctrl+Alt+D</div>
+      <div id="buildWrap" class="hide">
+        <div id="buildHead"></div>
+        <div id="buildBudget"></div>
+        <div id="buildSlots"></div>
+        <div id="buildSum"></div>
+        <div id="buildErr" class="hide"></div>
+      </div>
+      <div id="hint">Прайс: Ctrl+Alt+Space · Билд: Ctrl+Shift+B · Прокачка: Ctrl+Alt+L · Двигать: Ctrl+Alt+D</div>
     </div>
   </div>
 <script>
@@ -157,11 +187,123 @@ export const rendererHtml = `<!doctype html>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
+    $('buildNote').classList.toggle('hide', mode !== 'price');
+    $('meta').classList.toggle('hide', mode !== 'price');
     $('lvlWrap').classList.toggle('hide', mode !== 'level');
+    $('buildWrap').classList.toggle('hide', mode !== 'build');
   }
+
+  // ─── Билд-ассистент (Ctrl+Alt+B / Ctrl+Alt+I) ──────────────────────────────
+  var SLOT_RU = {
+    'Helm': 'Шлем', 'Body Armour': 'Броня', 'Gloves': 'Перчатки', 'Boots': 'Обувь',
+    'Belt': 'Ремень', 'Amulet': 'Амулет', 'Ring': 'Кольцо', 'Ring 1': 'Кольцо 1',
+    'Ring 2': 'Кольцо 2', 'Weapon 1': 'Оружие', 'Weapon 2': 'Оружие 2',
+    'Weapon 3': 'Оружие 3', 'Gloves 2': 'Перчатки 2', 'Boots 2': 'Обувь 2',
+    'Flask': 'Флакон', 'Flask 1': 'Флакон 1', 'Flask 2': 'Флакон 2',
+    'Flask 3': 'Флакон 3', 'Flask 4': 'Флакон 4', 'Flask 5': 'Флакон 5'
+  };
+
+  function slotRu(s) {
+    return SLOT_RU[s] || s || '—';
+  }
+
+  function fmtPrice(v) {
+    if (v == null) return '…';
+    return Number(v) >= 1000
+      ? (Number(v) / 1000).toFixed(1) + 'k chaos'
+      : Number(v).toFixed(1) + ' chaos';
+  }
+
+  function renderBuild(state) {
+    var wrap = $('buildWrap');
+    var err = $('buildErr');
+    var berr = $('buildErr');
+    err.classList.add('hide');
+
+    if (!state || !state.build) {
+      $('itemName').textContent = 'Билд не загружен';
+      if (state && state.error) {
+        berr.classList.remove('hide');
+        berr.textContent = '⚠ ' + state.error;
+      }
+      $('buildHead').textContent = '';
+      $('buildBudget').textContent = '';
+      $('buildSlots').innerHTML = '';
+      $('buildSum').textContent = 'Ctrl+Alt+I — импорт: скопируйте PoB share-код / .build JSON и нажмите.';
+      return;
+    }
+
+    var b = state.build;
+    var who = [b.ascendancy || b.className || 'Билд', b.level ? ('ур. ' + b.level) : '']
+      .filter(Boolean).join(' · ');
+    $('itemName').textContent = '🛒 Шопинг-лист билда';
+    $('buildHead').innerHTML = esc(who) +
+      (b.skills && b.skills.length
+        ? ' <span class="sub">' + esc(b.skills.slice(0, 3).join(', ')) + '</span>'
+        : '');
+
+    var done = b.boughtCount + '/' + b.totalSlots + ' собрано';
+    $('buildBudget').innerHTML =
+      'Бюджет: ' + esc(fmtPrice(b.budgetLeft)) +
+      '<span class="done"> · ' + esc(done) +
+      (b.pricedCount < b.totalSlots ? ' · оценяется ' + b.pricedCount + '/' + b.totalSlots : '') +
+      '</span>';
+
+    var rows = (b.slots || []).map(function (s) {
+      var icon = s.status === 'bought' ? '✔' : '⬜';
+      var price = s.median != null ? fmtPrice(s.median) : (state.pricing ? '…' : '—');
+      return '<tr class="' + (s.status === 'bought' ? 'bought' : '') + '">' +
+        '<td>' + icon + '</td>' +
+        '<td class="slot">' + esc(slotRu(s.slot)) + '</td>' +
+        '<td class="nm" title="' + esc(s.name) + '">' + esc(s.name) + '</td>' +
+        '<td class="num">' + esc(price) + '</td>' +
+        '</tr>';
+    }).join('');
+    $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
+
+    var sum = [];
+    if (b.summary) {
+      if (b.summary.worstEhp != null) {
+        sum.push('Слабейший EHP: <b>' + Math.round(b.summary.worstEhp).toLocaleString('ru-RU') +
+          '</b> (' + esc(b.summary.worstEhpType) + ')');
+      }
+      if (b.summary.weaponDps != null && b.summary.weaponDps > 0) {
+        sum.push('DPS оружия (' + esc(b.summary.weapon || '?') + '): <b>' +
+          Math.round(b.summary.weaponDps).toLocaleString('ru-RU') + '</b>');
+      }
+      (b.summary.gaps || []).forEach(function (g) {
+        sum.push('<span class="gap">⚠ ' + esc(g.description) + '</span>');
+      });
+    }
+    if (b.metaSkills && b.metaSkills.length) {
+      sum.push('Мета ладдера: ' + b.metaSkills.slice(0, 3).map(function (s) {
+        return esc(s.name) + ' ×' + s.count;
+      }).join(', '));
+    }
+    sum.push('<span class="sub" style="color:#9aa4b0">Ctrl+Alt+Space на купленном предмете — отметит слот ✔</span>');
+    $('buildSum').innerHTML = sum.join('<br/>');
+
+    if (state.error) {
+      berr.classList.remove('hide');
+      berr.textContent = '⚠ ' + state.error;
+    }
+  }
+
+  window.poe2k.onBuildUpdate(function (state) {
+    if (!state) return;
+    if (!state.visible && !(state.error && !state.build)) return;
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    $('est').classList.add('hide');
+    $('busy').classList.add('hide');
+    showMode('build');
+    renderBuild(state);
+  });
+
 
   window.poe2k.onLevelResult(function (lvl) {
     if (!lvl) return;
@@ -208,6 +350,15 @@ export const rendererHtml = `<!doctype html>
 
     // Оценка.
     var est = $('est');
+    var note = $('buildNote');
+    if (res.buildMatch) {
+      note.classList.remove('hide');
+      note.textContent = '✔ Слот билда: ' + res.buildMatch.slot + ' — отмечен собранным';
+      note.title = res.buildMatch.name || '';
+    } else {
+      note.classList.add('hide');
+      note.textContent = '';
+    }
     if (res.estimate && res.estimate.median != null) {
       est.classList.remove('hide');
       var conf = res.estimate.confidence === 'exact' ? 'точно' : (res.estimate.confidence === 'approx' ? 'приблизительно' : 'грубо');
