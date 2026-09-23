@@ -227,3 +227,12 @@ OK: С…РѕС‚РєРµРё Ctrl+F1..F5, Р°РІС‚РѕРґРµС‚РµР
 - `start-overlay.bat` (РєРѕСЂРµРЅСЊ) вЂ” Р°РІС‚РѕРѕР±РЅРѕРІР»РµРЅРёРµ git pull + СЃР±РѕСЂРєР° + СЃС‚Р°СЂС‚
 - `deploy/poe2k-overlay-transfer-src/` вЂ” make-transfer-zip.ps1, convert-to-git.bat, README.md
 
+
+## 2026-09-24 — Сетапы камней: «какие камни и куда ставить»
+- core/build.ts: новая `buildGemSetups(input)` — разбор групп `<Skill><Gem>` из PoB XML.
+  Классификация: ascendancy-камни → пассивные; активный vs поддержки по gemId;
+  подсказка «куда» по skillTypes из RePoE: Attack → в оружие, Herald/HasReservation → не в оружие, Spell → куда угодно.
+  Связки >3 камней помечены «часть саппортов в другие предметы» (в PoE2 предмет ≤3 сокетов).
+- overlay/main.ts: `refreshGemSetups()` в фоне после импорта; `gemSetups` в build-state.json и payload.
+- overlay/rendererHtml.ts: секция «💎 Камни билда — куда вставлять» в панели Ctrl+F2 (активный камень, ур., куда, + поддержки).
+- Живой тест (28880): 10 связок, Meditate корректно «даётся восхождением», гаральды — «не в оружие».

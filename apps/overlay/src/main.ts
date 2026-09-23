@@ -130,6 +130,14 @@ interface BuildState {
   slots: BuildSlotState[];
   summary: BuildSummaryState | null;
   metaSkills: Array<{ name: string; count: number }> | null;
+  /** Сетапы камней билда: активный + поддержки + подсказка «куда вставлять». */
+  gemSetups: Array<{
+    active: string;
+    activeLevel: number | null;
+    supports: string[];
+    source: 'socket' | 'passive';
+    where: string;
+  }> | null;
   /** Показана ли панель билда в виджете. */
   panelVisible: boolean;
 }
@@ -358,6 +366,7 @@ function loadBuildState(): void {
         slots: raw.slots as BuildSlotState[],
         summary: raw.summary ?? null,
         metaSkills: raw.metaSkills ?? null,
+        gemSetups: raw.gemSetups ?? null,
         panelVisible: false,
       };
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
@@ -419,6 +428,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
       summary: buildState.summary,
       metaSkills: buildState.metaSkills,
+      gemSetups: buildState.gemSetups,
     },
   };
 }
@@ -698,6 +708,7 @@ async function runBuildImport(): Promise<void> {
       }),
       summary: null,
       metaSkills: null,
+      gemSetups: null,
       panelVisible: true,
     };
     saveBuildState();
@@ -709,6 +720,8 @@ async function runBuildImport(): Promise<void> {
     // Живая панель: EHP/дыры защиты и мета — считаем в фоне, не мешая прайсингу.
     void refreshBuildEstimate();
     void refreshBuildMeta();
+    // Сетапы камней («какие камни и куда вставлять») — тоже в фоне.
+    void refreshGemSetups(input);
     // Автосинхронизация с персонажем poe.ninja (если настроена) — тоже в фоне.
     void syncCharacterGear();
 
@@ -800,6 +813,20 @@ async function refreshBuildMeta(): Promise<void> {
     console.log(`[overlay] build meta: ${buildState.metaSkills.slice(0, 3).map((s) => `${s.name}×${s.count}`).join(', ')}`);
   } catch (err) {
     console.warn('[overlay] build meta failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+/** Сетапы камней билда («какие камни и куда вставлять») — фон, best-effort. */
+async function refreshGemSetups(input: string): Promise<void> {
+  if (!buildState) return;
+  try {
+    const setups = await withTimeout(core.build.buildGemSetups(input), 20_000, 'buildGemSetups');
+    buildState.gemSetups = setups;
+    saveBuildState();
+    sendBuildUpdate();
+    console.log(`[overlay] gem setups: ${setups.length} связок (${setups.map((s) => s.active).slice(0, 3).join(', ')}…)`);
+  } catch (err) {
+    console.warn('[overlay] gem setups failed:', err instanceof Error ? err.message : err);
   }
 }
 

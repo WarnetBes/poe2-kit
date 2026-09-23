@@ -298,7 +298,23 @@ export const rendererHtml = `<!doctype html>
       }
       return row;
     }).join('');
-    $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
+    // Сетапы камней: какие камни и куда вставлять.
+    var gemRows = '';
+    if (b.gemSetups && b.gemSetups.length) {
+      gemRows = '<tr><td colspan="4" style="padding-top:5px;border-top:1px solid #2a3344">' +
+        '<span class="sub">💎 Камни билда — куда вставлять</span></td></tr>';
+      gemRows += b.gemSetups.map(function (g) {
+        var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
+        var html = '<tr><td>💎</td>' +
+          '<td class="slot" colspan="3"><b>' + esc(g.active) + '</b>' + lvl +
+          ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
+        if (g.supports && g.supports.length) {
+          html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + esc(g.supports.join(', ')) + '</td></tr>';
+        }
+        return html;
+      }).join('');
+    }
+    $('buildSlots').innerHTML = '<table class="bld">' + rows + gemRows + '</table>';
 
     var sum = [];
     if (b.summary) {

@@ -9,6 +9,7 @@
 
 import { deflateSync, inflateSync, unzlibSync, zlibSync } from 'fflate';
 import type { BuildGearItem, BuildImport } from './types.js';
+import { getSkillGemDetails } from './dataset.js';
 
 /** Ошибка при работе с PoB-кодами. */
 export class PobCodeError extends Error {
@@ -649,6 +650,110 @@ export async function buildCodeToGear(input: string): Promise<BuildGearItem[]> {
   }
 
   return items;
+}
+
+/** Сетап камней билда: активный камень + поддержки + подсказка «куда вставлять». */
+export interface GemSetup {
+  /** Активный камень (имя как в игре). */
+  active: string;
+  /** Уровень активного камня из билда. */
+  activeLevel: number | null;
+  /** Поддержки, вставляемые в тот же предмет. */
+  supports: string[];
+  /** Откуда сетап: сокет предмета / пассивно с дерева/восхождения. */
+  source: 'socket' | 'passive';
+  /** Подсказка, в какой слот снаряжения вставлять. */
+  where: string;
+}
+
+/**
+ * Разобрать сетапы камней из билда (PoB XML): группы <Skill> с <Gem>.
+ * Подсказка «куда» — эвристика по типам скилла из базы RePoE:
+ * атаки → оружейный слот, гаральды/резервации → крупный предмет, прочее — куда угодно.
+ */
+export async function buildGemSetups(input: string): Promise<GemSetup[]> {
+  const xml = await toXml(input);
+  const setups: GemSetup[] = [];
+  const groups = xml.match(/<Skill\b[\s\S]*?<\/Skill>/g) ?? [];
+  for (const g of groups) {
+    if (!/\benabled="true"/.test(g.match(/<Skill\b[^>]*>/)?.[0] ?? '')) continue;
+    const treeSource = /\bsource="Tree:[^"]*"/.test(g);
+    const gemRe = /<Gem\b([^>]*?)\/?>/g;
+    let m: RegExpExecArray | null;
+    const gems: Array<{ name: string; level: number | null; gemId: string; variant: string; count: string | null }> = [];
+    while ((m = gemRe.exec(g))) {
+      const a = _attrs(m[1]);
+      const name = String(a.nameSpec ?? a.skillId ?? '')
+        .replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .trim();
+      if (!name || name === 'nil') continue;
+      if (a.enabled === 'false') continue;
+      gems.push({
+        name,
+        level: a.level != null && /^\d+$/.test(String(a.level)) ? Number(a.level) : null,
+        gemId: String(a.gemId ?? ''),
+        variant: String(a.variantId ?? ''),
+        count: a.count != null ? String(a.count) : null,
+      });
+    }
+    if (!gems.length) continue;
+    // Пассивные: выданы деревом/восхождением (source=Tree, ascendancy-вариант, count=nil).
+    const passive = treeSource || gems.every((x) => /\/ascendancy/i.test(x.gemId) || x.variant.startsWith('Ascendancy')) || gems.every((x) => x.count === 'nil');
+    if (passive) {
+      const act = gems[0];
+      if (setups.some((s) => s.active === act.name)) continue;
+      setups.push({ active: act.name, activeLevel: null, supports: [], source: 'passive', where: 'не вставляется — пассивно (дерево/восхождение)' });
+      continue;
+    }
+    // Активный камень: не саппорт (по gemId), саппорты — остальные.
+    const isSupport = (x: { gemId: string; variant: string }) => /support/i.test(x.gemId) || /Support$/.test(x.variant);
+    const activeGem = gems.find((x) => !isSupport(x)) ?? gems[0];
+    // Ascendancy-камень (напр. Meditate) — пассивный, не вставляется никуда.
+    if (/ascendancy/i.test(activeGem.gemId) || activeGem.variant.startsWith('Ascendancy')) {
+      if (!setups.some((s) => s.active === activeGem.name)) {
+        setups.push({
+          active: activeGem.name,
+          activeLevel: null,
+          supports: [],
+          source: 'passive',
+          where: 'не вставляется — даётся восхождением',
+        });
+      }
+      continue;
+    }
+    const supports = gems.filter((x) => x !== activeGem && isSupport(x)).map((x) => x.name);
+    const otherActives = gems.filter((x) => x !== activeGem && !isSupport(x)).map((x) => x.name);
+    // Подсказка «куда» по типам скилла. Порядок важен: гаральды содержат
+    // тип Attack, поэтому проверяем резервацию раньше.
+    let where = 'куда угодно (шлем / броня / перчатки…)';
+    let detTypes: string[] = [];
+    try {
+      detTypes = getSkillGemDetails(activeGem.name)?.skillTypes ?? [];
+    } catch {
+      /* базы нет — дефолт */
+    }
+    const sock = gems.length;
+    if (detTypes.includes('Herald') || detTypes.includes('HasReservation')) {
+      where = 'куда угодно, НЕ в оружие — резервация духа';
+    } else if (detTypes.includes('Attack')) {
+      where = sock > 3 ? `в оружие; связка из ${sock} камней — часть саппортов в другие предметы` : 'в оружие (Weapon)';
+    } else if (detTypes.includes('Spell')) {
+      where = 'куда угодно (напр., Body Armour)';
+    }
+    if (setups.some((s) => s.active === activeGem.name)) continue;
+    setups.push({
+      active: activeGem.name,
+      activeLevel: activeGem.level,
+      supports: [...otherActives.map((n) => `${n} (активный!)`), ...supports],
+      source: 'socket',
+      where,
+    });
+  }
+  return setups;
 }
 
 /** Простые метрики билда (детально — через MCP/AI). */
