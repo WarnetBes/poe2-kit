@@ -35,7 +35,14 @@ const _PAGE_HOSTS = /^https?:\/\/(?:www\.)?(maxroll\.gg|pobarchives\.com|poe\.ni
  */
 export function decodeShareCode(code: string): string {
   if (!code || !code.trim()) throw new PobCodeError('пустой import-код');
-  const s0 = code.replace(_WS, '').replace(/-/g, '+').replace(/_/g, '/');
+  // Убираем whitespace/кавычки, возвращаем стандартный алфавит (+, /) и срезаем
+  // существующий padding «=» — добавим ровно сколько нужно (бывает, что код
+  // скопирован вместе с «=», хотя PoB экспортирует без него до Adler-32).
+  const s0 = code
+    .replace(_WS, '')
+    .replace(/=+$/, '')
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
   const s = s0 + '='.repeat((4 - (s0.length % 4)) % 4); // восстановить padding
 
   let raw: Uint8Array;
