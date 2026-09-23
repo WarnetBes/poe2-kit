@@ -69,6 +69,10 @@ export const rendererHtml = `<!doctype html>
   table.list td { padding: 2px 6px; border-top: 1px solid rgba(255,255,255,0.06); }
   table.list .num { text-align: right; font-variant-numeric: tabular-nums; }
 
+  .lvl-hint { font-size: 12px; line-height: 1.5; }
+  .lvl-hint b { color: var(--accent); }
+  .lvl-zone { font-size: 13px; font-weight: 700; color: #fff; }
+
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
 </style>
@@ -90,7 +94,11 @@ export const rendererHtml = `<!doctype html>
       <div id="listWrap" class="hide">
         <table class="list" id="list"></table>
       </div>
-      <div id="hint">Хоткей Ctrl+Alt+Space · клики сквозь оверлей</div>
+      <div id="lvlWrap" class="hide">
+        <div class="lvl-zone" id="lvlZone"></div>
+        <div id="lvlHints"></div>
+      </div>
+      <div id="hint">Прайс: Ctrl+Alt+Space · Прокачка: Ctrl+Alt+L</div>
     </div>
   </div>
 <script>
@@ -113,11 +121,48 @@ export const rendererHtml = `<!doctype html>
     if (b) setBusy(true);
   });
 
+  function showMode(mode) {
+    // mode: 'price' | 'level' — показываем только нужные блоки.
+    $('est').classList.toggle('hide', mode !== 'price');
+    $('listWrap').classList.toggle('hide', mode !== 'price');
+    $('lvlWrap').classList.toggle('hide', mode !== 'level');
+  }
+
+  window.poe2k.onLevelResult(function (lvl) {
+    if (!lvl) return;
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    $('itemName').innerHTML = esc(lvl.summary || 'Персонаж');
+    $('err').classList.add('hide');
+    $('meta').classList.add('hide');
+    showMode('level');
+
+    var zoneEl = $('lvlZone');
+    zoneEl.textContent = lvl.zone && (lvl.zone.name || lvl.zone.code)
+      ? '📍 ' + (lvl.zone.name || lvl.zone.code)
+      : (lvl.available ? 'Зона неизвестна' : '⚠️ ' + (lvl.reason || 'Client.txt не найден'));
+
+    var hints = $('lvlHints');
+    hints.innerHTML = '';
+    var items = (lvl.hints || []).slice(0, 5);
+    for (var i = 0; i < items.length; i++) {
+      var d = document.createElement('div');
+      d.className = 'lvl-hint';
+      d.textContent = items[i].replace('📍 ', '').replace('➡️ ', '➡ ');
+      hints.appendChild(d);
+    }
+    if (!items.length) {
+      hints.innerHTML = '<div class="lvl-hint">Подсказок нет — идите вперёд по плану.</div>';
+    }
+  });
+
   window.poe2k.onPriceResult(function (res) {
     if (!res) { setBusy(false); return; }
     setBusy(false);
     $('idle').classList.add('hide');
     $('body').classList.remove('hide');
+    showMode('price');
 
     // Название + редкость цветом.
     var name = $('itemName');

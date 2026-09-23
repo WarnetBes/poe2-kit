@@ -8,6 +8,7 @@ export interface OverlayAPI {
   priceCheck(): Promise<unknown>;
   onPriceResult(cb: (result: unknown) => void): () => void;
   onPriceBusy(cb: (busy: boolean) => void): () => void;
+  onLevelResult(cb: (level: unknown) => void): () => void;
   getLeague(): Promise<string>;
   setLeague(league: string): Promise<string>;
   getHotkey(): Promise<string>;
@@ -16,6 +17,12 @@ export interface OverlayAPI {
 
 const api: OverlayAPI = {
   priceCheck: () => ipcRenderer.invoke('price:check'),
+
+  onLevelResult: (cb) => {
+    const listener = (_evt: unknown, data: unknown) => cb(data);
+    ipcRenderer.on('level:result', listener);
+    return () => ipcRenderer.removeListener('level:result', listener);
+  },
 
   onPriceResult: (cb) => {
     const listener = (_evt: unknown, data: unknown) => cb(data);

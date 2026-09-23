@@ -28,6 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
+const LEVELING_HOTKEY = 'CommandOrControl+Alt+L';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 let activeLeague: string | null = null;
@@ -266,15 +267,53 @@ async function runPriceCheck(): Promise<unknown> {
   }
 }
 
+/**
+ * Действие «контекст прокачки»: состояние клиента из Client.txt + заметки
+ * текущей зоны/акта + следующие зоны (core.zoneNotes.getLevelingContext).
+ * Возвращает компактный объект для оверлей-виджета.
+ */
+async function runLevelingContext(): Promise<unknown> {
+  if (busy) return null;
+  busy = true;
+  try {
+    const state = core.log.getClientState();
+    const reason = state.available ? null : state.reason ?? 'лог недоступен';
+    const ctx = core.zoneNotes.getLevelingContext(state.available ? state : null);
+    const payload = {
+      summary: ctx.summary,
+      zone: ctx.zone ? { code: ctx.zone.areaCode, name: ctx.zone.zoneName } : null,
+      available: ctx.available,
+      reason,
+      hints: ctx.hints,
+      nextZones: ctx.nextZones.slice(0, 3).map((z) => ({
+        zone: z.zone,
+        monsterLevel: z.monsterLevel,
+        levelDelta: z.levelDelta,
+        rewards: z.rewardList,
+      })),
+    };
+    await overlayWindow?.webContents.send('level:result', payload);
+    return payload;
+  } finally {
+    busy = false;
+  }
+}
+
 function registerHotkeys(): void {
   const ok = globalShortcut.register(PRICE_HOTKEY, () => {
     void runPriceCheck();
   });
+  const okL = globalShortcut.register(LEVELING_HOTKEY, () => {
+    void runLevelingContext();
+  });
   console.log(`[overlay] hotkey ${PRICE_HOTKEY} registered=${ok}`);
+  console.log(`[overlay] hotkey ${LEVELING_HOTKEY} registered=${okL}`);
 }
 
 function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
+
+  ipcMain.handle('level:check', () => runLevelingContext());
 
   ipcMain.handle('league:get', () => {
     return activeLeague ?? null;
