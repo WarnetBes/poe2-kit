@@ -92,6 +92,14 @@ REM Электрон пишет логи в UTF-8; через PowerShell-хос�
 REM (chcp 65001 помогает не во всех консолях: conhost с растровым шрифтом
 REM всё равно портит кириллицу, а PowerShell печатает через консольный API).
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; npm run start -w @poe2-kit/overlay"
+set OVEXIT=%ERRORLEVEL%
+if not "%OVEXIT%"=="0" (
+  echo.
+  echo [ERROR] Overlay exited with code %OVEXIT% right after start.
+  echo   - Look for the reason in the lines above ^(electron output^).
+  echo   - Full log: %%APPDATA%%\@poe2-kit\overlay\overlay.log
+  echo   - Try launching from an open console: cmd /c start-overlay.bat
+)
 goto end
 
 :err
@@ -100,4 +108,6 @@ echo [ERROR] Build failed. See the messages above.
 pause
 
 :end
+echo.
+pause
 endlocal
