@@ -7,6 +7,7 @@
  */
 
 import { httpJson } from './http.js';
+import { parseItemText, itemDisplayName } from './parse.js';
 import type {
   CurrencyRate,
   League,
@@ -157,18 +158,28 @@ export function clearScoutCache(): void {
 
 /**
  * Цена уникального предмета по точному имени.
- * Пытается по всем категориям (т.к. имя не говорит, weapon это или armour).
+ * Если известен itemClass — сужаем поиск до одной категории poe2scout,
+ * иначе пробуем все категории.
  * Возвращает цену в chaos или null.
  */
-export async function priceUnique(name: string, league?: string): Promise<number | null> {
+export async function priceUnique(
+  name: string,
+  league?: string,
+  itemClass?: string,
+): Promise<number | null> {
   const l = league ?? currentLeague ?? 'Runes of Aldur';
-  const key = `${l}::${name.trim().toLowerCase()}`;
+  const key = `${l}::${name.trim().toLowerCase()}::${(itemClass ?? '').toLowerCase()}`;
   const c = scoutCache.get(key);
   if (c && Date.now() - c.at < SCOUT_TTL) return c.value;
 
-  const categories: ScoutCategory[] = ['weapon', 'armour', 'accessory', 'jewel', 'flask'];
   const lower = name.trim().toLowerCase();
   let value: number | null = null;
+
+  const targetCat = itemClass ? mapItemClassToScoutCategory(itemClass) : null;
+  const categories: ScoutCategory[] = targetCat
+    ? [targetCat]
+    : ['weapon', 'armour', 'accessory', 'jewel', 'flask'];
+
   for (const cat of categories) {
     try {
       const items = await getScoutUniques(cat, l, name.trim());
@@ -243,15 +254,35 @@ export async function priceCheck(itemText: string): Promise<PriceCheckResult> {
   let estimate: PriceEstimate | null = null;
   let listings: TradeListing[] = [];
 
-  if (parsed.rarity === 'unique' && parsed.name) {
-    const v = await priceUnique(parsed.name);
+  if (parsed.rarity === 'Unique' && (parsed.name ?? parsed.baseType)) {
+    const v = await priceUnique(
+      parsed.name ?? parsed.baseType,
+      undefined,
+      parsed.itemClass || undefined,
+    );
     if (v != null) {
       estimate = { min: v * 0.8, max: v * 1.2, median: v, confidence: 'approx' };
     }
+  } else if (parsed.rarity === 'Currency' && parsed.baseType) {
+    const rates = await fetchCurrencyRates();
+    const rate = rates.find(
+      (r) => r.name.toLowerCase() === parsed.baseType!.toLowerCase(),
+    );
+    if (rate?.chaosValue != null) {
+      estimate = {
+        min: rate.chaosValue,
+        max: rate.chaosValue,
+        median: rate.chaosValue,
+        confidence: 'exact',
+      };
+    }
   }
 
-  if (parsed.name || parsed.type) {
-    listings = await searchTrade({ name: parsed.name ?? undefined, type: parsed.type ?? undefined });
+  if (parsed.name || parsed.baseType) {
+    listings = await searchTrade({
+      name: parsed.name ?? undefined,
+      type: parsed.baseType ?? undefined,
+    });
     if (!estimate) {
       const prices = listings.filter((l) => l.currency === 'chaos').map((l) => l.price);
       if (prices.length > 2) {
@@ -263,47 +294,17 @@ export async function priceCheck(itemText: string): Promise<PriceCheckResult> {
   }
 
   return {
-    itemName: parsed.name ?? parsed.type ?? 'Неизвестный предмет',
-    rarity: parsed.rarity,
+    itemName: itemDisplayName(parsed) || 'Неизвестный предмет',
+    rarity: parsed.rarity.toLowerCase(),
     estimate,
     listings,
     sources: Array.from(
       new Set([
-        ...(parsed.rarity === 'unique' && estimate ? ['poe2scout'] : []),
+        ...(parsed.rarity === 'Unique' && estimate ? ['poe2scout'] : []),
+        ...(parsed.rarity === 'Currency' && estimate ? ['poe.ninja'] : []),
         ...(listings.length ? ['trade2'] : []),
       ]),
     ),
     updatedAt: Date.now(),
   };
-}
-
-interface ParsedItem {
-  rarity: string;
-  name?: string;
-  type?: string;
-  mods: string[];
-}
-
-function parseItemText(text: string): ParsedItem {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  const rarity = detectRarity(lines[0] ?? '');
-  const result: ParsedItem = { rarity, mods: [] };
-  for (const line of lines) {
-    if (/^Rarity:/i.test(line)) continue;
-    if (/^Item (Level|Class)/i.test(line)) continue;
-    if (!result.name) {
-      result.name = line;
-    }
-  }
-  return result;
-}
-
-function detectRarity(firstLine: string): string {
-  const t = firstLine.toLowerCase();
-  if (t.includes('unique')) return 'unique';
-  if (t.includes('rare')) return 'rare';
-  if (t.includes('magic')) return 'magic';
-  if (t.includes('currency')) return 'currency';
-  if (t.includes('gem')) return 'gem';
-  return 'other';
 }
