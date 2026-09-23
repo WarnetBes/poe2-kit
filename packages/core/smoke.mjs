@@ -380,5 +380,14 @@ ok(cmp.dps && Math.abs(cmp.dps.percentile - 33.3) < 0.1, 'compare: dps p33');
 ok(cmp.level && Math.abs(cmp.level.percentile - 66.7) < 0.1, 'compare: level p67');
 ok(cmp.classMeta === true, 'compare: classMeta true');
 
+console.log('dataset: support gems / ascendancy nodes / stat descriptions');
+ok(core.default.dataset.getSupportGems().length === 680, 'support gems: 680 records');
+ok(core.default.dataset.searchSupportGems('concentrated').some(g => g.name === 'Concentrated Area Support'), 'support gems: search case-insensitive');
+const inv = core.default.dataset.getAscendancyNodesByName('Invoker');
+ok(inv.length === 20 && inv.filter(n => n.kind === 'notable').length === 9, 'asc nodes: Invoker 20/9 notables');
+ok(core.default.dataset.searchAscendancyNodes('Elemental', { notablesOnly: true, limit: 5 }).length === 5, 'asc nodes: notable search by text');
+const glory = core.default.dataset.getStatDescription('%_attack_damage_per_glory_consumed_for_6_seconds_up_to_100');
+ok(!!glory && glory.template.includes('Glory'), 'stat desc: glory template resolved');
+ok(core.default.dataset.searchStatDescriptions('glory', 3).length === 3, 'stat desc: search by substring');
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

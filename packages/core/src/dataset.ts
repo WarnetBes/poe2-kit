@@ -277,3 +277,166 @@ export function searchStatIds(query: string, limit = 10): string[] {
   if (!q) return [];
   return getStatIds().filter((s) => s.toLowerCase().includes(q)).slice(0, limit);
 }
+
+// ─── Саппорт-гемы ───────────────────────────────────────────────────────────
+// support_gems.json: { metadata, support_gems: { id: {...} } } — 680 записей.
+
+export interface SupportGemEntry {
+  row_index: number;
+  id: string;
+  name: string;
+  is_support: boolean;
+  effects: Record<string, unknown>;
+  tags: string[];
+  compatible_with: string[];
+  max_level: number;
+}
+
+let supportGemsCache: SupportGemEntry[] | null = null;
+
+/** Все саппорт-гемы (680). */
+export function getSupportGems(): SupportGemEntry[] {
+  if (!supportGemsCache) {
+    const raw = loadJson<{ support_gems?: Record<string, SupportGemEntry> }>('support_gems/support_gems.json');
+    supportGemsCache = Object.values(raw.support_gems ?? {});
+  }
+  return supportGemsCache;
+}
+
+/** Поиск саппорт-гемов по имени («Concentrated» → Concentrated Effect Support). */
+export function searchSupportGems(query: string, limit = 10): SupportGemEntry[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return getSupportGems()
+    .filter((g) => g.name.toLowerCase().includes(q) || g.id.toLowerCase().includes(q))
+    .sort((a, b) => a.name.length - b.name.length)
+    .slice(0, limit);
+}
+
+// ─── Узлы асценданси ─────────────────────────────────────────────────────────
+// nodes.json: { metadata, ascendancy_nodes: { ascendancy: { nodeId: node } } }.
+
+export interface AscendancyNode {
+  id: string;
+  ascendancy: string;
+  name: string;
+  kind: 'start' | 'small' | 'notable' | string;
+  stats: string[];
+}
+
+let ascendancyNodesCache: AscendancyNode[] | null = null;
+
+/** Все узлы всех асценданси (уплощённые). */
+export function getAscendancyNodes(): AscendancyNode[] {
+  if (!ascendancyNodesCache) {
+    const raw = loadJson<{ ascendancy_nodes?: Record<string, Record<string, { name: string; kind: string; stats: string[] }>> }>(
+      'ascendancies/nodes.json',
+    );
+    const out: AscendancyNode[] = [];
+    for (const [asc, nodes] of Object.entries(raw.ascendancy_nodes ?? {})) {
+      for (const [id, n] of Object.entries(nodes)) {
+        out.push({ id, ascendancy: asc, name: n.name, kind: n.kind, stats: n.stats ?? [] });
+      }
+    }
+    ascendancyNodesCache = out;
+  }
+  return ascendancyNodesCache;
+}
+
+/** Узлы конкретной асценданси (например «Invoker», «Pathfinder»). */
+export function getAscendancyNodesByName(ascendancy: string): AscendancyNode[] {
+  const q = ascendancy.trim().toLowerCase();
+  return getAscendancyNodes().filter((n) => n.ascendancy.toLowerCase() === q || n.ascendancy.toLowerCase().includes(q));
+}
+
+/** Поиск узлов асценданси по имени/тексту статов. */
+export function searchAscendancyNodes(query: string, opts: { notablesOnly?: boolean; limit?: number } = {}): AscendancyNode[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const limit = opts.limit ?? 15;
+  return getAscendancyNodes()
+    .filter((n) => (opts.notablesOnly ? n.kind === 'notable' : true))
+    .filter(
+      (n) =>
+        n.name.toLowerCase().includes(q) ||
+        n.ascendancy.toLowerCase().includes(q) ||
+        n.stats.some((s) => s.toLowerCase().includes(q)),
+    )
+    .slice(0, limit);
+}
+
+// ─── Игровые описания статов ─────────────────────────────────────────────────
+// stat_descriptions/*.json: { descriptions: [{ stat_ids, primary_template, variants }] }.
+// Канонические игровые тексты stat_id → шаблон (как в клиенте).
+
+export interface StatDescription {
+  statId: string;
+  allStatIds: string[];
+  template: string;
+  sourceFile: string;
+}
+
+/** Файлы описаний в порядке приоритета (игровые > скилловые > геммовые). */
+const STAT_DESC_FILES = [
+  'stat_descriptions/stat_descriptions.json',
+  'stat_descriptions/skill_stat_descriptions.json',
+  'stat_descriptions/gem_stat_descriptions.json',
+  'stat_descriptions/passive_skill_stat_descriptions.json',
+  'stat_descriptions/character_panel_stat_descriptions.json',
+] as const;
+
+let statDescCache: Map<string, StatDescription> | null = null;
+
+function buildStatDescIndex(): Map<string, StatDescription> {
+  const map = new Map<string, StatDescription>();
+  for (const file of STAT_DESC_FILES) {
+    try {
+      const raw = loadJson<{
+        descriptions?: Array<{ stat_ids?: string[]; primary_template?: string }>;
+      }>(file);
+      for (const d of raw.descriptions ?? []) {
+        const ids = d.stat_ids ?? [];
+        if (!ids.length || !d.primary_template) continue;
+        const entry: StatDescription = {
+          statId: ids[0]!,
+          allStatIds: ids,
+          template: d.primary_template,
+          sourceFile: file,
+        };
+        for (const id of ids) if (!map.has(id)) map.set(id, entry);
+      }
+    } catch {
+      // файла нет/битый — пропускаем, индекс строится из остальных
+    }
+  }
+  return map;
+}
+
+/**
+ * Игровое описание stat_id (текст как в клиенте): base_life →
+ * «…% increased maximum Life»-шаблон. null — описания нет.
+ */
+export function getStatDescription(statId: string): StatDescription | null {
+  if (!statDescCache) statDescCache = buildStatDescIndex();
+  return statDescCache.get(statId) ?? null;
+}
+
+/**
+ * Объяснить механику по тексту: подставит stat_id (подстрока) в игровой шаблон.
+ * «Glory» → stat_ids c glory → игровой текст. Для AI-слоя «проверить механику».
+ */
+export function searchStatDescriptions(query: string, limit = 5): StatDescription[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  if (!statDescCache) statDescCache = buildStatDescIndex();
+  const seen = new Set<string>();
+  const out: StatDescription[] = [];
+  for (const [id, desc] of statDescCache) {
+    if (id.toLowerCase().includes(q) && !seen.has(desc.statId)) {
+      seen.add(desc.statId);
+      out.push(desc);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
