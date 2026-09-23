@@ -17,6 +17,7 @@ import { registerBuildTools } from './tools/build.js';
 import { registerDbTools } from './tools/db.js';
 import { registerAiTools } from './tools/ai.js';
 import { registerLogTools } from './tools/log.js';
+import { registerWikiTools } from './tools/wiki.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -32,6 +33,7 @@ export function buildServer(): number {
   count += registerDbTools(server);
   count += registerAiTools(server);
   count += registerLogTools(server);
+  count += registerWikiTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
@@ -56,6 +58,7 @@ async function main(): Promise<void> {
     console.error('  - poe2_mod_tier');
     console.error('  - poe2_ai_ask');
     console.error('  - poe2_log_state');
+    console.error('  - poe2_wiki_lookup');
     process.exit(0);
   }
 
