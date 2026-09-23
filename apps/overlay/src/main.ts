@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { core } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
+import { findGameWindow, isGameForeground } from './win32.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +33,20 @@ const DEFAULT_LEAGUE = 'Runes of Aldur';
 let activeLeague = DEFAULT_LEAGUE;
 let overlayWindow: BrowserWindow | null = null;
 let busy = false;
+
+// ─── Геометрия оверлея и привязка к окну игры ──────────────────────────────
+const OVERLAY_WIDTH = 420;
+const OVERLAY_HEIGHT = 320;
+/** Отступ оверлея от краёв игрового окна (в DIP). */
+const MARGIN = 8;
+/** Подстрока заголовка окна PoE2 (без учёта регистра). */
+const GAME_TITLE_KEYWORD = 'Path of Exile';
+/** Частота опроса позиции/состояния окна игры (мс). */
+const TRACK_INTERVAL_MS = 350;
+
+let lastHwndKey = '';
+let lastRectKey = '';
+let trackerTimer: NodeJS.Timeout | null = null;
 
 // Единственный экземпляр.
 if (!app.requestSingleInstanceLock()) {
@@ -59,14 +74,14 @@ function writtenRendererPath(): string {
 }
 
 async function createOverlayWindow(): Promise<void> {
-  const { workAreaSize } = screen.getPrimaryDisplay();
-
   overlayWindow = new BrowserWindow({
-    // Прозрачное безрамочное окно поверх всего.
-    width: 420,
-    height: 320,
-    x: workAreaSize.width - 440,
-    y: 16,
+    // Прозрачное безрамочное окно поверх всего. Позицию/видимость задаёт трекер
+    // окна игры (см. trackGameWindow), поэтому стартуем скрытым в углу экрана.
+    width: OVERLAY_WIDTH,
+    height: OVERLAY_HEIGHT,
+    x: -OVERLAY_WIDTH,
+    y: -OVERLAY_HEIGHT,
+    show: false,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -97,6 +112,95 @@ async function createOverlayWindow(): Promise<void> {
 
   // По умолчанию клики проходят в игру сквозь оверлей.
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+
+  // Держим оверлей выше обычного «нормального» слоя, чтобы он был над окном игры.
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver');
+  overlayWindow.setVisibleOnAllWorkspaces?.(true);
+}
+
+/** Конвертирует физические пиксели (GetWindowRect) в DIP для Electron-окна. */
+function physicalRectToDip(
+  r: { left: number; top: number; right: number; bottom: number },
+): { x: number; y: number; width: number; height: number } {
+  const cx = Math.round((r.left + r.right) / 2);
+  const cy = Math.round((r.top + r.bottom) / 2);
+  let disp;
+  try {
+    disp = screen.getDisplayNearestPoint({ x: cx, y: cy });
+  } catch {
+    disp = screen.getPrimaryDisplay();
+  }
+  const sf = disp.scaleFactor || 1;
+  return {
+    x: r.left / sf,
+    y: r.top / sf,
+    width: (r.right - r.left) / sf,
+    height: (r.bottom - r.top) / sf,
+  };
+}
+
+/**
+ * Трекер окна игры: периодически ищет окно PoE2, привязывает оверлей к его
+ * правому верхнему углу и прячет оверлей, когда игра свёрнута или не активна.
+ */
+function trackGameWindow(): void {
+  const win = overlayWindow;
+  if (!win || win.isDestroyed()) return;
+
+  const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
+
+  if (!found) {
+    // Игра/окно не найдено — прячем оверлей.
+    if (win.isVisible()) win.hide();
+    return;
+  }
+
+  // Игра не в фокусе или свёрнута — прячем оверлей (по выбору пользователя).
+  const active = isGameForeground(found);
+  if (!active) {
+    if (win.isVisible()) win.hide();
+    return;
+  }
+
+  // Позиция (DIP): правый верхний угол окна игры, с отступом заданного размера.
+  const rect = physicalRectToDip(found.rect);
+  const x = Math.round(rect.x + rect.width - OVERLAY_WIDTH - MARGIN);
+  const y = Math.round(rect.y + MARGIN);
+
+  // Если сменился HWND игры (перезапуск PoE2) — форсируем обновление позиции.
+  const hwndKey = String(found.hwnd);
+  if (lastHwndKey !== hwndKey) {
+    lastHwndKey = hwndKey;
+    lastRectKey = '';
+  }
+
+  // Перемещаем оверлей только если позиция реально изменилась (меньше дерганий).
+  const key = `${x},${y}`;
+  if (lastRectKey !== key) {
+    lastRectKey = key;
+    win.setBounds({
+      x,
+      y,
+      width: OVERLAY_WIDTH,
+      height: OVERLAY_HEIGHT,
+    });
+  }
+
+  if (!win.isVisible()) win.show();
+}
+
+function startGameTracker(): void {
+  if (trackerTimer) return;
+  trackerTimer = setInterval(trackGameWindow, TRACK_INTERVAL_MS);
+  // Быстрый первый тик, чтобы оверлей появился сразу после старта.
+  trackGameWindow();
+}
+
+function stopGameTracker(): void {
+  if (trackerTimer) {
+    clearInterval(trackerTimer);
+    trackerTimer = null;
+  }
 }
 
 /**
@@ -172,7 +276,9 @@ const IS_SMOKE = process.argv.includes('--smoke');
 app.whenReady().then(() => {
   core.trade.setLeague(activeLeague);
   setupIPC();
-  void createOverlayWindow();
+  void createOverlayWindow().then(() => {
+    startGameTracker();
+  });
   registerHotkeys();
 
   if (IS_SMOKE) {
@@ -203,6 +309,7 @@ app.on('second-instance', () => {
 });
 
 app.on('will-quit', () => {
+  stopGameTracker();
   globalShortcut.unregisterAll();
 });
 
