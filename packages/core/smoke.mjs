@@ -1,6 +1,7 @@
 // Smoke-тест против собранного dist (Node ESM, без сети).
 import { decodeShareCode, encodeShareCode, PobCodeError } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
+import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
 import * as core from './dist/index.js';
 
 let failed = 0;
@@ -77,6 +78,29 @@ ok(parsedRare.itemLevel === 68, 'parse rare: item level 68');
 ok(parsedRare.defences.armour?.value === 42, 'parse rare: armour 42');
 ok(parsedRare.mods.some(m => m.type === 'implicit' && m.text.includes('Strength')), 'parse rare: implicit mod');
 ok(parsedRare.mods.some(m => m.type === 'explicit' && m.text.includes('Resistance')), 'parse rare: explicit mod');
+
+console.log('unique category inference (inferUniqueCategory)');
+const cases = [
+  ['Mail Armour', 'body'],
+  ['Leather Gloves', 'gloves'],
+  ['Iron Greaves', 'boots'],
+  ['Felled Axe', 'axes'],
+  ['City Stalker Visor', 'helmets'],
+  ['Plated Maul', 'maces'],
+  ['Siege Crossbow', 'crossbows'],
+  ['Primordial Staff', 'staves'],
+  ['Spiral Glass Ring', 'rings'],
+  ['Steel Amber Belt', 'belts'],
+  ['Wraithwrap', null], // не распознаётся → null (не «тело/броня» по ошибке)
+];
+for (const [base, expected] of cases) {
+  ok(inferUniqueCategory(base) === expected, `infer('${base}') = ${expected}`);
+}
+ok(inferUniqueCategory(null) === null, 'infer(null) = null');
+ok(inferUniqueCategory('Mail Armour', 'Boots') === 'boots', 'inner itemClass приоритетнее baseType');
+ok(mapItemClassToScoutCategory('Boots') === 'boots', 'mapItemClass boots');
+ok(mapItemClassToScoutCategory('Body Armour') === 'body', 'mapItemClass body');
+ok(mapItemClassToScoutCategory('Unknown') === null, 'mapItemClass unknown = null');
 
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

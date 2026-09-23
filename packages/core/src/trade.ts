@@ -374,7 +374,7 @@ const BASE_CATEGORY_TABLE: Array<[RegExp, ScoutUniqueCategory]> = [
 
 /** Вывести категорию poe2scout для уникального предмета. Приоритет: itemClass,
  *  иначе угадывание по базовому типу. */
-function inferUniqueCategory(
+export function inferUniqueCategory(
   baseType: string | null,
   itemClass?: string,
 ): ScoutUniqueCategory | null {
