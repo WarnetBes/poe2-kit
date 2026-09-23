@@ -26,6 +26,49 @@ import { findGameWindow, isGameForeground } from './win32.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// ─── Файловый лог: дублируем console в userData/overlay.log ─────────────────
+// Удобно смотреть, когда окно start-overlay закрыто/не под рукой.
+const LOG_MAX_BYTES = 1_000_000;
+
+function logFilePath(): string {
+  return path.join(app.getPath('userData'), 'overlay.log');
+}
+
+function rotateLogIfNeeded(file: string): void {
+  try {
+    const stat = fs.statSync(file);
+    if (stat.size > LOG_MAX_BYTES) fs.rmSync(`${file}.1`, { force: true });
+    fs.renameSync(file, `${file}.1`);
+  } catch {
+    /* файла ещё нет или занят — не критично */
+  }
+}
+
+function teeConsoleToFile(): void {
+  const stamp = (args: unknown[]): string =>
+    `${new Date().toISOString()} ${args
+      .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
+      .join(' ')}\n`;
+  for (const method of ['log', 'warn', 'error'] as const) {
+    const orig = console[method].bind(console);
+    console[method] = (...args: unknown[]) => {
+      orig(...args);
+      try {
+        fs.mkdirSync(app.getPath('userData'), { recursive: true });
+        const file = logFilePath();
+        if (!fs.existsSync(file)) {
+          fs.writeFileSync(file, `=== PoE2 Kit overlay log started ${new Date().toISOString()} ===\n`, 'utf8');
+        }
+        rotateLogIfNeeded(file);
+        fs.appendFileSync(file, stamp(args), 'utf8');
+      } catch {
+        /* запись лога не должна ронять приложение */
+      }
+    };
+  }
+}
+teeConsoleToFile();
+
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
 const LEVELING_HOTKEY = 'CommandOrControl+Alt+L';
