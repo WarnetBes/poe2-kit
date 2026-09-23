@@ -21,6 +21,7 @@ import { registerWikiTools } from './tools/wiki.js';
 import { registerTradeQueryTools } from './tools/tradeQuery.js';
 import { registerDatasetTools } from './tools/dataset.js';
 import { registerPoe2dbTools } from './tools/poe2db.js';
+import { registerZoneNotesTools } from './tools/zoneNotes.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -40,6 +41,7 @@ export function buildServer(): number {
   count += registerTradeQueryTools(server);
   count += registerDatasetTools(server);
   count += registerPoe2dbTools(server);
+  count += registerZoneNotesTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
@@ -71,6 +73,7 @@ async function main(): Promise<void> {
     console.error('  - poe2_gems_lookup');
     console.error('  - poe2_tree_search');
     console.error('  - poe2_poe2db_lookup');
+    console.error('  - poe2_leveling_context');
     process.exit(0);
   }
 

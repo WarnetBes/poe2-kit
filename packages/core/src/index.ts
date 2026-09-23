@@ -14,6 +14,7 @@ export * from './estimate.js';
 export * from './tradeQuery.js';
 export * from './dataset.js';
 export * from './poe2db.js';
+export * from './zoneNotes.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -28,6 +29,7 @@ import * as estmod from './estimate.js';
 import * as tqmod from './tradeQuery.js';
 import * as dsmod from './dataset.js';
 import * as p2dbmod from './poe2db.js';
+import * as znmod from './zoneNotes.js';
 
 export const core = {
   trade,
@@ -43,6 +45,7 @@ export const core = {
   tradeQuery: tqmod,
   dataset: dsmod,
   poe2db: p2dbmod,
+  zoneNotes: znmod,
 };
 
 export default core;

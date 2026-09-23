@@ -319,5 +319,26 @@ ok(parsed.description.includes('skill gem'), 'poe2db: parse description');
 ok(parsed.stats.includes('Melee'), 'poe2db: parse stats');
 ok(parsed.sections.get('supports')?.content.includes('Fanatical Charge') && parsed.sections.get('supports')?.itemCount === 29, 'poe2db: parse supports section');
 
+console.log('zoneNotes + leveling context');
+const { getZoneNote, getZoneNoteByName, getActNote, listZoneNotes, getLevelingContext } = core;
+const zn = getZoneNote('G1_2');
+ok(zn?.zoneName === 'Clearfell' && zn.notes.includes('Mud Burrow'), 'zoneNote: G1_2 Clearfell');
+const znByName = getZoneNoteByName('clearfell');
+ok(znByName?.zoneCode === 'G1_2', 'zoneNote: by name → G1_2');
+const an = getActNote(1);
+ok(an?.notes.includes('Hunting Ground') || (an?.notes.length ?? 0) > 50, 'actNote: Act 1 summary');
+ok(listZoneNotes().length >= 60, `listZoneNotes: ${listZoneNotes().length} zones`);
+// Контекст без состояния клиента — fallback на акт 1.
+const ctx = getLevelingContext(null, { actFallback: 1 });
+ok(ctx.zoneNotes === null && ctx.nextZones.length >= 1 && ctx.hints.length >= 1, `levelingContext fallback act1: ${ctx.hints.length} hints`);
+ok(ctx.nextZones[0].zone === 'The Riverbank', 'levelingContext: first zone Riverbank');
+// Контекст с «живым» состоянием (синтетика): зона G1_2, уровень 4.
+const ctx2 = getLevelingContext({
+  available: true, logPath: 'x', character: 'Test', klass: 'Monk', level: 4,
+  zone: { timestamp: '', areaCode: 'G1_2', areaLevel: 4, zoneName: 'Clearfell', decoded: null },
+  act: 1, deathsInWindow: 0, afk: null, instanceServer: null, lastEventTime: null, events: [], zoneVisits: [],
+});
+ok(ctx2.zoneNotes?.zoneName === 'Clearfell' && ctx2.hints.some((h) => h.startsWith('📍')), 'levelingContext: live-like state → zone notes');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
