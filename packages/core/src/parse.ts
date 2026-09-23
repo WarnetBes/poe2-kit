@@ -165,6 +165,13 @@ function mapRarity(str: string): Rarity {
     Gem: 'Gem',
   };
   if (byValue[t]) return byValue[t];
+  // Значение редкости может быть написано в верхнем регистре (например, в
+  // PoB-аннотациях предметов: "Rarity: UNIQUE", "Rarity: RARE"). Приводим к
+  // тому же регистру, что и каноничные значения.
+  const upper = t.toUpperCase();
+  for (const [id, val] of Object.entries(byValue)) {
+    if (val.toUpperCase() === upper) return val as Rarity;
+  }
   for (const [rarity, alts] of Object.entries(RARITY_ALTERNATES)) {
     if (alts.includes(t)) return rarity as Rarity;
   }
@@ -248,7 +255,13 @@ export function parseItemText(text: string): ParsedItem {
       } else if (rarity === 'Magic') {
         const magicName = header[i + 1]?.trim() ?? '';
         const potentialBase = header[i + 2]?.trim();
-        if (potentialBase && !KEY.itemClass.test(potentialBase)) {
+        // В PoB-аннотациях после названия магического предмета может идти
+        // служебная строка "Unique ID: ..." — её нельзя считать базовым типом.
+        if (
+          potentialBase &&
+          !KEY.itemClass.test(potentialBase) &&
+          !/^Unique\s+ID\s*[:：]/i.test(potentialBase)
+        ) {
           name = magicName;
           baseType = potentialBase;
         } else {

@@ -79,6 +79,33 @@ ok(parsedRare.defences.armour?.value === 42, 'parse rare: armour 42');
 ok(parsedRare.mods.some(m => m.type === 'implicit' && m.text.includes('Strength')), 'parse rare: implicit mod');
 ok(parsedRare.mods.some(m => m.type === 'explicit' && m.text.includes('Resistance')), 'parse rare: explicit mod');
 
+// PoB-аннотации: Rarity в верхнем регистре (UNIQUE/RARE/MAGIC) + строка "Unique ID:".
+// Эти случаи должны разбираться так же, как и клир-текст из игры.
+const pobUnique = [
+  'Rarity: UNIQUE',
+  'Darkness Enthroned',
+  'Fine Belt',
+  'Unique ID: 7d959b55872718b4dac67d7d3e686b7471446af3fc75ba626958af777d202cdb',
+  'Item Level: 84',
+].join('\n');
+const parsedPobUnique = core.core.parse.parseItemText(pobUnique);
+ok(parsedPobUnique.rarity === 'Unique', 'parse PoB: uppercase UNIQUE -> Unique');
+ok(parsedPobUnique.name === 'Darkness Enthroned', 'parse PoB: unique name');
+ok(parsedPobUnique.baseType === 'Fine Belt', 'parse PoB: unique baseType');
+
+const pobMagic = [
+  'Rarity: MAGIC',
+  'Lustrous Stone Charm of the Medic',
+  'Unique ID: ba005f96ec16f342cc046d9acf412995183d799eeaaa453c1a2b0f446565cd1c',
+  'Item Level: 80',
+].join('\n');
+const parsedPobMagic = core.core.parse.parseItemText(pobMagic);
+ok(parsedPobMagic.rarity === 'Magic', 'parse PoB: uppercase MAGIC -> Magic');
+ok(
+  !parsedPobMagic.baseType.startsWith('Unique ID:'),
+  'parse PoB: magic base не равен строке "Unique ID:"',
+);
+
 console.log('unique category inference (inferUniqueCategory)');
 const cases = [
   ['Mail Armour', 'body'],
