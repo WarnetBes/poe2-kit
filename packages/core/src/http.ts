@@ -11,10 +11,7 @@
  * Это важно для массовых прайс-чеков — не сыпем ошибки, а мягко растасовываем во времени.
  */
 
-const DEFAULT_UA = 'poe2-kit/0.1.0 (+poe2scout & poe.ninja & RePoE public APIs)';
-
-/**
- * Рейт-лимитер: не более `maxRequests` запросов за `windowMs`.
+/** Reйт-лимитер: не более `maxRequests` запросов за `windowMs`.
  * Если лимит исчерпан — ждём до освобождения окна.
  */
 export class RateLimiter {
@@ -97,9 +94,50 @@ function limiterFor(host: string): RateLimiter {
   return limiter;
 }
 
+/**
+ * Опциональный CORS-прокси.
+ *
+ * Браузер блокирует прямые запросы к poe.ninja/poe2scout/trade из-за CORS.
+ * Для веб-приложения настраиваем реверс-прокси (Vite dev/preview или Node-сервер),
+ * который отвечает на те же пути. В этом случае URL переписывается на такой же
+ * относительный путь (этот же хост), избегая CORS.
+ *
+ * Использование: core.http.setProxyBaseMap({ 'poe.ninja': '/proxy/poeninja', 'poe2scout.com': '/proxy/scout', ... })
+ * В Node (MCP, overlay) прокси не нужен — мапа не задаётся, запросы идут напрямую.
+ */
+let proxyBaseMap: Record<string, string> | null = null;
+
+/** Настроить карту "хост → префикс пути" для CORS-прокси. null отключает проксирование. */
+export function setProxyBaseMap(map: Record<string, string> | null): void {
+  proxyBaseMap = map;
+}
+
+export function getProxyBaseMap(): Record<string, string> | null {
+  return proxyBaseMap;
+}
+
+/** Переписать абсолютный URL на такой же относительный путь через прокси. */
+function toProxyUrl(url: string): string {
+  if (!proxyBaseMap) return url;
+  let u = url;
+  try {
+    u = new URL(url).toString();
+  } catch {
+    return url;
+  }
+  const host = new URL(u).host;
+  for (const [key, prefix] of Object.entries(proxyBaseMap)) {
+    if (host.includes(key)) {
+      return prefix + new URL(u).pathname + new URL(u).search;
+    }
+  }
+  return url;
+}
+
 export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {}): Promise<T> {
   const timeoutMs = opts.timeoutMs ?? 10000;
   const host = new URL(url).host;
+  const finalUrl = toProxyUrl(url);
   // Весь запрос к хостим через очередь + рейт-лимитер: лимит ждёт окно,
   // очередь сериализует пики массовых запросов (прайс-чек пачки предметов).
   return queueFor(host).enqueue(async () => {
@@ -108,10 +146,10 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(url, {
+      const res = await fetch(finalUrl, {
         method: opts.method ?? 'GET',
+        cache: 'no-store',
         headers: {
-          'User-Agent': DEFAULT_UA,
           Accept: 'application/json',
           ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
           ...opts.headers,
@@ -122,7 +160,7 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
 
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} from ${url}: ${body.slice(0, 200)}`);
+        throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
       }
       const text = await res.text();
       try {
