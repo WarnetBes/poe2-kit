@@ -1,0 +1,38 @@
+<!--
+  ВКЛАДКА PoE2 Kit для сайта volkovqi.beget.tech
+  Вставьте один из вариантов в место меню-навигации на вашей странице.
+  После загрузки папки /poe2kit/ на хостинг ссылка будет рабочей.
+-->
+
+<!-- Вариант 1: простая ссылка-вкладка -->
+<a href="/poe2kit/" class="poe2kit-tab">PoE2 Kit</a>
+
+<!--
+  Вариант 2: стилизованная вкладка (подходит, если в меню сайта есть CSS-классы).
+  Добавьте блок <style> или подключите стили.
+-->
+<style>
+.poe2kit-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: #f0883e;
+  color: #1c1206;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.poe2kit-tab:hover { filter: brightness(1.1); }
+.poe2kit-tab::before { content: "⛏"; }
+</style>
+
+<!--
+  Как интегрировать именно "вкладку" (а не просто ссылку), зависит от того,
+  как свёрстан ваш сайт:
+   - если меню — это <ul class="menu"><li>...</li></ul>, добавьте:
+        <li><a href="/poe2kit/" class="poe2kit-tab">PoE2 Kit</a></li>
+   - если это кнопки-табы на одной странице — можно открыть дочернее окно или
+     вставить <iframe src="/poe2kit/" width="100%" height="600"></iframe>
+-->

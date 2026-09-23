@@ -9,7 +9,7 @@ const proxy = {
   // Ядро добавляет к префиксу полный исходный путь (содержит /poe2/api/... ранее).
   // Поэтому rewrite просто снимает префикс и оставляет остаток пути как есть.
   '/proxy/poeninja': { target: 'https://poe.ninja', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/poeninja/, '') },
-  '/proxy/scout': { target: 'https://poe2scout.com', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/scout/, '') },
+  '/proxy/scout': { target: 'https://api.poe2scout.com', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/scout/, '') },
   '/proxy/trade': { target: 'https://www.pathofexile.com', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/trade/, '') },
   '/proxy/repower': { target: 'https://repoe-fork.github.io', changeOrigin: true, rewrite: (p: string) => p.replace(/^\/proxy\/repower/, '') },
 };

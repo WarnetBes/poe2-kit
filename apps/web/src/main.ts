@@ -1,5 +1,20 @@
 import './style.css';
-import { core, showCurrencyRates, showPriceCheck, showLevelingPlan, showBuildImport, setStatus } from './ui';
+import {
+  core,
+  loadLeagueList,
+  selectLeague,
+  getActiveLeague,
+  refreshLeagueData,
+  showCurrencyRates,
+  showPriceCheck,
+  showLevelingPlan,
+  showBuildImport,
+  showAIChat,
+  sendAIMessage,
+  clearAIChat,
+  currentBuildContext,
+  setStatus,
+} from './ui';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -9,8 +24,16 @@ declare global {
       priceCheck: () => void;
       leveling: () => void;
       build: () => void;
+      chat: (text?: string) => void;
+      clearChat: () => void;
     };
   }
+}
+
+function escAttr(s: string): string {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
+  );
 }
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -22,6 +45,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="price" class="tab">Прайс-чек</button>
         <button data-tab="leveling" class="tab">Прокачка</button>
         <button data-tab="build" class="tab">Импорт билда</button>
+        <button data-tab="ai" class="tab">AI-чат</button>
+        <span class="tab league-wrap">
+          <label class="league-label" for="league-select">Лига</label>
+          <select id="league-select" class="league-select" title="Актуальные лиги (из poe2scout)"></select>
+          <button id="btn-refresh-leagues" class="ghost mini" title="Обновить список лиг и кэш данных">⟳</button>
+        </span>
       </nav>
     </header>
     <main class="content">
@@ -53,8 +82,48 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div id="out-build" class="out"></div>
       </section>
 
-      <footer class="status" id="status">Готово. <span id="status-text"></span></footer>
+      <section id="pane-ai" class="pane">
+        <h2>AI-чат <small>(over core.ai)</small></h2>
+        <p class="hint">Подключи OpenAI-совместимый эндпоинт (OpenCode-модель или локальную Ollama) — поля сохраняются в браузере. Контекст разобранного билда подставится автоматически.</p>
+        <div class="aiset">
+          <label>Base URL <input id="ai-base" type="text" placeholder="https://…/v1" /></label>
+          <label>API Key <input id="ai-key" type="password" placeholder="sk-… (или пусто)" /></label>
+          <label>Модель <input id="ai-model" type="text" placeholder="glm-5-3 / deepseek-v4-flash…" /></label>
+        </div>
+        <div class="aitools">
+          <button id="ai-send-ctx" class="primary">Отправить с контекстом билда</button>
+          <button id="ai-clear" class="ghost">Очистить чат</button>
+        </div>
+        <div id="out-ai" class="out"></div>
+      </section>
+
+      <footer class="status" id="status">
+        <span>Готово. <span id="status-text"></span></span>
+        <button id="btn-about" class="about-link" type="button">О проекте · Дисклеймер</button>
+      </footer>
     </main>
+  </div>
+
+  <div id="modal-about" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="modal-box">
+      <button id="about-close" class="modal-x" type="button" aria-label="Закрыть">✕</button>
+      <h2 id="about-title">О проекте PoE2 Kit — дисклеймер</h2>
+      <div class="about-body">
+        <p><strong>Неофициальный инструмент.</strong> PoE2 Kit — независимый помощник для игры <em>Path of Exile 2</em>. Мы не аффилированы с GGG (Grinding Gear Games / GGG) и не поддерживаемся ими. Все названия игры, предметов и терминология принадлежат их владельцам и используются в информационных целях.</p>
+        <h3>Данные и цены</h3>
+        <p>Цены, курсы и лиги берутся из <strong>публичных сторонних источников</strong> (poe.ninja, poe2scout, официальное API торговли). Это <strong>оценки и справочные данные</strong>, а не реальные сделки. Цены меняются быстро и могут быть неточными/устаревшими; не гарантируется их полнота и корректность в конкретный момент.</p>
+        <p>Никакой реальной денежной стоимости: отображаемые «цены» — это игровые курсы (chaos/divine и т.п.) внутри Path of Exile, а не деньги.</p>
+        <h3>Аналитика и ИИ</h3>
+        <p>Советы, разбор билдов и ответы ИИ носят <strong>информационный характер</strong> и не заменяют решения игрока. Мы не даём финансовых или юридических консультаций.</p>
+        <h3>Использование в игре</h3>
+        <p>Инструмент не автоматизирует действия персонажа, не читает память игры и не обходит её правила. Ответственность за использование любых сторонних программ/сервисов несёт пользователь.</p>
+        <h3>Данные и приватность</h3>
+        <p>Мы <strong>не запрашиваем и не храним</strong> данные вашей учётной записи игры. Настройки (например, для AI-эндпоинта) сохраняются локально в вашем браузере (localStorage) и никуда не передаются. Запросы к сторонним API (в т.ч. AI) выполняются напрямую — ознакомьтесь с их политиками конфиденциальности.</p>
+        <h3>Официальные ссылки</h3>
+        <p>Path of Exile 2 и все связанные товарные знаки © Grinding Gear Games. Официальный сайт: <a href="https://www.pathofexile.com" target="_blank" rel="noopener noreferrer">pathofexile.com</a>, en: <a href="https://poe2.com" target="_blank" rel="noopener noreferrer">poe2.com</a>.</p>
+        <p class="about-foot">Используя инструмент, вы соглашаетесь с тем, что используете его на свой страх и риск («AS IS», без каких-либо гарантий).</p>
+      </div>
+    </div>
   </div>
 `;
 
@@ -70,6 +139,38 @@ tabs.forEach((tab) => {
   });
 });
 
+// ── Выбор лиги ─────────────────────────────────────────
+async function initLeagueSelector(): Promise<void> {
+  const sel = document.querySelector<HTMLSelectElement>('#league-select');
+  if (!sel) return;
+  try {
+    const list = await loadLeagueList();
+    const cur = getActiveLeague();
+    sel.innerHTML =
+      `<option value="">— выбрать лигу —</option>` +
+      list
+        .map((l) => {
+          const label = l.isCurrent ? `${l.name} ✦` : l.name;
+          return `<option value="${escAttr(l.name)}"${l.name === cur ? ' selected' : ''}>${label}</option>`;
+        })
+        .join('');
+    sel.addEventListener('change', () => {
+      selectLeague(sel.value ? sel.value : null);
+      setStatus(`Выбрана лига: ${sel.value || 'не задана (используется по умолчанию)'}.`);
+    });
+  } catch (e) {
+    setStatus(`Не удалось загрузить лиги: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+document.querySelector('#btn-refresh-leagues')!.addEventListener('click', () => {
+  refreshLeagueData();
+  void initLeagueSelector();
+  setStatus('Обновление списка лиг и данных…');
+});
+
+void initLeagueSelector();
+
 // ── Обработчики ────────────────────────────────────────
 document.querySelector('#btn-currencies')!.addEventListener('click', () => showCurrencyRates());
 document.querySelector('#btn-price')!.addEventListener('click', () =>
@@ -80,16 +181,48 @@ document.querySelector('#btn-build')!.addEventListener('click', () =>
   showBuildImport((document.querySelector('#build-input') as HTMLTextAreaElement).value),
 );
 
-// Глобальизация для возможного внешнего расширения
+// ── AI-чат ─────────────────────────────────────────────
+showAIChat();
+document.querySelector('#ai-send-ctx')!.addEventListener('click', () => {
+  void sendAIMessage(
+    'Разбери мой билд и предложи улучшения, актуальные для PoE2.',
+    currentBuildContext() ? { build: currentBuildContext() } : undefined,
+  );
+});
+document.querySelector('#ai-clear')!.addEventListener('click', () => clearAIChat());
+
+// Глобализация для возможного внешнего расширения
 window.poe2k = {
   currencies: showCurrencyRates,
   priceCheck: () =>
     showPriceCheck((document.querySelector('#price-input') as HTMLTextAreaElement).value),
   leveling: showLevelingPlan,
   build: () => showBuildImport((document.querySelector('#build-input') as HTMLTextAreaElement).value),
+  chat: (text) =>
+    void sendAIMessage(
+      text ?? '',
+      currentBuildContext() ? { build: currentBuildContext() } : undefined,
+    ),
+  clearChat: clearAIChat,
 };
 
 setStatus('Загружено. Выбери раздел.');
+
+// ── Дисклеймер (модалка) ─────────────────────────────
+const modalAbout = document.querySelector<HTMLElement>('#modal-about');
+const btnAbout = document.querySelector<HTMLButtonElement>('#btn-about');
+const aboutClose = document.querySelector<HTMLButtonElement>('#about-close');
+function closeAbout(): void {
+  modalAbout?.classList.add('hidden');
+}
+btnAbout?.addEventListener('click', () => modalAbout?.classList.remove('hidden'));
+aboutClose?.addEventListener('click', closeAbout);
+modalAbout?.addEventListener('click', (e) => {
+  if (e.target === modalAbout) closeAbout();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAbout();
+});
 
 // Импорт core-ядро для подтверждения связки (необходимо, т.к. ui.ts импортирует отдельно)
 void core;

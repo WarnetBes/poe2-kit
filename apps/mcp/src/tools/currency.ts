@@ -6,7 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core, KNOWN_LEAGUES } from '@poe2-kit/core';
 
-const defaultLeague = KNOWN_LEAGUES[0]?.name ?? 'Runes of Aldur';
+const defaultLeague = KNOWN_LEAGUES.find((l) => l.isCurrent)?.name ?? KNOWN_LEAGUES[0]?.name ?? 'Runes of Aldur';
 
 const LeagueSchema = z
   .string()
@@ -18,10 +18,10 @@ export function registerCurrencyTools(server: McpServer): number {
     'poe2_currency_prices',
     {
       title: 'PoE2 Currency Prices',
-      description: `Курсы обмена валют Path of Exile 2 с poe.ninja (в chaos-эквиваленте).
-
+      description: `Курсы обмена валют Path of Exile 2 (в chaos-эквиваленте) для заданной лиги. Лиги подтягиваются актуальные (poe2scout).
+ 
 Аргументы:
-  - league (string, опц.): название лиги.
+  - league (string, опц.): название лиги. По умолчанию: "${defaultLeague}". Актуальные лиги можно получить через poe2_leagues.
 
 Возвращает список валют с ценой в chaos и источником.
 
@@ -35,7 +35,7 @@ export function registerCurrencyTools(server: McpServer): number {
     async ({ league }) => {
       try {
         core.trade.setLeague(league);
-        const rates = await core.trade.fetchCurrencyRates(league);
+        const rates = await core.trade.fetchBestCurrencyRates(league);
         if (!rates.length) {
           return { content: [{ type: 'text', text: `Нет данных о валютах для лиги "${league}".` }] };
         }
@@ -47,7 +47,7 @@ export function registerCurrencyTools(server: McpServer): number {
           content: [
             {
               type: 'text',
-              text: `## Валюты — ${league}\n\n${rows.join('\n')}\n\nИсточник: poe.ninja PoE2 Economy API.`,
+              text: `## Валюты — ${league}\n\n${rows.join('\n')}\n\nИсточник: poe2scout + poe.ninja.`,
             },
           ],
         };
@@ -81,7 +81,7 @@ export function registerCurrencyTools(server: McpServer): number {
     async ({ name, league }) => {
       try {
         core.trade.setLeague(league);
-        const rates = await core.trade.fetchCurrencyRates(league);
+        const rates = await core.trade.fetchBestCurrencyRates(league);
         const q = name.toLowerCase();
         const matches = rates.filter(
           (r) => r.name.toLowerCase().includes(q) && r.chaosValue != null,
@@ -105,5 +105,30 @@ export function registerCurrencyTools(server: McpServer): number {
     },
   );
 
-  return 2;
+  server.registerTool(
+    'poe2_leagues',
+    {
+      title: 'PoE2 Active Leagues',
+      description: `Актуальный список лиг Path of Exile 2 (из poe2scout). Актуальные лиги помечены ✦.
+Без аргументов. Используется для выбора лиги в остальных торговых/валютных инструментах.
+`,
+      inputSchema: {},
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    async () => {
+      try {
+        const leagues = await core.trade.fetchLeagues();
+        if (!leagues.length) return { content: [{ type: 'text', text: 'Нет данных о лигах.' }] };
+        const rows = leagues
+          .map((l) => `- **${l.name}**${l.isCurrent ? ' ✦' : ''}${l.shortName ? ` (\`${l.shortName}\`)` : ''}`)
+          .join('\n');
+        return { content: [{ type: 'text', text: `## Лиги PoE2\n\n${rows}` }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+      }
+    },
+  );
+
+  return 3;
 }

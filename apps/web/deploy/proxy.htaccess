@@ -1,0 +1,19 @@
+# PoE2 Kit — проксирование запросов приложения к proxy.php
+# Перехватывает /proxy/<service>/<путь> и направляет в proxy.php.
+# Требует включённый mod_rewrite (по умолчанию на Beget включён).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Не переписывать, если запрашивается реально существующий файл/каталог
+  # (сам proxy.php и т.п.).
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Всё внутри этого каталога (кроме существующих файлов) → proxy.php
+  RewriteRule ^(.*)$ proxy.php [L,QSA]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+  # Режим без mod_rewrite не поддерживается — прокси не будет работать.
+</IfModule>

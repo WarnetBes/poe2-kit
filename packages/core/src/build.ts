@@ -7,7 +7,7 @@
  * Полный расчёт DPS/EHP полагается на внешний движок (PoB), доступный через MCP.
  */
 
-import { deflateSync, inflateSync } from 'fflate';
+import { deflateSync, inflateSync, unzlibSync, zlibSync } from 'fflate';
 import type { BuildImport } from './types.js';
 
 /** Ошибка при работе с PoB-кодами. */
@@ -26,13 +26,17 @@ const _PAGE_HOSTS = /^https?:\/\/(?:www\.)?(maxroll\.gg|pobarchives\.com|poe\.ni
 
 /**
  * Декодировать PoB share-код в XML билда.
- * Формат: urlsafe(base64(zlib(xml))) — +→-, /→_, убираем пробелы, восстанавливаем padding.
- * При ошибке Adler-32 (потеряны последние символы) повторяем без проверки чек-суммы.
+ * Формат: urlsafe(base64(сжатый xml)) — +→-, /→_, убираем пробелы, восстанавливаем padding.
+ *
+ * По умолчанию PoB (и PoB2) пакует XML в zlib-поток (RFC1950: заголовок 0x78.. + deflate + Adler-32),
+ * но некоторые коды/экспортёры пишут «сырой» deflate без заголовка/чек-суммы.
+ * Поэтому пробуем в порядке: целый zlib c проверкой Adler-32 → raw deflate → попытки восстановить обрезанный хвост.
+ * Декод ВСЕГДА проверяет контрольную сумму и, если данные битые, даёт внятную ошибку (не возвращает мусор).
  */
 export function decodeShareCode(code: string): string {
   if (!code || !code.trim()) throw new PobCodeError('пустой import-код');
   const s0 = code.replace(_WS, '').replace(/-/g, '+').replace(/_/g, '/');
-  const s = s0 + '='.repeat((-s0.length) % 4); // восстановить padding
+  const s = s0 + '='.repeat((4 - (s0.length % 4)) % 4); // восстановить padding
 
   let raw: Uint8Array;
   try {
@@ -41,22 +45,7 @@ export function decodeShareCode(code: string): string {
     throw new PobCodeError('невалидный base64 в import-коде');
   }
 
-  let xml: Uint8Array;
-  try {
-    xml = inflateSync(raw);
-  } catch {
-    // Потерянные последние символы ломают Adler-32, при этом deflate-тело цело.
-    // Восстанавливаем декомпрессией без последних 4 байт (чек-сумма).
-    try {
-      xml = inflateSync(raw.subarray(0, raw.length - 4));
-    } catch {
-      throw new PobCodeError(
-        'import-код повреждён — скопируйте ПОЛНЫЙ код (длинные коды часто обрезаются при вставке), ' +
-          'или поделитесь ссылкой pobb.in/pastebin.',
-      );
-    }
-  }
-
+  const xml = _tryInflate(raw);
   const text = new TextDecoder('utf-8', { fatal: false }).decode(xml);
   if (!text.includes('PathOfBuilding')) {
     throw new PobCodeError(
@@ -66,9 +55,125 @@ export function decodeShareCode(code: string): string {
   return text;
 }
 
-/** Кодировать XML обратно в PoB share-код (для экспорта). */
+/** Проверить, что распакованная строка — осмысленный билд, а не мусор. */
+function _looksLikeBuild(b: Uint8Array | null | undefined): b is Uint8Array {
+  if (!b || b.length < 20) return false;
+  let t: string;
+  try {
+    t = new TextDecoder('utf-8', { fatal: false }).decode(b);
+  } catch {
+    return false;
+  }
+  const head = t.trimStart();
+  return head.startsWith('<') && t.includes('PathOfBuilding');
+}
+
+function _adler32(data: Uint8Array): number {
+  const MOD = 65521;
+  let a = 1;
+  let b = 0;
+  for (let i = 0; i < data.length; i++) {
+    a = (a + data[i]) % MOD;
+    b = (b + a) % MOD;
+  }
+  return ((b << 16) | a) >>> 0;
+}
+
+/** Распаковать zlib-байты (RFC1950) при совпадении встроенной Adler-32, иначе null. */
+function _unzlibVerified(zraw: Uint8Array): Uint8Array | null {
+  if (zraw.length < 6) return null;
+  try {
+    const out = unzlibSync(zraw);
+    const stored = ((zraw[zraw.length - 4]! << 24) |
+      (zraw[zraw.length - 3]! << 16) |
+      (zraw[zraw.length - 2]! << 8) |
+      zraw[zraw.length - 1]!) >>> 0;
+    if (stored === _adler32(out)) return out;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Пробуем распаковать билд из закодированных байтов.
+ * Варианты формата: целый zlib (RFC1950 с Adler), «сырой» deflate без заголовка,
+ * либо zlib-заголовок + deflate без чек-суммы (PoB срезает Adler-32 перед base64).
+ * Каждый кандидат проверяется контрольной суммой ИЛИ повторным сжатием (round-trip),
+ * поэтому повреждённый код НЕ молячит — даёт внятную ошибку.
+ */
+function _tryInflate(raw: Uint8Array): Uint8Array {
+  // Целый zlib-поток с проверкой Adler-32.
+  {
+    const v = _unzlibVerified(raw);
+    if (_looksLikeBuild(v)) return v as Uint8Array;
+  }
+  // «Сырой» deflate без чек-суммы (экспортёры без zlib-заголовка) — проверяем round-trip.
+  {
+    const r = _rawTry(raw);
+    if (_roundtripOk(r, raw)) return r as Uint8Array;
+  }
+  // zlib-заголовок + deflate без хвостовой Adler-32 (формат PoB-кодов) — проверяем round-trip по телу.
+  if (raw.length > 8) {
+    const body = raw.subarray(2);
+    const r = _rawTry(body);
+    if (_roundtripOk(r, body)) return r as Uint8Array;
+  }
+  // Хвост потерян/обрезан при ручной вставке длинного кода: снимаем 1..48 байт.
+  for (let trim = 1; trim <= 48; trim++) {
+    if (raw.length - trim <= 4) break;
+    const clipped = raw.subarray(0, raw.length - trim);
+    {
+      const r = _rawTry(clipped);
+      if (_roundtripOk(r, clipped)) return r as Uint8Array;
+    }
+    if (clipped.length > 6) {
+      const body = clipped.subarray(2);
+      const r = _rawTry(body);
+      if (_roundtripOk(r, body)) return r as Uint8Array;
+    }
+  }
+  throw new PobCodeError(
+    'import-код повреждён — скопируйте ПОЛНЫЙ код (длинные коды часто обрезаются при вставке), ' +
+      'или поделитесь ссылкой pobb.in/pastebin.',
+  );
+}
+
+/** Одиночная попытка «сырого» inflate; null при ошибке. */
+function _rawTry(blob: Uint8Array): Uint8Array | null {
+  try {
+    return inflateSync(blob);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Проверка, что `out` — осмысленный билд И round-trip совпадает: повторно сжатый deflate
+ * байт-в-байт равен исходному фрагменту. Отбрасывает повреждённые/обрезанные коды,
+ * которые разжимаются в «мусор», похожий на билд.
+ */
+function _roundtripOk(out: Uint8Array | null | undefined, chunk: Uint8Array): boolean {
+  if (!_looksLikeBuild(out)) return false;
+  if (out.length > 64 * 1024 * 1024) return false; // защита от гигантского мусора
+  try {
+    const re = deflateSync(out as Uint8Array, { level: 9 });
+    return re.length === chunk.length && (re.length === 0 || _eq(re, chunk));
+  } catch {
+    return false;
+  }
+}
+
+function _eq(a: Uint8Array, b: Uint8Array): boolean {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/** Кодировать XML обратно в PoB share-код (для экспорта). Используем zlib-поток (RFC1950), как в PoB/PoB2. */
 export function encodeShareCode(xml: string): string {
-  const raw = deflateSync(new TextEncoder().encode(xml), { level: 9 });
+  const deflatedRaw = zlibSync(new TextEncoder().encode(xml), { level: 9 });
+  // Настоящий PoB дополнительно срезает хвостовые 4 байта (Adler-32) перед base64.
+  const raw = deflatedRaw.slice(0, Math.max(0, deflatedRaw.length - 4));
   let b64 = '';
   const bytes = Array.from(raw);
   for (let i = 0; i < bytes.length; i += 3) {
@@ -148,8 +253,9 @@ export async function toXml(source: string): Promise<string> {
 
 // ─── Разбор форматов ────────────────────────────────────────────────────
 
-/** Грубый парсер XML PoB: извлекает класс, асcенданси, уровень, гемы, дерево. */
+/** Грубый парсер XML PoB (PoB1 и PoB2): класс, асcенданси, уровень, гемы, дерево, снаряжение. */
 function parseBuildXml(xml: string): Partial<BuildImport> {
+  if (xml.includes('<PathOfBuilding2')) return parseBuildXml2(xml);
   const get = (tag: string): string | undefined => {
     const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
     return m?.[1]?.trim();
@@ -183,6 +289,114 @@ function parseBuildXml(xml: string): Partial<BuildImport> {
     passiveNodes: passives,
     gear: items,
   };
+}
+
+/** Парсер PoB2-формата (`<PathOfBuilding2>`): другие теги, атрибуты и вложенность. */
+function parseBuildXml2(xml: string): Partial<BuildImport> {
+  // <Build level="95" className="Monk" ascendClassName="Invoker" mainSocketGroup="4">
+  const buildMatch = xml.match(/<Build\b([^>]*)>([\s\S]*?)<\/Build>/);
+  const buildAttrs = _attrs(buildMatch?.[1] ?? '');
+  const levelRaw = buildAttrs.level;
+  const cls = buildAttrs.className;
+  const asc = buildAttrs.ascendClassName;
+
+  // Расчётные характеристики PoB — <PlayerStat stat="TotalDPS" value="449538..."/>.
+  const stats: Record<string, number> = {};
+  const psRe = /<PlayerStat\s+stat="([^"]+)"\s+value="([^"]*)"\s*\/>/g;
+  let pm: RegExpExecArray | null;
+  while ((pm = psRe.exec(buildMatch?.[2] ?? ''))) {
+    const v = parseFloat(pm[2]!);
+    if (Number.isFinite(v)) stats[pm[1]!] = v;
+  }
+
+  // Скиллы — элементы <Gem ... nameSpec="..."/>. Предпочитаем «активный» сет (mainActiveSkill).
+  const skills: string[] = [];
+  const gemRe = /<Gem\b([^>]*)\/>/g;
+  let gm: RegExpExecArray | null;
+  while ((gm = gemRe.exec(xml))) {
+    const a = _attrs(gm[1]!);
+    const name = a.nameSpec ?? a.skillId ?? a.gemId;
+    if (name && name !== 'nil' && !skills.includes(name)) skills.push(name);
+  }
+
+  // Дерево — <Tree><Spec nodes="id1,id2" .../></Tree>. Берём активный Spec (activeSpec 1-based).
+  let passiveNodes: string[] = [];
+  const treeEl = xml.match(/<Tree\b([^>]*)>([\s\S]*?)<\/Tree>/);
+  if (treeEl) {
+    const treeAttrs = _attrs(treeEl[1]!);
+    const rawActiveSpec = Math.max(1, parseInt(treeAttrs.activeSpec, 10) || 1);
+    const specs = [...treeEl[2]!.matchAll(/<Spec\b([^>]*)\/?>/g)].map((s) => _attrs(s[1]!));
+    if (specs.length > 0) {
+      const chosen = specs[Math.min(rawActiveSpec, specs.length) - 1] ?? specs[0]!;
+      passiveNodes = (chosen.nodes ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+
+  // Снаряжение — пул <Item id=..><Name>..</Name>…</Item>, картируем через активный <ItemSet><Slot name=.. itemId=..>.
+  const itemNames = new Map<string, string>();
+  const itemRe = /<Item\b([^>]*)>([\s\S]*?)<\/Item>/g;
+  let itm: RegExpExecArray | null;
+  while ((itm = itemRe.exec(xml))) {
+    const attrs = _attrs(itm[1]!);
+    const id = attrs.id ?? '';
+    const name = itm[2]!.match(/<Name>([^<]*)<\/Name>/)?.[1]?.trim();
+    if (id) itemNames.set(id, name ?? '');
+  }
+  const gear: Record<string, string> = {};
+  // активный ItemSet (1-based activeItemSet) — его слоты <Slot name="Helm" itemId="3">
+  const itemsEl = xml.match(/<Items\b([^>]*)>([\s\S]*?)<\/Items>/);
+  if (itemsEl) {
+    const itemsAttrs = _attrs(itemsEl[1]!);
+    const itemSets = [
+      ...itemsEl[2]!.matchAll(/<ItemSet\b([^>]*)>([\s\S]*?)<\/ItemSet>/g),
+    ].map((s) => ({
+      attrs: _attrs(s[1]!),
+      slots: s[2]!,
+    }));
+    let chosenSet: string | undefined;
+    const rawActive = parseInt(itemsAttrs.activeItemSet, 10) || 1;
+    if (itemSets.length > 0) {
+      chosenSet = (itemSets[Math.min(rawActive, itemSets.length) - 1] ?? itemSets[0]!).slots;
+    }
+    const slotRe = /<Slot\b([^>]*)\/?>/g;
+    let sm: RegExpExecArray | null;
+    while ((sm = slotRe.exec(chosenSet ?? ''))) {
+      const a = _attrs(sm[1]!);
+      const slotName = a.name;
+      const itemId = a.itemId;
+      if (slotName && itemId && itemId !== '0') {
+        const nm = itemNames.get(itemId) ?? '';
+        if (slotName in gear) continue; // первый выигрывает
+        gear[slotName] = nm;
+      }
+    }
+    // Подстраховка: если слотов нет, но есть именованные предметы — покажем их как есть.
+    if (Object.keys(gear).length === 0) {
+      for (const [id, nm] of itemNames) gear[id] = nm;
+    }
+  }
+
+  return {
+    class: cls,
+    ascendancy: asc,
+    level: levelRaw ? parseInt(levelRaw, 10) : undefined,
+    skills,
+    passiveNodes,
+    gear,
+    stats,
+  };
+}
+
+/** Разобрать атрибуты XML-элемента `<a b="1" c/>` в объект (значения без кавычек). */
+function _attrs(chunk: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const re = /([A-Za-z_:][\w:.-]*)\s*=\s*"(.*?)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(chunk))) out[m[1]!] = m[2] ?? '';
+  return out;
 }
 
 /** Парсер официального .build JSON (Build Planner). */
@@ -267,20 +481,29 @@ function fromXml(xml: string): BuildImport {
     skills: parsed.skills ?? [],
     passiveNodes: parsed.passiveNodes ?? [],
     gear: parsed.gear ?? {},
+    stats: parsed.stats,
     raw: { preview: xml.slice(0, 2000) },
   };
 }
 
-/** Простые метрики билда (детально — через MCP/PoB). */
+/** Простые метрики билда (детально — через MCP/AI). */
 export function summarizeBuild(build: BuildImport): string {
   const skills = build.skills.length ? build.skills.slice(0, 3).join(', ') : 'не указаны';
   const nodes = build.passiveNodes.length;
   const gearEntries = Object.keys(build.gear ?? {}).length;
-  return [
+  const st = build.stats ?? {};
+  const dps = st.TotalDPS ?? st.CombinedDPS;
+  const life = st.Life ?? st['_Life'] ?? st['LifeUnreservedMax'];
+  const es = st['EnergyShield'] ?? st['_EnergyShield'];
+  const lines = [
     `Класс: ${build.class ?? '?'}${build.ascendancy ? ` (${build.ascendancy})` : ''}`,
     `Уровень: ${build.level ?? '?'}`,
     `Основные скиллы: ${skills}`,
     `Узлов дерева: ${nodes}`,
     `Слотов снаряжения: ${gearEntries}`,
-  ].join('\n');
+  ];
+  if (dps !== undefined) lines.push(`DPS: ${Math.round(dps).toLocaleString('ru-RU')}`);
+  if (life !== undefined) lines.push(`Жизнь: ${Math.round(life).toLocaleString('ru-RU')}`);
+  if (es !== undefined) lines.push(`Щит энергии: ${Math.round(es).toLocaleString('ru-RU')}`);
+  return lines.join('\n');
 }

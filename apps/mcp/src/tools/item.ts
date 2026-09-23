@@ -87,23 +87,22 @@ Adds 3 to 8 Cold Damage
 
 Аргументы:
   - item_text (string): клир-текст предмета из игры.
+  - league (string, опц.): название лиги. По умолчанию текущая/активная.
 
 Возвращает оценку цены (для уникальных — из poe2scout, для валют — poe.ninja,
 для прочего — из объявлений trade2) и список листингов.
-
-Примеры:
-  - "Сколько стоит мой предмет?" → вставь Ctrl+C текст предмета
-  - "Ценность стула Doryani" → текст уникального
 `,
       inputSchema: {
         item_text: z.string().min(5).describe('Клир-текст предмета из игры'),
+        league: z.string().optional().describe('Название лиги PoE2 (опционально)'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ item_text }) => {
+    async ({ item_text, league }) => {
       try {
-        core.trade.setLeague('Runes of Aldur');
-        const res = await core.trade.priceCheck(item_text);
+        const leagueName = league ?? 'Runes of Aldur';
+        core.trade.setLeague(leagueName);
+        const res = await core.trade.priceCheck(item_text, { league: leagueName });
         const lines = [
           `## Прайс-чек: ${res.itemName}`,
           `- **Редкость:** ${res.rarity}`,
@@ -122,7 +121,7 @@ Adds 3 to 8 Cold Damage
           }
         }
         const srcs = res.sources.length ? res.sources.join(', ') : '—';
-        lines.push('', `Источники: ${srcs}`);
+        lines.push('', `Источники (${res.league ?? league}: ${srcs})`);
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

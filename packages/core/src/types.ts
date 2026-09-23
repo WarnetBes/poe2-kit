@@ -1,8 +1,24 @@
 /** Общие типы ядра PoE2 Kit */
 
 export interface League {
+  /** ID лиги (например, "Runes of Aldur"). Совпадает с ShortName-декодом poe2scout. */
   id: string;
+  /** Отображаемое имя лиги. */
   name: string;
+  /** ShortName из poe2scout (используется в URL API). Может совпадать с id. */
+  shortName?: string;
+  /** Текущая (активная) лига. */
+  isCurrent?: boolean;
+  /** Код базовой валюты лиги (например, "exalted"). */
+  baseCurrencyApiId?: string;
+  /** Текст базовой валюты (например, "Exalted Orb"). */
+  baseCurrencyText?: string;
+  /** Сколько единиц базовой валюты стоит 1 Divine Orb. */
+  divinePrice?: number | null;
+  /** Сколько Chaos стоит 1 Divine Orb. */
+  chaosDivinePrice?: number | null;
+  /** Временная метка, когда список/данные лиги были обновлены. */
+  updatedAt?: number;
 }
 
 export interface CurrencyRate {
@@ -29,6 +45,8 @@ export interface PriceCheckResult {
   listings: TradeListing[];
   /** Источники */
   sources: string[];
+  /** Лига, для которой выполнялся прайс-чек (или null, если активная не выбрана). */
+  league?: string | null;
   /** Обновлено */
   updatedAt: number;
 }
@@ -58,6 +76,8 @@ export interface BuildImport {
   /** Распределённые узлы дерева пассивок */
   passiveNodes: string[];
   gear: Record<string, string>;
+  /** Ключевые расчётные характеристики PoB (TotalDPS, CombinedDPS, Life, ES, …), если в экспорте есть <PlayerStat>. */
+  stats?: Record<string, number>;
   raw?: unknown;
 }
 
