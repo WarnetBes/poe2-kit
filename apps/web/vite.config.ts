@@ -15,7 +15,7 @@ const proxy = {
 };
 
 export default defineConfig({
-  server: { port: 5173, proxy },
-  preview: { port: 5173, proxy },
+  server: { host: true, port: 5173, proxy },
+  preview: { host: true, port: 5173, proxy },
   build: { outDir: 'dist', target: 'es2022' },
 });

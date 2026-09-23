@@ -62,6 +62,9 @@ Thumbs.db
 
 # ═══ Локальные smoke/временные скрипты (раскомментируй при надобности) ═
 # smoke.mjs/
-# PoE2 Kit web � build artifacts (������-������ � ��������� �����)
+# PoE2 Kit web � build artifacts (������-������ � ��������� �����)
 apps/web/deploy-dist/
 apps/web/deploy/poe2kit/
+
+# Переносимые дистрибутивы для запуска на других ПК (overlay/web)
+deploy/
