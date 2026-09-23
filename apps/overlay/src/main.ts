@@ -574,7 +574,8 @@ async function syncCharacterGear(force = false): Promise<void> {
 
     // Сбрасываем «надето», затем заполняем по-новой из профиля.
     for (const s of buildState.slots) s.worn = null;
-    let owned = 0;
+    let matched = 0;
+    let fresh = 0;
     for (const g of gear) {
       let name = g.name;
       let base = '';
@@ -595,14 +596,17 @@ async function syncCharacterGear(force = false): Promise<void> {
         normName(name) === normName(target.name) ||
         normName(name) === normName(target.baseType) ||
         (base && normName(base) === normName(target.baseType));
-      if (same && target.status !== 'bought') {
-        target.status = 'bought';
-        owned++;
+      if (same) {
+        matched++;
+        if (target.status !== 'bought') {
+          target.status = 'bought';
+          fresh++;
+        }
       }
     }
     saveBuildState();
     console.log(
-      `[overlay] char sync ok: ${charSync.character} (${charSync.league}), совпало слотов: ${owned}`,
+      `[overlay] char sync ok: ${charSync.character} (${charSync.league}), совпало слотов: ${matched} (новых: ${fresh})`,
     );
   } catch (err) {
     console.warn('[overlay] char sync failed:', err instanceof Error ? err.message : err);
