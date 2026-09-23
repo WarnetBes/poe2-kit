@@ -76,6 +76,8 @@ export function getAscendancies(): AscendancyClass[] {
   return ascCache;
 }
 
+/** Все активные асценданси-классы PoE2. */
+
 /** Асценданси для базового класса ('Monk', 'Warrior', ...). */
 export function getAscendanciesByClass(baseClass: string): AscendancyClass[] {
   const wanted = baseClass.toLowerCase();

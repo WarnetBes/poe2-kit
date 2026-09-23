@@ -22,6 +22,7 @@ import { registerTradeQueryTools } from './tools/tradeQuery.js';
 import { registerDatasetTools } from './tools/dataset.js';
 import { registerPoe2dbTools } from './tools/poe2db.js';
 import { registerZoneNotesTools } from './tools/zoneNotes.js';
+import { registerLadderTools } from './tools/ladder.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -42,6 +43,7 @@ export function buildServer(): number {
   count += registerDatasetTools(server);
   count += registerPoe2dbTools(server);
   count += registerZoneNotesTools(server);
+  count += registerLadderTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
@@ -74,6 +76,8 @@ async function main(): Promise<void> {
     console.error('  - poe2_tree_search');
     console.error('  - poe2_poe2db_lookup');
     console.error('  - poe2_leveling_context');
+    console.error('  - poe2_ladder_top');
+    console.error('  - poe2_ladder_leagues');
     process.exit(0);
   }
 

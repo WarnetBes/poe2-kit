@@ -210,3 +210,37 @@ export async function httpText(url: string, opts: HttpOptions = {}): Promise<str
     }
   });
 }
+
+/**
+ * Бинарный GET (ArrayBuffer) с той же очередью/лимитами.
+ * Для protobuf-ответов (poe.ninja builds/ladder).
+ */
+export async function httpBytes(url: string, opts: HttpOptions = {}): Promise<Uint8Array> {
+  const timeoutMs = opts.timeoutMs ?? 15000;
+  const host = new URL(url).host;
+  const finalUrl = toProxyUrl(url);
+  return queueFor(host).enqueue(async () => {
+    await limiterFor(host).wait();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(finalUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/octet-stream,*/*',
+          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
+          ...opts.headers,
+        },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
+      }
+      return new Uint8Array(await res.arrayBuffer());
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+}
