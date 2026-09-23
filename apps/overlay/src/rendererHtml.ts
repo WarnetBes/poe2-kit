@@ -76,7 +76,7 @@ export const rendererHtml = `<!doctype html>
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
 
-  /* Полоса перетаскивания: видна только в режиме перемещения (Ctrl+Alt+D). */
+  /* Полоса перетаскивания: видна только в режиме перемещения (Ctrl+F5). */
   #grab {
     -webkit-app-region: drag;
     user-select: none;
@@ -93,7 +93,7 @@ export const rendererHtml = `<!doctype html>
   #grab .reset { -webkit-app-region: no-drag; cursor: pointer; color: var(--dim);
     text-decoration: underline; font-size: 11px; }
 
-  /* Панель билда (Ctrl+Alt+B). */
+  /* Панель билда (Ctrl+F2). */
   #buildWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
   #buildHead { font-size: 12px; color: #fff; font-weight: 700; }
   #buildHead .sub { font-weight: 400; font-size: 11px; color: var(--dim); }
@@ -118,12 +118,12 @@ export const rendererHtml = `<!doctype html>
 <body>
   <div id="panel">
     <div id="grab" class="hide">
-      ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+Alt+D — закрепить
+      ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+F5 — закрепить
     </div>
     <div id="idle">
-      Готово. Нажми <b>Ctrl+Alt+Space</b> — прайс предмета из буфера.<br/>
-      <b>Ctrl+Alt+I</b> — импорт билда из PoB-кода,<br/>
-      <b>Ctrl+Shift+B</b> — шопинг-лист билда.
+      Готово. Нажми <b>Ctrl+F1</b> — прайс предмета из буфера.<br/>
+      <b>Ctrl+F3</b> — импорт билда из PoB-кода,<br/>
+      <b>Ctrl+F2</b> — шопинг-лист билда.
     </div>
     <div id="body" class="hide">
       <div class="head">
@@ -148,7 +148,7 @@ export const rendererHtml = `<!doctype html>
         <div id="buildSum"></div>
         <div id="buildErr" class="hide"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+Alt+Space · Билд: Ctrl+Shift+B · Прокачка: Ctrl+Alt+L · Двигать: Ctrl+Alt+D</div>
+      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5</div>
     </div>
   </div>
 <script>
@@ -196,7 +196,7 @@ export const rendererHtml = `<!doctype html>
     $('buildWrap').classList.toggle('hide', mode !== 'build');
   }
 
-  // ─── Билд-ассистент (Ctrl+Alt+B / Ctrl+Alt+I) ──────────────────────────────
+  // ─── Билд-ассистент (Ctrl+F2 / Ctrl+F3) ─────────────────────────────────────
   var SLOT_RU = {
     'Helm': 'Шлем', 'Body Armour': 'Броня', 'Gloves': 'Перчатки', 'Boots': 'Обувь',
     'Belt': 'Ремень', 'Amulet': 'Амулет', 'Ring': 'Кольцо', 'Ring 1': 'Кольцо 1',
@@ -232,7 +232,7 @@ export const rendererHtml = `<!doctype html>
       $('buildHead').textContent = '';
       $('buildBudget').textContent = '';
       $('buildSlots').innerHTML = '';
-      $('buildSum').textContent = 'Ctrl+Alt+I — импорт: скопируйте PoB share-код / .build JSON и нажмите.';
+      $('buildSum').textContent = 'Ctrl+F3 — импорт: скопируйте PoB share-код / .build JSON и нажмите.';
       return;
     }
 
@@ -283,7 +283,7 @@ export const rendererHtml = `<!doctype html>
         return esc(s.name) + ' ×' + s.count;
       }).join(', '));
     }
-    sum.push('<span class="sub" style="color:#9aa4b0">Ctrl+Alt+Space на купленном предмете — отметит слот ✔</span>');
+    sum.push('<span class="sub" style="color:#9aa4b0">Ctrl+F1 на купленном предмете — отметит слот ✔</span>');
     $('buildSum').innerHTML = sum.join('<br/>');
 
     if (state.error) {

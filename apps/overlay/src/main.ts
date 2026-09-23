@@ -2,7 +2,7 @@
  * PoE2 Kit — Windows-оверлей.
  *
  * Прозрачное, безрамочное, всегда-поверх, кликабельно-("сквозь") окно поверх игры.
- * Глобальный хоткей (по умолчанию Ctrl+Alt+Space) читает предмет из буфера обмена
+ * Глобальные хоткеи (по умолчанию Ctrl+F1..F5) читают предмет из буфера обмена
  * (в игре PoE2 предсмет копируется в клир-текст через Ctrl+C), прогоняет его через
  * единое ядро (@poe2-kit/core -> priceCheck) и показывает результат во флоат-виджете.
  *
@@ -70,11 +70,13 @@ function teeConsoleToFile(): void {
 teeConsoleToFile();
 
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
-const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
-const LEVELING_HOTKEY = 'CommandOrControl+Alt+L';
-const MOVE_HOTKEY = 'CommandOrControl+Alt+D';
-const BUILD_IMPORT_HOTKEY = 'CommandOrControl+Alt+I';
-const BUILD_PANEL_HOTKEY = 'CommandOrControl+Shift+B';
+// Хоткеи — F-клавиши с Ctrl: почти не конфликтуют ни с игрой, ни с Intel/Discord
+// (Ctrl+Alt+X/Alt+B часто заняты системным софтом гейм-ПК).
+const PRICE_HOTKEY = 'Control+F1';
+const LEVELING_HOTKEY = 'Control+F4';
+const MOVE_HOTKEY = 'Control+F5';
+const BUILD_IMPORT_HOTKEY = 'Control+F3';
+const BUILD_PANEL_HOTKEY = 'Control+F2';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 /** Смещение оверлея относительно «закреплённой» позиции (правый верхний угол игры). */
@@ -86,7 +88,7 @@ interface OverlayOffset {
 let activeLeague: string | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let busy = false;
-/** Режим перемещения оверлея (Ctrl+Alt+D): окно кликабельно и таскается мышью. */
+/** Режим перемещения оверлея (Ctrl+F5): окно кликабельно и таскается мышью. */
 let moveUnlocked = false;
 /** Пользовательское смещение (DIP) от закреплённой позиции; переживает перезапуск. */
 let userOffset: OverlayOffset | null = null;
@@ -238,7 +240,7 @@ function pinnedPosition(rect: { x: number; y: number; width: number; height: num
 }
 
 /**
- * Переключить режим перемещения оверлея (Ctrl+Alt+D):
+ * Переключить режим перемещения оверлея (Ctrl+F5):
  *  - unlock: окно становится кликабельным/фокусируемым, таскается мышью за полосу-заголовок;
  *  - lock (повторное нажатие): текущая позиция пересчитывается в смещение от
  *    закреплённой точки, сохраняется в userData и применяется трекером дальше.
@@ -273,7 +275,7 @@ function toggleMoveMode(): void {
   overlayWindow?.webContents.send('move:mode', payload);
 }
 
-/** Сбросить пользовательское смещение (двойной Ctrl+Alt+D в течение 1 сек не используем — просто IPC). */
+/** Сбросить пользовательское смещение (просто IPC из рендерера). */
 function resetOverlayOffset(): void {
   userOffset = null;
   saveUserOffset(null);
@@ -367,18 +369,115 @@ function sendBuildUpdate(
 }
 
 function normName(s: string | null | undefined): string {
-  return String(s ?? '').trim().toLowerCase();
+  return String(s ?? '')
+    .replace(/ё/g, 'е')
+    .replace(/[''`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+// ─── Словарь ru↔en: базовые типы и имена уников (poe2db) ────────────────────
+// ru-клиент игры даёт русские имена, PoB-билд — английские. Словарь строится
+// один раз со страниц ~30 классов снаряжения poe2db и кэшируется в userData
+// (ru-en-dict.json). Пока строится — матчинг работает по уже загруженным
+// записям (мапы наполняются по мере загрузки страниц).
+
+const EQUIPMENT_CLASS_SLUGS = [
+  'Claws', 'Daggers', 'Wands', 'One_Hand_Swords', 'One_Hand_Axes', 'One_Hand_Maces',
+  'Sceptres', 'Spears', 'Flails', 'Bows', 'Staves', 'Two_Hand_Swords', 'Two_Hand_Axes',
+  'Two_Hand_Maces', 'Quarterstaves', 'Crossbows', 'Traps', 'Talismans', 'Quivers',
+  'Shields', 'Bucklers', 'Foci', 'Gloves', 'Boots', 'Body_Armours', 'Helmets',
+  'Amulets', 'Rings', 'Belts', 'Jewels',
+] as const;
+
+const RU_EN_DICT_VERSION = 1;
+const ruEnBases = new Map<string, string>();
+const ruEnUniques = new Map<string, string>();
+let ruEnDictLoaded = false;
+let ruEnDictPromise: Promise<void> | null = null;
+
+function ruEnDictFile(): string {
+  return path.join(app.getPath('userData'), 'ru-en-dict.json');
+}
+
+function saveRuEnDict(): void {
+  try {
+    const data = {
+      version: RU_EN_DICT_VERSION,
+      bases: Object.fromEntries(ruEnBases),
+      uniques: Object.fromEntries(ruEnUniques),
+    };
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(ruEnDictFile(), JSON.stringify(data), 'utf8');
+  } catch {
+    /* некритично — в худшем случае пересоберём при следующем запуске */
+  }
+}
+
+/** Загрузить кэш словаря с диска, если он есть. */
+function loadRuEnDict(): boolean {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(ruEnDictFile(), 'utf8'));
+    const data = raw as { version?: number; bases?: Record<string, string>; uniques?: Record<string, string> };
+    if (data.version !== RU_EN_DICT_VERSION) return false;
+    for (const [k, v] of Object.entries(data.bases ?? {})) ruEnBases.set(normName(k), v);
+    for (const [k, v] of Object.entries(data.uniques ?? {})) ruEnUniques.set(normName(k), v);
+    if (!ruEnBases.size && !ruEnUniques.size) return false;
+    console.log(`[overlay] ru-en dict loaded: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Построить словарь ru→en в фоне (один раз): последовательно обходим страницы
+ * классов снаряжения poe2db (rate-limiter ядра держит паузу), мапы наполняются
+ * по ходу — матчинг может пользоваться частичным словарём уже сейчас.
+ */
+function ensureRuEnDict(): Promise<void> {
+  if (ruEnDictLoaded || ruEnDictPromise) return ruEnDictPromise ?? Promise.resolve();
+  ruEnDictPromise = (async () => {
+    try {
+      for (const slug of EQUIPMENT_CLASS_SLUGS) {
+        try {
+          const tr = await core.poe2db.fetchClassTranslations(slug, 'ru');
+          for (const [k, v] of tr.bases) ruEnBases.set(normName(k), v);
+          for (const [k, v] of tr.uniques) ruEnUniques.set(normName(k), v);
+          saveRuEnDict(); // прогресс сохраняем по ходу
+        } catch (err) {
+          console.warn(`[overlay] ru-en dict: ${slug} failed: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+      ruEnDictLoaded = true;
+      console.log(`[overlay] ru-en dict built: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques`);
+    } finally {
+      ruEnDictPromise = null;
+    }
+  })();
+  return ruEnDictPromise;
+}
+
+/** Перевести локализованное имя в английское, если есть в словаре (иначе — как есть). */
+function toEn(kind: 'base' | 'unique', s: string): string {
+  if (!/[а-яё]/i.test(s)) return s; // уже не русское — нечего переводить
+  const dict = kind === 'base' ? ruEnBases : ruEnUniques;
+  return dict.get(normName(s)) ?? s;
 }
 
 /**
  * Сопоставить предмет из игры (клир-текст) со слотом билда.
- * Уники — по имени, остальные — по точному совпадению базового типа
- * (названия должны быть на одном языке: билд и клиент игры).
+ * Уники — по имени, остальные — по базовому типу. Русские имена из ru-клиента
+ * переводятся в английские словарём poe2db (ru-en-dict.json), так что билд
+ * из PoB (en) сопоставляется и в русском клиенте.
  */
 function matchBuildSlot(parsedName: string, parsedBase: string): BuildSlotState | null {
   if (!buildState) return null;
-  const n = normName(parsedName);
-  const b = normName(parsedBase);
+  // Русский текст и словарь ещё пуст — подтолкнём фоновую загрузку.
+  if (/[а-яё]/i.test(parsedName + parsedBase) && !ruEnDictLoaded) void ensureRuEnDict();
+  const n = normName(toEn('unique', parsedName));
+  const b = normName(toEn('base', parsedBase));
   if (!n && !b) return null;
   for (const s of buildState.slots) {
     const sn = normName(s.name);
@@ -399,7 +498,7 @@ async function runBuildImport(): Promise<void> {
   }
   const input = clipboard.readText().trim();
   if (!input) {
-    sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+Alt+I.' });
+    sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+F3.' });
     return;
   }
   buildPricing = true;
@@ -533,7 +632,7 @@ async function refreshBuildMeta(): Promise<void> {
   }
 }
 
-/** Ctrl+Alt+B: показать/скрыть панель билда (или импортировать, если билда нет). */
+/** Ctrl+F2: показать/скрыть панель билда (или импортировать, если билда нет). */
 function toggleBuildPanel(): void {
   if (!buildState) {
     void runBuildImport();
@@ -703,12 +802,12 @@ function stopGameTracker(): void {
  * Возвращает результат ядра (или распарсенный вариант, если оценка не удалась).
  */
 const hotkeyAction = (): void => {
-  console.log('[overlay] hotkey fired: Ctrl+Alt+Space');
+  console.log('[overlay] hotkey fired: Ctrl+F1 (прайс-чек)');
   void runPriceCheck();
 };
 
 const hotkeyLevelAction = (): void => {
-  console.log('[overlay] hotkey fired: Ctrl+Alt+L');
+  console.log('[overlay] hotkey fired: Ctrl+F4 (прокачка)');
   void runLevelingContext();
 };
 
@@ -775,8 +874,12 @@ async function runPriceCheck(): Promise<unknown> {
     if (buildState && itemText.trim()) {
       try {
         const parsed = core.parse.parseItemText(itemText);
-        const matched = matchBuildSlot(core.parse.itemDisplayName(parsed), parsed.baseType);
+        const displayName = core.parse.itemDisplayName(parsed);
+        const matched = matchBuildSlot(displayName, parsed.baseType);
         if (matched) {
+          console.log(
+            `[overlay] build slot matched: ${matched.slot} (item="${displayName}", base="${parsed.baseType}")`,
+          );
           (result as { buildMatch?: unknown }).buildMatch = { slot: matched.slot, name: matched.name };
           markSlotBought(matched);
         }
@@ -829,11 +932,11 @@ function registerHotkeys(): void {
   const ok = globalShortcut.register(PRICE_HOTKEY, hotkeyAction);
   const okL = globalShortcut.register(LEVELING_HOTKEY, hotkeyLevelAction);
   const okM = globalShortcut.register(MOVE_HOTKEY, () => {
-    console.log('[overlay] hotkey fired: Ctrl+Alt+D (перемещение оверлея)');
+    console.log('[overlay] hotkey fired: Ctrl+F5 (перемещение оверлея)');
     toggleMoveMode();
   });
   const okBI = globalShortcut.register(BUILD_IMPORT_HOTKEY, () => {
-    console.log('[overlay] hotkey fired: Ctrl+Alt+I (импорт билда из буфера)');
+    console.log('[overlay] hotkey fired: Ctrl+F3 (импорт билда из буфера)');
     void runBuildImport();
   });
   const okBP = globalShortcut.register(BUILD_PANEL_HOTKEY, () => {
@@ -920,8 +1023,10 @@ app.whenReady().then(async () => {
     }
   }
   if (activeLeague) core.trade.setLeague(activeLeague);
-  // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+Alt+B.
+  // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+F2.
   loadBuildState();
+  // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
+  if (!loadRuEnDict()) void ensureRuEnDict();
   setupIPC();
   void createOverlayWindow().then(() => {
     startGameTracker();

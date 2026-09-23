@@ -371,6 +371,53 @@ export function formatPoe2dbSections(
 
 // ─── Перевод базовых предметов (локализация → английский слаг) ─────────────
 
+/**
+ * Словари локализации со страницы класса предметов poe2db:
+ *  - bases: локализованное имя базового типа → английское имя (слаг → пробелы);
+ *  - uniques: локализованное имя уника → английское имя уника.
+ */
+export interface Poe2dbClassTranslations {
+  bases: Map<string, string>;
+  uniques: Map<string, string>;
+}
+
+/**
+ * Загрузить словари «локализация → английский» со страницы класса предметов
+ * poe2db (структура: уники — `a.UniqueItem` c `.uniqueName`, базы — `a.whiteitem`).
+ * При ошибке сети возвращает пустые мапы (тихо, без throw).
+ */
+export async function fetchClassTranslations(
+  itemClassSlug: string,
+  lang: Poe2dbLang = 'ru',
+): Promise<Poe2dbClassTranslations> {
+  const bases = new Map<string, string>();
+  const uniques = new Map<string, string>();
+  const put = (map: Map<string, string>, text: string, slug: string): void => {
+    const en = slug.replace(/_/g, ' ').trim();
+    const key = text.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (key && en && key.length < 120) map.set(key, en);
+  };
+  try {
+    const html = await getPoe2dbPage(itemClassSlug, lang);
+    const $ = cheerio.load(html);
+    // Уники: <a class="UniqueItem" href="/ru/Doedres_Damning"><span class="uniqueName">…</span> …
+    $('a.UniqueItem').each((_, el) => {
+      const m = ($(el).attr('href') ?? '').match(/([A-Za-z][A-Za-z0-9_]+)$/);
+      const name = m ? $(el).find('.uniqueName').first().text().trim() : '';
+      if (name) put(uniques, name, m![1]!);
+    });
+    // Базовые типы: <a class="whiteitem Ring" href="Iron_Ring">Железное кольцо</a>
+    $('a.whiteitem').each((_, el) => {
+      const m = ($(el).attr('href') ?? '').match(/([A-Za-z][A-Za-z0-9_]+)$/);
+      const text = m ? $(el).text().replace(/\s+/g, ' ').trim() : '';
+      if (text) put(bases, text, m![1]!);
+    });
+  } catch {
+    // Тихо: словарь просто останется пустым, сопоставление уйдёт в точный матч.
+  }
+  return { bases, uniques };
+}
+
 const baseTypeCache = new Map<string, Map<string, string>>();
 
 /** Собрать мапу «локализованное имя базового типа → английский слаг» со страницы класса предметов. */
