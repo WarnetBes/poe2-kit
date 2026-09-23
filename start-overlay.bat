@@ -91,8 +91,7 @@ echo.
 REM Электрон пишет логи в UTF-8; через PowerShell-хост декодируем корректно
 REM (chcp 65001 помогает не во всех консолях: conhost с растровым шрифтом
 REM всё равно портит кириллицу, а PowerShell печатает через консольный API).
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; npm run start -w @poe2-kit/overlay"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; npm run start -w @poe2-kit/overlay"
 goto end
 
 :err
