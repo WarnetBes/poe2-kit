@@ -171,5 +171,52 @@ ok(jsonGear.length === 1, `из .build JSON извлечён 1 уникальн�
 ok(jsonGear[0]?.name === 'Headhunter' && jsonGear[0]?.slot === 'Belt1', '.build JSON unique slot+name');
 ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText формат');
 
+console.log('log parser (Client.txt)');
+const { decodeZoneCode, parseLogLine, hasSubstantialLogData, getClientState } = core;
+const dz = decodeZoneCode('G1_town');
+ok(dz?.act === 1 && dz?.englishName === 'Clearfell Encampment' && dz?.description.includes('Town'), 'decodeZoneCode G1_town');
+const dz3 = decodeZoneCode('G3_10_Airlock');
+ok(dz3?.act === 3 && dz3?.areaIndex === 10 && dz3?.suffix === 'Airlock' && dz3?.englishName === 'Temple of Chaos (Entrance)', 'decodeZoneCode G3_10_Airlock');
+ok(decodeZoneCode('zzz') === null, 'decodeZoneCode rejects unknown');
+ok(core.ZONE_NAMES === undefined || typeof core.ZONE_NAMES === 'object', 'module importable');
+
+const evLvlUp = parseLogLine('2026/06/04 10:51:25 77406656 3ef23347 [INFO Client 29396] : TomawarTheSeventh (Infernalist) is now level 66');
+ok(evLvlUp?.kind === 'level_up' && evLvlUp?.character === 'TomawarTheSeventh' && evLvlUp?.klass === 'Infernalist' && evLvlUp?.level === 66, 'parseLogLine level_up');
+const evZone = parseLogLine('2026/06/04 10:52:01 77410000 3ef23348 [INFO Client 29396] Generating level 62 area "P2_1" with seed 3720906296');
+ok(evZone?.kind === 'area_change' && evZone?.areaCode === 'P2_1' && evZone?.areaLevel === 62 && evZone?.seed === 3720906296, 'parseLogLine area_change');
+const evDeath = parseLogLine('2026/06/04 11:00:00 77420000 3ef23349 [INFO Client 29396] : TomawarTheSeventh has been slain.');
+ok(evDeath?.kind === 'death' && evDeath?.character === 'TomawarTheSeventh', 'parseLogLine death');
+const evAfk = parseLogLine('2026/06/04 11:01:00 77430000 3ef2334a [INFO Client 29396] : AFK mode is now ON.');
+ok(evAfk?.kind === 'afk' && evAfk?.afkState === 'ON', 'parseLogLine afk');
+const evConn = parseLogLine('2026/06/04 11:01:05 77431000 3ef2334b [INFO Client 29396] Connecting to instance server at 64.87.33.204:21360');
+ok(evConn?.kind === 'instance_connect' && evConn?.server === '64.87.33.204:21360', 'parseLogLine instance_connect');
+ok(parseLogLine('garbage line without prefix') === null, 'parseLogLine rejects garbage');
+
+// getClientState по синтетическому файлу-логу
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+const tmpDir = mkdtempSync(join(tmpdir(), 'poe2k-log-'));
+const tmpLog = join(tmpDir, 'Client.txt');
+writeFileSync(tmpLog, [
+  '2026/06/04 10:50:00 77400000 3ef23340 [INFO Client 29396] ***** LOG FILE OPENING *****',
+  '2026/06/04 10:51:25 77406656 3ef23347 [INFO Client 29396] : TomawarTheSeventh (Infernalist) is now level 66',
+  '2026/06/04 10:52:01 77410000 3ef23348 [INFO Client 29396] Generating level 62 area "P2_1" with seed 3720906296',
+  '2026/06/04 10:55:00 77415000 3ef2334c [INFO Client 29396] Connecting to instance server at 64.87.33.204:21360',
+  '2026/06/04 11:00:00 77420000 3ef23349 [INFO Client 29396] : TomawarTheSeventh has been slain.',
+  '2026/06/04 11:01:00 77430000 3ef2334a [INFO Client 29396] : AFK mode is now OFF.',
+].join('\r\n') + '\r\n');
+const st = getClientState({ logPath: tmpLog });
+ok(st.available === true, 'getClientState available on synthetic log');
+ok(st.character === 'TomawarTheSeventh' && st.klass === 'Infernalist' && st.level === 66, 'state character/class/level');
+ok(st.zone?.areaCode === 'P2_1' && st.zone?.areaLevel === 62, 'state last zone');
+ok(st.deathsInWindow === 1, 'state deaths counted');
+ok(st.afk === false, 'state afk false');
+ok(st.instanceServer === '64.87.33.204:21360', 'state instance server');
+ok(hasSubstantialLogData(st) === true, 'hasSubstantialLogData true');
+const stMissing = getClientState({ logPath: join(tmpDir, 'nope.txt') });
+ok(stMissing.available === false && !!stMissing.reason, 'missing log -> available false + reason');
+rmSync(tmpDir, { recursive: true, force: true });
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

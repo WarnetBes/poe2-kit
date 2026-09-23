@@ -8,6 +8,7 @@ export * from './repoe.js';
 export * from './ai.js';
 export * from './parse.js';
 export * from './http.js';
+export * from './log.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -16,6 +17,7 @@ import * as repoe from './repoe.js';
 import * as ai from './ai.js';
 import * as parse from './parse.js';
 import * as http from './http.js';
+import * as logmod from './log.js';
 
 export const core = {
   trade,
@@ -25,6 +27,7 @@ export const core = {
   ai,
   parse,
   http,
+  log: logmod,
 };
 
 export default core;

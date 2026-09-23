@@ -16,6 +16,7 @@ import { registerLevelingTools } from './tools/leveling.js';
 import { registerBuildTools } from './tools/build.js';
 import { registerDbTools } from './tools/db.js';
 import { registerAiTools } from './tools/ai.js';
+import { registerLogTools } from './tools/log.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -30,6 +31,7 @@ export function buildServer(): number {
   count += registerBuildTools(server);
   count += registerDbTools(server);
   count += registerAiTools(server);
+  count += registerLogTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
@@ -53,6 +55,7 @@ async function main(): Promise<void> {
     console.error('  - poe2_items_db');
     console.error('  - poe2_mod_tier');
     console.error('  - poe2_ai_ask');
+    console.error('  - poe2_log_state');
     process.exit(0);
   }
 
