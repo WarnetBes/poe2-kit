@@ -1,0 +1,23 @@
+{
+  "name": "poe2-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Бесплатный набор инструментов для Path of Exile 2: веб-приложение, Windows-оверлей и MCP-сервер на едином ядре",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "apps/web",
+    "apps/overlay",
+    "apps/mcp"
+  ],
+  "scripts": {
+    "build": "npm run build -w @poe2-kit/core",
+    "web": "npm run dev -w @poe2-kit/web",
+    "overlay": "npm run dev -w @poe2-kit/overlay",
+    "mcp": "npm run start -w @poe2-kit/mcp",
+    "test": "npm run test -w @poe2-kit/core"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
