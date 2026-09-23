@@ -218,5 +218,53 @@ const stMissing = getClientState({ logPath: join(tmpDir, 'nope.txt') });
 ok(stMissing.available === false && !!stMissing.reason, 'missing log -> available false + reason');
 rmSync(tmpDir, { recursive: true, force: true });
 
+console.log('estimate: PoE2 defense formulas (портировано из hivemind-калькуляторов)');
+const { armorDr, hitChance, armorNeededForDr, calculateEhp, mergeGearDefenses, estimateBuild } = core;
+ok(Math.abs(armorDr(9000, 1000) - 47.368) < 0.01, `armorDr 9000 vs 1000-hit = ${armorDr(9000, 1000).toFixed(1)}%`);
+ok(armorDr(999999, 100) <= 90, 'armorDr capped at 90');
+ok(armorDr(0, 1000) === 0, 'armorDr zero armor');
+ok(hitChance(0, 2000) === 100, 'hitChance no evasion = 100%');
+ok(hitChance(999999, 2000) === 5, 'hitChance capped min 5%');
+ok(Math.abs(armorNeededForDr(50, 1000) - 10000) < 0.01, 'armorNeededForDr 50% vs 1000 = 10k');
+
+const estGear = [
+  { slot: 'Body Armour', name: 'Test Plate', itemText: [
+    'Rarity: Rare', 'Test Plate', 'Plate Armour', '--------',
+    'Armour: 900', '--------',
+    '+100 to maximum Life', '+30% to Fire Resistance', '15% increased maximum Life',
+  ].join('\n') },
+  { slot: 'Boots', name: 'Test Boots', itemText: [
+    'Rarity: Rare', 'Test Boots', 'Leather Boots', '--------',
+    'Evasion Rating: 300', '--------',
+    '+50 to maximum Life', '+12% to Lightning Resistance',
+  ].join('\n') },
+];
+const estDef = mergeGearDefenses(estGear);
+ok(estDef.life === 172.5, `def flat life (+100, +50) + 15% → ${estDef.life}`);
+ok(estDef.armour === 900, 'def armour 900');
+ok(estDef.evasion === 300, 'def evasion 300');
+ok(estDef.fireRes === 30 && estDef.lightningRes === 12, 'def resists fire30/light12');
+
+const physEhp = calculateEhp(estDef, 'physical');
+ok(physEhp.effectiveHp > estDef.life, 'physical EHP > life (armor+evasion layers)');
+const chaosEhp = calculateEhp(estDef, 'chaos');
+ok(chaosEhp.rawHp === estDef.life, 'chaos rawHp excludes ES (no ES in gear) and chaos res 0 → mitigation 0');
+const chaosNeg = calculateEhp({ ...estDef, chaosRes: -30 }, 'chaos');
+ok(chaosNeg.effectiveHp < chaosEhp.effectiveHp, 'negative chaos res amplifies damage (EHP lower)');
+
+const estPobXml = `<?xml version="1.0"?><PathOfBuilding><Build level="70" className="Monk" ascendClassName="Invoker"/><PlayerStat stat="AverageDamage" value="145162.34"/>
+<Items><ItemSet><Slot name="Body Armour" itemId="1"/><Slot name="Weapon 1" itemId="2"/><Slot name="Ring 1" itemId="3"/></ItemSet>
+<Item id="1">Rarity: RARE\nTest Plate\nPlate Armour\nArmour: 900\n+100 to maximum Life\n+30% to Fire Resistance</Item>
+<Item id="2">Rarity: RARE\nTest Staff\nStaff\nPhysical Damage: 40-60\nAttacks per Second: 1.20\n+80 to maximum Life</Item>
+<Item id="3">Rarity: RARE\nTest Ring\nRuby Ring\n+20 to maximum Life\n+10% to Fire Resistance</Item></Items></PathOfBuilding>`;
+const est = await estimateBuild(estPobXml);
+ok(est.source === 'pob+gear', 'estimateBuild source pob+gear (PlayerStat found)');
+ok(est.characterLevel === 70 && est.className === 'Monk' && est.ascendancy === 'Invoker', 'estimateBuild build tag parsed');
+ok(est.pobStats['AverageDamage'] === 145162.34, 'estimateBuild pobStats captured');
+ok(est.defenses.fireRes === 40, `estimateBuild gear resists summed (fire=${est.defenses.fireRes})`);
+ok(est.weapon.weapon !== null && est.weapon.physDps > 0, `estimateBuild weaponDps (${est.weapon.totalDps})`);
+ok(est.gaps.length > 0 && est.gaps[0].severity >= est.gaps[est.gaps.length-1].severity, `estimateBuild gaps sorted (${est.gaps.length})`);
+ok(est.notes.length >= 2, 'estimateBuild honest notes');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

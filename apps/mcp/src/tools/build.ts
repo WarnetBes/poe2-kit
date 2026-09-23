@@ -140,5 +140,83 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 3;
+  // ── Приближённая оценка билда (EHP/DPS) без PoB-движка ──
+  server.registerTool(
+    'poe2_build_estimate',
+    {
+      title: 'PoE2 Build Estimate (EHP/DPS)',
+      description: `Приближённая оценка билда PoE2: EHP по слоям защиты (броня/уклонение/блок/резисты — формулы PoE2), слабые места защиты с рекомендациями, DPS оружия. Работает по PoB share-коду или XML — PoB-движок НЕ нужен.
+
+Если в коде есть PlayerStat (игрок открывал билд в PoB) — они тоже возвращаются и они точнее геар-оценки.
+
+Аргументы:
+  - code (string, обяз.): PoB share-код ИЛИ готовый XML PathOfBuilding.
+  - hit_size (number, опц.): ожидаемый урон за удар для расчёта брони (по умолчанию 1000).
+  - accuracy (number, опц.): точность атакующего для уклонения (по умолчанию 2000).
+
+Ограничения: учитывается только снаряжение; дерево пассивок, гемы и ауры НЕ входят — реальные числа выше.
+
+Примеры:
+  - "Оцени мой билд" → вставь share-код
+  - "Хватит ли мне брони против боссов?" → hit_size=5000
+`,
+      inputSchema: {
+        code: z.string().min(5).describe('PoB share-код или XML'),
+        hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ code, hit_size, accuracy }) => {
+      try {
+        const est = await core.estimate.estimateBuild(code, {
+          expectedHitSize: hit_size ?? 1000,
+          attackerAccuracy: accuracy ?? 2000,
+        });
+        const lines: string[] = ['## Оценка билда (приближённая, без PoB-движка)', ''];
+        lines.push(`- Источник чисел: ${est.source === 'pob+gear' ? 'гир + PlayerStat из PoB' : 'только гир'}`);
+        if (est.characterLevel || est.className) {
+          lines.push(`- Персонаж: **${est.className ?? '?'}${est.ascendancy ? ` / ${est.ascendancy}` : ''}**, уровень ${est.characterLevel ?? '?'}`);
+        }
+        const d = est.defenses;
+        lines.push(
+          `- Защиты из гира: жизнь **${Math.round(d.life)}**, ES ${Math.round(d.energyShield)}, броня ${Math.round(d.armour)}, уклонение ${Math.round(d.evasion)}, блок ${d.blockChance}%`,
+        );
+        lines.push(`  - Резисты: fire ${d.fireRes}% / cold ${d.coldRes}% / lightning ${d.lightningRes}% / chaos ${d.chaosRes}%`);
+        lines.push('', '### EHP по типам урона');
+        for (const t of Object.keys(est.ehp) as Array<keyof typeof est.ehp>) {
+          const e = est.ehp[t];
+          lines.push(`- ${t}: **${e.effectiveHp === Infinity ? '∞' : Math.round(e.effectiveHp)}** (митигация ${(e.totalMitigation * 100).toFixed(1)}%)`);
+        }
+        if (est.worstEhp) {
+          lines.push('', `⚠️ Слабейший слой: **${est.worstEhp.damageType}** (${Math.round(est.worstEhp.effectiveHp)} EHP)`);
+        }
+        if (est.weapon.weapon) {
+          lines.push(
+            '',
+            `### Оружие: ${est.weapon.weapon} — pDPS ${est.weapon.physDps} + eDPS ${est.weapon.elementalDps} ≈ **${est.weapon.totalDps} DPS** (только предмет)`,
+          );
+        }
+        if (Object.keys(est.pobStats).length) {
+          lines.push('', '### PlayerStat из PoB (точные)');
+          for (const [k, v] of Object.entries(est.pobStats)) lines.push(`- ${k}: ${v}`);
+        }
+        if (est.gaps.length) {
+          lines.push('', '### Слабые места');
+          for (const g of est.gaps) {
+            lines.push(`- **[${g.severity.toFixed(1)}/10] ${g.type}** — ${g.description}`);
+            lines.push(`  - Fix: ${g.recommendation}`);
+          }
+        }
+        lines.push('', '_Примечания:_');
+        for (const n of est.notes) lines.push(`- ${n}`);
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка оценки билда: ${msg}` }] };
+      }
+    },
+  );
+
+  return 4;
 }

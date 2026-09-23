@@ -59,6 +59,7 @@ async function main(): Promise<void> {
     console.error('  - poe2_ai_ask');
     console.error('  - poe2_log_state');
     console.error('  - poe2_wiki_lookup');
+    console.error('  - poe2_build_estimate');
     process.exit(0);
   }
 

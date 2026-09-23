@@ -10,6 +10,7 @@ export * from './parse.js';
 export * from './http.js';
 export * from './log.js';
 export * from './wiki.js';
+export * from './estimate.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -20,6 +21,7 @@ import * as parse from './parse.js';
 import * as http from './http.js';
 import * as logmod from './log.js';
 import * as wikimod from './wiki.js';
+import * as estmod from './estimate.js';
 
 export const core = {
   trade,
@@ -31,6 +33,7 @@ export const core = {
   http,
   log: logmod,
   wiki: wikimod,
+  estimate: estmod,
 };
 
 export default core;
