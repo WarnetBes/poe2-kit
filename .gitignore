@@ -74,6 +74,8 @@ apps/web/deploy/poe2kit/
 apps/web/deploy/*.zip
 
 # Переносимые дистрибутивы для запуска на других ПК (overlay/web):
-# zip-артефакты игнорируем, исходники пакета переноски — версируем
+# zip-артефакты игнорируем, исходники пакета переноски — версируем.
+# Исключение: готовый transfer-zip гейм-ПК скачивает прямо из репозитория.
 deploy/*
 !deploy/poe2k-overlay-transfer-src/
+!deploy/poe2k-overlay-transfer.zip
