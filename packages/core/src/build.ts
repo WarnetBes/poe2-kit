@@ -133,6 +133,23 @@ function _tryInflate(raw: Uint8Array): Uint8Array {
       if (_roundtripOk(r, body)) return r as Uint8Array;
     }
   }
+  // Диагностика: если поток РАСПАКОВЫВАЕТСЯ в осмысленный билд, но Adler-32/round-trip
+  // не сходится — байты изменены/потеряны в СЕРЕДИНЕ (DESYNC back-references). Такой код
+  // выглядит «почти читаемым» с мусором в середине и не чинится локально: нужен оригинал.
+  {
+    let probe: Uint8Array | null = null;
+    try {
+      probe = unzlibSync(raw);
+    } catch {
+      probe = null;
+    }
+    if (_looksLikeBuild(probe)) {
+      throw new PobCodeError(
+        'import-код повреждён в СЕРЕДИНЕ (байты потеряны/заменены при копировании) — ' +
+          'автовосстановление невозможно. Скопируйте код заново целиком (или поделитесь ссылкой pobb.in).',
+      );
+    }
+  }
   throw new PobCodeError(
     'import-код повреждён — скопируйте ПОЛНЫЙ код (длинные коды часто обрезаются при вставке), ' +
       'или поделитесь ссылкой pobb.in/pastebin.',
