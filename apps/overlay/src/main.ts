@@ -370,6 +370,11 @@ function loadBuildState(): void {
         panelVisible: false,
       };
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
+      // Старые state-файлы без gemSetups: досчитываем сетапы камней в фоне.
+      if (buildState.rawInput && !buildState.gemSetups) {
+        console.log('[overlay] gem setups missing in saved state, refreshing in background');
+        void refreshGemSetups(buildState.rawInput);
+      }
     }
   } catch {
     /* файла нет — ок */
