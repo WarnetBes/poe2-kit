@@ -84,5 +84,58 @@ export function registerLogTools(server: McpServer): number {
     },
   );
 
-  return 1;
+  server.registerTool(
+    'poe2_game_config',
+    {
+      title: 'PoE2 Game Config (local INI)',
+      description: `Локальный конфиг PoE2-клиента (poe2_production_Config.ini из Documents/My Games/Path of Exile 2): режим ввода (WASD/click-к-движению — влияет на советы по билду), текущий акт, gateway, разрешение/рендер.
+
+Аргументы:
+  - config_path (string, опц.): явный путь к INI (иначе автодетект: OneDrive/Documents, USERPROFILE/Documents).
+
+ВАЖНО: account_name пуст при Steam-аутентификации — персонажа определять через poe2_log_state (Client.txt).
+Чисто локальный источник: файл читается только с диска пользователя.`,
+      inputSchema: {
+        config_path: z.string().optional().describe('Явный путь к poe2_production_Config.ini'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ config_path }) => {
+      try {
+        const cfg = core.gameConfig.getGameConfigSummary(config_path);
+        if (!cfg.available) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Конфиг недоступен: ${cfg.reason}\n\n` +
+                  'Попросите пользователя указать config_path к poe2_production_Config.ini ' +
+                  '(обычно в Documents/My Games/Path of Exile 2).',
+              },
+            ],
+          };
+        }
+        const lines = ['## Конфиг PoE2-клиента', ''];
+        lines.push(`- Путь: \`${cfg.configPath}\``);
+        if (cfg.accountName) {
+          lines.push(`- Аккаунт (standalone): **${cfg.accountName}**`);
+        } else {
+          lines.push('- Аккаунт: не определён (Steam не пишет account_name — см. poe2_log_state)');
+        }
+        if (cfg.inputMode) lines.push(`- Режим ввода: **${cfg.inputMode}** (влияет на рекомендации механик)`);
+        if (cfg.actEnvironment) lines.push(`- Текущий акт: environment=${cfg.actEnvironment}${cfg.actHint ? ` → ${cfg.actHint}` : ''}`);
+        if (cfg.gateway) lines.push(`- Gateway: ${cfg.gateway}`);
+        if (cfg.resolution) lines.push(`- Разрешение: ${cfg.resolution}`);
+        if (cfg.renderer) lines.push(`- Рендерер: ${cfg.renderer}`);
+        if (cfg.framerateCap) lines.push(`- Кап FPS: ${cfg.framerateCap}`);
+        if (cfg.gpu) lines.push(`- GPU: ${cfg.gpu}`);
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка чтения конфига: ${msg}` }] };
+      }
+    },
+  );
+
+  return 2;
 }

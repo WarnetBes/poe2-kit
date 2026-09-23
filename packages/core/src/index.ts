@@ -17,6 +17,7 @@ export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './ladder.js';
 export * from './cache.js';
+export * from './gameConfig.js';
 // ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
 // чтобы не конфликтовать с evaluate-слоем estimate.ts (там свои calculateEhp и
 // calculateAllEhp от гира). Доступен как core.ehp.
@@ -50,6 +51,7 @@ import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
 import * as ladmod from './ladder.js';
 import * as cachemod from './cache.js';
+import * as gameConfigMod from './gameConfig.js';
 
 export const core = {
   trade,
@@ -68,6 +70,7 @@ export const core = {
   zoneNotes: znmod,
   ladder: ladmod,
   cache: cachemod,
+  gameConfig: gameConfigMod,
   ehp: ehpmod,
   spirit: spiritmod,
   stun: stunmod,

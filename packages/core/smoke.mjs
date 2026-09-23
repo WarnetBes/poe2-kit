@@ -406,5 +406,17 @@ ok(core.default.cache.httpCacheInfo().length === 0, 'cache: empty after clear');
   const info = core.default.cache.httpCacheInfo();
   ok(info.length === 1 && info[0].ageHours > 23, 'cache: info reports age');
 }
+console.log('gameConfig: INI parse + act hints + discovery');
+{
+  const { writeFileSync } = await import('node:fs');
+  const ini = '\uFEFF[LOGIN]\naccount_name=\n\n[GENERAL]\nlast_selected_KBM_input_mode=0\n\n[CACHED_DATA]\ncurrent_act_environment=6\n\n[DISPLAY]\nresolution_width=1920\nresolution_height=1080\n';
+  const p = process.env.TEMP + '/opencode/_poe2_smoke_ini.ini';
+  writeFileSync(p, ini);
+  const s = core.default.gameConfig.getGameConfigSummary(p);
+  ok(s.available === true, 'gameConfig: fixture parsed');
+  ok(s.actEnvironment === '6' && s.actHint === 'Act 3 (Cruel) / endgame', 'gameConfig: act env 6 hint');
+  ok(s.resolution === '1920x1080', 'gameConfig: resolution');
+  ok(s.accountNameNote !== null, 'gameConfig: empty account_name note (Steam)');
+}
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
