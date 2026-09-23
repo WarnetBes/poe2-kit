@@ -458,3 +458,185 @@ export function formatLadderRows(rows: LadderRow[], limit = 20): string {
   }
   return lines.join('\n');
 }
+
+// ─── Мета по скиллу (COVERAGE приоритет 9, по мотивам hivemind top_player_fetcher) ──
+// Официальный character API GGG требует POESESSID (под запретом), поэтому
+// «что играют топы по этому скиллу» строим поверх poe.ninja builds: rows уже
+// содержат расшифрованные skills/class/level/dps/ehp.
+
+/** Число из display-колонки poe.ninja: '143k' → 143000, '1.2m' → 1200000. */
+export function parseNinjaNumber(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v !== 'string') return null;
+  const m = v.trim().toLowerCase().match(/^([\d.,]+)\s*([kmb])?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]!.replace(/,/g, ''));
+  if (!Number.isFinite(n)) return null;
+  const mult = m[2] === 'k' ? 1e3 : m[2] === 'm' ? 1e6 : m[2] === 'b' ? 1e9 : 1;
+  return n * mult;
+}
+
+function rowSkills(r: LadderRow): string[] {
+  return Array.isArray(r.skills) ? (r.skills as unknown[]).filter((s): s is string => typeof s === 'string') : [];
+}
+
+/** Подгонка строк под скилл (case-insensitive, подстрока: 'ice strike' найдёт 'Ice Strike'). */
+export function filterRowsBySkill(rows: LadderRow[], skill: string): LadderRow[] {
+  const needle = skill.trim().toLowerCase();
+  if (!needle) return rows;
+  return rows.filter((r) => rowSkills(r).some((s) => s.toLowerCase().includes(needle)));
+}
+
+/** Самые частые скиллы выборки (подсказка, когда искомый скилл не найден). */
+export function popularSkills(rows: LadderRow[], limit = 15): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const r of rows) for (const s of rowSkills(r)) counts.set(s, (counts.get(s) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+function median(sorted: number[]): number | null {
+  if (!sorted.length) return null;
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+export interface SkillLadderMeta {
+  skill: string;
+  league: string;
+  /** Всего строк в выборке лэддера (до фильтра по скиллу). */
+  sampleSize: number;
+  /** Игроков с этим скиллом в выборке. */
+  players: number;
+  /** Доля скилла в выборке, %. */
+  sharePercent: number;
+  /** Разбивка по классам/асценданси (по убыванию). */
+  classes: Array<{ label: string; count: number; percent: number }>;
+  /** Сопутствующие скиллы (что берут вместе с этим), по убыванию. */
+  comboSkills: Array<{ name: string; count: number; percent: number }>;
+  avgLevel: number | null;
+  maxLevel: number;
+  medianDps: number | null;
+  topDps: number | null;
+  medianEhp: number | null;
+  topEhp: number | null;
+  /** Все отфильтрованные строки (для compareWithLadderRows). */
+  rows: LadderRow[];
+  /** Лучшие персонажи по скиллу (для примера). */
+  topRows: LadderRow[];
+}
+
+/**
+ * Мета-сводка по скиллу: классы, комбо-скиллы, уровни, DPS/EHP-разброс.
+ * Выборка — первая страница лэддера (до 100 строк) с заданной сортировкой.
+ */
+export async function skillLadderMeta(
+  skill: string,
+  opts: { league?: string; sort?: string } = {},
+): Promise<SkillLadderMeta | null> {
+  const leagueSlug = opts.league ?? 'forbiddenrites';
+  const res = await searchLadderBuilds(leagueSlug, { sort: opts.sort ?? 'level' });
+  if (!res) return null;
+  const sampleSize = res.rows.length;
+  const rows = filterRowsBySkill(res.rows, skill);
+  const needle = skill.trim().toLowerCase();
+
+  const classCounts = new Map<string, number>();
+  const combo = new Map<string, number>();
+  const levels: number[] = [];
+  const dps: number[] = [];
+  const ehp: number[] = [];
+  for (const r of rows) {
+    const label = String(r.classLabel ?? r.class ?? '—');
+    classCounts.set(label, (classCounts.get(label) ?? 0) + 1);
+    for (const s of rowSkills(r)) {
+      if (s.toLowerCase() === needle) continue;
+      combo.set(s, (combo.get(s) ?? 0) + 1);
+    }
+    if (typeof r.level === 'number') levels.push(r.level);
+    const d = parseNinjaNumber(r['dps.total'] ?? r.dps);
+    if (d !== null) dps.push(d);
+    const e = parseNinjaNumber(r['ehp__str'] ?? r.ehp);
+    if (e !== null) ehp.push(e);
+  }
+  dps.sort((a, b) => a - b);
+  ehp.sort((a, b) => a - b);
+
+  const classes = [...classCounts.entries()]
+    .map(([label, count]) => ({ label, count, percent: rows.length ? (count / rows.length) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count);
+  const comboSkills = [...combo.entries()]
+    .map(([name, count]) => ({ name, count, percent: rows.length ? (count / rows.length) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return {
+    skill,
+    league: leagueSlug,
+    sampleSize,
+    players: rows.length,
+    sharePercent: sampleSize ? (rows.length / sampleSize) * 100 : 0,
+    classes,
+    comboSkills,
+    avgLevel: levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : null,
+    maxLevel: levels.length ? Math.max(...levels) : 0,
+    medianDps: median(dps),
+    topDps: dps.length ? dps[dps.length - 1]! : null,
+    medianEhp: median(ehp),
+    topEhp: ehp.length ? ehp[ehp.length - 1]! : null,
+    rows,
+    topRows: rows.slice(0, 10),
+  };
+}
+
+export interface LadderComparison {
+  /** Число строк, с которыми сравнивали. */
+  poolSize: number;
+  level: { value: number; percentile: number } | null;
+  dps: { value: number; percentile: number } | null;
+  ehp: { value: number; percentile: number } | null;
+  /** Класс-диагноз: турист или в мета-классах. */
+  classMeta: boolean | null;
+  classLabel: string | null;
+}
+
+/**
+ * Сравнение билда игрока с лэддер-топами (перцентили по уровню/DPS/EHP).
+ * value — числа пользователя; percentile 90 = лучше 90% выборки.
+ */
+export function compareWithLadderRows(
+  rows: LadderRow[],
+  user: { level?: number; dps?: number; ehp?: number; classLabel?: string },
+): LadderComparison {
+  const poolSize = rows.length;
+  if (!poolSize) {
+    return { poolSize: 0, level: null, dps: null, ehp: null, classMeta: null, classLabel: user.classLabel ?? null };
+  }
+  const pct = (values: number[], own: number | undefined) => {
+    if (own === undefined) return null;
+    const below = values.filter((v) => v < own).length;
+    return { value: own, percentile: (below / values.length) * 100 };
+  };
+  const levels = rows.map((r) => r.level).filter((v): v is number => typeof v === 'number');
+  const dps = rows.map((r) => parseNinjaNumber(r['dps.total'] ?? r.dps)).filter((v): v is number => v !== null);
+  const ehp = rows.map((r) => parseNinjaNumber(r['ehp__str'] ?? r.ehp)).filter((v): v is number => v !== null);
+
+  let classMeta: boolean | null = null;
+  let classLabel: string | null = user.classLabel ?? null;
+  if (classLabel) {
+    const needle = classLabel.toLowerCase();
+    const match = rows.find((r) => String(r.classLabel ?? r.class ?? '').toLowerCase().includes(needle));
+    classMeta = match !== undefined;
+  }
+
+  return {
+    poolSize,
+    level: pct(levels, user.level),
+    dps: pct(dps, user.dps),
+    ehp: pct(ehp, user.ehp),
+    classMeta,
+    classLabel,
+  };
+}

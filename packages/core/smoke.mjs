@@ -364,5 +364,21 @@ const ls = core.default.stun.lightStunChance(200, 1000, 'physical', 'melee');
 ok(Math.abs(ls.finalChance - 45) < 0.001 && ls.willStun, `stun: light 200/1000 phys melee = ${ls.finalChance}%`);
 ok(core.default.stun.hitsToStun(200, 1000, 'physical', 'melee').hitsToHeavyStun === 3, 'stun: 3 hits to heavy stun');
 
+console.log('ladder skill-meta helpers');
+ok(core.default.ladder.parseNinjaNumber('143k') === 143000, 'ninjaNum: 143k');
+ok(core.default.ladder.parseNinjaNumber('1.2m') === 1200000, 'ninjaNum: 1.2m');
+ok(core.default.ladder.parseNinjaNumber('95') === 95 && core.default.ladder.parseNinjaNumber('x') === null, 'ninjaNum: plain/null');
+const rows = [
+  { name: 'A', level: 100, skills: ['Comet', 'Spark'], classLabel: 'Stormweaver', 'dps.total': '1.5m', 'ehp__str': '23k' },
+  { name: 'B', level: 95, skills: ['Ice Strike'], classLabel: 'Invoker', 'dps.total': '500k' },
+  { name: 'C', level: 90, skills: ['comet'], classLabel: 'Oracle', 'dps.total': '900k' },
+];
+ok(core.default.ladder.filterRowsBySkill(rows, 'comet').length === 2, 'filterBySkill: case-insensitive 2 rows');
+ok(core.default.ladder.popularSkills(rows).length >= 3, 'popularSkills: counts');
+const cmp = core.default.ladder.compareWithLadderRows(rows, { level: 97, dps: 800000, ehp: 20000, classLabel: 'Oracle' });
+ok(cmp.dps && Math.abs(cmp.dps.percentile - 33.3) < 0.1, 'compare: dps p33');
+ok(cmp.level && Math.abs(cmp.level.percentile - 66.7) < 0.1, 'compare: level p67');
+ok(cmp.classMeta === true, 'compare: classMeta true');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
