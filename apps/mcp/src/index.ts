@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
- * PoE2 Kit — MCP-сервер.
- * Предоставляет инструменты poe2_* поверх единого ядра @poe2-kit/core
- * для ИИ-ассистентов (OpenCode, Claude Desktop и др.).
+ * PoE2 Kit вЂ” MCP-СЃРµСЂРІРµСЂ.
+ * РџСЂРµРґРѕСЃС‚Р°РІР»СЏРµС‚ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ poe2_* РїРѕРІРµСЂС… РµРґРёРЅРѕРіРѕ СЏРґСЂР° @poe2-kit/core
+ * РґР»СЏ РР-Р°СЃСЃРёСЃС‚РµРЅС‚РѕРІ (OpenCode, Claude Desktop Рё РґСЂ.).
  *
- * Все данные — только бесплатные публичные API и локальная база RePoE.
+ * Р’СЃРµ РґР°РЅРЅС‹Рµ вЂ” С‚РѕР»СЊРєРѕ Р±РµСЃРїР»Р°С‚РЅС‹Рµ РїСѓР±Р»РёС‡РЅС‹Рµ API Рё Р»РѕРєР°Р»СЊРЅР°СЏ Р±Р°Р·Р° RePoE.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -23,7 +23,7 @@ import { registerDatasetTools } from './tools/dataset.js';
 import { registerPoe2dbTools } from './tools/poe2db.js';
 import { registerZoneNotesTools } from './tools/zoneNotes.js';
 import { registerLadderTools } from './tools/ladder.js';
-
+import { registerCalculatorTools } from './tools/calculators.js';
 export function buildServer(): number {
   const server = new McpServer({
     name: 'poe2-kit-mcp',
@@ -31,6 +31,18 @@ export function buildServer(): number {
   });
 
   let count = 0;
+  // Собираем имена тулов при регистрации (для smoke-листинга).
+  const registered: string[] = [];
+  const origRegister = server.registerTool.bind(server) as unknown as
+    (name: string, config: never, cb?: unknown) => unknown;
+  (server as unknown as { registerTool: (name: string, ...rest: [unknown, unknown?]) => unknown }).registerTool = (
+    name: string,
+    ...rest: [unknown, unknown?]
+  ) => {
+    registered.push(name);
+    return origRegister(name, rest[0] as never, rest[1] as never);
+  };
+  (globalThis as any).__poe2Registered = registered;
   count += registerCurrencyTools(server);
   count += registerItemTools(server);
   count += registerLevelingTools(server);
@@ -44,48 +56,29 @@ export function buildServer(): number {
   count += registerPoe2dbTools(server);
   count += registerZoneNotesTools(server);
   count += registerLadderTools(server);
+  count += registerCalculatorTools(server);
 
-  // Запомним сервер для подключения
+  // Р—Р°РїРѕРјРЅРёРј СЃРµСЂРІРµСЂ РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ
   (globalThis as any).__poe2Server = server;
   return count;
 }
 
-/** Точка входа: подключение по stdio. */
+/** РўРѕС‡РєР° РІС…РѕРґР°: РїРѕРґРєР»СЋС‡РµРЅРёРµ РїРѕ stdio. */
 async function main(): Promise<void> {
-  // Режим самопроверки: зарегистрировать инструменты и выйти.
+  // Р РµР¶РёРј СЃР°РјРѕРїСЂРѕРІРµСЂРєРё: Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Рё РІС‹Р№С‚Рё.
   if (process.argv.includes('--smoke')) {
     const count = buildServer();
-    console.error(`[smoke] Зарегистрировано инструментов: ${count}`);
-    console.error('  - poe2_currency_prices');
-    console.error('  - poe2_currency_check');
-    console.error('  - poe2_parse_item');
-    console.error('  - poe2_price_check');
-    console.error('  - poe2_leveling_plan');
-    console.error('  - poe2_build_decode');
-    console.error('  - poe2_build_summary');
-    console.error('  - poe2_build_price');
-    console.error('  - poe2_items_db');
-    console.error('  - poe2_mod_tier');
-    console.error('  - poe2_ai_ask');
-    console.error('  - poe2_log_state');
-    console.error('  - poe2_wiki_lookup');
-    console.error('  - poe2_build_estimate');
-    console.error('  - poe2_trade_search');
-    console.error('  - poe2_dataset_info');
-    console.error('  - poe2_gems_lookup');
-    console.error('  - poe2_tree_search');
-    console.error('  - poe2_poe2db_lookup');
-    console.error('  - poe2_leveling_context');
-    console.error('  - poe2_ladder_top');
-    console.error('  - poe2_ladder_leagues');
-    process.exit(0);
+    console.error(`[smoke] Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРѕ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ: ${count}`);
+    const listed: string[] = (globalThis as any).__poe2Registered ?? [];
+    for (const name of listed) console.error(`  - ${name}`);
+    process.exit(listed.length === count ? 0 : 1);
   }
 
   const count = buildServer();
   const server = (globalThis as any).__poe2Server as McpServer;
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // stdout занят JSON-RPC, логи — в stderr
+  // stdout Р·Р°РЅСЏС‚ JSON-RPC, Р»РѕРіРё вЂ” РІ stderr
   console.error(`poe2-kit-mcp started (stdio transport), ${count} tools`);
 }
 

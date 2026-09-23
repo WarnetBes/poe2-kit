@@ -16,6 +16,22 @@ export * from './dataset.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './ladder.js';
+// ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
+// чтобы не конфликтовать с evaluate-слоем estimate.ts (там свои calculateEhp и
+// calculateAllEhp от гира). Доступен как core.ehp.
+import * as ehpmod from './ehp.js';
+import * as spiritmod from './spirit.js';
+import * as stunmod from './stun.js';
+
+// Типы калькуляторов (значения — через namespace core.ehp/core.spirit/core.stun,
+// чтобы не конфликтовать с estimate-слоем).
+export type {
+  DefensiveStats, DamageType, ThreatProfile as CalcThreatProfile,
+} from './ehp.js';
+export type {
+  SpiritSourceType, SpiritReservationType, SpiritSupportGem, SpiritReservation, SpiritOptimization,
+} from './spirit.js';
+export type { StunDamageType, StunAttackType, StunModifiers } from './stun.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -49,6 +65,9 @@ export const core = {
   poe2db: p2dbmod,
   zoneNotes: znmod,
   ladder: ladmod,
+  ehp: ehpmod,
+  spirit: spiritmod,
+  stun: stunmod,
 };
 
 export default core;

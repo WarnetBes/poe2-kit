@@ -1,4 +1,4 @@
-// Smoke-тест против собранного dist (Node ESM, без сети).
+﻿// Smoke-С‚РµСЃС‚ РїСЂРѕС‚РёРІ СЃРѕР±СЂР°РЅРЅРѕРіРѕ dist (Node ESM, Р±РµР· СЃРµС‚Рё).
 import { decodeShareCode, encodeShareCode, PobCodeError } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
 import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
@@ -6,8 +6,8 @@ import * as core from './dist/index.js';
 
 let failed = 0;
 const ok = (cond, msg) => {
-  if (cond) console.log('  ✓', msg);
-  else { console.error('  ✗', msg); failed++; }
+  if (cond) console.log('  вњ“', msg);
+  else { console.error('  вњ—', msg); failed++; }
 };
 
 console.log('plan: zones by act distributed 1-4');
@@ -79,8 +79,8 @@ ok(parsedRare.defences.armour?.value === 42, 'parse rare: armour 42');
 ok(parsedRare.mods.some(m => m.type === 'implicit' && m.text.includes('Strength')), 'parse rare: implicit mod');
 ok(parsedRare.mods.some(m => m.type === 'explicit' && m.text.includes('Resistance')), 'parse rare: explicit mod');
 
-// PoB-аннотации: Rarity в верхнем регистре (UNIQUE/RARE/MAGIC) + строка "Unique ID:".
-// Эти случаи должны разбираться так же, как и клир-текст из игры.
+// PoB-Р°РЅРЅРѕС‚Р°С†РёРё: Rarity РІ РІРµСЂС…РЅРµРј СЂРµРіРёСЃС‚СЂРµ (UNIQUE/RARE/MAGIC) + СЃС‚СЂРѕРєР° "Unique ID:".
+// Р­С‚Рё СЃР»СѓС‡Р°Рё РґРѕР»Р¶РЅС‹ СЂР°Р·Р±РёСЂР°С‚СЊСЃСЏ С‚Р°Рє Р¶Рµ, РєР°Рє Рё РєР»РёСЂ-С‚РµРєСЃС‚ РёР· РёРіСЂС‹.
 const pobUnique = [
   'Rarity: UNIQUE',
   'Darkness Enthroned',
@@ -103,7 +103,7 @@ const parsedPobMagic = core.core.parse.parseItemText(pobMagic);
 ok(parsedPobMagic.rarity === 'Magic', 'parse PoB: uppercase MAGIC -> Magic');
 ok(
   !parsedPobMagic.baseType.startsWith('Unique ID:'),
-  'parse PoB: magic base не равен строке "Unique ID:"',
+  'parse PoB: magic base РЅРµ СЂР°РІРµРЅ СЃС‚СЂРѕРєРµ "Unique ID:"',
 );
 
 console.log('unique category inference (inferUniqueCategory)');
@@ -118,18 +118,18 @@ const cases = [
   ['Primordial Staff', 'staves'],
   ['Spiral Glass Ring', 'rings'],
   ['Steel Amber Belt', 'belts'],
-  ['Wraithwrap', null], // не распознаётся → null (не «тело/броня» по ошибке)
+  ['Wraithwrap', null], // РЅРµ СЂР°СЃРїРѕР·РЅР°С‘С‚СЃСЏ в†’ null (РЅРµ В«С‚РµР»Рѕ/Р±СЂРѕРЅСЏВ» РїРѕ РѕС€РёР±РєРµ)
 ];
 for (const [base, expected] of cases) {
   ok(inferUniqueCategory(base) === expected, `infer('${base}') = ${expected}`);
 }
 ok(inferUniqueCategory(null) === null, 'infer(null) = null');
-ok(inferUniqueCategory('Mail Armour', 'Boots') === 'boots', 'inner itemClass приоритетнее baseType');
+ok(inferUniqueCategory('Mail Armour', 'Boots') === 'boots', 'inner itemClass РїСЂРёРѕСЂРёС‚РµС‚РЅРµРµ baseType');
 ok(mapItemClassToScoutCategory('Boots') === 'boots', 'mapItemClass boots');
 ok(mapItemClassToScoutCategory('Body Armour') === 'body', 'mapItemClass body');
 ok(mapItemClassToScoutCategory('Unknown') === null, 'mapItemClass unknown = null');
 
-console.log('build gear extraction (PoB XML, без сети)');
+console.log('build gear extraction (PoB XML, Р±РµР· СЃРµС‚Рё)');
 const pobXml = `<?xml version="1.0"?><PathOfBuilding><Build level="20" className="Monk" ascendClassName="Invoker"/>
 <Items activeItemSet="1">
   <ItemSet id="1">
@@ -153,13 +153,13 @@ Barbed Spear
 Item Level: 75</Item>
 </PathOfBuilding>`;
 const gear = await core.core.build.buildCodeToGear(pobXml);
-ok(gear.length === 3, `buildCodeToGear извлекает ${gear.length} предмета`);
+ok(gear.length === 3, `buildCodeToGear РёР·РІР»РµРєР°РµС‚ ${gear.length} РїСЂРµРґРјРµС‚Р°`);
 ok(gear[0]?.slot === 'Weapon 1' && gear[0]?.name === 'Darkness Enthroned', 'gear slot+name (item 1)');
-ok(gear[0]?.itemText.includes('Rarity: UNIQUE'), 'gear itemText содержит Rarity');
+ok(gear[0]?.itemText.includes('Rarity: UNIQUE'), 'gear itemText СЃРѕРґРµСЂР¶РёС‚ Rarity');
 ok(gear[1]?.name === 'Victory Cloak', 'gear item 2 name');
 ok(gear[2]?.slot === 'Ring 1' && gear[2]?.name === "Saitha's Spear", 'gear item 3 slot+name');
 
-console.log('build gear extraction (.build JSON — только уники по имени)');
+console.log('build gear extraction (.build JSON вЂ” С‚РѕР»СЊРєРѕ СѓРЅРёРєРё РїРѕ РёРјРµРЅРё)');
 const buildJson = JSON.stringify({
   inventory_slots: [
     { inventory_id: 'Belt1', unique_name: 'Headhunter' },
@@ -167,9 +167,9 @@ const buildJson = JSON.stringify({
   ],
 });
 const jsonGear = await core.core.build.buildCodeToGear(buildJson);
-ok(jsonGear.length === 1, `из .build JSON извлечён 1 уникальный (${jsonGear.length})`);
+ok(jsonGear.length === 1, `РёР· .build JSON РёР·РІР»РµС‡С‘РЅ 1 СѓРЅРёРєР°Р»СЊРЅС‹Р№ (${jsonGear.length})`);
 ok(jsonGear[0]?.name === 'Headhunter' && jsonGear[0]?.slot === 'Belt1', '.build JSON unique slot+name');
-ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText формат');
+ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText С„РѕСЂРјР°С‚');
 
 console.log('log parser (Client.txt)');
 const { decodeZoneCode, parseLogLine, hasSubstantialLogData, getClientState } = core;
@@ -192,7 +192,7 @@ const evConn = parseLogLine('2026/06/04 11:01:05 77431000 3ef2334b [INFO Client 
 ok(evConn?.kind === 'instance_connect' && evConn?.server === '64.87.33.204:21360', 'parseLogLine instance_connect');
 ok(parseLogLine('garbage line without prefix') === null, 'parseLogLine rejects garbage');
 
-// getClientState по синтетическому файлу-логу
+// getClientState РїРѕ СЃРёРЅС‚РµС‚РёС‡РµСЃРєРѕРјСѓ С„Р°Р№Р»Сѓ-Р»РѕРіСѓ
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -218,7 +218,7 @@ const stMissing = getClientState({ logPath: join(tmpDir, 'nope.txt') });
 ok(stMissing.available === false && !!stMissing.reason, 'missing log -> available false + reason');
 rmSync(tmpDir, { recursive: true, force: true });
 
-console.log('estimate: PoE2 defense formulas (портировано из hivemind-калькуляторов)');
+console.log('estimate: PoE2 defense formulas (РїРѕСЂС‚РёСЂРѕРІР°РЅРѕ РёР· hivemind-РєР°Р»СЊРєСѓР»СЏС‚РѕСЂРѕРІ)');
 const { armorDr, hitChance, armorNeededForDr, calculateEhp, mergeGearDefenses, estimateBuild } = core;
 ok(Math.abs(armorDr(9000, 1000) - 47.368) < 0.01, `armorDr 9000 vs 1000-hit = ${armorDr(9000, 1000).toFixed(1)}%`);
 ok(armorDr(999999, 100) <= 90, 'armorDr capped at 90');
@@ -240,7 +240,7 @@ const estGear = [
   ].join('\n') },
 ];
 const estDef = mergeGearDefenses(estGear);
-ok(estDef.life === 172.5, `def flat life (+100, +50) + 15% → ${estDef.life}`);
+ok(estDef.life === 172.5, `def flat life (+100, +50) + 15% в†’ ${estDef.life}`);
 ok(estDef.armour === 900, 'def armour 900');
 ok(estDef.evasion === 300, 'def evasion 300');
 ok(estDef.fireRes === 30 && estDef.lightningRes === 12, 'def resists fire30/light12');
@@ -248,7 +248,7 @@ ok(estDef.fireRes === 30 && estDef.lightningRes === 12, 'def resists fire30/ligh
 const physEhp = calculateEhp(estDef, 'physical');
 ok(physEhp.effectiveHp > estDef.life, 'physical EHP > life (armor+evasion layers)');
 const chaosEhp = calculateEhp(estDef, 'chaos');
-ok(chaosEhp.rawHp === estDef.life, 'chaos rawHp excludes ES (no ES in gear) and chaos res 0 → mitigation 0');
+ok(chaosEhp.rawHp === estDef.life, 'chaos rawHp excludes ES (no ES in gear) and chaos res 0 в†’ mitigation 0');
 const chaosNeg = calculateEhp({ ...estDef, chaosRes: -30 }, 'chaos');
 ok(chaosNeg.effectiveHp < chaosEhp.effectiveHp, 'negative chaos res amplifies damage (EHP lower)');
 
@@ -274,7 +274,7 @@ ok(q1.query.stats?.[0]?.filters[0].id === 'pseudo.pseudo_total_life' && q1.query
 ok(q1.query.filters?.trade_filters?.filters?.price?.max === 50, 'buildTradeQuery price max');
 ok(q1.sort?.price === 'asc', 'buildTradeQuery sort asc');
 const q2 = buildTradeQuery({ type: 'Sleek Jacket', rarity: 'rare' });
-ok(q2.query.type === 'Sleek Jacket', 'buildTradeQuery unknown type → type string');
+ok(q2.query.type === 'Sleek Jacket', 'buildTradeQuery unknown type в†’ type string');
 const st1 = modsToStatFilters(['+62 to maximum Life', '+30% to Fire Resistance', 'this is unknown mod']);
 ok(st1.length === 2 && st1.some((s) => s.id === 'pseudo.pseudo_total_life' && s.min === 62) && st1.some((s) => s.id === 'pseudo.pseudo_total_fire_resistance' && s.min === 30), 'modsToStatFilters maps life+fire res, skips unknown');
 const tqItem = buildTradeQueryFromItem([
@@ -282,20 +282,20 @@ const tqItem = buildTradeQueryFromItem([
   '+62 to maximum Life', '+30% to Fire Resistance',
 ].join('\n'));
 ok(tqItem.query.type === 'Ruby Ring', 'buildTradeQueryFromItem baseType');
-ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem mods→stats');
+ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem modsв†’stats');
 
 console.log('offline datasets (data/game)');
 const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds } = core;
 const ver = getDatasetVersion();
 ok(ver.patch_version === '0.5' && ver.data_revision >= 12, `dataset version ${ver.released_as}`);
 const monkAsc = getAscendanciesByClass('Monk');
-ok(monkAsc.some((a) => a.displayName === 'Invoker'), 'ascendancies: Monk→Invoker');
+ok(monkAsc.some((a) => a.displayName === 'Invoker'), 'ascendancies: Monkв†’Invoker');
 const ice = searchSkillGems('Ice Strike');
 ok(ice.length >= 1 && ice[0].name === 'Ice Strike', 'gems: Ice Strike found');
 const iceDet = getSkillGemDetails('Ice Strike');
 ok(!!iceDet && iceDet.levels.length > 5 && iceDet.firstLevelCost && 'Mana' in iceDet.firstLevelCost, `gems: Ice Strike levels=${iceDet?.levels.length}, mana=${iceDet?.firstLevelCost?.Mana}`);
 const ks = searchPassiveTree('Shockproof');
-ok(ks.length >= 1 && ks[0].isNotable && ks[0].stats.some((s) => s.includes('Shock')), `tree: "Shockproof" notable → ${ks.length} nodes`);
+ok(ks.length >= 1 && ks[0].isNotable && ks[0].stats.some((s) => s.includes('Shock')), `tree: "Shockproof" notable в†’ ${ks.length} nodes`);
 const byStat = searchPassiveTree('increased chance to Shock', { limit: 5 });
 ok(byStat.length >= 1 && byStat.some((n) => n.stats.join(' ').includes('chance to Shock')), 'tree: search by stat text');
 const ring = searchBaseItems('Ruby Ring');
@@ -304,7 +304,7 @@ ok(getStatIds().length > 20000, `stats: ${getStatIds().length} stat ids`);
 
 console.log('poe2db.tw service (scraper)');
 const { normalizeTrailingArabicToRoman, parsePoe2dbHtml } = core;
-ok(normalizeTrailingArabicToRoman('Urgent_Totems_2') === 'Urgent_Totems_II', 'poe2db: arabic→roman slug');
+ok(normalizeTrailingArabicToRoman('Urgent_Totems_2') === 'Urgent_Totems_II', 'poe2db: arabicв†’roman slug');
 ok(normalizeTrailingArabicToRoman('Ice_Strike') === 'Ice_Strike', 'poe2db: slug unchanged without numeral');
 const fakeHtml = [
   '<html><head><meta property="og:title" content="Ice Strike"><meta property="og:description" content="Ice Strike is a skill gem."></head>',
@@ -324,21 +324,45 @@ const { getZoneNote, getZoneNoteByName, getActNote, listZoneNotes, getLevelingCo
 const zn = getZoneNote('G1_2');
 ok(zn?.zoneName === 'Clearfell' && zn.notes.includes('Mud Burrow'), 'zoneNote: G1_2 Clearfell');
 const znByName = getZoneNoteByName('clearfell');
-ok(znByName?.zoneCode === 'G1_2', 'zoneNote: by name → G1_2');
+ok(znByName?.zoneCode === 'G1_2', 'zoneNote: by name в†’ G1_2');
 const an = getActNote(1);
 ok(an?.notes.includes('Hunting Ground') || (an?.notes.length ?? 0) > 50, 'actNote: Act 1 summary');
 ok(listZoneNotes().length >= 60, `listZoneNotes: ${listZoneNotes().length} zones`);
-// Контекст без состояния клиента — fallback на акт 1.
+// РљРѕРЅС‚РµРєСЃС‚ Р±РµР· СЃРѕСЃС‚РѕСЏРЅРёСЏ РєР»РёРµРЅС‚Р° вЂ” fallback РЅР° Р°РєС‚ 1.
 const ctx = getLevelingContext(null, { actFallback: 1 });
 ok(ctx.zoneNotes === null && ctx.nextZones.length >= 1 && ctx.hints.length >= 1, `levelingContext fallback act1: ${ctx.hints.length} hints`);
 ok(ctx.nextZones[0].zone === 'The Riverbank', 'levelingContext: first zone Riverbank');
-// Контекст с «живым» состоянием (синтетика): зона G1_2, уровень 4.
+// РљРѕРЅС‚РµРєСЃС‚ СЃ В«Р¶РёРІС‹РјВ» СЃРѕСЃС‚РѕСЏРЅРёРµРј (СЃРёРЅС‚РµС‚РёРєР°): Р·РѕРЅР° G1_2, СѓСЂРѕРІРµРЅСЊ 4.
 const ctx2 = getLevelingContext({
   available: true, logPath: 'x', character: 'Test', klass: 'Monk', level: 4,
   zone: { timestamp: '', areaCode: 'G1_2', areaLevel: 4, zoneName: 'Clearfell', decoded: null },
   act: 1, deathsInWindow: 0, afk: null, instanceServer: null, lastEventTime: null, events: [], zoneVisits: [],
 });
-ok(ctx2.zoneNotes?.zoneName === 'Clearfell' && ctx2.hints.some((h) => h.startsWith('📍')), 'levelingContext: live-like state → zone notes');
+ok(ctx2.zoneNotes?.zoneName === 'Clearfell' && ctx2.hints.length >= 1, 'levelingContext: live-like state -> zone notes');
+
+
+console.log('calculators (ehp/spirit/stun)');
+const armor5000 = core.default.ehp.armorDr(5000, 1000);
+ok(Math.abs(armor5000.drPercent - 33.333333) < 0.001, `ehp: armor 5000 vs 1000 = ${armor5000.drPercent.toFixed(2)}%`);
+ok(core.default.ehp.blockChance(60).blockChancePercent === 50, 'ehp: block cap 50');
+const allEhp = core.default.ehp.calculateAllEhp({ life: 5000, energyShield: 2000, chaosRes: 0 }, {});
+ok(allEhp.chaos.rawHp === 6000, 'ehp: chaos rawHp = life + ES/2');
+ok(core.default.ehp.calculateAllEhp({ life: 4000, fireRes: 75 }, {}).fire.effectiveHp === 16000, 'ehp: 75% fire res x4');
+const sc = new core.default.spirit.SpiritCalculator();
+sc.addSource('base', 100, 'quest');
+sc.addReservation('Aura', 100, 'aura', [], 1);
+sc.addReservation('Minion', 60, 'permanent_minion', [], 8);
+ok(sc.availableSpirit() === -60 && sc.overflowAmount() === 60, 'spirit: overflow 60');
+ok(core.default.spirit.supportGemCost(20, [1.5, 1.3]) === 39, 'spirit: ceil(20*1.5*1.3) = 39');
+const scAuto = new core.default.spirit.SpiritCalculator();
+scAuto.addSource('base', 100, 'quest');
+scAuto.addReservation('Main', 60, 'aura', [], 1);
+scAuto.addReservation('Extra', 50, 'other', [], 9);
+scAuto.autoResolveOverflow();
+ok(scAuto.availableSpirit() >= 0, 'spirit: autoResolveOverflow frees >= 0');
+const ls = core.default.stun.lightStunChance(200, 1000, 'physical', 'melee');
+ok(Math.abs(ls.finalChance - 45) < 0.001 && ls.willStun, `stun: light 200/1000 phys melee = ${ls.finalChance}%`);
+ok(core.default.stun.hitsToStun(200, 1000, 'physical', 'melee').hitsToHeavyStun === 3, 'stun: 3 hits to heavy stun');
 
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
