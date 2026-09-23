@@ -218,9 +218,20 @@ function installCandidates(): string[] {
     'Program Files\\Grinding Gear Games\\Path of Exile 2',
     'SteamLibrary\\steamapps\\common\\Path of Exile 2',
   ];
-  const drives = process.platform === 'win32' ? ['C:', 'D:', 'E:'] : [];
   const out: string[] = [];
-  for (const d of drives) for (const r of roots) out.push(p(d, r));
+  if (process.platform === 'win32') {
+    // Все смонтированные диски A..Z (F:, G:, ... — Steam-библиотеки часто на.addData)
+    const drives: string[] = [];
+    for (let code = 67; code <= 90; code++) {
+      const d = `${String.fromCharCode(code)}:`;
+      try {
+        if (existsSync(`${d}\\`)) drives.push(d);
+      } catch {
+        /* диск недоступен — пропускаем */
+      }
+    }
+    for (const d of drives) for (const r of roots) out.push(p(d, r));
+  }
   if (process.platform === 'darwin') {
     out.push(path.join(os.homedir(), 'Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs'));
   }

@@ -901,11 +901,26 @@ async function runPriceCheck(): Promise<unknown> {
  * текущей зоны/акта + следующие зоны (core.zoneNotes.getLevelingContext).
  * Возвращает компактный объект для оверлей-виджета.
  */
+/**
+ * Явный путь к логу игры, если пользователь задал его в userData/game-log-path.txt
+ * (например, нестандартная установка). Иначе — автодетект по всем дискам.
+ */
+function gameLogOverride(): string | null {
+  try {
+    const v = fs.readFileSync(path.join(app.getPath('userData'), 'game-log-path.txt'), 'utf8').trim();
+    return v || null;
+  } catch {
+    return null;
+  }
+}
+
 async function runLevelingContext(): Promise<unknown> {
   if (busy) return null;
   busy = true;
   try {
-    const state = core.log.getClientState();
+    const override = gameLogOverride();
+    const state = core.log.getClientState(override ? { logPath: override } : {});
+    console.log(`[overlay] game log: ${state.logPath ?? 'не найден'}`);
     const reason = state.available ? null : state.reason ?? 'лог недоступен';
     const ctx = core.zoneNotes.getLevelingContext(state.available ? state : null);
     const payload = {
@@ -1023,6 +1038,12 @@ app.whenReady().then(async () => {
     }
   }
   if (activeLeague) core.trade.setLeague(activeLeague);
+  // Диагностика: где нашли лог игры (Client.txt) до первого нажатия Ctrl+F4.
+  {
+    const o = gameLogOverride();
+    const r = core.log.resolveClientLogPath(o ? { overridePath: o } : {});
+    console.log(`[overlay] game log autodetect: ${r.logPath ?? 'НЕ НАЙДЕН (см. game-log-path.txt)'}`);
+  }
   // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+F2.
   loadBuildState();
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
