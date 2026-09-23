@@ -416,7 +416,10 @@ export const rendererHtml = `<!doctype html>
 
     // Ошибка (если только парсинг).
     var err = $('err');
-    if (res.parseError) {
+    if (res.buildCodeHint) {
+      err.classList.remove('hide');
+      err.textContent = res.buildCodeHint;
+    } else if (res.parseError) {
       err.classList.remove('hide');
       err.textContent = 'Оценка: ' + res.parseError;
     } else if (!res.estimate) {

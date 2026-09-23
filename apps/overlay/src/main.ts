@@ -615,12 +615,13 @@ async function syncCharacterGear(force = false): Promise<void> {
 /**
  * Импортировать билд из буфера обмена (PoB share-код / XML / ссылка / .build JSON),
  * оценить каждый слот в фоне и показать панель билда.
+ *
+ * Повторный Ctrl+F3 не блокируется: новый импорт отменяет идущий прайсинг
+ * (pricingToken) — старый цикл тихо останавливается на следующем слоте.
  */
+let pricingToken = 0;
+
 async function runBuildImport(): Promise<void> {
-  if (buildPricing) {
-    console.warn('[overlay] build import skipped: ещё идёт прайсинг предыдущего билда');
-    return;
-  }
   const input = clipboard.readText().trim();
   if (!input) {
     sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+F3.' });
@@ -648,6 +649,8 @@ async function runBuildImport(): Promise<void> {
     return;
   }
 
+  const token = ++pricingToken;
+  if (buildPricing) console.warn('[overlay] новый импорт отменяет прайсинг предыдущего билда');
   buildPricing = true;
   try {
     console.log(`[overlay] build import: ${input.length} chars from clipboard`);
@@ -703,7 +706,16 @@ async function runBuildImport(): Promise<void> {
 
     // Прайсинг слотов: строго последовательно (trade2 — 8 req/min под капотом ядра).
     for (const slot of buildState.slots) {
+      if (pricingToken !== token) {
+        console.log('[overlay] build pricing aborted: начат новый импорт');
+        return;
+      }
       if (slot.median != null) continue;
+      // Charms/Flasks не торгуются на trade — не жжём на них 45-секундные таймауты.
+      if (/^(charm|flask)/i.test(slot.slot)) {
+        slot.status = 'todo' as const;
+        continue;
+      }
       try {
         const res = await withTimeout(core.trade.priceCheck(slot.itemText), HOTKEY_TIMEOUT_MS, 'priceCheck');
         slot.median = res.estimate?.median ?? null;
@@ -728,8 +740,10 @@ async function runBuildImport(): Promise<void> {
       error: `Импорт не удался: ${msg}. Нужен PoB share-код, XML, ссылка или .build JSON.`,
     });
   } finally {
-    buildPricing = false;
-    sendBuildUpdate({ status: 'ready' });
+    if (pricingToken === token) {
+      buildPricing = false;
+      sendBuildUpdate({ status: 'ready' });
+    }
   }
 }
 
@@ -1019,6 +1033,17 @@ async function runPriceCheck(): Promise<unknown> {
         parseOnly: true,
         parseError: err instanceof Error ? err.message : String(err),
       };
+    }
+
+    // Ctrl+F1 по ошибке нажали с PoB-кодом билда в буфере? Подскажем про Ctrl+F3.
+    const likelyBuildCode =
+      itemText.trim().length > 200 &&
+      !/^\s*Rarity:/im.test(itemText) &&
+      /^[A-Za-z0-9+/=\s_-]+$/m.test(itemText.trim());
+    if (likelyBuildCode) {
+      (result as { buildCodeHint?: string }).buildCodeHint =
+        'В буфере похоже PoB-код билда, а не предмет. Для импорта билда нажмите Ctrl+F3; для прайс-чека скопируйте предмет (Ctrl+C в игре по наведению).';
+      console.warn('[overlay] pricecheck: буфер похож на PoB-код билда (подсказка)');
     }
 
     // Билд-ассистент: сопоставить предмет со слотом билда и отметить собранным.
