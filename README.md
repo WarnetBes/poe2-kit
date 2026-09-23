@@ -79,7 +79,7 @@ npm run test  -w @poe2-kit/mcp           # build + --smoke
 npm run start -w @poe2-kit/mcp -- --smoke
 ```
 
-Инструменты `poe2_*`: `get_item_price`, `price_check`, `currency_rates`, `search_trade`, `leveling_guide`, `decode_build`, `analyze_build`, `ai_advice`, `get_league`, `set_league`. См. `apps/mcp/ASSISTANT_GUIDE.md`.
+Инструменты `poe2_*` (11 шт): `poe2_currency_prices`, `poe2_currency_check`, `poe2_leagues`, `poe2_parse_item`, `poe2_price_check`, `poe2_leveling_plan`, `poe2_build_decode`, `poe2_build_summary`, `poe2_items_db`, `poe2_mod_tier`, `poe2_ai_ask`. См. `apps/mcp/ASSISTANT_GUIDE.md`.
 
 ---
 
@@ -113,7 +113,7 @@ const build = core.build.decodeShareCode(code);
 
 ## Лиги
 
-По умолчанию активная лига — **Runes of Aldur**. Управляется через `core.trade.setLeague(name)` (MCP: `poe2_set_league`).
+По умолчанию берётся **актуальная текущая лига** из poe2scout (помечена ✦ в `poe2_leagues`, напр. «Forbidden Rites»). Управляется через `core.trade.setLeague(name)` (MCP: аргумент `league` у торговых/валютных инструментов). Если лига не указана — MCP сам подставляет текущую.
 
 ---
 

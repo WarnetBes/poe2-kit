@@ -5,6 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
+import { currentDefaultLeague } from '../leagues.js';
 
 function fmtDef(def: { armour?: unknown; evasion?: unknown; energyShield?: unknown; blockChance?: unknown }): string {
   const parts: string[] = [];
@@ -94,13 +95,13 @@ Adds 3 to 8 Cold Damage
 `,
       inputSchema: {
         item_text: z.string().min(5).describe('Клир-текст предмета из игры'),
-        league: z.string().optional().describe('Название лиги PoE2 (опционально)'),
+        league: z.string().optional().describe('Название лиги PoE2 (если не указана — актуальная текущая лига)'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     },
     async ({ item_text, league }) => {
       try {
-        const leagueName = league ?? 'Runes of Aldur';
+        const leagueName = league ?? (await currentDefaultLeague());
         core.trade.setLeague(leagueName);
         const res = await core.trade.priceCheck(item_text, { league: leagueName });
         const lines = [

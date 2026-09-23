@@ -4,14 +4,13 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { core, KNOWN_LEAGUES } from '@poe2-kit/core';
-
-const defaultLeague = KNOWN_LEAGUES.find((l) => l.isCurrent)?.name ?? KNOWN_LEAGUES[0]?.name ?? 'Runes of Aldur';
+import { core } from '@poe2-kit/core';
+import { currentDefaultLeague } from '../leagues.js';
 
 const LeagueSchema = z
   .string()
-  .default(defaultLeague)
-  .describe(`Название лиги PoE2. По умолчанию: "${defaultLeague}". Доступно: ${KNOWN_LEAGUES.map((l) => l.name).join(', ')}`);
+  .optional()
+  .describe('Название лиги PoE2. Если не указана — берётся актуальная текущая лига (из poe2scout). Список: poe2_leagues.');
 
 export function registerCurrencyTools(server: McpServer): number {
   server.registerTool(
@@ -21,7 +20,7 @@ export function registerCurrencyTools(server: McpServer): number {
       description: `Курсы обмена валют Path of Exile 2 (в chaos-эквиваленте) для заданной лиги. Лиги подтягиваются актуальные (poe2scout).
  
 Аргументы:
-  - league (string, опц.): название лиги. По умолчанию: "${defaultLeague}". Актуальные лиги можно получить через poe2_leagues.
+  - league (string, опц.): название лиги. Если не указана — актуальная текущая лига (из poe2scout). Список: poe2_leagues.
 
 Возвращает список валют с ценой в chaos и источником.
 
@@ -34,10 +33,11 @@ export function registerCurrencyTools(server: McpServer): number {
     },
     async ({ league }) => {
       try {
-        core.trade.setLeague(league);
-        const rates = await core.trade.fetchBestCurrencyRates(league);
+        const L = league ?? (await currentDefaultLeague());
+        core.trade.setLeague(L);
+        const rates = await core.trade.fetchBestCurrencyRates(L);
         if (!rates.length) {
-          return { content: [{ type: 'text', text: `Нет данных о валютах для лиги "${league}".` }] };
+          return { content: [{ type: 'text', text: `Нет данных о валютах для лиги "${L}".` }] };
         }
         const rows = rates
           .filter((r) => r.chaosValue != null)
@@ -47,7 +47,7 @@ export function registerCurrencyTools(server: McpServer): number {
           content: [
             {
               type: 'text',
-              text: `## Валюты — ${league}\n\n${rows.join('\n')}\n\nИсточник: poe2scout + poe.ninja.`,
+              text: `## Валюты — ${L}\n\n${rows.join('\n')}\n\nИсточник: poe2scout + poe.ninja.`,
             },
           ],
         };
@@ -80,8 +80,9 @@ export function registerCurrencyTools(server: McpServer): number {
     },
     async ({ name, league }) => {
       try {
-        core.trade.setLeague(league);
-        const rates = await core.trade.fetchBestCurrencyRates(league);
+        const L = league ?? (await currentDefaultLeague());
+        core.trade.setLeague(L);
+        const rates = await core.trade.fetchBestCurrencyRates(L);
         const q = name.toLowerCase();
         const matches = rates.filter(
           (r) => r.name.toLowerCase().includes(q) && r.chaosValue != null,
@@ -91,13 +92,13 @@ export function registerCurrencyTools(server: McpServer): number {
             content: [
               {
                 type: 'text',
-                text: `Не найдена валюта "${name}" в ${league}. Подсказка: попробуй короче, напр. "divine", "exalted", "chaos".`,
+                text: `Не найдена валюта "${name}" в ${L}. Подсказка: попробуй короче, напр. "divine", "exalted", "chaos".`,
               },
             ],
           };
         }
         const rows = matches.map((r) => `**${r.name}**: ${r.chaosValue!.toFixed(2)} chaos`);
-        return { content: [{ type: 'text', text: `## Валюты по "${name}" — ${league}\n\n${rows.join('\n')}` }] };
+        return { content: [{ type: 'text', text: `## Валюты по "${name}" — ${L}\n\n${rows.join('\n')}` }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
