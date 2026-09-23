@@ -11,7 +11,7 @@
  */
 
 import { httpJson } from './http.js';
-import { cachedJson, DEFAULT_TTLS } from './cache.js';
+import { cachedJson, cachedPostJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
 import type {
@@ -323,7 +323,9 @@ export async function fetchCurrencyRates(league?: string): Promise<CurrencyRate[
 /** Получить курсы валют, предпочитая poe2scout, при пустом результате — poe.ninja. */
 export async function fetchBestCurrencyRates(league?: string): Promise<CurrencyRate[]> {
   const s = await fetchScoutCurrencyRates(league);
-  if (s.length > 0) return s;
+  // в молодых лигах poe2scout может отдавать цены null — берём только валидные
+  const usable = s.filter((r) => r.chaosValue != null || r.divineValue != null);
+  if (usable.length > 0) return usable;
   return fetchCurrencyRates(league);
 }
 
@@ -589,43 +591,263 @@ export async function searchTrade(
   query: { type?: string; name?: string },
   opts: { limit?: number; league?: string } = {},
 ): Promise<TradeListing[]> {
-  const limit = opts.limit ?? 10;
-  const league = opts.league ?? getLeague() ?? 'Runes of Aldur';
   const searchQuery: Record<string, unknown> = {
     query: {
       status: { option: 'online' },
       name: query.name ? { option: query.name } : undefined,
       type: query.type ? { option: query.type } : undefined,
-      stats: [{ type: 'and', filters: [] }],
+      stats: [],
     },
     sort: { price: 'asc' },
   };
+  return postTradeSearch(searchQuery, opts);
+}
 
+// ────────────────────────────────────────────────
+// trade2: каталог статов → поиск раров по целевым аффиксам
+// ────────────────────────────────────────────────
+
+interface TradeStatEntry {
+  id: string;
+  text: string;
+  type?: string;
+}
+
+/** Каталог статов торгового сайта (id по шаблону текста, '#' — число).
+ *  Меняется только с патчем — кэшируем как RePoE. */
+export async function fetchTradeStats(): Promise<TradeStatEntry[]> {
+  const { data } = await cachedJson<{ result?: Array<{ entries?: TradeStatEntry[] }> }>(
+    `${TRADE_API}/data/stats`,
+    { ttlMs: DEFAULT_TTLS.repoe },
+  );
+  return (data.result ?? []).flatMap((g) => g.entries ?? []);
+}
+
+export interface TradeStatFilter {
+  id: string;
+  /** Нижняя граница значения стата (если из текста вытащено число). */
+  min?: number;
+  /** Исходный текст мода (отладка). */
+  text?: string;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeStatText(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** Сопоставить текст explicit-мода с шаблоном каталога статов ('#' → число).
+ *  Возвращает фильтр для trade2 или null, если шаблон не найден. */
+export function matchStatFilter(
+  modText: string,
+  entries: TradeStatEntry[],
+): TradeStatFilter | null {
+  const norm = normalizeStatText(modText);
+  let best: TradeStatFilter | null = null;
+  for (const e of entries) {
+    if (!e.text?.includes('#')) continue;
+    const pattern =
+      '^' +
+      escapeRegExp(normalizeStatText(e.text)).replace(/#/g, '([+-]?\\d+(?:\\.\\d+)?)') +
+      '$';
+    let m: RegExpExecArray | null;
+    try {
+      m = new RegExp(pattern).exec(norm);
+    } catch {
+      continue;
+    }
+    if (!m) continue;
+    const values = m.slice(1).map(Number).filter((v) => Number.isFinite(v));
+    const f: TradeStatFilter = { id: e.id, text: modText };
+    if (values.length) {
+      // Нижняя граница — максимум из чисел мода («Adds # to #» → верхний ролл)
+      // с запасом 10% вниз: допускаем чуть худший ролл.
+      f.min = Math.max(...values) * 0.9;
+    }
+    // При совпадении нескольких шаблонов берём самый пространный
+    if (!best || e.text.length > (best.text?.length ?? 0)) best = f;
+  }
+  return best;
+}
+
+/** explicit-моды предмета → stat-фильтры trade2 по живому каталогу статов
+ *  (trade2/data/stats; отличается от tradeQuery.modsToStatFilters — тот sync
+ *  и знает только популярные pseudo-статы). + список нераспознанных. */
+export async function matchModsToStatFilters(
+  modTexts: string[],
+): Promise<{ filters: TradeStatFilter[]; unmatched: string[] }> {
+  const entries = await fetchTradeStats();
+  const filters: TradeStatFilter[] = [];
+  const unmatched: string[] = [];
+  for (const t of modTexts) {
+    const f = matchStatFilter(t, entries);
+    if (f) filters.push(f);
+    else unmatched.push(t);
+  }
+  return { filters, unmatched };
+}
+
+/** Поиск по trade2: базовый тип + stat-фильтры (прайс-чек раров по аффиксам).
+ *  opts.group позволяет искать «и» (and) или «не менее value из» (count). */
+export async function searchTradeByStats(
+  query: {
+    type?: string;
+    filters: TradeStatFilter[];
+    /** Группа статов: and/count. Для count значение — минимум совпавших статов. */
+    group?: { type: 'and' | 'count'; value?: number };
+  },
+  opts: { limit?: number; league?: string } = {},
+): Promise<TradeListing[]> {
+  const filters = query.filters.map((f) => ({
+    disabled: false,
+    id: f.id,
+    ...(f.min != null
+      ? { value: { min: Math.round(f.min * 10) / 10 } }
+      : {}),
+  }));
+  const group = query.group ?? { type: 'and' as const };
+  return postTradeSearch(
+    {
+      query: {
+        status: { option: 'online' },
+        ...(query.type ? { type: { option: query.type } } : {}),
+        stats: [
+          group.type === 'count'
+            ? { type: 'count', value: group.value ?? filters.length, filters }
+            : { type: 'and', filters },
+        ],
+      },
+      sort: { price: 'asc' },
+    },
+    opts,
+  );
+}
+
+/** POST /search + /fetch: общая механика запроса официального trade API. */
+
+// Троттлинг POST /search: trade2 жёстко лимитирует запросы (429 → временный
+// бан IP). Глобальный интервал между поисками — минимум ~1.1 с, при 429 —
+// дополнительно выдерживаем окно бана.
+let lastSearchAt = 0;
+let tradeBanUntil = 0;
+const SEARCH_MIN_INTERVAL_MS = 1100;
+
+async function throttleTradeSearch(): Promise<void> {
+  const banWait = tradeBanUntil - Date.now();
+  if (banWait > 0) await new Promise((r) => setTimeout(r, banWait));
+  const wait = lastSearchAt + SEARCH_MIN_INTERVAL_MS - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastSearchAt = Date.now();
+}
+
+// Кэш POST-поисков в памяти (TTL 10 мин): повторный прайс-чек того же билда
+// не должен заново долбить trade2 (жёсткие лимиты, 429 → бан IP).
+const tradeSearchCache = new Map<string, { at: number; listings: TradeListing[] }>();
+const TRADE_SEARCH_CACHE_TTL = 10 * 60 * 1000;
+
+async function postTradeSearch(
+  searchQuery: Record<string, unknown>,
+  opts: { limit?: number; league?: string },
+): Promise<TradeListing[]> {
+  const league = opts.league ?? getLeague() ?? 'Runes of Aldur';
+  const key = league + '\u0000' + JSON.stringify(searchQuery);
+  const hit = tradeSearchCache.get(key);
+  if (hit && Date.now() - hit.at < TRADE_SEARCH_CACHE_TTL) return hit.listings;
+  const listings = await postTradeSearchUncached(searchQuery, opts);
+  tradeSearchCache.set(key, { at: Date.now(), listings });
+  return listings;
+}
+
+async function postTradeSearchUncached(
+  searchQuery: Record<string, unknown>,
+  opts: { limit?: number; league?: string },
+): Promise<TradeListing[]> {
+  const limit = opts.limit ?? 10;
+  const league = opts.league && opts.league !== '' ? opts.league : (getLeague() ?? 'Runes of Aldur');
   try {
-    const search = await httpJson<{ id?: string; result?: string[] }>(
+    await throttleTradeSearch();
+    // POST-поиск и fetch листингов кэшируем на диск (30 мин): повторный
+    // прайс-чек того же набора не расходует жёсткую квоту trade2.
+    // Пустые результаты НЕ кэшируем — повторы добирают пустые слоты.
+    const TRADE_CACHE_TTL = 30 * 60 * 1000;
+    const { data: search } = await cachedPostJson<{ id?: string; result?: string[] }>(
       `${TRADE_API}/search/poe2/${encodeURIComponent(league)}`,
-      { method: 'POST', body: searchQuery },
+      searchQuery,
+      { ttlMs: TRADE_CACHE_TTL, skipCache: (d) => !d?.id || !d.result?.length },
     );
     if (!search?.id || !search.result?.length) return [];
     // fetch принимает ХЭШИ результатов (не id поиска): берём первые limit хэшей.
     const hashes = search.result.slice(0, Math.min(limit, 10)).join(',');
-    const fetchRes = await httpJson<{
+    const { data: fetchRes } = await cachedJson<{
       result?: Array<{
-        listing?: { price?: { amount?: number; type?: string } };
+        listing?: { price?: { amount?: number; currency?: string; type?: string } };
       } | null>;
-    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`);
+    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000 });
     const listings: TradeListing[] = [];
     for (const entry of fetchRes?.result ?? []) {
       if (!entry) continue;
       const p = entry?.listing?.price;
       if (p && typeof p.amount === 'number') {
-        listings.push({ price: p.amount, currency: p.type ?? 'chaos' });
+        // p.currency = валюта ('exalted'/'divine'/'chaos'...), p.type = вид цены ('~price'/'~b/o')
+        listings.push({ price: p.amount, currency: p.currency ?? p.type ?? 'chaos' });
       }
     }
     return listings;
-  } catch {
+  } catch (e) {
+    // 429 от trade2 → выставляем окно бана, чтобы следующие поиски не долбили
+    if (e instanceof Error && /HTTP 429/.test(e.message)) {
+      tradeBanUntil = Date.now() + 60_000;
+    }
     return [];
   }
+}
+
+/** Листинги в разных валютах → цены в Chaos Orb (по курсам лиги). */
+async function listingsToChaosPrices(
+  listings: TradeListing[],
+  league?: string,
+): Promise<number[]> {
+  const out: number[] = [];
+  const others: TradeListing[] = [];
+  for (const l of listings) {
+    const cur = (l.currency ?? '').toLowerCase();
+    if (cur === 'chaos' || cur === 'chaos orb') out.push(l.price);
+    else others.push(l);
+  }
+  if (others.length) {
+    try {
+      const rates = await fetchBestCurrencyRates(league);
+      const rateById = new Map<string, number | null>();
+      for (const r of rates) {
+        const key = r.name.toLowerCase();
+        rateById.set(key, r.chaosValue);
+        rateById.set(key.replace(/\s*orb$/, ''), r.chaosValue);
+      }
+      for (const l of others) {
+        const cv = rateById.get((l.currency ?? '').toLowerCase());
+        if (cv != null) out.push(l.price * cv);
+      }
+    } catch {
+      // нет курсов — учитываем только chaos-листинги
+    }
+  }
+  return out;
+}
+
+/** Медианная оценка из массива цен (в Chaos). Нужно > 2 валидных цен. */
+function estimateFromPrices(prices: number[]): PriceEstimate | null {
+  const np = prices.filter((p) => Number.isFinite(p) && p > 0);
+  if (np.length <= 2) return null;
+  np.sort((a, b) => a - b);
+  return {
+    min: np[0]!,
+    max: np[np.length - 1]!,
+    median: np[Math.floor(np.length / 2)]!,
+    confidence: 'approx',
+  };
 }
 
 // ────────────────────────────────────────────────
@@ -677,24 +899,63 @@ export async function priceCheck(
     }
   }
 
-  if (parsed.name || parsed.baseType) {
-    listings = await searchTrade(
-      { name: parsed.name ?? undefined, type: parsed.baseType ?? undefined },
-      { league },
-    );
-    if (!estimate) {
-      const prices = listings.filter((l) => l.currency === 'chaos').map((l) => l.price);
-      if (prices.length > 2) {
-        prices.sort((a, b) => a - b);
-        const median = prices[Math.floor(prices.length / 2)];
-        estimate = {
-          min: prices[0],
-          max: prices[prices.length - 1],
-          median,
-          confidence: 'approx',
-        };
+  // Рары не ищутся по имени: строим stat-фильтры из explicit-модов
+  // (прайс-чек «предмета с такими-то аффиксами» по официальному trade API).
+  const explicitMods = parsed.mods
+    .filter((m) => m.type === 'explicit')
+    .map((m) => m.text)
+    .filter((t) => t && t !== parsed.name && t !== parsed.baseType);
+
+  if (
+    !estimate &&
+    parsed.rarity === 'Rare' &&
+    explicitMods.length &&
+    parsed.baseType
+  ) {
+    try {
+      const { filters, unmatched } = await matchModsToStatFilters(explicitMods);
+      // ищем по статам, если распознано больше половины модов
+      if (filters.length && unmatched.length <= Math.ceil(explicitMods.length / 2)) {
+        const type = parsed.baseType;
+        const searchOpts = { league, limit: 10 };
+        const pause = () => new Promise((r) => setTimeout(r, 300));
+        // Лестница ослабления: точное попадание всех целевых аффиксов редко,
+        // ищем ближайшие аналоги.
+        // 1) все статы с минимумами («роллы не хуже ×0.9»)
+        listings = await searchTradeByStats({ type, filters }, searchOpts);
+        // 2) «не менее 2/3 целевых статов» с минимумами
+        if (!listings.length && filters.length >= 3) {
+          await pause();
+          listings = await searchTradeByStats(
+            {
+              type,
+              filters,
+              group: { type: 'count', value: Math.max(2, Math.ceil((filters.length * 2) / 3)) },
+            },
+            searchOpts,
+          );
+        }
+        estimate = estimateFromPrices(await listingsToChaosPrices(listings, league));
       }
+    } catch {
+      // каталог статов недоступен — ниже фолбэк по базовому типу
     }
+  }
+
+  if (!listings.length) {
+    if (parsed.rarity === 'Rare' && parsed.baseType) {
+      // фолбэк рара: хотя бы листинги базового типа (без учёта аффиксов)
+      listings = await searchTrade({ type: parsed.baseType }, { league });
+    } else if (parsed.name || parsed.baseType) {
+      listings = await searchTrade(
+        { name: parsed.name ?? undefined, type: parsed.baseType ?? undefined },
+        { league },
+      );
+    }
+  }
+  if (!estimate && listings.length) {
+    // медиана по листингам с конвертацией валют в Chaos
+    estimate = estimateFromPrices(await listingsToChaosPrices(listings, league));
   }
 
   return {

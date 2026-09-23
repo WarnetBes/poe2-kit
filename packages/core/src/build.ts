@@ -516,10 +516,11 @@ export async function buildCodeToGear(input: string): Promise<BuildGearItem[]> {
   let xml: string;
 
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    // .build JSON (официальный Build Planner): у предметов есть только имена
-    // (без номеров модов/качеств). Полноценный прайс-чек по клир-тексту для раров
-    // невозможен, но уникальные предметы (unique_name) можно оценить по имени —
-    // формируем для них минимальный клир-текст Rarity: Unique.
+    // .build JSON (официальный Build Planner / mobalytics): уникальные имеют
+    // unique_name (минимальный клир-текст Rarity: Unique), у остальных —
+    // additional_text, где первая строка — базовый тип, дальше целевые аффиксы
+    // («1. +33 to maximum Mana», …). Синтезируем клир-текст рара: прайс-чек
+    // построит stat-фильтры по этим аффиксам (searchTradeByStats).
     const result: BuildGearItem[] = [];
     try {
       const json = JSON.parse(trimmed) as {
@@ -527,21 +528,45 @@ export async function buildCodeToGear(input: string): Promise<BuildGearItem[]> {
           inventory_id?: string;
           unique_name?: string;
           name?: string;
+          additional_text?: string;
         }>;
-        items?: Array<{ inventory_id?: string; unique_name?: string; name?: string }>;
+        items?: Array<{
+          inventory_id?: string;
+          unique_name?: string;
+          name?: string;
+          additional_text?: string;
+        }>;
       };
       const inv = json.inventory_slots ?? json.items ?? [];
       for (const it of inv) {
+        const slot = it.inventory_id ?? '';
         const uname = it.unique_name;
-        if (!uname) continue;
-        const base = it.name ?? '';
-        const itemText = [
-          'Rarity: Unique',
-          uname,
-          base || 'Unknown',
-          '--------',
-        ].join('\n');
-        result.push({ slot: it.inventory_id ?? '', name: uname, itemText });
+        if (uname) {
+          const base = it.name ?? '';
+          const itemText = [
+            'Rarity: Unique',
+            uname,
+            base || 'Unknown',
+            '--------',
+          ].join('\n');
+          result.push({ slot, name: uname, itemText });
+          continue;
+        }
+        const add = it.additional_text;
+        if (add) {
+          const lines = add.split('\n').map((l) => l.trim()).filter(Boolean);
+          if (!lines.length) continue;
+          const base = lines[0];
+          const mods = lines.slice(1).map((l) => l.replace(/^\d+\.\s*/, ''));
+          const itemText = [
+            'Rarity: Rare',
+            `${base} (build target)`,
+            base,
+            '--------',
+            ...mods,
+          ].join('\n');
+          result.push({ slot, name: base, itemText });
+        }
       }
       return result;
     } catch {

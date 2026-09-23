@@ -79,6 +79,9 @@ const HOST_LIMITS: Record<string, [number, number]> = {
   'poe.ninja': [10, 5 * 60 * 1000], // 10 запросов / 5 минут
   'poe2scout.com': [10, 60 * 1000], // консервативно, документированного лимита нет
   'repoe-fork.github.io': [5, 60 * 1000],
+  // trade2 (pathofexile.com): при пробитии — 429 и временный бан по IP,
+  // поэтому уходим в консервативные 8 запросов/мин (search+fetch суммарно).
+  'pathofexile.com': [8, 60 * 1000],
 };
 
 const limiters = new Map<string, RateLimiter>();

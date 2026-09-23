@@ -296,7 +296,7 @@ export async function searchTradeQuery(
           indexed?: string;
           account?: { name?: string };
           whisper?: string;
-          price?: { amount?: number; type?: string };
+          price?: { amount?: number; currency?: string; type?: string };
         };
       } | null>;
     }>(`https://www.pathofexile.com/api/trade2/fetch/${hashes}?query=${search.id}`);
@@ -306,7 +306,7 @@ export async function searchTradeQuery(
       const p = entry.listing?.price;
       listings.push({
         item: entry.item ? { name: entry.item.typeLine ?? entry.item.name, typeLine: entry.item.typeLine } : null,
-        price: p && typeof p.amount === 'number' ? { amount: p.amount, currency: p.type ?? 'chaos' } : null,
+        price: p && typeof p.amount === 'number' ? { amount: p.amount, currency: p.currency ?? p.type ?? 'chaos' } : null,
         whisper: entry.listing?.whisper,
         accountName: entry.listing?.account?.name,
         indexed: entry.listing?.indexed,

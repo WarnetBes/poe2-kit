@@ -102,6 +102,41 @@ export async function cachedJson<T = unknown>(
 }
 
 /**
+ * POST JSON через дисковый кэш (ключ учитывает тело запроса — для trade2 search,
+ * где один и тот же URL несёт разные запросы). TTL по умолчанию — DEFAULT_TTLS.repoe.
+ */
+export async function cachedPostJson<T = unknown>(
+  url: string,
+  body: unknown,
+  opts: HttpOptions & { ttlMs?: number; skipCache?: (data: T) => boolean } = {},
+): Promise<CachedResult<T>> {
+  const ttl = opts.ttlMs ?? DEFAULT_TTLS.repoe;
+  const key =
+    url +
+    '#post-' +
+    createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 20);
+  const cached = loadEnvelope(key);
+  if (cached && Date.now() - cached.fetchedAt < ttl) {
+    return { data: cached.data as T, fetchedAt: cached.fetchedAt, stale: false };
+  }
+  try {
+    const data = await httpJson<T>(url, { ...opts, method: 'POST', body });
+    // пустые результаты не кэшируем (skipCache): прайс-чек билда добирает
+    // пустые слоты повторами, negative-кэш ломал эту механику
+    if (!(opts.skipCache && opts.skipCache(data))) {
+      writeFileSync(
+        cachePath(key),
+        JSON.stringify({ url: key, fetchedAt: Date.now(), data } satisfies CacheEnvelope),
+      );
+    }
+    return { data, fetchedAt: Date.now(), stale: false };
+  } catch (error) {
+    if (cached) return { data: cached.data as T, fetchedAt: cached.fetchedAt, stale: true };
+    throw error;
+  }
+}
+
+/**
  * GET бинарных данных (protobuf-словари poe.ninja) через дисковый кэш.
  * Словари версионированы хэшем в URL — по умолчанию TTL бесконечный.
  */
