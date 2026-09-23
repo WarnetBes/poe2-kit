@@ -284,5 +284,23 @@ const tqItem = buildTradeQueryFromItem([
 ok(tqItem.query.type === 'Ruby Ring', 'buildTradeQueryFromItem baseType');
 ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem mods→stats');
 
+console.log('offline datasets (data/game)');
+const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds } = core;
+const ver = getDatasetVersion();
+ok(ver.patch_version === '0.5' && ver.data_revision >= 12, `dataset version ${ver.released_as}`);
+const monkAsc = getAscendanciesByClass('Monk');
+ok(monkAsc.some((a) => a.displayName === 'Invoker'), 'ascendancies: Monk→Invoker');
+const ice = searchSkillGems('Ice Strike');
+ok(ice.length >= 1 && ice[0].name === 'Ice Strike', 'gems: Ice Strike found');
+const iceDet = getSkillGemDetails('Ice Strike');
+ok(!!iceDet && iceDet.levels.length > 5 && iceDet.firstLevelCost && 'Mana' in iceDet.firstLevelCost, `gems: Ice Strike levels=${iceDet?.levels.length}, mana=${iceDet?.firstLevelCost?.Mana}`);
+const ks = searchPassiveTree('Shockproof');
+ok(ks.length >= 1 && ks[0].isNotable && ks[0].stats.some((s) => s.includes('Shock')), `tree: "Shockproof" notable → ${ks.length} nodes`);
+const byStat = searchPassiveTree('increased chance to Shock', { limit: 5 });
+ok(byStat.length >= 1 && byStat.some((n) => n.stats.join(' ').includes('chance to Shock')), 'tree: search by stat text');
+const ring = searchBaseItems('Ruby Ring');
+ok(ring.length >= 1 && ring.some((b) => b.name === 'Ruby Ring'), 'base_items: Ruby Ring found');
+ok(getStatIds().length > 20000, `stats: ${getStatIds().length} stat ids`);
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

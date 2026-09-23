@@ -1,0 +1,277 @@
+/**
+ * Офлайн-датасеты PoE2 — прилагаются с ядром, работают БЕЗ сети.
+ *
+ * Источник данных: извлечено из игровых файлов сообществом
+ * hivemind-poe2-mcp (данные практики Path of Exile 2, патч 0.5
+ * «Return of the Ancients», ревизия 12 — см. data/game/version.json).
+ * Файлы скопированы с разрешением; формат — факт игры, не код.
+ *
+ * Состав (packages/core/data/game/):
+ *  - version.json            — версия данных (датасетное версионирование)
+ *  - ascendancies/           — асценданси-классы (неиспользуемые отфильтрованы)
+ *  - skill_gems/             — активные гемы: статы по уровням, cost, теги
+ *  - passive_tree/           — дерево пассивок: 9605 узлов (имена, статы, ключевые)
+ *  - baseline base_items.json — базовые предметы
+ *  - stats.json              — внутренние stat_id
+ */
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'game');
+
+function loadJson<T>(rel: string): T {
+  return JSON.parse(readFileSync(path.join(dataDir, rel), 'utf8')) as T;
+}
+
+// ─── Версия данных ───────────────────────────────────────────────────────────
+
+export interface DatasetVersion {
+  patch_version: string;
+  patch_name: string;
+  data_revision: number;
+  released_as: string;
+  extracted_at: string;
+}
+
+let versionCache: DatasetVersion | null = null;
+
+/** Версия офлайн-датасетов (патч + ревизия). */
+export function getDatasetVersion(): DatasetVersion {
+  if (!versionCache) {
+    const raw = loadJson<DatasetVersion & Record<string, unknown>>('version.json');
+    versionCache = {
+      patch_version: raw.patch_version,
+      patch_name: raw.patch_name,
+      data_revision: raw.data_revision,
+      released_as: raw.released_as,
+      extracted_at: raw.extracted_at,
+    };
+  }
+  return versionCache;
+}
+
+// ─── Асценданси ─────────────────────────────────────────────────────────────
+
+export interface AscendancyClass {
+  id: string;
+  displayName: string;
+  baseClass: string;
+}
+
+let ascCache: AscendancyClass[] | null = null;
+
+/** Все активные асценданси-классы PoE2. */
+export function getAscendancies(): AscendancyClass[] {
+  if (!ascCache) {
+    const raw = loadJson<{
+      ascendancies?: Array<{ id?: string; display_name?: string; base_class?: string; is_unused?: boolean }>;
+    }>('ascendancies/ascendancies.json');
+    ascCache = (raw.ascendancies ?? [])
+      .filter((e) => e && !e.is_unused && e.display_name && e.base_class)
+      .map((e) => ({ id: e.id ?? '', displayName: e.display_name!, baseClass: e.base_class! }))
+      .sort((a, b) => a.baseClass.localeCompare(b.baseClass) || a.displayName.localeCompare(b.displayName));
+  }
+  return ascCache;
+}
+
+/** Асценданси для базового класса ('Monk', 'Warrior', ...). */
+export function getAscendanciesByClass(baseClass: string): AscendancyClass[] {
+  const wanted = baseClass.toLowerCase();
+  return getAscendancies().filter((a) => a.baseClass.toLowerCase() === wanted);
+}
+
+// ─── Гемы ────────────────────────────────────────────────────────────────────
+
+export interface SkillGem {
+  id: string;
+  name: string;
+  baseTypeName: string;
+  castTime: number;
+  skillTypes: string[];
+  /** Максимальный уровень гема (по числу levels). */
+  maxLevel: number;
+  /** Стоимость {Mana: n} на 1-м и последнем уровне. */
+  firstLevelCost: Record<string, number> | null;
+  lastLevelCost: Record<string, number> | null;
+}
+
+interface RawGem {
+  name?: string;
+  baseTypeName?: string;
+  castTime?: number;
+  skillTypes?: string[];
+  levels?: Array<{ cost?: Record<string, number> }>;
+}
+
+let gemsCache: SkillGem[] | null = null;
+
+function rawGems(): Record<string, RawGem> {
+  const raw = loadJson<{ skills?: Record<string, RawGem> }>('skill_gems/skill_gems_v2.json');
+  return raw.skills ?? {};
+}
+
+/** Все активные гемы (может быть ~150; данные центурируются лениво). */
+export function getSkillGems(): SkillGem[] {
+  if (!gemsCache) {
+    gemsCache = Object.entries(rawGems()).map(([id, g]) => ({
+      id,
+      name: g.name ?? g.baseTypeName ?? id,
+      baseTypeName: g.baseTypeName ?? '',
+      castTime: g.castTime ?? 0,
+      skillTypes: g.skillTypes ?? [],
+      maxLevel: g.levels?.length ?? 0,
+      firstLevelCost: g.levels?.[0]?.cost ?? null,
+      lastLevelCost: g.levels?.[g.levels.length - 1]?.cost ?? null,
+    }));
+    gemsCache.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return gemsCache;
+}
+
+/** Поиск гемов по подстроке имени (регистр не важен). */
+export function searchSkillGems(query: string, limit = 5): SkillGem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const all = getSkillGems();
+  const starts = all.filter((g) => g.name.toLowerCase().startsWith(q));
+  const contains = all.filter((g) => !g.name.toLowerCase().startsWith(q) && g.name.toLowerCase().includes(q));
+  return [...starts, ...contains].slice(0, limit);
+}
+
+/** Полная запись гема (с уровнями) по имени. */
+export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{ cost: Record<string, number>; levelRequirement: number; baseMultiplier?: number }> }) | null {
+  const raw = rawGems();
+  const q = query.trim().toLowerCase();
+  const hit =
+    Object.entries(raw).find(([, g]) => (g.name ?? '').toLowerCase() === q) ??
+    Object.entries(raw).find(([, g]) => (g.name ?? '').toLowerCase().includes(q));
+  if (!hit) return null;
+  const [id, g] = hit;
+  const levels = (g.levels ?? []).map((l) => ({
+    cost: l.cost ?? {},
+    levelRequirement: (l as { levelRequirement?: number }).levelRequirement ?? 0,
+    baseMultiplier: (l as { baseMultiplier?: number }).baseMultiplier,
+  }));
+  return {
+    id,
+    name: g.name ?? g.baseTypeName ?? id,
+    baseTypeName: g.baseTypeName ?? '',
+    castTime: g.castTime ?? 0,
+    skillTypes: g.skillTypes ?? [],
+    maxLevel: levels.length,
+    firstLevelCost: levels[0]?.cost ?? null,
+    lastLevelCost: levels[levels.length - 1]?.cost ?? null,
+    levels,
+  };
+}
+
+// ─── Дерево пассивок ─────────────────────────────────────────────────────────
+
+export interface PassiveNode {
+  id: string;
+  name: string;
+  isKeystone: boolean;
+  isNotable: boolean;
+  ascendancy: string;
+  stats: string[];
+}
+
+let treeCache: PassiveNode[] | null = null;
+
+/** Все узлы дерева пассивок и асценданси (~9605). */
+export function getPassiveTree(): PassiveNode[] {
+  if (!treeCache) {
+    const raw = loadJson<{
+      nodes?: Record<string, { id?: string; name?: string; is_keystone?: boolean; is_notable?: boolean; ascendancy?: string; stats?: string[] }>;
+    }>('passive_tree/tree.json');
+    treeCache = Object.values(raw.nodes ?? {})
+      .filter((n) => n && n.name)
+      .map((n) => ({
+        id: n.id ?? '',
+        name: n.name ?? '',
+        isKeystone: !!n.is_keystone,
+        isNotable: !!n.is_notable,
+        ascendancy: n.ascendancy ?? '',
+        stats: n.stats ?? [],
+      }));
+  }
+  return treeCache;
+}
+
+/** Поиск узлов дерева по имени или тексту статов. */
+export function searchPassiveTree(query: string, opts: { limit?: number; keystonesOnly?: boolean } = {}): PassiveNode[] {
+  const limit = opts.limit ?? 10;
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  let nodes = getPassiveTree();
+  if (opts.keystonesOnly) nodes = nodes.filter((n) => n.isKeystone);
+  const byName = nodes.filter((n) => n.name.toLowerCase().includes(q));
+  const byStat = nodes.filter(
+    (n) => !n.name.toLowerCase().includes(q) && n.stats.some((s) => s.toLowerCase().includes(q)),
+  );
+  const seen = new Set<string>();
+  const out: PassiveNode[] = [];
+  for (const n of [...byName, ...byStat]) {
+    if (seen.has(n.id)) continue;
+    seen.add(n.id);
+    out.push(n);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+// ─── Базовые предметы ────────────────────────────────────────────────────────
+
+export interface BaseItem {
+  id: string;
+  name: string;
+  itemClass: string;
+  /** Человекочитаемый класс ("Stackable Currency"). */
+  itemClassName: string;
+}
+
+let baseItemsCache: BaseItem[] | null = null;
+
+/** Все базовые предметы (~5382). */
+export function getBaseItems(): BaseItem[] {
+  if (!baseItemsCache) {
+    const raw = loadJson<{ base_items?: Record<string, { name?: string; item_class?: string; item_class_name?: string }> }>(
+      'base_items.json',
+    );
+    const entries = Object.entries(raw.base_items ?? {});
+    baseItemsCache = entries
+      .filter(([, b]) => b && b.name)
+      .map(([id, b]) => ({ id, name: b.name!, itemClass: b.item_class ?? '', itemClassName: b.item_class_name ?? '' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return baseItemsCache;
+}
+
+/** Поиск базовых предметов по подстроке имени. */
+export function searchBaseItems(query: string, limit = 10): BaseItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return getBaseItems().filter((b) => b.name.toLowerCase().includes(q)).slice(0, limit);
+}
+
+// ─── Внутренние stat_id ──────────────────────────────────────────────────────
+
+let statsCache: string[] | null = null;
+
+/** Все внутренние stat_id игры (~27k) — для маппинга «текст → id» в узлах дерева. */
+export function getStatIds(): string[] {
+  if (!statsCache) {
+    const raw = loadJson<{ stats?: Array<{ stat_id?: string }> }>('stats.json');
+    statsCache = (raw.stats ?? []).map((s) => s.stat_id ?? '').filter(Boolean);
+  }
+  return statsCache;
+}
+
+/** Поиск stat_id по подстроке. */
+export function searchStatIds(query: string, limit = 10): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return getStatIds().filter((s) => s.toLowerCase().includes(q)).slice(0, limit);
+}

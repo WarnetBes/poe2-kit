@@ -12,6 +12,7 @@ export * from './log.js';
 export * from './wiki.js';
 export * from './estimate.js';
 export * from './tradeQuery.js';
+export * from './dataset.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -24,6 +25,7 @@ import * as logmod from './log.js';
 import * as wikimod from './wiki.js';
 import * as estmod from './estimate.js';
 import * as tqmod from './tradeQuery.js';
+import * as dsmod from './dataset.js';
 
 export const core = {
   trade,
@@ -37,6 +39,7 @@ export const core = {
   wiki: wikimod,
   estimate: estmod,
   tradeQuery: tqmod,
+  dataset: dsmod,
 };
 
 export default core;

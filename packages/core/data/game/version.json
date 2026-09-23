@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "patch_version": "0.5",
+  "patch_name": "Return of the Ancients",
+  "patch_released": "2026-05-29",
+  "data_revision": 12,
+  "released_as": "data-v0.5.0-r12",
+  "extracted_at": "2026-06-01T15:43:00Z",
+  "extracted_by": "HivemindMinion (Claude Code) from HivemindOverlord's licensed PoE2 install + PoB2 community repo",
+  "datasets": {
+    "mods": {
+      "path": "data/game/mods/",
+      "files": [
+        "mods.json",
+        "metadata.json"
+      ],
+      "record_count": 16788,
+      "enriched_stat_entries": 24632,
+      "note": "Non-empty stat entries now include resolved stat_id strings inline (cross-referenced from data/game/stats/). Consumers no longer need a separate stats.json load to resolve stat_key refs."
+    },
+    "passive_tree": {
+      "path": "data/game/passive_tree/",
+      "files": [
+        "tree.json",
+        "metadata.json"
+      ],
+      "record_count": 9605
+    },
+    "support_gems": {
+      "path": "data/game/support_gems/",
+      "files": [
+        "support_gems.json",
+        "metadata.json"
+      ],
+      "record_count": 680
+    },
+    "ascendancies": {
+      "path": "data/game/ascendancies/",
+      "files": [
+        "ascendancies.json",
+        "metadata.json"
+      ],
+      "record_count": 37,
+      "active_count": 23,
+      "note": "display_name canonical (offset 44); base_class field promoted onto every entry (derived from id prefix); 14 DNT-UNUSED placeholders filtered via is_unused flag. Includes NEW 0.5 ascendancies Spirit Walker (Huntress2) and Martial Artist (Monk1)."
+    },
+    "stats": {
+      "path": "data/game/stats/",
+      "files": [
+        "stats.json",
+        "metadata.json"
+      ],
+      "record_count": 27013,
+      "note": "Refreshed 2026-06-13 from the full 1,019-table re-extraction (campaign C1d): 26,943 -> 27,013 records (+70, includes post-0.5-hotfix stat ids). All 244 spirit-family stat ids verified present (incl. base_spirit_reservation row 16110)."
+    },
+    "skill_gems": {
+      "path": "data/game/skill_gems/",
+      "files": [
+        "skill_gems.json",
+        "metadata.json"
+      ],
+      "record_count": 965,
+      "matched_effect_count": 872,
+      "source": "PoB2 origin/dev @ 9c2bf0316 (2026-05-30) \u2014 Gems.lua + Skills/*.lua joined view",
+      "note": "Refreshed 2026-06-12 from PoB2 origin/dev @ 623f6dde0 (2026-06-13) - 0.5-current. Data-correctness campaign C1."
+    },
+    "skill_gems_v2": {
+      "path": "data/game/skill_gems/",
+      "files": [
+        "skill_gems_v2.json",
+        "metadata_v2.json"
+      ],
+      "record_count": 1373,
+      "coverage": {
+        "with_qualityStats": 338,
+        "with_levels": 1249,
+        "with_statSets": 1249
+      },
+      "source": "PoB2 src/Data/Skills/*.lua via structural Lua parser (src/parsers/lua_skill_data.py)",
+      "note": "Refreshed 2026-06-12 from PoB2 origin/dev @ 623f6dde0. NOW INCLUDES spiritReservationFlat per level (campaign C1) - reservations were previously absent from the canonical dataset."
+    },
+    "stat_descriptions": {
+      "path": "data/game/stat_descriptions/",
+      "files": [
+        "index.json",
+        "metadata.json",
+        "<name>_stat_descriptions.json (x18)"
+      ],
+      "record_count": 16533,
+      "no_description_count": 89,
+      "source": "data/extracted/Data/statdescriptions/*.csd (UTF-16-LE, PoB-compatible Compiled Stat Description grammar)",
+      "note": "The canonical in-game stat description text. Pairs stat_id -> player-facing template. Replaces the hand-authored interpretation in src/knowledge/poe2_mechanics.py as the authoritative source for explain_mechanic going forward. v1 ships English-only templates across 18 root-level .csd files; per-skill descriptions under specific_skill_stat_descriptions/ now shipped separately - see per_skill_stat_descriptions entry. Headline category counts: stat_descriptions.csd 10,716 / skill_stat_descriptions.csd 1,899 / atlas 1,354 / gem 1,334 / passive_skill 208 / others <200 each."
+    },
+    "per_skill_stat_descriptions": {
+      "path": "data/game/stat_descriptions/",
+      "files": [
+        "per_skill_stat_descriptions.json",
+        "per_skill_metadata.json"
+      ],
+      "record_count": 1240,
+      "no_description_count": 153,
+      "file_count": 296,
+      "source": "data/extracted/Data/statdescriptions/specific_skill_stat_descriptions/**/*.csd (UTF-16-LE)",
+      "note": "Per-skill stat descriptions deferred from PR #98's v1 scope. 296 .csd files across the specific_skill_stat_descriptions/ subdirectory (including nested skill subdirs like ancestral_cry/, ball_lightning/). Bundle keyed by relative source path so consumers only need a single file load. English-only templates. Used by explain_mechanic when a stat_id resolves to a skill-specific description rather than a global one."
+    }
+  },
+  "datasets_pending_0_5_reextract": {},
+  "data_policy": "All structured data here is extracted exclusively from the maintainer's licensed PoE2 install (.datc64) and from the open-source PathOfBuilding-PoE2 community repo (for skill_gems). No third-party wiki / scraped data is bundled. See data/game/README.md for the full policy."
+}

@@ -19,6 +19,7 @@ import { registerAiTools } from './tools/ai.js';
 import { registerLogTools } from './tools/log.js';
 import { registerWikiTools } from './tools/wiki.js';
 import { registerTradeQueryTools } from './tools/tradeQuery.js';
+import { registerDatasetTools } from './tools/dataset.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -36,6 +37,7 @@ export function buildServer(): number {
   count += registerLogTools(server);
   count += registerWikiTools(server);
   count += registerTradeQueryTools(server);
+  count += registerDatasetTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
@@ -63,6 +65,9 @@ async function main(): Promise<void> {
     console.error('  - poe2_wiki_lookup');
     console.error('  - poe2_build_estimate');
     console.error('  - poe2_trade_search');
+    console.error('  - poe2_dataset_info');
+    console.error('  - poe2_gems_lookup');
+    console.error('  - poe2_tree_search');
     process.exit(0);
   }
 
