@@ -104,9 +104,11 @@ interface BuildSlotState {
   /** Медианная оценка (в хаосах), null — ещё не оценён. */
   median: number | null;
   confidence: string | null;
-  /** todo — ещё не куплен; bought — отмечен собранным (прайс-чек совпалшего предмета). */
+  /** todo — ещё не куплен; bought — отмечен собранным (прайс-чек совпавшего предмета). */
   status: 'todo' | 'bought';
   itemText: string;
+  /** Что сейчас надето в этом слоте на персонаже (синхронизация с poe.ninja), null — нет данных. */
+  worn?: string | null;
 }
 
 interface BuildSummaryState {
@@ -136,9 +138,57 @@ let buildState: BuildState | null = null;
 /** Идёт ли фоновый прайсинг слотов билда. */
 let buildPricing = false;
 
+// ─── Автосинхронизация с персонажем poe.ninja ──────────────────────────────
+
+/** Источник синхронизации: публичная страница персонажа в профиле poe.ninja. */
+interface CharSyncState {
+  account: string;
+  league: string;
+  character: string;
+  /** Unix-ms последней успешной синхронизации (троттлинг запросов). */
+  lastSyncAt: number;
+}
+
+/** Минимальная пауза между запросами к poe.ninja (мс). */
+const CHAR_SYNC_MIN_INTERVAL_MS = 5 * 60_000;
+
+let charSync: CharSyncState | null = null;
+let charSyncing = false;
+
+function charSyncFile(): string {
+  return path.join(app.getPath('userData'), 'char-sync.json');
+}
+
+function loadCharSync(): CharSyncState | null {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(charSyncFile(), 'utf8'));
+    const c = raw as CharSyncState;
+    if (c && c.account && c.league && c.character) {
+      charSync = { ...c, lastSyncAt: Number(c.lastSyncAt) || 0 };
+      return charSync;
+    }
+  } catch {
+    /* нет файла — ок */
+  }
+  return null;
+}
+
+function saveCharSync(): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(charSyncFile(), JSON.stringify(charSync), 'utf8');
+  } catch {
+    /* некритично */
+  }
+}
+
 // ─── Геометрия оверлея и привязка к окну игры ──────────────────────────────
 const OVERLAY_WIDTH = 420;
 const OVERLAY_HEIGHT = 320;
+/** Минимальная высота оверлея (DIP). */
+const OVERLAY_MIN_HEIGHT = 140;
+/** Текущая высота оверлея — подгоняется рендерером под контент (overlay:autosize). */
+let overlayHeight = OVERLAY_HEIGHT;
 /** Отступ оверлея от краёв игрового окна (в DIP). */
 const MARGIN = 8;
 /** Подстрока заголовка окна PoE2 (без учёта регистра). */
@@ -347,7 +397,16 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
         median: s.median,
         confidence: s.confidence,
         status: s.status,
+        worn: s.worn ?? null,
       })),
+      charSync: charSync
+        ? {
+            character: charSync.character,
+            league: charSync.league,
+            syncing: charSyncing,
+            lastSyncAt: charSync.lastSyncAt,
+          }
+        : null,
       pricedCount: priced.length,
       totalSlots: slots.length,
       boughtCount: bought.length,
@@ -361,10 +420,11 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
 }
 
 function sendBuildUpdate(
-  extra: { status?: 'ready' | 'importing' | 'empty'; error?: string } = {},
+  extra: { status?: 'ready' | 'importing' | 'empty'; error?: string; info?: string } = {},
 ): void {
   const payload = buildPayload(extra.status ?? 'ready');
   if (extra.error) payload.error = extra.error;
+  if (extra.info) payload.info = extra.info;
   overlayWindow?.webContents.send('build:update', payload);
 }
 
@@ -487,6 +547,71 @@ function matchBuildSlot(parsedName: string, parsedBase: string): BuildSlotState 
   return null;
 }
 
+// ─── Автосинхронизация: персонаж профиля poe.ninja ─────────────────────────
+
+/**
+ * Скачать эквип с публичной страницы персонажа poe.ninja, отметить совпадающие
+ * слоты билда собранными и запомнить, что надето в остальных. Троттлится
+ * интервалом CHAR_SYNC_MIN_INTERVAL_MS, best-effort.
+ */
+async function syncCharacterGear(force = false): Promise<void> {
+  if (!charSync || !buildState || charSyncing) return;
+  if (!force && Date.now() - charSync.lastSyncAt < CHAR_SYNC_MIN_INTERVAL_MS) return;
+  charSyncing = true;
+  sendBuildUpdate(); // индикация «синхронизируется…» в панели
+  try {
+    const gear = await withTimeout(
+      core.build.fetchProfileCharacterGear(charSync),
+      20_000,
+      'fetchProfileCharacterGear',
+    );
+    charSync.lastSyncAt = Date.now();
+    saveCharSync();
+
+    // Сбрасываем «надето», затем заполняем по-новой из профиля.
+    for (const s of buildState.slots) s.worn = null;
+    let owned = 0;
+    for (const g of gear) {
+      let name = g.name;
+      let base = '';
+      try {
+        const p = core.parse.parseItemText(g.itemText);
+        base = p.baseType;
+        name = core.parse.itemDisplayName(p) || g.name;
+      } catch {
+        /* не распарсился — используем имя как есть */
+      }
+      // Тот же слот по имени (Gloves→Gloves, Ring 1→Ring 1), с fallback на
+      // матчинг по имени/базе.
+      const target =
+        buildState.slots.find((s) => s.slot === g.slot) ?? matchBuildSlot(name, base);
+      if (!target) continue; // персонаж носит то, чего в целевом билде нет (напр. посохи)
+      target.worn = name;
+      const same =
+        normName(name) === normName(target.name) ||
+        normName(name) === normName(target.baseType) ||
+        (base && normName(base) === normName(target.baseType));
+      if (same && target.status !== 'bought') {
+        target.status = 'bought';
+        owned++;
+      }
+    }
+    saveBuildState();
+    console.log(
+      `[overlay] char sync ok: ${charSync.character} (${charSync.league}), совпало слотов: ${owned}`,
+    );
+  } catch (err) {
+    console.warn('[overlay] char sync failed:', err instanceof Error ? err.message : err);
+    sendBuildUpdate({
+      error: `Синхронизация с poe.ninja не удалась: ${err instanceof Error ? err.message : err}`,
+    });
+    return;
+  } finally {
+    charSyncing = false;
+  }
+  sendBuildUpdate();
+}
+
 /**
  * Импортировать билд из буфера обмена (PoB share-код / XML / ссылка / .build JSON),
  * оценить каждый слот в фоне и показать панель билда.
@@ -501,6 +626,28 @@ async function runBuildImport(): Promise<void> {
     sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+F3.' });
     return;
   }
+
+  // Ссылка на страницу персонажа poe.ninja = настройка автосинхронизации,
+  // а НЕ импорт целевого билда. Билд не трогаем.
+  const profileRef = core.build.parseProfileCharacterUrl(input);
+  if (profileRef) {
+    if (!buildState) {
+      sendBuildUpdate({
+        error: 'Сначала импортируйте целевой билд (PoB-код → Ctrl+F3), затем добавьте персонажа.',
+      });
+      return;
+    }
+    charSync = { ...profileRef, lastSyncAt: 0 };
+    saveCharSync();
+    console.log(`[overlay] char sync source: ${profileRef.character} (${profileRef.league})`);
+    buildState.panelVisible = true;
+    sendBuildUpdate({
+      info: `🧍 Автосинхронизация включена: ${profileRef.character} (${profileRef.league}). Эквип сверяется с билдом автоматически.`,
+    });
+    void syncCharacterGear(true);
+    return;
+  }
+
   buildPricing = true;
   try {
     console.log(`[overlay] build import: ${input.length} chars from clipboard`);
@@ -551,6 +698,8 @@ async function runBuildImport(): Promise<void> {
     // Живая панель: EHP/дыры защиты и мета — считаем в фоне, не мешая прайсингу.
     void refreshBuildEstimate();
     void refreshBuildMeta();
+    // Автосинхронизация с персонажем poe.ninja (если настроена) — тоже в фоне.
+    void syncCharacterGear();
 
     // Прайсинг слотов: строго последовательно (trade2 — 8 req/min под капотом ядра).
     for (const slot of buildState.slots) {
@@ -639,6 +788,8 @@ function toggleBuildPanel(): void {
     return;
   }
   buildState.panelVisible = !buildState.panelVisible;
+  // Открыли панель — подтянем свежий эквип персонажа (троттлится внутри).
+  if (buildState.panelVisible) void syncCharacterGear();
   sendBuildUpdate();
 }
 
@@ -768,15 +919,15 @@ function trackGameWindow(): void {
     lastRectKey = '';
   }
 
-  // Перемещаем оверлей только если позиция реально изменилась (меньше дерганий).
-  const key = `${x},${y}`;
+  // Перемещаем оверлей только если позиция/размер реально изменились (меньше дерганий).
+  const key = `${x},${y},${overlayHeight}`;
   if (lastRectKey !== key) {
     lastRectKey = key;
     win.setBounds({
       x,
       y,
       width: OVERLAY_WIDTH,
-      height: OVERLAY_HEIGHT,
+      height: overlayHeight,
     });
   }
 
@@ -1018,6 +1169,25 @@ function setupIPC(): void {
     overlayWindow?.setIgnoreMouseEvents(!interact, { forward: true });
     return interact;
   });
+
+  // Авторазмер: рендерер меряет контент панели и просит подогнать высоту окна
+  // (в DIP; ширина фиксирована). Позицию не трогаем — она за трекером игры.
+  ipcMain.handle('overlay:autosize', (_evt, px: number) => {
+    const win = overlayWindow;
+    if (!win || win.isDestroyed()) return overlayHeight;
+    let h = Math.round(Number(px));
+    if (!Number.isFinite(h) || h <= 0) return overlayHeight;
+    const wa = screen.getDisplayMatching(win.getBounds()).workArea;
+    h = Math.min(h, wa.height - 2 * MARGIN);
+    h = Math.max(h, OVERLAY_MIN_HEIGHT);
+    const b = win.getBounds();
+    if (h !== b.height) {
+      overlayHeight = h;
+      win.setBounds({ x: b.x, y: b.y, width: OVERLAY_WIDTH, height: h });
+      console.log(`[overlay] autosize: height=${h}`);
+    }
+    return overlayHeight;
+  });
 }
 
 const IS_SMOKE = process.argv.includes('--smoke');
@@ -1046,6 +1216,11 @@ app.whenReady().then(async () => {
   }
   // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+F2.
   loadBuildState();
+  // Источник автосинхронизации с персонажем poe.ninja (если настраивали раньше).
+  loadCharSync();
+  console.log(
+    `[overlay] char sync source: ${charSync ? `${charSync.character} (${charSync.league})` : 'не задан'}`,
+  );
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
   if (!loadRuEnDict()) void ensureRuEnDict();
   setupIPC();
@@ -1056,6 +1231,8 @@ app.whenReady().then(async () => {
       buildState.panelVisible = false;
       sendBuildUpdate();
     }
+    // Первичная синхронизация с персонажем poe.ninja — пауза, чтобы не мешать старту.
+    if (buildState && charSync) setTimeout(() => void syncCharacterGear(), 15_000);
   });
   registerHotkeys();
 

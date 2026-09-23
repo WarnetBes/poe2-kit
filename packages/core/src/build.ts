@@ -21,6 +21,11 @@ export class PobCodeError extends Error {
 const _WS = /\s+/g;
 const _POBB = /^https?:\/\/(?:www\.)?pobb\.in\/([A-Za-z0-9_-]+)\/?$/i;
 const _PASTEBIN = /^https?:\/\/(?:www\.)?pastebin\.com\/(?:raw\/)?([A-Za-z0-9]+)\/?$/i;
+// poe.ninja: шard-билд /poe2/pob/{id} (есть raw-эндпоинт /pob/raw/{id})
+const _NINJA_BUILD = /^https?:\/\/(?:www\.)?poe\.ninja\/poe2\/pob\/(\d+)\/?$/i;
+// poe.ninja: страница персонажа профиля /poe2/profile/{account}/{league}/character/{name}
+const _NINJA_PROFILE_CHAR =
+  /^https?:\/\/(?:www\.)?poe\.ninja\/poe2\/profile\/([^/\s?#]+)\/([^/\s?#]+)\/character\/([^/\s?#]+)\/?/i;
 // Сайты, отдающие HTML-страницу, а не сырой код — их нельзя скрейпить.
 const _PAGE_HOSTS = /^https?:\/\/(?:www\.)?(maxroll\.gg|pobarchives\.com|poe\.ninja|poe2\.ninja|mobalytics\.gg|pathofexile\.com)\//i;
 
@@ -226,6 +231,8 @@ function toRawUrl(url: string): string {
   if (pb) return `https://pobb.in/${pb[1]}/raw`;
   const pin = _PASTEBIN.exec(t);
   if (pin) return `https://pastebin.com/raw/${pin[1]}`;
+  const ninja = _NINJA_BUILD.exec(t);
+  if (ninja) return `https://poe.ninja/poe2/pob/raw/${ninja[1]}`;
   return t;
 }
 
@@ -267,7 +274,9 @@ function coerceToXml(content: string, origin: string): string {
 export async function toXml(source: string): Promise<string> {
   const src = (source || '').trim();
   if (isLink(src)) {
-    if (_PAGE_HOSTS.test(src)) {
+    // raw-эндпоинты poe.ninja (шard-билд и персонаж профиля) отдают чистый код.
+    const ninjaRaw = _NINJA_BUILD.test(src) || /\/pob\/raw\//.test(src);
+    if (_PAGE_HOSTS.test(src) && !ninjaRaw) {
       throw new PobCodeError('это страница-билда, а не сырой PoB-код. Вставьте код экспорта.');
     }
     return coerceToXml(await fetchCode(src), src);
@@ -662,4 +671,52 @@ export function summarizeBuild(build: BuildImport): string {
   if (life !== undefined) lines.push(`Жизнь: ${Math.round(life).toLocaleString('ru-RU')}`);
   if (es !== undefined) lines.push(`Щит энергии: ${Math.round(es).toLocaleString('ru-RU')}`);
   return lines.join('\n');
+}
+
+// ─── Персонаж профиля poe.ninja (автосинхронизация экипа) ──────────────────
+
+/** Ссылка на страницу персонажа профиля poe.ninja. */
+export interface ProfileCharacterRef {
+  account: string;
+  league: string;
+  character: string;
+}
+
+/**
+ * Распознать ссылку на страницу персонажа профиля poe.ninja:
+ * https://poe.ninja/poe2/profile/{account}/{league}/character/{name}
+ */
+export function parseProfileCharacterUrl(input: string): ProfileCharacterRef | null {
+  const m = _NINJA_PROFILE_CHAR.exec((input || '').trim());
+  if (!m) return null;
+  return {
+    account: decodeURIComponent(m[1]!),
+    league: decodeURIComponent(m[2]!),
+    character: decodeURIComponent(m[3]!),
+  };
+}
+
+/** raw-эндпоинт с PoB-кодом персонажа профиля (публичный, без авторизации). */
+export function profileCharacterCodeUrl(ref: ProfileCharacterRef): string {
+  return `https://poe.ninja/poe2/pob/raw/profile/code/${ref.account}/${ref.league}/${ref.character}`;
+}
+
+/**
+ * Скачать актуальный эквип персонажа с публичного профиля poe.ninja
+ * и вернуть его в формате BuildGearItem[] (клир-текст каждого предмета).
+ *
+ * Принимает ссылку на страницу персонажа или готовый ProfileCharacterRef.
+ * Бросает PobCodeError при недоступном/приватном профиле.
+ */
+export async function fetchProfileCharacterGear(
+  input: string | ProfileCharacterRef,
+  timeoutMs = 15000,
+): Promise<BuildGearItem[]> {
+  const ref = typeof input === 'string' ? parseProfileCharacterUrl(input) : input;
+  if (!ref) {
+    throw new PobCodeError('не ссылка на персонажа poe.ninja');
+  }
+  const code = await fetchCode(profileCharacterCodeUrl(ref), timeoutMs);
+  const xml = coerceToXml(code, `profile:${ref.character}`);
+  return buildCodeToGear(xml);
 }

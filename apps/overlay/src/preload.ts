@@ -20,6 +20,8 @@ export interface OverlayAPI {
   buildToggle(): Promise<boolean>;
   buildReset(): Promise<boolean>;
   buildGet(): Promise<unknown>;
+  /** Подогнать высоту окна под контент ( авторазмер, px в DIP). */
+  autosize(px: number): Promise<number>;
 }
 
 const api: OverlayAPI = {
@@ -73,6 +75,8 @@ const api: OverlayAPI = {
   buildReset: () => ipcRenderer.invoke('build:reset'),
 
   buildGet: () => ipcRenderer.invoke('build:get'),
+
+  autosize: (px) => ipcRenderer.invoke('overlay:autosize', px),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

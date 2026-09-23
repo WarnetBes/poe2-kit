@@ -47,6 +47,9 @@ export const rendererHtml = `<!doctype html>
   .rarity-unique { color: #e6b422; }
   .rarity-rare { color: #f7c873; }
   .rarity-magic { color: #60a5fa; }
+
+  .bld .wornrow { line-height: 1.1; }
+  .bld .worn { color: var(--warn); font-size: 11px; padding-top: 0; }
   .rarity-currency { color: #e6b422; }
   .rarity-normal, .rarity-common { color: #e6edf3; }
 
@@ -123,7 +126,8 @@ export const rendererHtml = `<!doctype html>
     <div id="idle">
       Готово. Нажми <b>Ctrl+F1</b> — прайс предмета из буфера.<br/>
       <b>Ctrl+F3</b> — импорт билда из PoB-кода,<br/>
-      <b>Ctrl+F2</b> — шопинг-лист билда.
+      <b>Ctrl+F2</b> — шопинг-лист билда.<br/>
+      <span style="color:#9aa4b0;font-size:11px">Ссылка на персонажа poe.ninja + Ctrl+F3 — автосинхронизация эквипа.</span>
     </div>
     <div id="body" class="hide">
       <div class="head">
@@ -166,6 +170,22 @@ export const rendererHtml = `<!doctype html>
     $('idle').classList.toggle('hide', b);
     $('body').classList.toggle('hide', b);
   }
+
+  // Авторазмер окна: контент панели изменился — просим main подогнать высоту.
+  var _sizeTimer = null;
+  function requestSize() {
+    if (_sizeTimer) clearTimeout(_sizeTimer);
+    _sizeTimer = setTimeout(function () {
+      var h = Math.ceil(document.getElementById('panel').getBoundingClientRect().height);
+      if (h > 40 && window.poe2k.autosize) {
+        window.poe2k.autosize(h).catch(function () {});
+      }
+    }, 60);
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(requestSize).observe(document.getElementById('panel'));
+  }
+  requestSize();
 
   window.poe2k.onPriceBusy(function (b) {
     if (b) setBusy(true);
@@ -252,15 +272,31 @@ export const rendererHtml = `<!doctype html>
       (b.pricedCount < b.totalSlots ? ' · оценяется ' + b.pricedCount + '/' + b.totalSlots : '') +
       '</span>';
 
+    // Индикатор автосинхронизации с персонажем poe.ninja.
+    if (b.charSync && b.charSync.character) {
+      var age = b.charSync.lastSyncAt ? Math.round((Date.now() - b.charSync.lastSyncAt) / 60000) : null;
+      $('buildBudget').innerHTML +=
+        '<span class="done"> · 🧍 ' + esc(b.charSync.character) +
+        (b.charSync.syncing ? ' ⟳' : (age != null ? ' (' + (age < 1 ? 'свежо' : age + ' мин') + ')' : '')) +
+        '</span>';
+    }
+
     var rows = (b.slots || []).map(function (s) {
       var icon = s.status === 'bought' ? '✔' : '⬜';
       var price = s.median != null ? fmtPrice(s.median) : (state.pricing ? '…' : '—');
-      return '<tr class="' + (s.status === 'bought' ? 'bought' : '') + '">' +
+      var row = '<tr class="' + (s.status === 'bought' ? 'bought' : '') + '">' +
         '<td>' + icon + '</td>' +
         '<td class="slot">' + esc(slotRu(s.slot)) + '</td>' +
         '<td class="nm" title="' + esc(s.name) + '">' + esc(s.name) + '</td>' +
         '<td class="num">' + esc(price) + '</td>' +
         '</tr>';
+      // Что сейчас надето в этом слоте на персонаже (poe.ninja), если не совпадает.
+      if (s.worn && s.status !== 'bought') {
+        row += '<tr class="wornrow"><td></td><td></td>' +
+          '<td class="worn" colspan="1" title="Надето сейчас (poe.ninja)">↑ носите: ' + esc(s.worn) + '</td>' +
+          '<td></td></tr>';
+      }
+      return row;
     }).join('');
     $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
 
@@ -294,7 +330,7 @@ export const rendererHtml = `<!doctype html>
 
   window.poe2k.onBuildUpdate(function (state) {
     if (!state) return;
-    if (!state.visible && !(state.error && !state.build)) return;
+    if (!state.visible && !(state.error && !state.build) && !state.info) return;
     setBusy(false);
     $('idle').classList.add('hide');
     $('body').classList.remove('hide');
@@ -302,6 +338,11 @@ export const rendererHtml = `<!doctype html>
     $('busy').classList.add('hide');
     showMode('build');
     renderBuild(state);
+    // Инфо-сообщение (например, «синхронизация включена») — тем же блоком, но без «⚠».
+    if (state.info) {
+      $('buildErr').classList.remove('hide');
+      $('buildErr').textContent = state.info;
+    }
   });
 
 
