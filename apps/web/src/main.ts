@@ -4,6 +4,7 @@ import {
   loadLeagueList,
   selectLeague,
   getActiveLeague,
+  initActiveLeague,
   refreshLeagueData,
   showCurrencyRates,
   showPriceCheck,
@@ -170,6 +171,7 @@ document.querySelector('#btn-refresh-leagues')!.addEventListener('click', () => 
   setStatus('Обновление списка лиг и данных…');
 });
 
+void initActiveLeague();
 void initLeagueSelector();
 
 // ── Обработчики ────────────────────────────────────────

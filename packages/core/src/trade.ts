@@ -155,6 +155,24 @@ export function getLeague(): string | null {
   return currentLeague;
 }
 
+/**
+ * Название актуальной лиги по умолчанию (для CLI/overlay/web/MCP без явного выбора).
+ * KNOWN_LEAGUES хранит устаревший маркер isCurrent, поэтому реальную текущую
+ * лигу берём из живого списка poe2scout (fetchLeagues): лиги с isCurrent=true идут
+ * первыми; берём первую обычную. При недоступности — консервативный fallback.
+ */
+export async function currentDefaultLeague(): Promise<string> {
+  try {
+    const leagues = await fetchLeagues();
+    const current = leagues.find((l) => l.isCurrent);
+    if (current?.name) return current.name;
+    if (leagues[0]?.name) return leagues[0].name;
+  } catch {
+    /* fallback ниже */
+  }
+  return 'Forbidden Rites';
+}
+
 /** Снапшот курсов одной лиги для конвертации (из кэша лиг или через fetchLeagues). */
 async function leagueConversion(
   league?: string | null,

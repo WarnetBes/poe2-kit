@@ -12,19 +12,34 @@ export { core, KNOWN_LEAGUES };
 
 const LEAGUE_KEY = 'poe2k.league';
 
-// Активная лига по умолчанию — текущая (первая в списке) или сохранённая в браузере.
-function initialLeague(): string {
+// Сохранённая пользователем лига (если есть), иначе null → определяем актуальную.
+function savedLeague(): string | null {
   try {
     const saved = localStorage.getItem(LEAGUE_KEY);
-    if (saved) return saved;
+    return saved || null;
   } catch {
-    /* ignore */
+    return null;
   }
-  return core.trade.getLeague() ?? KNOWN_LEAGUES.find((l) => l.isCurrent)?.name ?? KNOWN_LEAGUES[0]?.name ?? 'Runes of Aldur';
 }
 
-let activeLeague = initialLeague();
-core.trade.setLeague(activeLeague);
+let activeLeague: string | null = savedLeague();
+
+/**
+ * Активная лига по умолчанию — актуальная текущая из poe2scout.
+ * Вызывается один раз после старта: если пользователь не выбирал лигу, берём
+ * актуальную и фиксируем её как активную (а не устаревший KNOWN_LEAGUES[0]).
+ */
+export async function initActiveLeague(): Promise<string> {
+  if (!activeLeague) {
+    try {
+      activeLeague = await core.trade.currentDefaultLeague();
+    } catch {
+      activeLeague = null;
+    }
+    if (activeLeague) core.trade.setLeague(activeLeague);
+  }
+  return activeLeague ?? '';
+}
 
 /** Загрузить актуальный список лиг из poe2scout. */
 export async function loadLeagueList(): Promise<League[]> {
@@ -35,20 +50,29 @@ export async function loadLeagueList(): Promise<League[]> {
 
 /** Установить выбранную лигу (также сохраняется в localStorage). */
 export function selectLeague(id: string | null): void {
-  const v = id ?? KNOWN_LEAGUES[0]?.name ?? 'Runes of Aldur';
-  activeLeague = v;
-  core.trade.setLeague(v);
-  try {
-    if (id) localStorage.setItem(LEAGUE_KEY, v);
-    else localStorage.removeItem(LEAGUE_KEY);
-  } catch {
-    /* ignore */
+  if (id) {
+    activeLeague = id.trim();
+    core.trade.setLeague(activeLeague);
+    try {
+      localStorage.setItem(LEAGUE_KEY, activeLeague);
+    } catch {
+      /* ignore */
+    }
+  } else {
+    // Сброс на «по умолчанию» — актуальную лигу определяем асинхронно.
+    activeLeague = null;
+    try {
+      localStorage.removeItem(LEAGUE_KEY);
+    } catch {
+      /* ignore */
+    }
+    void initActiveLeague();
   }
 }
 
 /** Получить активную лигу (имя/id). */
 export function getActiveLeague(): string {
-  return activeLeague;
+  return activeLeague ?? '';
 }
 
 /** Принудительно обновить кэш данных выбранной лиги (курсы/цены). */
@@ -226,7 +250,8 @@ export async function showCurrencyRates(): Promise<void> {
   setStatus(`Запрос курсов (лига «${activeLeague}»)…`);
   try {
     core.trade.setLeague(activeLeague);
-    const rates = await core.trade.fetchBestCurrencyRates(activeLeague);
+    const league = activeLeague ?? undefined;
+    const rates = await core.trade.fetchBestCurrencyRates(league);
     if (!rates.length) {
       el.innerHTML = '<p class="err">Нет данных о валютах. Проверь сеть/лигу.</p>';
       setStatus('Нет данных.');
@@ -241,7 +266,7 @@ export async function showCurrencyRates(): Promise<void> {
           `<tr><td>${esc(r.name)}</td><td class="num">${r.chaosValue!.toFixed(2)}</td></tr>`,
       );
     el.innerHTML = `<table class="tbl"><thead><tr><th>Валюта</th><th>chaos</th></tr></thead><tbody>${rows.join('')}</tbody></table>
-      <p class="note">Источник: poe2scout + poe.ninja · лига «${esc(activeLeague)}».</p>`;
+      <p class="note">Источник: poe2scout + poe.ninja · лига «${esc(activeLeague ?? '')}».</p>`;
     setStatus(`Показано валют: ${rows.length}.`);
   } catch (e) {
     el.innerHTML = `<p class="err">Ошибка: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
@@ -259,7 +284,8 @@ export async function showPriceCheck(text: string): Promise<void> {
   setStatus(`Прайс-чек (лига «${activeLeague}»)…`);
   try {
     core.trade.setLeague(activeLeague);
-    const res = await core.trade.priceCheck(text, { league: activeLeague });
+    const league = activeLeague ?? undefined;
+    const res = await core.trade.priceCheck(text, { league });
     const lines: string[] = ['<h3>' + esc(res.itemName) + '</h3>', `<p class="meta">Редкость: <b>${esc(res.rarity)}</b></p>`];
     if (res.estimate) {
       lines.push(
@@ -279,7 +305,7 @@ export async function showPriceCheck(text: string): Promise<void> {
           '</tbody></table>',
       );
     }
-    lines.push(`<p class="note">Лига: ${esc(res.league ?? activeLeague)} · Источники: ${res.sources.join(', ') || '—'}.</p>`);
+    lines.push(`<p class="note">Лига: ${esc(res.league ?? activeLeague ?? '')} · Источники: ${res.sources.join(', ') || '—'}.</p>`);
     el.innerHTML = lines.join('');
     setStatus('Прайс-чек готов.');
   } catch (e) {

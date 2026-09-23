@@ -28,9 +28,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
-const DEFAULT_LEAGUE = 'Runes of Aldur';
+const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
-let activeLeague = DEFAULT_LEAGUE;
+let activeLeague: string | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let busy = false;
 
@@ -58,6 +58,32 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 
 function isPacked(): boolean {
   return app.isPackaged;
+}
+
+/** Путь к файлу с сохранённой лигой (выбор пользователя переживает перезапуск). */
+function leagueStateFile(): string {
+  return path.join(app.getPath('userData'), 'league.txt');
+}
+
+/** Прочитать сохранённую лигу (если пользователь её задавал), иначе null. */
+function loadSavedLeague(): string | null {
+  try {
+    const v = fs.readFileSync(leagueStateFile(), 'utf8').trim();
+    return v || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Сохранить выбранную лигу; null стирает выбор. */
+function saveSavedLeague(league: string | null): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    if (league && league.trim()) fs.writeFileSync(leagueStateFile(), league.trim(), 'utf8');
+    else fs.rmSync(leagueStateFile(), { force: true });
+  } catch {
+    /* игнорируем — выбор лиги не критичен для записи */
+  }
 }
 
 /** Записываем встроенный HTML-рендерер в userData и возвращаем путь для loadFile. */
@@ -251,14 +277,14 @@ function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
   ipcMain.handle('league:get', () => {
-    return activeLeague;
+    return activeLeague ?? null;
   });
 
   ipcMain.handle('league:set', (_evt, league: string) => {
-    if (typeof league === 'string' && league.trim()) {
-      activeLeague = league.trim();
-      core.trade.setLeague(activeLeague);
-    }
+    const v = typeof league === 'string' ? league.trim() : '';
+    activeLeague = v || null;
+    if (activeLeague) core.trade.setLeague(activeLeague);
+    saveSavedLeague(activeLeague);
     return activeLeague;
   });
 
@@ -273,8 +299,18 @@ function setupIPC(): void {
 
 const IS_SMOKE = process.argv.includes('--smoke');
 
-app.whenReady().then(() => {
-  core.trade.setLeague(activeLeague);
+app.whenReady().then(async () => {
+  // Лига: если пользователь раньше выбрал свою — используем её; иначе берём
+  // актуальную текущую лигу из poe2scout (а не устаревший хардкод).
+  activeLeague = loadSavedLeague();
+  if (!activeLeague) {
+    try {
+      activeLeague = await core.trade.currentDefaultLeague();
+    } catch {
+      activeLeague = null;
+    }
+  }
+  if (activeLeague) core.trade.setLeague(activeLeague);
   setupIPC();
   void createOverlayWindow().then(() => {
     startGameTracker();
