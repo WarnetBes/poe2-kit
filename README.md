@@ -53,7 +53,7 @@ npm run dev    -w @poe2-kit/web  # dev-сервер с прокси (localhost:5
 npm run preview -w @poe2-kit/web -- --port 5173  # production-preview
 ```
 
-Веб-приложение: **Курсы валют**, **Прайс-чек**, **Прокачка**, **Импорт билда**.
+Веб-приложение: **Курсы валют**, **Прайс-чек**, **Прокачка**, **Импорт билда** (разобранный билд можно сразу **оценить по живым ценам** кнопкой «Оценить снаряжение»).
 
 > **Про CORS.** Браузеры блокируют прямое обращение к poe.ninja/poe2scout/trade. Поэтому в ядре есть `core.http.setProxyBaseMap({ host → prefix })`, а Vite (`server.proxy` / `preview.proxy`) реверсивно-проксирует `/proxy/* →` внешние хосты. В Node (MCP, оверлей) прокси не нужен — запросы идут напрямую.
 
@@ -79,7 +79,7 @@ npm run test  -w @poe2-kit/mcp           # build + --smoke
 npm run start -w @poe2-kit/mcp -- --smoke
 ```
 
-Инструменты `poe2_*` (11 шт): `poe2_currency_prices`, `poe2_currency_check`, `poe2_leagues`, `poe2_parse_item`, `poe2_price_check`, `poe2_leveling_plan`, `poe2_build_decode`, `poe2_build_summary`, `poe2_items_db`, `poe2_mod_tier`, `poe2_ai_ask`. См. `apps/mcp/ASSISTANT_GUIDE.md`.
+Инструменты `poe2_*` (12 шт): `poe2_currency_prices`, `poe2_currency_check`, `poe2_leagues`, `poe2_parse_item`, `poe2_price_check`, `poe2_leveling_plan`, `poe2_build_decode`, `poe2_build_summary`, `poe2_build_price`, `poe2_items_db`, `poe2_mod_tier`, `poe2_ai_ask`. См. `apps/mcp/ASSISTANT_GUIDE.md`.
 
 ---
 

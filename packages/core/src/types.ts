@@ -81,6 +81,43 @@ export interface BuildImport {
   raw?: unknown;
 }
 
+/** Слот снаряжения билда с полным клир-текстом предмета (из экспорта PoB). */
+export interface BuildGearItem {
+  /** Слот (Helm, BodyArmour, Gloves, …). Пусто, если неизвестен. */
+  slot: string;
+  /** Имя предмета. */
+  name: string;
+  /** Полный клир-текст предмета (парсится через parseItemText). */
+  itemText: string;
+}
+
+/** Результат прайс-чека одного предмета снаряжения билда. */
+export interface BuildPricedItem {
+  slot: string;
+  name: string;
+  rarity: string;
+  estimate: PriceEstimate | null;
+  sources: string[];
+  listingsCount: number;
+}
+
+/** Отчёт прайс-чека всего снаряжения билда. */
+export interface BuildPriceReport {
+  league: string | null;
+  items: BuildPricedItem[];
+  /**
+   * Суммарная нижняя (консервативная) граница стоимости снаряжения в валюте лиги.
+   * Считается по median оценок тех предметов, где цена известна.
+   */
+  totalMin: number;
+  /** Число предметов, чью цену удалось оценить. */
+  pricedCount: number;
+  /** Общее число обработанных предметов снаряжения. */
+  totalItems: number;
+  /** Длительность (мс). */
+  elapsedMs: number;
+}
+
 export interface LevelingZone {
   act: number;
   actName: string;

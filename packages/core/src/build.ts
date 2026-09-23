@@ -8,7 +8,7 @@
  */
 
 import { deflateSync, inflateSync, unzlibSync, zlibSync } from 'fflate';
-import type { BuildImport } from './types.js';
+import type { BuildGearItem, BuildImport } from './types.js';
 
 /** Ошибка при работе с PoB-кодами. */
 export class PobCodeError extends Error {
@@ -484,6 +484,113 @@ function fromXml(xml: string): BuildImport {
     stats: parsed.stats,
     raw: { preview: xml.slice(0, 2000) },
   };
+}
+
+/**
+ * Извлечь снаряжение билда с полным клир-текстом предметов (для прайс-чека).
+ * Принимает share-код, сырой XML или ссылку на PoB.
+ *
+ * Возвращает по слотам активного ItemSet полный клир-текст каждого предмета —
+ * ровно тот формат, который понимает `parseItemText`/`priceCheck`.
+ * Предметы, текст которых не удалось распознать, пропускаются.
+ */
+export async function buildCodeToGear(input: string): Promise<BuildGearItem[]> {
+  const trimmed = input.trim();
+  let xml: string;
+
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    // .build JSON (официальный Build Planner): у предметов есть только имена
+    // (без номеров модов/качеств). Полноценный прайс-чек по клир-тексту для раров
+    // невозможен, но уникальные предметы (unique_name) можно оценить по имени —
+    // формируем для них минимальный клир-текст Rarity: Unique.
+    const result: BuildGearItem[] = [];
+    try {
+      const json = JSON.parse(trimmed) as {
+        inventory_slots?: Array<{
+          inventory_id?: string;
+          unique_name?: string;
+          name?: string;
+        }>;
+        items?: Array<{ inventory_id?: string; unique_name?: string; name?: string }>;
+      };
+      const inv = json.inventory_slots ?? json.items ?? [];
+      for (const it of inv) {
+        const uname = it.unique_name;
+        if (!uname) continue;
+        const base = it.name ?? '';
+        const itemText = [
+          'Rarity: Unique',
+          uname,
+          base || 'Unknown',
+          '--------',
+        ].join('\n');
+        result.push({ slot: it.inventory_id ?? '', name: uname, itemText });
+      }
+      return result;
+    } catch {
+      return [];
+    }
+  }
+  if (trimmed.includes('<PathOfBuilding') || trimmed.startsWith('<')) {
+    xml = trimmed;
+  } else if (isLink(trimmed)) {
+    xml = await toXml(trimmed);
+  } else {
+    xml = decodeShareCode(trimmed);
+  }
+
+  const items: BuildGearItem[] = [];
+
+  // Пул предметов: id → клир-текст (до первого вложенного тега <ModRange/> и т.п.)
+  const itemTextById = new Map<string, string>();
+  const itemRe = /<Item\b([^>]*)>([\s\S]*?)<\/Item>/g;
+  let m: RegExpExecArray | null;
+  while ((m = itemRe.exec(xml))) {
+    const attrs = _attrs(m[1]!);
+    if (!attrs.id) continue;
+    const raw = m[2]!;
+    // клир-текст — это всё до первого вложенного `<`-тега (ModRange и прочее)
+    const lt = raw.indexOf('</');
+    const text = (lt >= 0 ? raw.slice(0, lt) : raw).trim();
+    if (text) itemTextById.set(attrs.id, text);
+  }
+
+  // Активные слоты через активный ItemSet
+  const itemsEl = xml.match(/<Items\b([^>]*)>([\s\S]*?)<\/Items>/);
+  if (itemsEl) {
+    const itemsAttrs = _attrs(itemsEl[1]!);
+    const itemSets = [
+      ...itemsEl[2]!.matchAll(/<ItemSet\b([^>]*)>([\s\S]*?)<\/ItemSet>/g),
+    ].map((s) => ({ attrs: _attrs(s[1]!), slots: s[2]! }));
+    const rawActive = parseInt(itemsAttrs.activeItemSet, 10) || 1;
+    const chosen =
+      itemSets.length > 0
+        ? (itemSets[Math.min(rawActive, itemSets.length) - 1] ?? itemSets[0]!).slots
+        : '';
+    const seen = new Set<string>();
+    const slotRe = /<Slot\b([^>]*)\/?>/g;
+    let sm: RegExpExecArray | null;
+    while ((sm = slotRe.exec(chosen))) {
+      const a = _attrs(sm[1]!);
+      const slot = a.name ?? '';
+      const itemId = a.itemId ?? '';
+      if (!itemId || itemId === '0') continue;
+      const text = itemTextById.get(itemId);
+      if (!text || seen.has(itemId)) continue;
+      seen.add(itemId);
+      const parsedName = text.match(/^Rarity:[^\n]*\n([^\n]+)/m)?.[1]?.trim() ?? '';
+      items.push({ slot, name: parsedName, itemText: text });
+    }
+    // Подстраховка: если слотов не оказалось — возьмём все распознанные предметы.
+    if (items.length === 0) {
+      for (const [id, text] of itemTextById) {
+        const parsedName = text.match(/^Rarity:[^\n]*\n([^\n]+)/m)?.[1]?.trim() ?? '';
+        items.push({ slot: '', name: parsedName, itemText: text });
+      }
+    }
+  }
+
+  return items;
 }
 
 /** Простые метрики билда (детально — через MCP/AI). */

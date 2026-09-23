@@ -129,5 +129,47 @@ ok(mapItemClassToScoutCategory('Boots') === 'boots', 'mapItemClass boots');
 ok(mapItemClassToScoutCategory('Body Armour') === 'body', 'mapItemClass body');
 ok(mapItemClassToScoutCategory('Unknown') === null, 'mapItemClass unknown = null');
 
+console.log('build gear extraction (PoB XML, без сети)');
+const pobXml = `<?xml version="1.0"?><PathOfBuilding><Build level="20" className="Monk" ascendClassName="Invoker"/>
+<Items activeItemSet="1">
+  <ItemSet id="1">
+    <Slot name="Weapon 1" itemId="1"/>
+    <Slot name="Body" itemId="2"/>
+    <Slot name="Ring 1" itemId="3"/>
+  </ItemSet>
+</Items>
+<Item id="1">Rarity: UNIQUE
+Darkness Enthroned
+Fine Belt
+Unique ID: abc
+Item Level: 84</Item>
+<Item id="2">Rarity: RARE
+Victory Cloak
+Sleek Jacket
+Item Level: 80</Item>
+<Item id="3">Rarity: UNIQUE
+Saitha's Spear
+Barbed Spear
+Item Level: 75</Item>
+</PathOfBuilding>`;
+const gear = await core.core.build.buildCodeToGear(pobXml);
+ok(gear.length === 3, `buildCodeToGear извлекает ${gear.length} предмета`);
+ok(gear[0]?.slot === 'Weapon 1' && gear[0]?.name === 'Darkness Enthroned', 'gear slot+name (item 1)');
+ok(gear[0]?.itemText.includes('Rarity: UNIQUE'), 'gear itemText содержит Rarity');
+ok(gear[1]?.name === 'Victory Cloak', 'gear item 2 name');
+ok(gear[2]?.slot === 'Ring 1' && gear[2]?.name === "Saitha's Spear", 'gear item 3 slot+name');
+
+console.log('build gear extraction (.build JSON — только уники по имени)');
+const buildJson = JSON.stringify({
+  inventory_slots: [
+    { inventory_id: 'Belt1', unique_name: 'Headhunter' },
+    { inventory_id: 'Weapon1', name: 'Sinister Quarterstaff' },
+  ],
+});
+const jsonGear = await core.core.build.buildCodeToGear(buildJson);
+ok(jsonGear.length === 1, `из .build JSON извлечён 1 уникальный (${jsonGear.length})`);
+ok(jsonGear[0]?.name === 'Headhunter' && jsonGear[0]?.slot === 'Belt1', '.build JSON unique slot+name');
+ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText формат');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

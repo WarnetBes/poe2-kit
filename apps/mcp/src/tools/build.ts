@@ -85,5 +85,60 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 2;
+  server.registerTool(
+    'poe2_build_price',
+    {
+      title: 'PoE2 Price Whole Build',
+      description: `Оценить цену всего снаряжения билда разом (прайс-чек каждого предмета из импортированного билда PoB).
+
+Аргументы:
+  - code (string): share-код билда PoB (или ссылка pobb.in/pastebin, или сырой XML).
+  - league (string, опц.): лига (по умолчанию — текущая активная).
+
+Возвращает отчёт по каждому предмету снаряжения: слот, имя, редкость, медианная цена,
+оценка min/max, источники и число найденных объявлений, а также суммарную нижнюю
+границу стоимости и число предметов с известной ценой.
+
+Примеры:
+  - "Сколько стоит собрать этот билд?" → вставь share-код
+  - "Оцени всё снаряжение моего билда по живым ценам"
+`,
+      inputSchema: {
+        code: z.string().min(5).describe('PoB share-код / ссылка / XML билда'),
+        league: z.string().optional().describe('Лига (по умолчанию активная)'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ code, league }) => {
+      try {
+        const report = await core.trade.priceBuild(code, { league });
+        const lines: string[] = [
+          `## Прайс-чек билда`,
+          `- **Лига:** ${report.league ?? '—'}`,
+          `- **Предметов обработано:** ${report.totalItems}`,
+          `- **Оценено цен:** ${report.pricedCount}`,
+          `- **Суммарная нижняя граница:** ${report.totalMin.toFixed(2)} ${report.league ?? ''}`,
+          `- **Время:** ${report.elapsedMs} мс`,
+          ``,
+          `| Слот | Имя | Редкость | Медиана | Оценка (min–max) | Объявл. |`,
+          `| --- | --- | --- | --- | --- | --- |`,
+        ];
+        for (const it of report.items) {
+          const median = it.estimate?.median;
+          const range = it.estimate
+            ? `${it.estimate.min.toFixed(2)}–${it.estimate.max.toFixed(2)}`
+            : '—';
+          lines.push(
+            `| ${it.slot || '—'} | ${it.name || '—'} | ${it.rarity} | ${median != null ? median.toFixed(2) : '—'} | ${range} | ${it.listingsCount} |`,
+          );
+        }
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка прайс-чека билда: ${msg}` }] };
+      }
+    },
+  );
+
+  return 3;
 }

@@ -49,6 +49,7 @@ async function main(): Promise<void> {
     console.error('  - poe2_leveling_plan');
     console.error('  - poe2_build_decode');
     console.error('  - poe2_build_summary');
+    console.error('  - poe2_build_price');
     console.error('  - poe2_items_db');
     console.error('  - poe2_mod_tier');
     console.error('  - poe2_ai_ask');

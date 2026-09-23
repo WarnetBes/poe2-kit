@@ -398,3 +398,50 @@ export async function showBuildImport(code: string): Promise<void> {
     setStatus('Ошибка декода.');
   }
 }
+
+/** Прайс-чек всего снаряжения билда по живым ценам. */
+export async function showBuildPrice(code: string): Promise<void> {
+  const el = out('out-build-price');
+  if (!code?.trim()) {
+    el.innerHTML = '<p class="err">Вставь share-код PoB.</p>';
+    return;
+  }
+  el.innerHTML = '<em>Оценка снаряжения по живым ценам…</em>';
+  setStatus('Прайс-чек билда…');
+  try {
+    const report = await core.trade.priceBuild(code.trim());
+    const lines: string[] = [
+      '<h3>Прайс-чек билда</h3>',
+      `<ul class="kv">
+        <li>Лига: <b>${esc(report.league ?? '—')}</b></li>
+        <li>Предметов обработано: <b>${report.totalItems}</b></li>
+        <li>Оценено цен: <b>${report.pricedCount}</b></li>
+        <li>Суммарная нижняя граница: <b>${report.totalMin.toFixed(2)}</b></li>
+        <li>Время: ${report.elapsedMs} мс</li>
+      </ul>`,
+      '<table><thead><tr><th>Слот</th><th>Имя</th><th>Редкость</th><th>Медиана</th><th>min–max</th><th>Объявл.</th></tr></thead><tbody>',
+    ];
+    for (const it of report.items) {
+      const median = it.estimate?.median;
+      const range = it.estimate
+        ? `${it.estimate.min.toFixed(2)}–${it.estimate.max.toFixed(2)}`
+        : '—';
+      lines.push(
+        `<tr>
+          <td>${esc(it.slot || '—')}</td>
+          <td>${esc(it.name || '—')}</td>
+          <td>${esc(it.rarity)}</td>
+          <td>${median != null ? median.toFixed(2) : '—'}</td>
+          <td>${range}</td>
+          <td>${it.listingsCount}</td>
+        </tr>`,
+      );
+    }
+    lines.push('</tbody></table>');
+    el.innerHTML = lines.join('');
+    setStatus(`Прайс-чек: ${report.pricedCount}/${report.totalItems} оценено.`);
+  } catch (e) {
+    el.innerHTML = `<p class="err">Ошибка прайс-чека: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
+    setStatus('Ошибка прайс-чека билда.');
+  }
+}

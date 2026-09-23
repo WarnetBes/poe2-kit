@@ -12,12 +12,15 @@
 
 import { httpJson } from './http.js';
 import { parseItemText, itemDisplayName } from './parse.js';
+import { buildCodeToGear } from './build.js';
 import type {
   CurrencyRate,
   League,
   PriceCheckResult,
   PriceEstimate,
   TradeListing,
+  BuildPriceReport,
+  BuildPricedItem,
 } from './types.js';
 
 const SCOUT_HOST = 'https://api.poe2scout.com/poe2';
@@ -447,7 +450,12 @@ const ALL_UNIQUE_CATEGORIES: ScoutUniqueCategory[] = [
 
 interface ScoutUniqueItem {
   ApiId?: string;
+  /** Точное имя уника (например, "Headhunter"). */
+  Name?: string;
+  /** Полный текст-подпись (например, "Headhunter Heavy Belt"). */
   Text?: string;
+  /** Базовый тип (например, "Heavy Belt"). */
+  Type?: string;
   CurrentPrice?: number | null;
 }
 
@@ -467,6 +475,32 @@ async function fetchUniqueCategory(
   // не должен держать прайс-чек (иначе 10с на категорию × N категорий).
   const data = await httpJson<ScoutUniquePage>(url, { timeoutMs: 5000 });
   return data.Items ?? [];
+}
+
+/**
+ * Агрегатные группы poe2scout, к которым относится конкретная категория уников.
+ * Некоторые уникалы лежат ТОЛЬКО в агрегатной группе (weapon/armour/accessory),
+ * а не в узкой категории — поэтому при поиске по узкой категории пробуем и группу.
+ * Эмпирическое соответствие (по baseType/item class):
+ *   - weapon:  все оружие (bows, staves, wands, sceptres, maces, swords, axes,
+ *              claws, daggers, flails, spears, crossbows)
+ *   - armour:  body, helmets, gloves, boots, shield, quivers
+ *   - accessory: rings, amulets, belts
+ *   - фласки/джемы — отдельных групп нет, агрегацию не делаем.
+ */
+function aggregateGroups(cat: ScoutUniqueCategory): ScoutUniqueCategory[] {
+  const weapon: ScoutUniqueCategory[] = [
+    'bows', 'staves', 'wands', 'sceptres', 'maces', 'swords', 'axes',
+    'claws', 'daggers', 'flails', 'spears', 'crossbows',
+  ];
+  const armour: ScoutUniqueCategory[] = [
+    'body', 'helmets', 'gloves', 'boots', 'shield', 'quivers',
+  ];
+  const accessory: ScoutUniqueCategory[] = ['rings', 'amulets', 'belts'];
+  if (weapon.includes(cat)) return ['weapon'];
+  if (armour.includes(cat)) return ['armour'];
+  if (accessory.includes(cat)) return ['accessory'];
+  return [];
 }
 
 /**
@@ -492,17 +526,23 @@ export async function priceUnique(
   // почти всегда 1 запрос вместо перебора всех категорий).
   const targetCat = inferUniqueCategory(baseType ?? null, itemClass);
   const categories: string[] = targetCat
-    ? [targetCat]
+    ? [targetCat, ...aggregateGroups(targetCat)]
     : ALL_UNIQUE_CATEGORIES.slice(0, MAX_UNIQUE_CATEGORIES);
 
   for (const cat of categories) {
     try {
       const items = await fetchUniqueCategory(cat, code, name.trim());
-      const match = items.find(
-        (it) =>
-          (it.Text ?? it.ApiId ?? '').toLowerCase() === lower &&
-          it.CurrentPrice != null,
-      );
+      const match = items.find((it) => {
+        if (it.CurrentPrice == null) return false;
+        // Сравнение по точному имени (Name), с запасными вариантами Text/ApiId.
+        const candidates = [it.Name, it.Type, it.ApiId, it.Text]
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase());
+        return (
+          candidates.includes(lower) ||
+          candidates.some((c) => c.startsWith(lower + ' ') || c.startsWith(lower + '\''))
+        );
+      });
       if (match?.CurrentPrice != null) {
         value = await priceToChaos(match.CurrentPrice, l);
         if (value == null) value = match.CurrentPrice;
@@ -663,5 +703,73 @@ export async function priceCheck(
     ),
     league: league ?? null,
     updatedAt: Date.now(),
+  };
+}
+
+interface PriceBuildOpts {
+  /** Лига (по умолчанию — текущая активная). */
+  league?: string;
+  /** Максимум одновременных запросов цены (защита от перебора категорий). По умолчанию 4. */
+  concurrency?: number;
+}
+
+/** Прогнать priceCheck по всему снаряжению билда (share-код / XML / ссылка). */
+export async function priceBuild(
+  input: string,
+  opts: PriceBuildOpts = {},
+): Promise<BuildPriceReport> {
+  const started = Date.now();
+  const league = opts.league ?? currentLeague ?? null;
+  const gear = await buildCodeToGear(input);
+  const concurrency = Math.max(1, Math.min(opts.concurrency ?? 4, gear.length || 1));
+
+  const results = new Array<BuildPricedItem>(gear.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= gear.length) return;
+      const item = gear[i]!;
+      try {
+        const res = await priceCheck(item.itemText, { league: league ?? undefined });
+        results[i] = {
+          slot: item.slot,
+          name: res.itemName,
+          rarity: res.rarity,
+          estimate: res.estimate,
+          sources: res.sources,
+          listingsCount: res.listings.length,
+        };
+      } catch {
+        results[i] = {
+          slot: item.slot,
+          name: item.name,
+          rarity: 'other',
+          estimate: null,
+          sources: [],
+          listingsCount: 0,
+        };
+      }
+    }
+  }
+
+  const workers = Array.from({ length: concurrency }, () => worker());
+  await Promise.all(workers);
+
+  const priced = (results as BuildPricedItem[]).filter(
+    (r) => r.estimate?.median != null,
+  );
+  const totalMin = priced.reduce((sum, r) => sum + (r.estimate!.median ?? 0), 0);
+
+  return {
+    league,
+    items: results.map((r) => r ?? ({
+      slot: '', name: '—', rarity: 'other', estimate: null, sources: [], listingsCount: 0,
+    })) as BuildPricedItem[],
+    totalMin,
+    pricedCount: priced.length,
+    totalItems: gear.length,
+    elapsedMs: Date.now() - started,
   };
 }

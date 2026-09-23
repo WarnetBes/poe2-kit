@@ -10,6 +10,7 @@ import {
   showPriceCheck,
   showLevelingPlan,
   showBuildImport,
+  showBuildPrice,
   showAIChat,
   sendAIMessage,
   clearAIChat,
@@ -77,10 +78,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
       <section id="pane-build" class="pane">
         <h2>Импорт билда <small>(PoB share-код)</small></h2>
-        <p class="hint">Декодирует PoB2 share-код (AA...) в сводку по билду.</p>
+        <p class="hint">Декодирует PoB2 share-код (AA...) в сводку по билду и умеет оценить всё снаряжение по живым ценам.</p>
         <textarea id="build-input" rows="6" placeholder="Вставь share-код PoB..."></textarea>
-        <button id="btn-build" class="primary">Разобрать</button>
+        <div class="aitools">
+          <button id="btn-build" class="primary">Разобрать</button>
+          <button id="btn-build-price" class="ghost">Оценить снаряжение</button>
+        </div>
         <div id="out-build" class="out"></div>
+        <div id="out-build-price" class="out"></div>
       </section>
 
       <section id="pane-ai" class="pane">
@@ -182,6 +187,9 @@ document.querySelector('#btn-price')!.addEventListener('click', () =>
 document.querySelector('#btn-leveling')!.addEventListener('click', () => showLevelingPlan());
 document.querySelector('#btn-build')!.addEventListener('click', () =>
   showBuildImport((document.querySelector('#build-input') as HTMLTextAreaElement).value),
+);
+document.querySelector('#btn-build-price')!.addEventListener('click', () =>
+  showBuildPrice((document.querySelector('#build-input') as HTMLTextAreaElement).value),
 );
 
 // ── AI-чат ─────────────────────────────────────────────
