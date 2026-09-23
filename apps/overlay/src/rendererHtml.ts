@@ -75,10 +75,30 @@ export const rendererHtml = `<!doctype html>
 
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
+
+  /* Полоса перетаскивания: видна только в режиме перемещения (Ctrl+Alt+D). */
+  #grab {
+    -webkit-app-region: drag;
+    user-select: none;
+    cursor: move;
+    margin: -10px -12px 2px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(240,136,62,0.16);
+    border-bottom: 1px solid rgba(240,136,62,0.35);
+    border-radius: 10px 10px 0 0;
+    text-align: center;
+  }
+  #grab .reset { -webkit-app-region: no-drag; cursor: pointer; color: var(--dim);
+    text-decoration: underline; font-size: 11px; }
 </style>
 </head>
 <body>
   <div id="panel">
+    <div id="grab" class="hide">
+      ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+Alt+D — закрепить
+    </div>
     <div id="idle">
       Готово. Нажми <b>Ctrl+Alt+Space</b><br/>
       в игре, чтобы оценить предмет из буфера.
@@ -98,7 +118,7 @@ export const rendererHtml = `<!doctype html>
         <div class="lvl-zone" id="lvlZone"></div>
         <div id="lvlHints"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+Alt+Space · Прокачка: Ctrl+Alt+L</div>
+      <div id="hint">Прайс: Ctrl+Alt+Space · Прокачка: Ctrl+Alt+L · Двигать: Ctrl+Alt+D</div>
     </div>
   </div>
 <script>
@@ -119,6 +139,21 @@ export const rendererHtml = `<!doctype html>
 
   window.poe2k.onPriceBusy(function (b) {
     if (b) setBusy(true);
+  });
+
+  // Режим перемещения: показываем полосу перетаскивания и прячем контент.
+  window.poe2k.onMoveMode(function (state) {
+    var grab = $('grab');
+    grab.classList.toggle('hide', !state.unlocked);
+    document.body.style.background = state.unlocked ? 'rgba(240,136,62,0.04)' : 'transparent';
+    if (state.unlocked) {
+      $('idle').classList.remove('hide');
+      $('body').classList.add('hide');
+    }
+  });
+
+  $('resetOffset').addEventListener('click', function () {
+    window.poe2k.resetOffset();
   });
 
   function showMode(mode) {

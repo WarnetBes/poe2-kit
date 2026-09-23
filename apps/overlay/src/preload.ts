@@ -13,6 +13,8 @@ export interface OverlayAPI {
   setLeague(league: string): Promise<string>;
   getHotkey(): Promise<string>;
   setInteractive(interact: boolean): Promise<boolean>;
+  onMoveMode(cb: (state: { unlocked: boolean; resetOffset: boolean }) => void): () => void;
+  resetOffset(): Promise<boolean>;
 }
 
 const api: OverlayAPI = {
@@ -43,6 +45,15 @@ const api: OverlayAPI = {
   getHotkey: () => ipcRenderer.invoke('hotkey:get'),
 
   setInteractive: (interact) => ipcRenderer.invoke('interact:set', interact),
+
+  onMoveMode: (cb) => {
+    const listener = (_evt: unknown, state: { unlocked: boolean; resetOffset: boolean }) =>
+      cb(state);
+    ipcRenderer.on('move:mode', listener);
+    return () => ipcRenderer.removeListener('move:mode', listener);
+  },
+
+  resetOffset: () => ipcRenderer.invoke('move:reset'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

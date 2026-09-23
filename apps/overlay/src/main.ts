@@ -29,11 +29,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 const PRICE_HOTKEY = 'CommandOrControl+Alt+Space';
 const LEVELING_HOTKEY = 'CommandOrControl+Alt+L';
+const MOVE_HOTKEY = 'CommandOrControl+Alt+D';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
+
+/** Смещение оверлея относительно «закреплённой» позиции (правый верхний угол игры). */
+interface OverlayOffset {
+  x: number;
+  y: number;
+}
 
 let activeLeague: string | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let busy = false;
+/** Режим перемещения оверлея (Ctrl+Alt+D): окно кликабельно и таскается мышью. */
+let moveUnlocked = false;
+/** Пользовательское смещение (DIP) от закреплённой позиции; переживает перезапуск. */
+let userOffset: OverlayOffset | null = null;
 
 // ─── Геометрия оверлея и привязка к окну игры ──────────────────────────────
 const OVERLAY_WIDTH = 420;
@@ -98,6 +109,88 @@ function writtenRendererPath(): string {
     console.warn('[overlay] failed to write renderer:', err);
   }
   return file;
+}
+
+/** Файл со смещением оверлея (выбор пользователя переживает перезапуск). */
+function offsetStateFile(): string {
+  return path.join(app.getPath('userData'), 'overlay-offset.json');
+}
+
+function loadUserOffset(): OverlayOffset | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(offsetStateFile(), 'utf8'));
+    if (typeof raw?.x === 'number' && typeof raw?.y === 'number') {
+      return { x: raw.x, y: raw.y };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveUserOffset(offset: OverlayOffset | null): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    if (offset) fs.writeFileSync(offsetStateFile(), JSON.stringify(offset), 'utf8');
+    else fs.rmSync(offsetStateFile(), { force: true });
+  } catch {
+    /* некритично */
+  }
+}
+
+/** «Закреплённая» позиция оверлея (без пользовательского смещения), в DIP. */
+function pinnedPosition(rect: { x: number; y: number; width: number; height: number }): {
+  x: number;
+  y: number;
+} {
+  return {
+    x: Math.round(rect.x + rect.width - OVERLAY_WIDTH - MARGIN),
+    y: Math.round(rect.y + MARGIN),
+  };
+}
+
+/**
+ * Переключить режим перемещения оверлея (Ctrl+Alt+D):
+ *  - unlock: окно становится кликабельным/фокусируемым, таскается мышью за полосу-заголовок;
+ *  - lock (повторное нажатие): текущая позиция пересчитывается в смещение от
+ *    закреплённой точки, сохраняется в userData и применяется трекером дальше.
+ */
+function toggleMoveMode(): void {
+  const win = overlayWindow;
+  if (!win || win.isDestroyed()) return;
+  moveUnlocked = !moveUnlocked;
+  if (moveUnlocked) {
+    win.setFocusable(true);
+    win.setIgnoreMouseEvents(false);
+    win.show();
+    win.focus();
+  } else {
+    // Считаем смещение от «закреплённой» позиции относительно текущего окна игры.
+    const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
+    if (found) {
+      const pinned = pinnedPosition(physicalRectToDip(found.rect));
+      const [wx, wy] = win.getPosition();
+      userOffset = { x: wx - pinned.x, y: wy - pinned.y };
+      saveUserOffset(userOffset);
+      console.log(`[overlay] позиция закреплена: offset=${JSON.stringify(userOffset)}`);
+      lastRectKey = ''; // форсируем следующий setBounds трекера
+    }
+    win.setFocusable(false);
+    win.setIgnoreMouseEvents(true, { forward: true });
+  }
+  const payload = {
+    unlocked: moveUnlocked,
+    resetOffset: false,
+  };
+  overlayWindow?.webContents.send('move:mode', payload);
+}
+
+/** Сбросить пользовательское смещение (двойной Ctrl+Alt+D в течение 1 сек не используем — просто IPC). */
+function resetOverlayOffset(): void {
+  userOffset = null;
+  saveUserOffset(null);
+  lastRectKey = '';
+  console.log('[overlay] смещение сброшено');
 }
 
 async function createOverlayWindow(): Promise<void> {
@@ -177,22 +270,28 @@ function trackGameWindow(): void {
   const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
 
   if (!found) {
-    // Игра/окно не найдено — прячем оверлей.
-    if (win.isVisible()) win.hide();
+    // Игра/окно не найдено — прячем оверлей (кроме режима перемещения).
+    if (!moveUnlocked && win.isVisible()) win.hide();
     return;
   }
 
-  // Игра не в фокусе или свёрнута — прячем оверлей (по выбору пользователя).
+  // Игра не в фокусе или свёрнута — прячем оверлей (кроме режима перемещения).
   const active = isGameForeground(found);
-  if (!active) {
+  if (!active && !moveUnlocked) {
     if (win.isVisible()) win.hide();
     return;
   }
 
-  // Позиция (DIP): правый верхний угол окна игры, с отступом заданного размера.
-  const rect = physicalRectToDip(found.rect);
-  const x = Math.round(rect.x + rect.width - OVERLAY_WIDTH - MARGIN);
-  const y = Math.round(rect.y + MARGIN);
+  if (moveUnlocked) {
+    // Пользователь тащит окно — не дёргаем позицию и не прячем его.
+    if (!win.isVisible()) win.show();
+    return;
+  }
+
+  // Позиция (DIP): правый верхний угол окна игры + сохранённое смещение.
+  const pinned = pinnedPosition(physicalRectToDip(found.rect));
+  const x = pinned.x + (userOffset?.x ?? 0);
+  const y = pinned.y + (userOffset?.y ?? 0);
 
   // Если сменился HWND игры (перезапуск PoE2) — форсируем обновление позиции.
   const hwndKey = String(found.hwnd);
@@ -234,17 +333,61 @@ function stopGameTracker(): void {
  * Главное действие: прайс-чек предмета из буфера обмена.
  * Возвращает результат ядра (или распарсенный вариант, если оценка не удалась).
  */
+const hotkeyAction = (): void => {
+  console.log('[overlay] hotkey fired: Ctrl+Alt+Space');
+  void runPriceCheck();
+};
+
+const hotkeyLevelAction = (): void => {
+  console.log('[overlay] hotkey fired: Ctrl+Alt+L');
+  void runLevelingContext();
+};
+
+const HOTKEY_TIMEOUT_MS = 45_000;
+
+/** Обёртка-«страховка»: даже если priceCheck зависнет (сеть), отпустим busy по таймауту. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_resolve, reject) =>
+      setTimeout(() => reject(new Error(`${label}: timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 async function runPriceCheck(): Promise<unknown> {
-  if (busy) return null;
+  if (busy) {
+    console.warn('[overlay] pricecheck skipped: busy=true (предыдущий запрос ещё не завершился)');
+    return null;
+  }
   busy = true;
   try {
     const itemText = clipboard.readText();
+    console.log(`[overlay] clipboard: ${itemText.length} chars`);
+    if (itemText.trim()) {
+      console.log(`[overlay] clipboard head: ${JSON.stringify(itemText.slice(0, 80))}`);
+    } else {
+      console.warn('[overlay] clipboard is empty — Ctrl+C в игре по наведённому предмету?');
+    }
     await overlayWindow?.webContents.send('price:busy', true);
 
     let result;
     try {
-      result = await core.trade.priceCheck(itemText);
+      result = await withTimeout(
+        core.trade.priceCheck(itemText),
+        HOTKEY_TIMEOUT_MS,
+        'priceCheck',
+      );
+      const itemName = (result as { itemName?: string } | undefined)?.itemName ?? '?';
+      console.log(
+        `[overlay] price done: item="${itemName}" estimate=${JSON.stringify(
+          (result as { estimate?: unknown } | undefined)?.estimate ?? null,
+        )} listings=${
+          (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0
+        }`,
+      );
     } catch (err) {
+      console.warn('[overlay] priceCheck failed:', err instanceof Error ? err.message : err);
       // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
       const parsed = core.parse.parseItemText(itemText);
       result = {
@@ -300,14 +443,15 @@ async function runLevelingContext(): Promise<unknown> {
 }
 
 function registerHotkeys(): void {
-  const ok = globalShortcut.register(PRICE_HOTKEY, () => {
-    void runPriceCheck();
-  });
-  const okL = globalShortcut.register(LEVELING_HOTKEY, () => {
-    void runLevelingContext();
+  const ok = globalShortcut.register(PRICE_HOTKEY, hotkeyAction);
+  const okL = globalShortcut.register(LEVELING_HOTKEY, hotkeyLevelAction);
+  const okM = globalShortcut.register(MOVE_HOTKEY, () => {
+    console.log('[overlay] hotkey fired: Ctrl+Alt+D (перемещение оверлея)');
+    toggleMoveMode();
   });
   console.log(`[overlay] hotkey ${PRICE_HOTKEY} registered=${ok}`);
   console.log(`[overlay] hotkey ${LEVELING_HOTKEY} registered=${okL}`);
+  console.log(`[overlay] hotkey ${MOVE_HOTKEY} registered=${okM}`);
 }
 
 function setupIPC(): void {
@@ -329,6 +473,17 @@ function setupIPC(): void {
 
   ipcMain.handle('hotkey:get', () => PRICE_HOTKEY);
 
+  // Перемещение оверлея: переключение режима и сброс смещения из рендерера.
+  ipcMain.handle('move:toggle', () => {
+    toggleMoveMode();
+    return moveUnlocked;
+  });
+
+  ipcMain.handle('move:reset', () => {
+    resetOverlayOffset();
+    return true;
+  });
+
   // Переключатель «кликабельности» оверлея из рендерера.
   ipcMain.handle('interact:set', (_evt, interact: boolean) => {
     overlayWindow?.setIgnoreMouseEvents(!interact, { forward: true });
@@ -339,6 +494,10 @@ function setupIPC(): void {
 const IS_SMOKE = process.argv.includes('--smoke');
 
 app.whenReady().then(async () => {
+  // Восстанавливаем сохранённое смещение оверлея (если пользователь его двигал).
+  userOffset = loadUserOffset();
+  console.log(`[overlay] saved offset: ${userOffset ? JSON.stringify(userOffset) : 'нет (штатная позиция)'}`);
+
   // Лига: если пользователь раньше выбрал свою — используем её; иначе берём
   // актуальную текущую лигу из poe2scout (а не устаревший хардкод).
   activeLeague = loadSavedLeague();
