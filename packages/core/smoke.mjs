@@ -302,5 +302,22 @@ const ring = searchBaseItems('Ruby Ring');
 ok(ring.length >= 1 && ring.some((b) => b.name === 'Ruby Ring'), 'base_items: Ruby Ring found');
 ok(getStatIds().length > 20000, `stats: ${getStatIds().length} stat ids`);
 
+console.log('poe2db.tw service (scraper)');
+const { normalizeTrailingArabicToRoman, parsePoe2dbHtml } = core;
+ok(normalizeTrailingArabicToRoman('Urgent_Totems_2') === 'Urgent_Totems_II', 'poe2db: arabic→roman slug');
+ok(normalizeTrailingArabicToRoman('Ice_Strike') === 'Ice_Strike', 'poe2db: slug unchanged without numeral');
+const fakeHtml = [
+  '<html><head><meta property="og:title" content="Ice Strike"><meta property="og:description" content="Ice Strike is a skill gem."></head>',
+  '<body><div class="gemPopup"><span class="property">Attack, Melee, Cold</span><span class="explicitMod">Deals 1.65x base damage</span></div>',
+  '<div class="card-header">Recommended Support Gems /29</div><div class="table-responsive"><table><tr><th>Gem</th></tr><tr><td>Fanatical Charge</td></tr></table></div>',
+  '<div class="card-header">Level Effect /40</div>',
+  '</body></html>',
+].join('');
+const parsed = parsePoe2dbHtml(fakeHtml);
+ok(parsed.title === 'Ice Strike', 'poe2db: parse title');
+ok(parsed.description.includes('skill gem'), 'poe2db: parse description');
+ok(parsed.stats.includes('Melee'), 'poe2db: parse stats');
+ok(parsed.sections.get('supports')?.content.includes('Fanatical Charge') && parsed.sections.get('supports')?.itemCount === 29, 'poe2db: parse supports section');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

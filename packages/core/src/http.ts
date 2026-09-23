@@ -176,3 +176,37 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
     }
   });
 }
+
+/**
+ * Текстовый (HTML) GET с той же очередью/лимитами, что httpJson.
+ * Для скрапинга страниц (poe2db.tw, pathofexile.com и т.п.).
+ */
+export async function httpText(url: string, opts: HttpOptions = {}): Promise<string> {
+  const timeoutMs = opts.timeoutMs ?? 15000;
+  const host = new URL(url).host;
+  const finalUrl = toProxyUrl(url);
+  return queueFor(host).enqueue(async () => {
+    await limiterFor(host).wait();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(finalUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,*/*',
+          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
+          ...opts.headers,
+        },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
+      }
+      return res.text();
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+}
