@@ -18,6 +18,31 @@ for /f "tokens=*" %%v in ('node -v') do set NODEVER=%%v
 echo Node.js: %NODEVER%
 echo.
 
+REM ── Self-update: git pull (git-копия репозитория) ────────────────────────────
+REM (структура через goto, чтобы %OLD_HEAD%/%NEW_HEAD% раскрывались в момент строки)
+if not exist .git goto afterupdate
+where git >nul 2>nul
+if errorlevel 1 (
+  echo [WARN] git not found in PATH - skipping update check.
+  goto afterupdate
+)
+echo Checking for updates (git pull origin main)...
+set OLD_HEAD=
+for /f %%h in ('git rev-parse HEAD 2^>nul') do set OLD_HEAD=%%h
+git pull --ff-only --quiet origin main
+if errorlevel 1 echo [WARN] git pull failed ^(no network / local changes^) - running current code.
+set NEW_HEAD=
+for /f %%h in ('git rev-parse HEAD 2^>nul') do set NEW_HEAD=%%h
+if not "%OLD_HEAD%"=="%NEW_HEAD%" (
+  echo.
+  echo ================= UPDATED =================
+  git log --oneline %OLD_HEAD%..%NEW_HEAD%
+  echo ===========================================
+  echo.
+)
+:afterupdate
+echo.
+
 REM --- install dependencies (first run only) ---
 if not exist node_modules (
   echo Installing dependencies, first run only - this takes a few minutes...
