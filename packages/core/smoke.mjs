@@ -266,5 +266,23 @@ ok(est.weapon.weapon !== null && est.weapon.physDps > 0, `estimateBuild weaponDp
 ok(est.gaps.length > 0 && est.gaps[0].severity >= est.gaps[est.gaps.length-1].severity, `estimateBuild gaps sorted (${est.gaps.length})`);
 ok(est.notes.length >= 2, 'estimateBuild honest notes');
 
+console.log('trade query builder (trade2)');
+const { buildTradeQuery, buildTradeQueryFromItem, modsToStatFilters, TRADE_CATEGORY_MAP } = core;
+const q1 = buildTradeQuery({ type: 'ring', stats: [{ id: 'pseudo.pseudo_total_life', min: 60 }], priceMax: 50 });
+ok(q1.query.filters?.type_filters?.filters?.category?.option === 'accessory.ring', 'buildTradeQuery category ring');
+ok(q1.query.stats?.[0]?.filters[0].id === 'pseudo.pseudo_total_life' && q1.query.stats[0].filters[0].value?.min === 60, 'buildTradeQuery stat filter');
+ok(q1.query.filters?.trade_filters?.filters?.price?.max === 50, 'buildTradeQuery price max');
+ok(q1.sort?.price === 'asc', 'buildTradeQuery sort asc');
+const q2 = buildTradeQuery({ type: 'Sleek Jacket', rarity: 'rare' });
+ok(q2.query.type === 'Sleek Jacket', 'buildTradeQuery unknown type → type string');
+const st1 = modsToStatFilters(['+62 to maximum Life', '+30% to Fire Resistance', 'this is unknown mod']);
+ok(st1.length === 2 && st1.some((s) => s.id === 'pseudo.pseudo_total_life' && s.min === 62) && st1.some((s) => s.id === 'pseudo.pseudo_total_fire_resistance' && s.min === 30), 'modsToStatFilters maps life+fire res, skips unknown');
+const tqItem = buildTradeQueryFromItem([
+  'Rarity: Rare', 'Test Ring', 'Ruby Ring', '--------', 'Ring', '--------',
+  '+62 to maximum Life', '+30% to Fire Resistance',
+].join('\n'));
+ok(tqItem.query.type === 'Ruby Ring', 'buildTradeQueryFromItem baseType');
+ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem mods→stats');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

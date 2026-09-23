@@ -599,16 +599,21 @@ export async function searchTrade(
   };
 
   try {
-    const search = await httpJson<{ id?: string }>(
-      `${TRADE_API}/search/${encodeURIComponent(league)}`,
+    const search = await httpJson<{ id?: string; result?: string[] }>(
+      `${TRADE_API}/search/poe2/${encodeURIComponent(league)}`,
       { method: 'POST', body: searchQuery },
     );
-    if (!search?.id) return [];
+    if (!search?.id || !search.result?.length) return [];
+    // fetch принимает ХЭШИ результатов (не id поиска): берём первые limit хэшей.
+    const hashes = search.result.slice(0, Math.min(limit, 10)).join(',');
     const fetchRes = await httpJson<{
-      result?: Array<{ listing?: { price?: { amount?: number; type?: string } } }>;
-    }>(`${TRADE_API}/fetch/${search.id}?query=${search.id}&count=${limit}`);
+      result?: Array<{
+        listing?: { price?: { amount?: number; type?: string } };
+      } | null>;
+    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`);
     const listings: TradeListing[] = [];
     for (const entry of fetchRes?.result ?? []) {
+      if (!entry) continue;
       const p = entry?.listing?.price;
       if (p && typeof p.amount === 'number') {
         listings.push({ price: p.amount, currency: p.type ?? 'chaos' });

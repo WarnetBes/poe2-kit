@@ -151,6 +151,9 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
         cache: 'no-store',
         headers: {
           Accept: 'application/json',
+          // GGG требует описательный User-Agent с контактом (политика API).
+          // Node fetch без UA получает 403 от Cloudflare.
+          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
           ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
           ...opts.headers,
         },
