@@ -7,7 +7,7 @@
  * @see https://repoe-fork.github.io/poe2/
  */
 
-import { httpJson } from './http.js';
+import { cachedJson, DEFAULT_TTLS } from './cache.js';
 
 const REPOE_BASE = 'https://repoe-fork.github.io/poe2';
 
@@ -68,7 +68,9 @@ let baseItemIndex: BaseItemIndex | null = null;
 /** Загрузить и заиндексировать базу предметов (лениво, один раз). */
 async function ensureBaseItemIndex(): Promise<BaseItemIndex> {
   if (baseItemIndex) return baseItemIndex;
-  const raw = await httpJson<Record<string, RepoeBaseEntry>>(`${REPOE_BASE}/base_items.json`);
+  const { data: raw } = await cachedJson<Record<string, RepoeBaseEntry>>(`${REPOE_BASE}/base_items.json`, {
+    ttlMs: DEFAULT_TTLS.repoe,
+  });
   const index: BaseItemIndex = new Map();
   for (const entry of Object.values(raw)) {
     if (entry.domain !== 'item' || !entry.name) continue;
@@ -173,7 +175,9 @@ function extractFirstNumber(text: string): number | null {
 
 async function ensureModIndex(): Promise<ModIndex> {
   if (modIndex) return modIndex;
-  const raw = await httpJson<Record<string, RepoeModEntry>>(`${REPOE_BASE}/mods.json`);
+  const { data: raw } = await cachedJson<Record<string, RepoeModEntry>>(`${REPOE_BASE}/mods.json`, {
+    ttlMs: DEFAULT_TTLS.repoe,
+  });
   const index: ModIndex = new Map();
   for (const mod of Object.values(raw)) {
     if (mod.domain !== 'item') continue;

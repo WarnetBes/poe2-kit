@@ -246,5 +246,53 @@ export function registerDatasetTools(server: McpServer): number {
   );
   count++;
 
+  // ── Свежесть и версионирование данных ───────────────────────────────────────
+  server.registerTool(
+    'poe2_data_freshness',
+    {
+      title: 'PoE2 Data Freshness (versions + cache)',
+      description: `Версии и свежесть всех источников данных poe2-kit:
+- офлайн-датасеты (патч, ревизия, дата извлечения);
+- дисковый кэш живых источников (лиги poe2scout, RePoE base_items/mods, снапшоты/словари poe.ninja) — URL, возраст.
+
+После патча игры: clear=true — очистить кэш, чтобы лиги/предметы перезагрузились свежими.
+
+Аргументы:
+  - clear (boolean, опц.): очистить дисковый кэш перед сводкой.
+`,
+      inputSchema: {
+        clear: z.boolean().optional().describe('Очистить дисковый кэш живых источников'),
+      },
+      annotations: { readOnlyHint: false, openWorldHint: false },
+    },
+    async ({ clear }) => {
+      let cleared = 0;
+      if (clear) cleared = core.cache.clearHttpCache();
+      const v = core.dataset.getDatasetVersion();
+      const entries = core.cache.httpCacheInfo();
+      const lines = [
+        '## Свежесть данных poe2-kit',
+        '',
+        '### Офлайн-датасеты',
+        `- Патч: **${v.patch_version} «${v.patch_name}»** (ревизия ${v.data_revision}, ${v.released_as}), извлечено ${v.extracted_at}`,
+        '',
+        `### Дисковый кэш живых источников — ${entries.length} записей${clear ? ` (очищено ${cleared})` : ''}`,
+      ];
+      if (!entries.length) {
+        lines.push('_Кэш пуст — живые запросы пока не делались._');
+      } else {
+        lines.push('| Источник | Возраст |', '|---|---|');
+        for (const e of entries) {
+          const age = e.ageHours < 1 ? `${(e.ageHours * 60).toFixed(0)} мин` : `${e.ageHours.toFixed(1)} ч`;
+          const short = e.url.replace(/^https:\/\//, '').slice(0, 70);
+          lines.push(`| ${short} | ${age} |`);
+        }
+        lines.push('', '_TTL: лиги 6ч, RePoE 7 дней, снапшоты poe.ninja 1ч, словари poe.ninja — бессрочно (адресованы хэшем)._');
+      }
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    },
+  );
+  count++;
+
   return count;
 }

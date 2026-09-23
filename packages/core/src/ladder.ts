@@ -15,7 +15,8 @@
  * (данные игроков, не игровые механики).
  */
 
-import { httpBytes, httpJson } from './http.js';
+import { httpBytes } from './http.js';
+import { cachedBytes, cachedJson, DEFAULT_TTLS } from './cache.js';
 
 // ─── Protobuf wire-примитивы (без схемы) ───────────────────────────────────
 
@@ -333,7 +334,10 @@ export function parseNinjaDictionary(db: Uint8Array): string[] {
 export async function getLadderDictionary(hash: string): Promise<string[]> {
   const hit = dictCache.get(hash);
   if (hit) return hit;
-  const db = await httpBytes(`https://poe.ninja/poe2/api/builds/dictionary/${hash}`);
+  const { data: db } = await cachedBytes(
+    `https://poe.ninja/poe2/api/builds/dictionary/${hash}`,
+    { ttlMs: DEFAULT_TTLS.ninjaDictionary },
+  );
   const list = parseNinjaDictionary(db);
   dictCache.set(hash, list);
   return list;
@@ -342,8 +346,9 @@ export async function getLadderDictionary(hash: string): Promise<string[]> {
 /** Актуальные снапшоты poe.ninja PoE2 (кэш 10 минут). */
 export async function getLadderSnapshots(): Promise<NinjaSnapshot[]> {
   if (snapshotCache && Date.now() - snapshotCache.at < 10 * 60 * 1000) return snapshotCache.list;
-  const raw = await httpJson<{ snapshotVersions?: RawSnapshot[] }>(
+  const { data: raw } = await cachedJson<{ snapshotVersions?: RawSnapshot[] }>(
     'https://poe.ninja/poe2/api/data/index-state',
+    { ttlMs: DEFAULT_TTLS.ninjaSnapshots },
   );
   const list = (raw.snapshotVersions ?? [])
     .filter((s) => s.url && s.version && s.snapshotName)

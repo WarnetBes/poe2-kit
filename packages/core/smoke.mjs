@@ -389,5 +389,22 @@ ok(core.default.dataset.searchAscendancyNodes('Elemental', { notablesOnly: true,
 const glory = core.default.dataset.getStatDescription('%_attack_damage_per_glory_consumed_for_6_seconds_up_to_100');
 ok(!!glory && glory.template.includes('Glory'), 'stat desc: glory template resolved');
 ok(core.default.dataset.searchStatDescriptions('glory', 3).length === 3, 'stat desc: search by substring');
+console.log('cache: disk TTL + stale-if-error');
+process.env.POE2_KIT_CACHE_DIR = process.env.TEMP + '/opencode/_poe2smoke_cache';
+core.default.cache.clearHttpCache();
+ok(core.default.cache.httpCacheInfo().length === 0, 'cache: empty after clear');
+{
+  const { createHash } = await import('node:crypto');
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync(process.env.POE2_KIT_CACHE_DIR, { recursive: true });
+  const url = 'http://127.0.0.1:9/x';
+  const h = createHash('sha1').update(url).digest('hex');
+  writeFileSync(process.env.POE2_KIT_CACHE_DIR + '/' + h + '.json',
+    JSON.stringify({ url, fetchedAt: Date.now() - 864e5, data: { saved: true } }));
+  const r = await core.default.cache.cachedJson(url, { ttlMs: 3600_000, timeoutMs: 2000 });
+  ok(r.stale === true && r.data.saved === true, 'cache: stale-if-error returns snapshot');
+  const info = core.default.cache.httpCacheInfo();
+  ok(info.length === 1 && info[0].ageHours > 23, 'cache: info reports age');
+}
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

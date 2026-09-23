@@ -11,6 +11,7 @@
  */
 
 import { httpJson } from './http.js';
+import { cachedJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
 import type {
@@ -91,7 +92,9 @@ export async function fetchLeagues(): Promise<League[]> {
   if (leaguesCache && now - leaguesCache.at < LEAGUES_TTL) return leaguesCache.leagues;
 
   try {
-    const data = await httpJson<ScoutLeague[]>(`${SCOUT_HOST}/Leagues`);
+    const { data } = await cachedJson<ScoutLeague[]>(`${SCOUT_HOST}/Leagues`, {
+      ttlMs: DEFAULT_TTLS.leagueList,
+    });
     if (!Array.isArray(data) || data.length === 0) {
       leaguesCache = { at: now, leagues: FALLBACK_LEAGUES };
       return FALLBACK_LEAGUES;
