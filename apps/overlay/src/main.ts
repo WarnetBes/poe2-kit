@@ -931,8 +931,15 @@ function trackGameWindow(): void {
 
   // Позиция (DIP): правый верхний угол окна игры + сохранённое смещение.
   const pinned = pinnedPosition(physicalRectToDip(found.rect));
-  const x = pinned.x + (userOffset?.x ?? 0);
-  const y = pinned.y + (userOffset?.y ?? 0);
+  let x = pinned.x + (userOffset?.x ?? 0);
+  let y = pinned.y + (userOffset?.y ?? 0);
+
+  // Не даём уехать за экран: старый офсет мог быть закреплён при другом
+  // режиме окна игры (оконный → полный экран) и вынести оверлей за границу
+  // монитора — тогда его просто не видно.
+  const area = screen.getDisplayMatching(found.rect).workArea;
+  x = Math.min(Math.max(x, area.x), area.x + area.width - OVERLAY_WIDTH);
+  y = Math.min(Math.max(y, area.y), area.y + Math.max(area.height - overlayHeight, 100));
 
   // Если сменился HWND игры (перезапуск PoE2) — форсируем обновление позиции.
   const hwndKey = String(found.hwnd);
@@ -1134,6 +1141,18 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: Ctrl+F5 (перемещение оверлея)');
     toggleMoveMode();
   });
+  // Сброс пользовательского смещения — если оверлей «потерялся» (закреплён
+  // за пределами экрана при смене режима окна игры), возвращает в штатную
+  // позицию у правого верхнего угла окна игры.
+  const okR = globalShortcut.register('Control+Shift+F5', () => {
+    console.log('[overlay] hotkey fired: Ctrl+Shift+F5 (сброс позиции оверлея)');
+    resetOverlayOffset();
+    if (moveUnlocked) {
+      moveUnlocked = false;
+      overlayWindow?.setFocusable(false);
+      overlayWindow?.setIgnoreMouseEvents(true, { forward: true });
+    }
+  });
   const okBI = globalShortcut.register(BUILD_IMPORT_HOTKEY, () => {
     console.log('[overlay] hotkey fired: Ctrl+F3 (импорт билда из буфера)');
     void runBuildImport();
@@ -1145,6 +1164,7 @@ function registerHotkeys(): void {
   console.log(`[overlay] hotkey ${PRICE_HOTKEY} registered=${ok}`);
   console.log(`[overlay] hotkey ${LEVELING_HOTKEY} registered=${okL}`);
   console.log(`[overlay] hotkey ${MOVE_HOTKEY} registered=${okM}`);
+  console.log('[overlay] hotkey Control+Shift+F5 registered=' + okR);
   console.log(`[overlay] hotkey ${BUILD_IMPORT_HOTKEY} registered=${okBI}`);
   console.log(`[overlay] hotkey ${BUILD_PANEL_HOTKEY} registered=${okBP}`);
 }
