@@ -51,8 +51,15 @@ echo.
 echo HOW TO USE IN GAME:
 echo   1. Launch Path of Exile 2.
 echo   2. Hover over an item and press Ctrl+C (copies item text).
-echo   3. Press Ctrl+Alt+Space - the overlay appears near the top-right
-echo      corner of the game window and shows the price estimate.
+echo   3. Ctrl+F1  - price check of the item from clipboard.
+echo   4. Ctrl+F3  - import build: copy a PoB share-code / link, then press.
+echo      Also: a poe.ninja character profile link + Ctrl+F3 enables
+echo      auto-sync (your equipped gear is checked against the build).
+echo   5. Ctrl+F2  - build shopping list panel (items you wear are shown).
+echo   6. Ctrl+F4  - leveling context (zone hints from the game log).
+echo   7. Ctrl+F5  - move the overlay window (press again to pin it).
+echo.
+echo The window auto-resizes to fit the panel. Logs: %%APPDATA%%\@poe2-kit\overlay\overlay.log
 echo.
 call npm run start -w @poe2-kit/overlay
 goto end
