@@ -341,6 +341,61 @@ export function mapItemClassToScoutCategory(itemClass: string): ScoutUniqueCateg
   return null;
 }
 
+/** Пары «regex по базовому типу → категория poe2scout» для вывода категории уника из baseType.
+ *  Используется, когда itemClass (строка «Item Class: …») в клир-тексте отсутствует.
+ *  Порядок: от специфичного к общему, чтобы сопоставление было точным. */
+const BASE_CATEGORY_TABLE: Array<[RegExp, ScoutUniqueCategory]> = [
+  [/crossbow/i, 'crossbows'],
+  [/quarterstaff/i, 'spears'],
+  [/polearm|spear/i, 'spears'],
+  [/flail/i, 'flails'],
+  [/dagger/i, 'daggers'],
+  [/claw/i, 'claws'],
+  [/hatchet|axe/i, 'axes'],
+  [/sword/i, 'swords'],
+  [/maul|mace/i, 'maces'],
+  [/sceptre/i, 'sceptres'],
+  [/wand/i, 'wands'],
+  [/warstaff|staff/i, 'staves'],
+  [/bow/i, 'bows'],
+  [/shield|buckler/i, 'shield'],
+  [/quiver/i, 'quivers'],
+  [/focus/i, 'foci'],
+  [/helmet|helm|hood|mask|cap|visor|crown|circlet|coif|headguard/i, 'helmets'],
+  [/glove|mitt/i, 'gloves'],
+  [/boot|greave|tread/i, 'boots'],
+  [/ring/i, 'rings'],
+  [/amulet|locket|medallion|necklace/i, 'amulets'],
+  [/belt/i, 'belts'],
+  [/jewel|jewelry/i, 'jewel'],
+  [/flask/i, 'flask'],
+  [/body|chest|mail|armou?r|vest|coat|jacket|robe/i, 'body'],
+];
+
+/** Вывести категорию poe2scout для уникального предмета. Приоритет: itemClass,
+ *  иначе угадывание по базовому типу. */
+function inferUniqueCategory(
+  baseType: string | null,
+  itemClass?: string,
+): ScoutUniqueCategory | null {
+  const cls = (itemClass ?? '').trim();
+  if (cls) {
+    const fromClass = mapItemClassToScoutCategory(cls);
+    if (fromClass) return fromClass;
+  }
+  const base = (baseType ?? '').trim();
+  if (!base) return null;
+  for (const [re, cat] of BASE_CATEGORY_TABLE) {
+    if (re.test(base)) return cat;
+  }
+  // Общие группы, если ничего специфичного не нашлось.
+  return null;
+}
+
+/** Максимум категорий, перебираемых в fallback-поиске уника, когда категория не угадана
+ *  (защита от 27 последовательных запросов; обычно это 0–1 из-за infer по baseType). */
+const MAX_UNIQUE_CATEGORIES = 5;
+
 /** Все категории уников для поиска без точного itemClass. */
 const ALL_UNIQUE_CATEGORIES: ScoutUniqueCategory[] = [
   'armour',
@@ -390,7 +445,9 @@ async function fetchUniqueCategory(
   const url = `${SCOUT_HOST}/Leagues/${encodeURIComponent(leagueCode)}/Uniques/ByCategory?Category=${encodeURIComponent(
     category,
   )}&Search=${encodeURIComponent(search)}&PerPage=250`;
-  const data = await httpJson<ScoutUniquePage>(url);
+  // Заниженный таймаут для категорийного поиска: pое2scout на медленных ответах
+  // не должен держать прайс-чек (иначе 10с на категорию × N категорий).
+  const data = await httpJson<ScoutUniquePage>(url, { timeoutMs: 5000 });
   return data.Items ?? [];
 }
 
@@ -402,9 +459,10 @@ export async function priceUnique(
   name: string,
   league?: string,
   itemClass?: string,
+  baseType?: string | null,
 ): Promise<number | null> {
   const l = league ?? currentLeague ?? 'Runes of Aldur';
-  const key = `${l}::${name.trim().toLowerCase()}::${(itemClass ?? '').toLowerCase()}`;
+  const key = `${l}::${name.trim().toLowerCase()}::${(itemClass ?? '').toLowerCase()}::${(baseType ?? '').toLowerCase()}`;
   const c = scoutUniqueCache.get(key);
   if (c && Date.now() - c.at < SCOUT_TTL) return c.value;
 
@@ -412,10 +470,12 @@ export async function priceUnique(
   const lower = name.trim().toLowerCase();
   let value: number | null = null;
 
-  const targetCat = itemClass ? mapItemClassToScoutCategory(itemClass) : null;
+  // Узкая категория из itemClass или угаданная по базовому типу (надёжность и скорость:
+  // почти всегда 1 запрос вместо перебора всех категорий).
+  const targetCat = inferUniqueCategory(baseType ?? null, itemClass);
   const categories: string[] = targetCat
     ? [targetCat]
-    : ALL_UNIQUE_CATEGORIES;
+    : ALL_UNIQUE_CATEGORIES.slice(0, MAX_UNIQUE_CATEGORIES);
 
   for (const cat of categories) {
     try {
@@ -436,6 +496,24 @@ export async function priceUnique(
   }
   scoutUniqueCache.set(key, { at: Date.now(), value });
   return value;
+}
+
+/** Общий таймаут поиска цены уникального предмета (мс). Защита от долгого
+ *  перебора категорий/сетевых зависаний: не держим прайс-чек слишком долго. */
+const PRICE_UNIQUE_TIMEOUT_MS = 20000;
+
+/** priceUnique с гарантированным общим таймаутом: если поиск не уложился —
+ *  возвращаем null, не кэшируя отрицательный результат надолго. */
+async function priceUniqueWithTimeout(
+  name: string,
+  league?: string,
+  itemClass?: string,
+  baseType?: string | null,
+): Promise<number | null> {
+  return Promise.race([
+    priceUnique(name, league, itemClass, baseType),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), PRICE_UNIQUE_TIMEOUT_MS)),
+  ]);
 }
 
 // ────────────────────────────────────────────────
@@ -504,10 +582,11 @@ export async function priceCheck(
   let listings: TradeListing[] = [];
 
   if (parsed.rarity === 'Unique' && (parsed.name ?? parsed.baseType)) {
-    const v = await priceUnique(
+    const v = await priceUniqueWithTimeout(
       parsed.name ?? parsed.baseType,
       league,
       parsed.itemClass || undefined,
+      parsed.baseType || undefined,
     );
     if (v != null) {
       estimate = {
