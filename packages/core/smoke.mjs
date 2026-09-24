@@ -1,5 +1,5 @@
 ﻿// Smoke-С‚РµСЃС‚ РїСЂРѕС‚РёРІ СЃРѕР±СЂР°РЅРЅРѕРіРѕ dist (Node ESM, Р±РµР· СЃРµС‚Рё).
-import { decodeShareCode, encodeShareCode, PobCodeError } from './dist/build.js';
+import { decodeShareCode, encodeShareCode, PobCodeError, importBuild } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
 import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
 import * as core from './dist/index.js';
@@ -27,6 +27,41 @@ console.log('PobCodeError handling');
 let threw = false;
 try { decodeShareCode(''); } catch(e){ threw = e instanceof PobCodeError; }
 ok(threw, 'empty code throws PobCodeError');
+
+console.log('PoB2 XML import: skill groups / buffs / config / notes (docs/POB2_XML_REFERENCE.md)');
+const pob2Xml = `<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+\t<Build level="95" className="Monk" ascendClassName="Invoker" mainSocketGroup="2">
+\t\t<PlayerStat stat="Life" value="1"/>
+\t\t<Buffs buffList="Herald of Ice,Precision" combatList="" curseList="Temporal Chains"/>
+\t</Build>
+\t<Skills activeSkillSet="1">
+\t\t<SkillSet id="1" title="Default">
+\t\t\t<Skill enabled="true" label="Ice Strike" mainActiveSkillCalcs="1" source="Item:Weapon 1">
+\t\t\t\t<Gem nameSpec="Ice Strike" level="21" quality="20" enabled="true" count="1"/>
+\t\t\t\t<Gem nameSpec="Rapid Attacks II" level="5" quality="0" enabled="true" count="1"/>
+\t\t\t</Skill>
+\t\t\t<Skill enabled="true" label="Herald of Ice" source="Item:Body Armour">
+\t\t\t\t<Gem nameSpec="Herald of Ice" level="20" quality="0" enabled="true" count="1"/>
+\t\t\t</Skill>
+\t\t</SkillSet>
+\t</Skills>
+\t<Config activeConfigSet="1">
+\t\t<ConfigSet id="1" title="Bossing">
+\t\t\t<Input name="enemyIsBoss" string="Pinnacle"/>
+\t\t\t<Input name="enemyLevel" number="84"/>
+\t\t</ConfigSet>
+\t</Config>
+\t<Notes>CI билд, приоритет — резисты.</Notes>
+</PathOfBuilding2>`;
+const imp = await importBuild(pob2Xml);
+ok(imp.level === 95 && imp.class === 'Monk' && imp.ascendancy === 'Invoker', 'PoB2: Build level/class/asc');
+ok(imp.skillGroups?.length === 2, `PoB2: skill groups = ${imp.skillGroups?.length}`);
+ok(imp.skillGroups?.[1]?.main === true && imp.skillGroups?.[1]?.gems[0]?.name === 'Herald of Ice', 'PoB2: main group = Herald of Ice (mainSocketGroup=2)');
+ok(imp.skillGroups?.[0]?.gems[0]?.name === 'Ice Strike' && imp.skillGroups?.[0]?.gems[0]?.level === 21 && imp.skillGroups?.[0]?.gems[1]?.name === 'Rapid Attacks II', 'PoB2: первая группа — Ice Strike L21 + support');
+ok(imp.buffs?.buffList.join(',') === 'Herald of Ice,Precision' && imp.buffs?.curseList[0] === 'Temporal Chains', 'PoB2: buffs/curse lists');
+ok(imp.config?.enemyIsBoss === 'Pinnacle' && imp.config?.enemyLevel === '84', 'PoB2: config inputs (boss/level)');
+ok((imp.notes ?? '').includes('CI '), 'PoB2: notes');
 
 console.log('root exports');
 ok(core.core.trade && core.core.build && core.core.leveling && core.core.repoe && core.core.ai, 'root exports all');
@@ -218,13 +253,16 @@ const stMissing = getClientState({ logPath: join(tmpDir, 'nope.txt') });
 ok(stMissing.available === false && !!stMissing.reason, 'missing log -> available false + reason');
 rmSync(tmpDir, { recursive: true, force: true });
 
-console.log('estimate: PoE2 defense formulas (РїРѕСЂС‚РёСЂРѕРІР°РЅРѕ РёР· hivemind-РєР°Р»СЊРєСѓР»СЏС‚РѕСЂРѕРІ)');
+console.log('estimate: PoE2 defense formulas (сверено с PoB2 — docs/POB2_CALC_FORMULAS.md)');
 const { armorDr, hitChance, armorNeededForDr, calculateEhp, mergeGearDefenses, estimateBuild } = core;
 ok(Math.abs(armorDr(9000, 1000) - 47.368) < 0.01, `armorDr 9000 vs 1000-hit = ${armorDr(9000, 1000).toFixed(1)}%`);
 ok(armorDr(999999, 100) <= 90, 'armorDr capped at 90');
 ok(armorDr(0, 1000) === 0, 'armorDr zero armor');
+// Уклонение ЗАЩИЩАЮЩЕГОСЯ (CalcDefence.lua:41-47): hit = 100 − 95·Ev/(Ev + 4·Acc)
 ok(hitChance(0, 2000) === 100, 'hitChance no evasion = 100%');
-ok(hitChance(999999, 2000) === 5, 'hitChance capped min 5%');
+ok(Math.abs(hitChance(8000, 1000) - 36.667) < 0.01, `hitChance Ev=8000 Acc=1000 = ${hitChance(8000, 1000).toFixed(2)}% (100 − 63.33)`);
+ok(hitChance(999999, 2000) > 5 && hitChance(999999, 2000) < 6, `hitChance огромное уклонение → почти минимум 5% (${hitChance(999999, 2000).toFixed(2)}%)`);
+ok(hitChance(300, 0) === 5, 'hitChance нулевая точность → минимум 5% (кап уворота 95%)');
 ok(Math.abs(armorNeededForDr(50, 1000) - 10000) < 0.01, 'armorNeededForDr 50% vs 1000 = 10k');
 
 const estGear = [

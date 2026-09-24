@@ -4,11 +4,12 @@
  * Закрывает ~80% AI-запросов «evaluate my build»: если игрок не открывал PoB
  * (чисел PlayerStat нет), считаем сами по клир-тексту снаряжения.
  *
- * Формулы перенесены из _research/hivemind-poe2-mcp/src/calculator/
- * (defense_calculator.py, ehp_calculator.py — алгоритмы, переработанные в TS):
+ * Формулы сверены с каноном PoB2 (docs/POB2_CALC_FORMULAS.md;
+ * исходники — _research/path-of-building-poe2, CalcDefence.lua):
  *   - Броня: DR = A / (A + 10 × D_raw), кап 90% (PoE2: броня ДО резистов, и её
  *     эффективность зависит от размера удара);
- *   - Уклонение: HitChance = (Acc × 125) / (Acc + Ev × 0.3), кап шанса удара 5–100%;
+ *   - Уклонение ЗАЩИЩАЮЩЕГОСЯ (монстр бьёт игрока): Hit% = 100 − 95·Ev/(Ev + 4·Acc),
+ *     кламп 5–100%, кап уворота 95% (CalcDefence.lua:41-47);
  *   - Блок: кап 50% (PoE2, не 75% как в PoE1);
  *   - Резисты: кап 75%;
  *   - Хаос в PoE2 снимает ES с ×2 скоростью (не обходит целиком, как в PoE1);
@@ -24,10 +25,11 @@ import { buildCodeToGear, toXml } from './build.js';
 
 export const DEFENSE_CONSTANTS = {
   ARMOR_MAX_DR: 90, // макс. reduction от брони, %
-  ARMOR_MULTIPLIER: 10, // множитель в формуле брони
+  ARMOR_MULTIPLIER: 10, // множитель в формуле брони (ArmourRatio, Data.lua:261)
   EVADE_MIN_HIT_CHANCE: 5, // мин. шанс удара по игроку, %
-  EVADE_ACCURACY_MULTIPLIER: 1.25,
-  EVADE_DIVISOR: 0.3,
+  MONSTER_EVASION_FACTOR: 0.95, // hit = 100 − 95·Ev/(Ev+4·Acc)
+  MONSTER_EVASION_ACCURACY_FACTOR: 4,
+  EVADE_MAX_CHANCE: 95, // кап шанса уклониться (Misc.lua:111)
   BLOCK_MAX_CHANCE: 50, // PoE2 cap блока, %
   RESISTANCE_CAP: 75, // стандартный кап резистов, %
 } as const;
@@ -51,11 +53,18 @@ export function armorDr(armor: number, rawDamage: number): number {
   return Math.min(dr, DEFENSE_CONSTANTS.ARMOR_MAX_DR);
 }
 
-/** Шанс удара (0–100%) атакующего с точностью acc по игроку с уклонением ev. */
+/**
+ * Шанс удара (0–100%) монстра с точностью acc по игроку с уклонением ev.
+ * Формула защищающегося (CalcDefence.lua:41-47): hit = 100 − 95·Ev/(Ev + 4·Acc),
+ * кламп [5..100]; кап уворота 95%.
+ */
 export function hitChance(evasion: number, accuracy: number): number {
-  if (accuracy <= 0) return 0;
-  const denom = accuracy + evasion * DEFENSE_CONSTANTS.EVADE_DIVISOR;
-  const raw = (accuracy * DEFENSE_CONSTANTS.EVADE_ACCURACY_MULTIPLIER * 100) / (denom || 1);
+  const ev = Math.max(0, evasion);
+  const ac = Math.max(0, accuracy);
+  if (ac <= 0) return 100 - DEFENSE_CONSTANTS.EVADE_MAX_CHANCE;
+  const raw =
+    (1 - (DEFENSE_CONSTANTS.MONSTER_EVASION_FACTOR * ev) /
+      (ev + DEFENSE_CONSTANTS.MONSTER_EVASION_ACCURACY_FACTOR * ac)) * 100;
   return Math.min(Math.max(raw, DEFENSE_CONSTANTS.EVADE_MIN_HIT_CHANCE), 100);
 }
 

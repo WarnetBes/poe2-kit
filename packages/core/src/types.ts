@@ -66,6 +66,30 @@ export interface TradeListing {
   itemName?: string;
 }
 
+/**
+ * Группа камней из билда PoB (<Skill>): активный камень + саппорты.
+ * Знания о формате — docs/POB2_XML_REFERENCE.md (исследование PoB2).
+ */
+export interface BuildSkillGroup {
+  /** Подпись группы (label) или слот-источник. */
+  label: string;
+  /** Группа включена (enabled="false" → выключена). */
+  enabled: boolean;
+  /** Происхождение группы: "Item:Weapon 1", "Tree:…", "Default Attack"… */
+  source?: string;
+  /** Главная группа сокетов билда (mainSocketGroup, 1-based). */
+  main?: boolean;
+  /** Гемы группы (name, level, quality). */
+  gems: Array<{ name: string; level: number | null; quality: number | null }>;
+}
+
+/** Активные бафы/курсы из <Buffs> экспорта PoB (CSV имён). */
+export interface BuildBuffs {
+  buffList: string[];
+  combatList: string[];
+  curseList: string[];
+}
+
 export interface BuildImport {
   /** Декодированный код */
   source: string;
@@ -78,6 +102,16 @@ export interface BuildImport {
   gear: Record<string, string>;
   /** Ключевые расчётные характеристики PoB (TotalDPS, CombinedDPS, Life, ES, …), если в экспорте есть <PlayerStat>. */
   stats?: Record<string, number>;
+  /** Группы камней с уровнями/качеством (<Skill>/<Gem>), активная помечена main. */
+  skillGroups?: BuildSkillGroup[];
+  /** Активные бафы/проклятия (<Buffs buffList/combatList/curseList>). */
+  buffs?: BuildBuffs;
+  /** Раскладка FullDPS по скиллам (<FullDPSSkill>). */
+  fullDps?: Array<{ stat: string; value: number }>;
+  /** Входы активного конфигура сета (<ConfigSet><Input>): enemyIsBoss, enemyLevel, … */
+  config?: Record<string, string>;
+  /** Заметки билда (<Notes>, первые 2000 символов). */
+  notes?: string;
   raw?: unknown;
 }
 

@@ -8,7 +8,7 @@
  */
 
 import { deflateSync, inflateSync, unzlibSync, zlibSync } from 'fflate';
-import type { BuildGearItem, BuildImport } from './types.js';
+import type { BuildBuffs, BuildGearItem, BuildImport, BuildSkillGroup } from './types.js';
 import { getSkillGemDetails } from './dataset.js';
 
 /** Ошибка при работе с PoB-кодами. */
@@ -343,14 +343,97 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
     if (Number.isFinite(v)) stats[pm[1]!] = v;
   }
 
-  // Скиллы — элементы <Gem ... nameSpec="..."/>. Предпочитаем «активный» сет (mainActiveSkill).
+  // Скиллы — группы <Skill …><Gem …/></Skill> (docs/POB2_XML_REFERENCE.md, §4).
+  // mainSocketGroup (1-based) указывает на главную группу активного SkillSet.
+  const mainGroupIdx = parseInt(buildAttrs.mainSocketGroup ?? '', 10) || 0;
+  const skillGroups: BuildSkillGroup[] = [];
   const skills: string[] = [];
-  const gemRe = /<Gem\b([^>]*)\/>/g;
+  const groupRe = /<Skill\b([^>]*)>([\s\S]*?)<\/Skill>/g;
   let gm: RegExpExecArray | null;
-  while ((gm = gemRe.exec(xml))) {
-    const a = _attrs(gm[1]!);
-    const name = a.nameSpec ?? a.skillId ?? a.gemId;
-    if (name && name !== 'nil' && !skills.includes(name)) skills.push(name);
+  while ((gm = groupRe.exec(xml))) {
+    const gAttrs = _attrs(gm[1]!);
+    const group: BuildSkillGroup = {
+      label: _unescape(gAttrs.label ?? '') || _unescape(gAttrs.slot ?? ''),
+      enabled: gAttrs.enabled !== 'false' && gAttrs.active !== 'false',
+      source: gAttrs.source ? _unescape(gAttrs.source) : undefined,
+      gems: [],
+    };
+    const gemRe = /<Gem\b([^>]*?)\/?>/g;
+    let gemMatch: RegExpExecArray | null;
+    while ((gemMatch = gemRe.exec(gm[2]!))) {
+      const a = _attrs(gemMatch[1]!);
+      const name = _unescape(a.nameSpec ?? a.skillId ?? a.gemId ?? '');
+      if (!name || name === 'nil' || a.enabled === 'false') continue;
+      group.gems.push({
+        name,
+        level: /^\d+$/.test(a.level ?? '') ? Number(a.level) : null,
+        quality: /^\d+$/.test(a.quality ?? '') ? Number(a.quality) : null,
+      });
+      if (!skills.includes(name)) skills.push(name);
+    }
+    if (group.gems.length > 0) skillGroups.push(group);
+  }
+  if (skillGroups.length > 0 && mainGroupIdx > 0 && mainGroupIdx <= skillGroups.length) {
+    skillGroups[mainGroupIdx - 1]!.main = true;
+  }
+
+  // Бафы/проклятия — <Buffs buffList="…" combatList="…" curseList="…"/> внутри <Build>.
+  let buffs: BuildBuffs | undefined;
+  const buffsM = (buildMatch?.[2] ?? '').match(/<Buffs\b([^>]*)\/?>/);
+  if (buffsM) {
+    const a = _attrs(buffsM[1]!);
+    buffs = {
+      buffList: _csv(a.buffList),
+      combatList: _csv(a.combatList),
+      curseList: _csv(a.curseList),
+    };
+  }
+
+  // Раскладка FullDPS — <FullDPSSkill stat="…" value="…" …/>.
+  const fullDps: Array<{ stat: string; value: number }> = [];
+  const fdRe = /<FullDPSSkill\s+stat="([^"]+)"\s+value="([^"]*)"[^>]*\/>/g;
+  let fm: RegExpExecArray | null;
+  while ((fm = fdRe.exec(buildMatch?.[2] ?? ''))) {
+    const v = parseFloat(fm[2]!);
+    if (Number.isFinite(v)) fullDps.push({ stat: _unescape(fm[1]!), value: v });
+  }
+
+  // Конфиг боя — активный <ConfigSet> из <Config activeConfigSet="…"> (легаси: Inputs прямо в <Config>).
+  let config: Record<string, string> | undefined;
+  const configEl = xml.match(/<Config\b([^>]*)>([\s\S]*?)<\/Config>/);
+  if (configEl) {
+    const cAttrs = _attrs(configEl[1]!);
+    const cBody = configEl[2]!;
+    const sets = [...cBody.matchAll(/<ConfigSet\b([^>]*)>([\s\S]*?)<\/ConfigSet>/g)].map((s) => ({
+      id: _attrs(s[1]!).id ?? '',
+      body: s[2]!,
+    }));
+    // Внутри ConfigSet-ов могут лежать секции <Section collapsed=…> — Inputs ищем по всему телу.
+    const activeId = cAttrs.activeConfigSet ?? '';
+    const active = sets.find((s) => s.id === activeId) ?? sets[0];
+    const inputBody = active ? active.body : cBody;
+    const inputs: Record<string, string> = {};
+    const inpRe = /<Input\b([^>]*)\/>/g;
+    let im: RegExpExecArray | null;
+    while ((im = inpRe.exec(inputBody))) {
+      const a = _attrs(im[1]!);
+      if (!a.name) continue;
+      inputs[a.name] = a.number ?? a.string ?? a.boolean ?? '';
+    }
+    if (Object.keys(inputs).length > 0) config = inputs;
+  }
+
+  // Заметки — верхнеуровневая секция <Notes> (не узловые <Notes> внутри <Spec>:
+  // секция Tree идёт после Notes, значит ищем <Notes> до начала <Tree).
+  let notes: string | undefined;
+  const treeIdx = xml.search(/<Tree\b/);
+  const notesRe = /<Notes\b[^>]*>([\s\S]*?)<\/Notes>/g;
+  let nm: RegExpExecArray | null;
+  while ((nm = notesRe.exec(xml))) {
+    if (treeIdx !== -1 && nm.index > treeIdx) break;
+    const t = _unescape(nm[1]!.trim());
+    if (t) notes = t.slice(0, 2000);
+    break;
   }
 
   // Дерево — <Tree><Spec nodes="id1,id2" .../></Tree>. Берём активный Spec (activeSpec 1-based).
@@ -376,8 +459,17 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
   while ((itm = itemRe.exec(xml))) {
     const attrs = _attrs(itm[1]!);
     const id = attrs.id ?? '';
-    const name = itm[2]!.match(/<Name>([^<]*)<\/Name>/)?.[1]?.trim();
-    if (id) itemNames.set(id, name ?? '');
+    // Имя предмета: PoB2 пишет тело КЛИР-ТЕКСТОМ (без <Name>): «Rarity: …\nИмя\nБаза\n…».
+    // Ключевые строки вида «Item Level: 24» отсеиваем; имя = первая обычная строка.
+    const raw = itm[2]!;
+    const lt = raw.indexOf('<');
+    const text = (lt >= 0 ? raw.slice(0, lt) : raw).trim();
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const keyValRe = /^[A-Za-z][\w' ]*:\s/;
+    const bodyStart = lines.findIndex((l) => /^Rarity:/i.test(l)) + 1;
+    const body = (bodyStart > 0 ? lines.slice(bodyStart) : lines).filter((l) => !keyValRe.test(l));
+    const name = ((body[0] ?? '').trim() || lines[0] || '');
+    if (id) itemNames.set(id, name);
   }
   const gear: Record<string, string> = {};
   // активный ItemSet (1-based activeItemSet) — его слоты <Slot name="Helm" itemId="3">
@@ -421,7 +513,31 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
     passiveNodes,
     gear,
     stats,
+    skillGroups,
+    buffs,
+    fullDps: fullDps.length > 0 ? fullDps : undefined,
+    config,
+    notes,
   };
+}
+
+/** Декодировать XML-сущности (&amp; &lt; &gt; &apos; &quot;) в обычный текст. */
+function _unescape(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&');
+}
+
+/** CSV-строка PoB («Herald of Ice,Precision») → массив имён. */
+function _csv(s: string | undefined): string[] {
+  if (!s) return [];
+  return s
+    .split(',')
+    .map((x) => _unescape(x.trim()))
+    .filter(Boolean);
 }
 
 /** Разобрать атрибуты XML-элемента `<a b="1" c/>` в объект (значения без кавычек). */
@@ -516,6 +632,11 @@ function fromXml(xml: string): BuildImport {
     passiveNodes: parsed.passiveNodes ?? [],
     gear: parsed.gear ?? {},
     stats: parsed.stats,
+    skillGroups: parsed.skillGroups,
+    buffs: parsed.buffs,
+    fullDps: parsed.fullDps,
+    config: parsed.config,
+    notes: parsed.notes,
     raw: { preview: xml.slice(0, 2000) },
   };
 }

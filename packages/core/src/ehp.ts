@@ -1,13 +1,16 @@
 ﻿/**
  * Калькуляторы обороны и EHP для Path of Exile 2.
  *
- * TS-порт идей и формул hivemind-poe2-mcp (src/calculator/defense_calculator.py,
- * ehp_calculator.py; автор оригинала — HivemindOverlord/poe2-mcp).
- *
- * Ключевые механики PoE2 (отличаются от PoE1):
- *  - армор снижает физический урон ДО резистов, DR = A / (A + 10*D_raw), кап 90%;
- *  - блок капится на 50% (не 75%);
- *  - хаос снимает ES с коэффициентом 2 (не обходит полностью);
+ * Формулы сверены с каноничным движком Path of Building 2
+ * (docs/POB2_CALC_FORMULAS.md; исходники — _research/path-of-building-poe2,
+ * src/Modules/CalcDefence.lua + src/Modules/Data.lua):
+ *  - армор снижает физический урон ДО резистов, DR = A / (A + K*D_raw),
+ *    K = ArmourRatio = 10 (в PoE1 K = 5), кап 90% (CalcDefence.lua:57-70, Data.lua:261);
+ *  - уклонение ЗАЩИЩАЮЩЕГОСЯ (монстр бьёт игрока): hit% = 100 − 95·Ev/(Ev + 4·Acc),
+ *    кламп [5..100], кап уворота 95% (CalcDefence.lua:41-47, Misc.lua:111);
+ *  - уклонение АТАКУЮЩЕГО (игрок бьёт монстра — другое!), см. attackerHitChance: 125·Acc/(Acc+0.3·Ev);
+ *  - блок: базовый кап 50% (абс. предел с модами 90%);
+ *  - хаос снимает ES с коэффициентом 2 (CalcDefence.lua:592);
  *  - ES реберзит 12.5%/с после задержки 4с (400/(100+faster_start)%).
  */
 
@@ -15,7 +18,15 @@
 
 export const DEFENSE_CONSTANTS = {
   ARMOR_MAX_DR: 90,
+  /** K в формуле DR брони (ArmourRatio, Data.lua:261). В PoE1 = 5! */
   ARMOR_MULTIPLIER: 10,
+  /** Минимальный шанс монстра попасть по игроку (CalcDefence.lua:47). */
+  MONSTER_MIN_HIT_CHANCE: 5,
+  /** Коэффициент уклонения защищающегося: hit = 100 − 95·Ev/(Ev+4·Acc). */
+  MONSTER_EVASION_FACTOR: 0.95,
+  MONSTER_EVASION_ACCURACY_FACTOR: 4,
+  /** Кап шанса уклониться (DefaultMaxEvadeChancePercent, Misc.lua:111). */
+  EVADE_MAX_CHANCE: 95,
   EVASION_MIN_HIT_CHANCE: 5,
   EVASION_MAX_HIT_CHANCE: 100,
   EVASION_ACCURACY_MULTIPLIER: 1.25,
@@ -28,6 +39,8 @@ export const DEFENSE_CONSTANTS = {
   RESISTANCE_HARD_CAP: 90,
   RESISTANCE_MIN: -200,
   BLOCK_MAX_CHANCE: 50,
+  /** Абсолютный предел блока с модами "+X% to max Block" (BlockChanceCap, Data.lua:253). */
+  BLOCK_ABSOLUTE_CAP: 90,
 } as const;
 
 export type DamageType = 'physical' | 'fire' | 'cold' | 'lightning' | 'chaos';
@@ -94,17 +107,48 @@ export function armorNeededForDr(targetDrPercent: number, rawDamage: number): nu
 export interface EvasionResult {
   evasion: number;
   accuracy: number;
+  /** ДЛЯ ОБОРОНЫ: шанс, что атака прошедшего  НЕ попадёт по игроку (monsterHitChance ~ defence). */
   hitChancePercent: number;
   evadeChancePercent: number;
   isCapped: boolean;
+  /** Формула: defender (монстр бьёт игрока) или attacker (игрок бьёт монстра). */
+  side: 'defender' | 'attacker';
 }
 
-/** Уклонение PoE2: Hit = (Acc*1.25*100)/(Acc + Eva*0.3), капы 5..100. */
+/**
+ * Уклонение PoE2 — сторона ЗАЩИЩАЮЩЕГОСЯ (монстр бьёт игрока; для EHP).
+ * Hit% = (1 − 0.95·Ev/(Ev + 4·Acc)) · 100, кламп [5..100] (CalcDefence.lua:41-47).
+ * Увернуться можно максимум на 95% (DefaultMaxEvadeChancePercent).
+ */
 export function evasionChance(evasion: number, attackerAccuracy: number): EvasionResult {
   const eva = Math.max(0, evasion);
   const acc = Math.max(0, attackerAccuracy);
   if (acc === 0) {
-    return { evasion: eva, accuracy: acc, hitChancePercent: 0, evadeChancePercent: 100, isCapped: false };
+    return { evasion: eva, accuracy: acc, hitChancePercent: 0, evadeChancePercent: DEFENSE_CONSTANTS.EVADE_MAX_CHANCE, isCapped: false, side: 'defender' };
+  }
+  const raw =
+    (1 - (DEFENSE_CONSTANTS.MONSTER_EVASION_FACTOR * eva) / (eva + DEFENSE_CONSTANTS.MONSTER_EVASION_ACCURACY_FACTOR * acc)) * 100;
+  const hit = Math.min(Math.max(raw, DEFENSE_CONSTANTS.MONSTER_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
+  return {
+    evasion: eva,
+    accuracy: acc,
+    hitChancePercent: hit,
+    evadeChancePercent: Math.min(100 - hit, DEFENSE_CONSTANTS.EVADE_MAX_CHANCE),
+    isCapped: raw !== hit,
+    side: 'defender',
+  };
+}
+
+/**
+ * Шанс ИГРОКА попасть по монстру с уклонением Ev (CalcDefence.lua:33-39):
+ * Hit% = 1.25·Acc / (Acc + 0.3·Ev) · 100, кламп [5..100].
+ * Это ДРУГАЯ формула — не для расчёта собственной защиты!
+ */
+export function attackerHitChance(attackerAccuracy: number, defenderEvasion: number): EvasionResult {
+  const eva = Math.max(0, defenderEvasion);
+  const acc = Math.max(0, attackerAccuracy);
+  if (acc === 0) {
+    return { evasion: eva, accuracy: acc, hitChancePercent: 0, evadeChancePercent: 100, isCapped: false, side: 'attacker' };
   }
   const raw = (acc * DEFENSE_CONSTANTS.EVASION_ACCURACY_MULTIPLIER * 100) / (acc + eva * DEFENSE_CONSTANTS.EVASION_DIVISOR);
   const hit = Math.min(Math.max(raw, DEFENSE_CONSTANTS.EVASION_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
@@ -114,6 +158,7 @@ export function evasionChance(evasion: number, attackerAccuracy: number): Evasio
     hitChancePercent: hit,
     evadeChancePercent: 100 - hit,
     isCapped: raw !== hit,
+    side: 'attacker',
   };
 }
 

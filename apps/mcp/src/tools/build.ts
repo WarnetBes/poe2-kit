@@ -5,6 +5,60 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
+import type { BuildImport } from '@poe2-kit/core';
+
+/** Человекочитаемая расширенная сводка билда (использует новые поля парсера). */
+function formatBuild(b: BuildImport): string {
+  const lines: (string | null)[] = [
+    '## Билд (PoB)',
+    `- **Класс:** ${b.class ?? '—'}`,
+    `- **Аскандаси:** ${b.ascendancy ?? '—'}`,
+    `- **Уровень:** ${b.level ?? '—'}`,
+    b.passiveNodes.length ? `- **Узлы пассивок:** ${b.passiveNodes.length}` : null,
+  ];
+  // Группы камней: главная — с уровнями, остальные списком
+  if (b.skillGroups?.length) {
+    const main = b.skillGroups.find((g) => g.main);
+    if (main) {
+      lines.push(`- **Главная связка (${main.label || 'без подписи'}):** ${main.gems.map((g) => `${g.name}${g.level != null ? ` L${g.level}` : ''}${g.quality ? ` q${g.quality}` : ''}`).join(' · ')}`);
+    }
+    const others = b.skillGroups.filter((g) => g !== main && g.enabled);
+    if (others.length) {
+      lines.push(
+        `- **Прочие группы (${others.length}):** ${others.map((g) => `${g.label || g.gems[0]?.name || '?'} (${g.gems.length} гем.)`).join('; ')}`,
+      );
+    }
+  } else if (b.skills.length) {
+    lines.push(`- **Скиллы:** ${b.skills.join(', ')}`);
+  }
+  if (b.buffs && (b.buffs.buffList.length || b.buffs.curseList.length)) {
+    const parts = [
+      b.buffs.buffList.length ? `бафы: ${b.buffs.buffList.join(', ')}` : null,
+      b.buffs.curseList.length ? `проклятия: ${b.buffs.curseList.join(', ')}` : null,
+    ].filter(Boolean);
+    lines.push(`- **Активные эффекты:** ${parts.join(' | ')}`);
+  }
+  if (b.fullDps?.length) {
+    lines.push(`- **FullDPS раскладка:** ${b.fullDps.map((s) => `${s.stat} = ${Math.round(s.value)}`).join(', ')}`);
+  }
+  if (b.config) {
+    const cfg = b.config;
+    const parts = [
+      cfg.enemyIsBoss ? `босс: ${cfg.enemyIsBoss}` : null,
+      cfg.enemyLevel ? `уровень врага: ${cfg.enemyLevel}` : null,
+    ].filter(Boolean);
+    const rest = Object.keys(cfg).filter((k) => k !== 'enemyIsBoss' && k !== 'enemyLevel');
+    if (rest.length) parts.push(`ещё: ${rest.map((k) => `${k}=${cfg[k]}`).join(', ')}`);
+    if (parts.length) lines.push(`- **Конфиг боя:** ${parts.join(' | ')}`);
+  }
+  if (b.gear && Object.keys(b.gear).length) {
+    lines.push(`- **Снаряжение:** ${Object.entries(b.gear).filter(([, v]) => v).map(([slot, v]) => `${slot}: ${v}`).join('; ')}`);
+  }
+  if (b.notes) {
+    lines.push('', '### Заметки билда', b.notes.length >= 2000 ? `${b.notes}…` : b.notes);
+  }
+  return lines.filter((l): l is string => l !== null).join('\n');
+}
 
 export function registerBuildTools(server: McpServer): number {
   server.registerTool(
@@ -36,20 +90,7 @@ export function registerBuildTools(server: McpServer): number {
           return { content: [{ type: 'text', text: xml }] };
         }
         const imported = await core.build.importBuild(xml);
-        const text = [
-          '## Билд (PoB)',
-          `- **Класс:** ${imported.class ?? '—'}`,
-          `- **Аскандаси:** ${imported.ascendancy ?? '—'}`,
-          `- **Уровень:** ${imported.level ?? '—'}`,
-          imported.skills.length ? `- **Скиллы:** ${imported.skills.join(', ')}` : null,
-          imported.passiveNodes.length ? `- **Узлы пассивок:** ${imported.passiveNodes.length}` : null,
-          imported.gear && Object.keys(imported.gear).length
-            ? `- **Снаряжение:** ${Object.entries(imported.gear)
-                .map(([slot, v]) => `${slot}: ${v}`)
-                .join('; ')}`
-            : null,
-        ].filter(Boolean);
-        return { content: [{ type: 'text', text: text.join('\n') }] };
+        return { content: [{ type: 'text', text: formatBuild(imported) }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         return { isError: true, content: [{ type: 'text', text: `Ошибка декода: ${msg}` }] };
@@ -76,7 +117,7 @@ export function registerBuildTools(server: McpServer): number {
     async ({ xml }) => {
       try {
         const imported = await core.build.importBuild(xml);
-        const text = `## Сводка билда\n\n- **Класс:** ${imported.class ?? '—'}\n- **Уровень:** ${imported.level ?? '—'}\n- **Скиллы:** ${imported.skills.join(', ') || '—'}\n- **Узлы пассивок:** ${imported.passiveNodes.length}\n- **Снаряжение:** ${Object.entries(imported.gear).map(([slot, v]) => `${slot}: ${v}`).join('; ') || '—'}`;
+        const text = `${formatBuild(imported)}\n\n_Формат XML — docs/POB2_XML_REFERENCE.md._`;
         return { content: [{ type: 'text', text }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
