@@ -922,7 +922,7 @@ export const rendererHtml = `<!doctype html>
     btn.textContent = 'Собираю…';
     window.poe2k.diagCollect().then(function (r) {
       if (r && r.ok) {
-        out.textContent = '✓ ' + r.chars + ' симв. / ' + r.lines + ' строк — скопировано в буфер.\nФайл: ' + r.file;
+        out.textContent = '✓ ' + r.chars + ' симв. / ' + r.lines + ' строк — скопировано в буфер.\\nФайл: ' + r.file;
         showToast('Диагностика скопирована в буфер обмена');
       } else {
         out.textContent = 'Ошибка сбора: ' + ((r && r.error) || 'неизвестно');
