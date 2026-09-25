@@ -20,6 +20,7 @@ import {
   setStatus,
 } from './ui';
 import { showChecklist } from './checklist';
+import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -51,6 +52,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="leveling" class="tab">Прокачка</button>
         <button data-tab="checklist" class="tab">Чек-лист</button>
         <button data-tab="build" class="tab">Импорт билда</button>
+        <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="ai" class="tab">AI-чат</button>
         <span class="tab league-wrap">
@@ -112,6 +114,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
         <div id="out-build" class="out"></div>
         <div id="out-build-price" class="out"></div>
+      </section>
+
+      <section id="pane-compare" class="pane">
+        <h2>Сравнение с топ-лестницей класса</h2>
+        <p class="hint">Декодирует PoB share-код, качает пул билдов того же класса с poe.ninja и сверяет DPS/EHP (медиана/топ + перцентиль). Поле «слаг лиги» — снапшот-лига poe.ninja (по умолчанию Forbidden Rites), не путать с активной лигой в шапке.</p>
+        <textarea id="compare-input" rows="6" placeholder="Вставь share-код PoB..."></textarea>
+        <div class="lvset">
+          <input id="compare-slug" type="text" value="forbiddenrites" placeholder="слаг снапшот-лиги poe.ninja" title="Например: forbiddenrites, wraeclast-hardcore, ssf-… (см. poe2_ladder_leagues)" />
+          <button id="btn-compare" class="primary">Сравнить</button>
+        </div>
+        <div id="out-compare" class="out"></div>
       </section>
 
       <section id="pane-tree" class="pane">
@@ -232,6 +245,12 @@ document.querySelector('#btn-tree')!.addEventListener('click', () =>
   showBuildTreeFromText((document.querySelector('#tree-input') as HTMLTextAreaElement).value),
 );
 document.querySelector('#btn-tree-last')!.addEventListener('click', () => showBuildTreeFromLast());
+document.querySelector('#btn-compare')!.addEventListener('click', () =>
+  void showBuildCompare(
+    (document.querySelector('#compare-input') as HTMLTextAreaElement).value,
+    (document.querySelector('#compare-slug') as HTMLInputElement).value || DEFAULT_LADDER_SLUG,
+  ),
+);
 
 // Чек-лист прокачки: открытие вкладки рендерит список (состояние из localStorage)
 document.querySelector('[data-tab="checklist"]')!.addEventListener('click', () => showChecklist());
