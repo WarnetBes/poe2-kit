@@ -9,6 +9,7 @@
 
 import type { LevelingZone } from './types.js';
 import { getAscendancies, getSkillGems } from './dataset.js';
+import { CAMPAIGN_WAYPOINTS } from './waypoints.js';
 
 interface QuestReward {
   /** Название зоны, где получаем награду */
@@ -58,7 +59,7 @@ export const LEVELING_ZONES: { act: number; actName: string; zone: string; monst
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'The Grelwood', monsterLevel: 5 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'The Red Vale', monsterLevel: 5 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'The Grim Tangle', monsterLevel: 7 },
-  { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Cemetary of the Eternals', monsterLevel: 8 },
+  { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Cemetery of the Eternals', monsterLevel: 8 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Mausoleum of the Praetor', monsterLevel: 9 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Tomb of the Consort', monsterLevel: 10 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Hunting Grounds', monsterLevel: 11 },
@@ -135,6 +136,7 @@ export function buildLevelingPlan(): LevelingZone[] {
     actName: z.actName,
     zone: z.zone,
     monsterLevel: z.monsterLevel,
+    hasWaypoint: CAMPAIGN_WAYPOINTS[z.zone],
     steps: [
       z.zone === 'The Riverbank'
         ? 'Убить Хиллока и выйти в город'

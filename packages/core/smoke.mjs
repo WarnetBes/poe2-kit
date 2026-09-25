@@ -18,6 +18,8 @@ ok(JSON.stringify([...new Set(plan.map(z => z.act))].sort()) === '[1,2,3,4]', 'a
 ok(plan[0].monsterLevel < plan[plan.length-1].monsterLevel, 'monster level rises');
 ok(getZonesByAct(1).length > 10, 'act1 zones');
 ok(levelDiff(5, getZonesByAct(1)[0]) === 5 - getZonesByAct(1)[0].monsterLevel, 'levelDiff');
+ok(plan[0].hasWaypoint === false && plan.every((z) => z.hasWaypoint === false || z.hasWaypoint === true), 'hasWaypoint present on all zones');
+ok((() => { const riverbank = plan.find((z) => z.zone === 'The Riverbank'); const freight = plan.find((z) => z.zone === 'Clearfell'); return (riverbank?.hasWaypoint === false) && (freight?.hasWaypoint === true); })(), 'waypoint: Riverbank none, Clearfell yes');
 
 console.log('Ice Strike Monk guide');
   ok(getMonkLevelingTips().length >= 4, 'monk tips: 4+ ranges');

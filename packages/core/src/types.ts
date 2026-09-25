@@ -191,6 +191,8 @@ export interface LevelingZone {
   zone: string;
   /** Рекомендуемый уровень монстров */
   monsterLevel: number;
+  /** Есть ли в зоне вояпоинт (быстрый телепорт). undefined — неизвестно. */
+  hasWaypoint?: boolean;
   /** Ключевые задачи/заметки */
   steps: string[];
   /** Квестовые награды: скил-пойнты, буст духа и т.п. */

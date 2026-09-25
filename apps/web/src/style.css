@@ -351,6 +351,7 @@ button.primary:active { background: linear-gradient(180deg, #241d0f, #3d3218); }
 
 /* Награды — цвет валюты PoE */
 .reward { color: var(--currency); font-size: 13px; }
+.wp { color: #e0b64a; font-size: 13px; margin-right: 2px; }
 
 /* ── Прокачка: акты как главы кампании ───────────────────────────────────── */
 
