@@ -1097,9 +1097,10 @@ export async function priceCheck(
     }
   }
 
-  if (!listings.length) {
+  // Fallback по базовому типу: нужен, когда по статам листингов недостаточно
+  // для оценки (0-2 шт.) — 1-2 листинга дают нулевую медиану/мин/макс.
+  if (!estimate && listings.length < 3) {
     if (parsed.rarity === 'Rare' && parsed.baseType) {
-      // фолбэк рара: хотя бы листинги базового типа (без учёта аффиксов)
       const resolvedType = await resolveTradeBaseType(parsed.baseType, { league });
       if (resolvedType) {
         listings = await searchTrade({ type: resolvedType }, { league });
