@@ -59,8 +59,8 @@ if not exist node_modules (
     echo [ERROR] npm ci failed.
     echo   - Check Node.js version: need ^>= 20 LTS.
     echo   - If the native module "koffi" failed to install, you need the
-    echo     C++ toolchain. Re-run: call "%~dp0install-tools.bat"
-    echo     (installs VS Build Tools C++ workload + VC++ Redist).
+    echo     C++ toolchain. Re-run: call "%~dp0install-tools-minimal.bat"
+    echo     installs Node.js LTS only - enough for the overlay.
     echo   - If the Electron download timed out, re-run this script -
     echo     npm will resume; or set a mirror first:
     echo       set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
@@ -68,6 +68,31 @@ if not exist node_modules (
     exit /b 1
   )
 )
+
+if exist node_modules\electron\dist\electron.exe goto electronok
+
+REM --- Electron self-heal: extract-zip in the postinstall on new Node
+REM can silently unpack only 1 file and exit 0. If electron.exe is
+REM missing, unpack the already downloaded zip via built-in tar.
+echo [WARN] electron.exe is missing after npm ci - repairing install...
+if not exist node_modules\electron\dist mkdir node_modules\electron\dist >nul 2>nul
+set "ELZIP="
+for /r "%LOCALAPPDATA%\electron\Cache" %%z in ("electron-v*.zip") do if not defined ELZIP set "ELZIP=%%z"
+if not defined ELZIP goto noelectronzip
+echo     unpacking "%ELZIP%" via tar...
+tar -xf "%ELZIP%" -C node_modules\electron\dist
+if errorlevel 1 goto noelectronzip
+node -e "require('fs').writeFileSync('node_modules/electron/path.txt','electron.exe')"
+if exist node_modules\electron\dist\electron.exe goto electronok
+
+:noelectronzip
+echo [ERROR] electron.exe could not be restored.
+echo   Delete the cache and re-run this script:
+echo     rd /s /q "%LOCALAPPDATA%\electron\Cache"
+pause
+exit /b 1
+
+:electronok
 
 REM --- build core + overlay ---
 echo.
