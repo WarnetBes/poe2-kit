@@ -393,7 +393,156 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 5;
+  // ── Свой билд vs топ-лестница того же класса (P1) ─────────────────────────
+  server.registerTool(
+    'poe2_build_compare',
+    {
+      title: 'PoE2 Build Compare (свой билд vs топ класса)',
+      description: `Сравнивает ваш билд с топ-лестницей poe.ninja того же класса в один вызов: декодирует PoB → тот же класс/асцeнданси → разница по DPS и EHP (медиана/топ пула + перцентиль пользователя), плюс скорость атаки и резисты как диагностика.
+
+Работает по PoB share-коду или XML (PoB-движок НЕ нужен). Референс меты качается с poe.ninja live (текущая лига — forbiddenrites, если не указана).
+
+ЧЕСТНАЯ ОГОВОРКА: DPS/EHP из poe.ninja — суммарные числа движка PoB; ваши цифры берутся из PlayerStat (если билд открывался в PoB), иначе — из приближённой геар-оценки (оружие/слои защиты). Сравнение корректно как «порядок величины», не как точный прогон.
+
+Аргументы:
+  - code (string, обяз.): PoB share-код ИЛИ готовый XML PathOfBuilding.
+  - league (string, опц.): снапшот-лига референса (по умолчанию forbiddenrites).
+  - hit_size (number, опц.): урон за удар для брони (по умолчанию 1000).
+  - accuracy (number, опц.): точность атакующего (по умолчанию 2000).
+
+Примеры:
+  - "Сравни мой Invoker с топом класса" → вставь share-код
+  - "Насколько я отстал по DPS/EHP от лучших?" → вставь share-код
+`,
+      inputSchema: {
+        code: z.string().min(5).describe('PoB share-код или XML'),
+        league: z.string().optional().describe('Снапшот-лига референса (default forbiddenrites)'),
+        hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ code, league, hit_size, accuracy }) => {
+      try {
+        const leagueSlug = league?.trim() ? league.trim() : 'forbiddenrites';
+        const est = await core.estimate.estimateBuild(code, {
+          expectedHitSize: hit_size ?? 1000,
+          attackerAccuracy: accuracy ?? 2000,
+        });
+        const className = est.ascendancy ?? est.className;
+        if (!className) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'Не удалось определить класс/асцeнданси билда — сравнение с лестницей невозможно.' }],
+          };
+        }
+        let rows: Awaited<ReturnType<typeof core.ladder.topLadderBuilds>> = [];
+        try {
+          rows = await core.ladder.topLadderBuilds(leagueSlug, { className, sort: 'dps', limit: 100 });
+        } catch {
+          rows = [];
+        }
+        // DPS/EHP пользователя: PlayerStat PoB точнее ⇢ fallback на геар-оценку.
+        const userDps = est.pobStats.TotalDPS ?? (est.weapon.totalDps > 0 ? est.weapon.totalDps : null);
+        const userEhp = est.pobStats.TotalEHP ?? (est.worstEhp ? est.worstEhp.effectiveHp : null);
+        const ref = core.advice.buildReferenceFromRows(rows, {
+          level: est.characterLevel ?? undefined,
+          dps: userDps,
+          ehp: userEhp,
+          className,
+        });
+        return { content: [{ type: 'text', text: formatCompare(est, ref, className, leagueSlug, rows.length) }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка сравнения билда: ${msg}` }] };
+      }
+    },
+  );
+
+  return 6;
+}
+
+/** Отформатировать сравнение с топ-лестницей класса (P1) в читаемый markdown. */
+function formatCompare(
+  est: BuildEstimate,
+  ref: Awaited<ReturnType<typeof core.advice.buildReferenceFromRows>>,
+  className: string,
+  leagueSlug: string,
+  poolSize: number,
+): string {
+  const d = est.defenses;
+  const out: (string | null)[] = [
+    `## Сравнение с топ-лестницей класса: **${className}**`,
+    `- Референс: **${leagueSlug}**, ${poolSize} строк ${className} (сортировка по DPS).`,
+    '',
+    `### Ваш билд (${est.source === 'pob+gear' ? 'гир + PlayerStat PoB' : 'только гир'})`,
+    `- Персонаж: **${est.className ?? '?'}${est.ascendancy ? ` / ${est.ascendancy}` : ''}**, уровень ${est.characterLevel ?? '?'}`,
+  ];
+
+  // DPS / EHP с пометкой источника.
+  const userDps = est.pobStats.TotalDPS ?? (est.weapon.totalDps > 0 ? est.weapon.totalDps : null);
+  const dpsSrc = est.pobStats.TotalDPS !== undefined ? 'движок PoB' : 'геар-оценка (только оружие)';
+  const userEhp = est.pobStats.TotalEHP ?? (est.worstEhp ? est.worstEhp.effectiveHp : null);
+  const ehpSrc = est.pobStats.TotalEHP !== undefined ? 'движок PoB' : 'геар-оценка (слабейший тип)';
+  out.push(`- **DPS:** ${userDps != null ? core.advice.fmtSuffix(userDps) : '—'} (${dpsSrc})`);
+  out.push(`- **EHP:** ${userEhp != null ? core.advice.fmtSuffix(userEhp) : '—'} (${ehpSrc})`);
+  out.push(
+    `- **Скорость атаки:** ${est.weapon.attacksPerSecond ? `${est.weapon.attacksPerSecond.toFixed(2)} aps` : '—'} (${est.weapon.weapon ?? 'оружие не распознано'})`,
+  );
+  out.push(
+    `- **Резисты:** fire ${d.fireRes}% / cold ${d.coldRes}% / lightning ${d.lightningRes}% / chaos ${d.chaosRes}% (кап 75%)`,
+  );
+
+  out.push('', '### Позиция на лестнице (перцентиль, vs медиана/топ)');
+  if (ref.dpsPercentile != null && userDps != null) {
+    out.push(`- DPS ${core.advice.fmtSuffix(userDps)} → **~${ref.dpsPercentile.toFixed(0)}-й перцентиль** (медиана ${core.advice.fmtSuffix(ref.medianDps)}, топ ${core.advice.fmtSuffix(ref.topDps)})`);
+  } else {
+    out.push('- DPS: пул лестницы или оценка недоступны.');
+  }
+  if (ref.ehpPercentile != null && userEhp != null) {
+    out.push(`- EHP ${core.advice.fmtSuffix(userEhp)} → **~${ref.ehpPercentile.toFixed(0)}-й перцентиль** (медиана ${core.advice.fmtSuffix(ref.medianEhp)}, топ ${core.advice.fmtSuffix(ref.topEhp)})`);
+  } else {
+    out.push('- EHP: пул лестницы или оценка недоступны.');
+  }
+
+  out.push('', '### Сводка против меты');
+  // DPS-вердикт.
+  if (userDps != null && ref.topDps != null && ref.topDps > 0) {
+    const ratio = userDps / ref.topDps;
+    out.push(
+      ratio >= 0.9
+        ? `- **DPS:** ваш урон (${
+            core.advice.fmtSuffix(userDps)
+          }) ≈ уровень топ-1 класса → ${ratio >= 1 ? 'впереди/на уровне топа' : 'почти вплотную к топу'}.`
+        : `- **DPS:** ваш урон (${core.advice.fmtSuffix(userDps)}) в **${(ref.topDps / userDps).toFixed(1)}× ниже** топ-1 (${core.advice.fmtSuffix(ref.topDps)}).`,
+    );
+  } else if (userDps != null) {
+    out.push(`- **DPS:** ${core.advice.fmtSuffix(userDps)} (оценка без пула меты).`);
+  }
+  // EHP-вердикт.
+  if (userEhp != null && ref.topEhp != null && ref.topEhp > 0) {
+    const ratio = userEhp / ref.topEhp;
+    out.push(
+      ratio >= 0.9
+        ? `- **EHP:** ваша защита (${core.advice.fmtSuffix(userEhp)}) на уровне топ-1 класса.`
+        : `- **EHP:** ваша защита (${core.advice.fmtSuffix(userEhp)}) в **${(ref.topEhp / userEhp).toFixed(1)}× ниже** топ-1 (${core.advice.fmtSuffix(ref.topEhp)}).`,
+    );
+  } else if (userEhp != null) {
+    out.push(`- **EHP:** ${core.advice.fmtSuffix(userEhp)} (оценка без пула меты).`);
+  }
+  // Резисты-вердикт.
+  const minRes = Math.min(d.fireRes, d.coldRes, d.lightningRes, d.chaosRes);
+  out.push(
+    d.fireRes < 75 || d.coldRes < 75 || d.lightningRes < 75
+      ? `- **Резисты:** есть ниже капа 75% (хуже всего ${minRes.toFixed(0)}%) — чинить в первую очередь.`
+      : `- **Резисты:** все ≥ 75% (кап) — ок.`,
+  );
+
+  out.push(
+    '',
+    '_Сравнение «порядка величины»: poe.ninja даёт суммарные числа движка, ваши — как указано выше (PlayerStat точнее геар-оценки). Для точных перцентилей лучше открыть билд в PoB._',
+  );
+  return out.filter((l): l is string => l != null).join('\n');
 }
 
 /** Отформатировать совет P0-3 в читаемый markdown. */
