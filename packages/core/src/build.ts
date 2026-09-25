@@ -443,6 +443,7 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
 
   // Дерево — <Tree><Spec nodes="id1,id2" .../></Tree>. Берём активный Spec (activeSpec 1-based).
   let passiveNodes: string[] = [];
+  let treeVersion: string | undefined;
   const treeEl = xml.match(/<Tree\b([^>]*)>([\s\S]*?)<\/Tree>/);
   if (treeEl) {
     const treeAttrs = _attrs(treeEl[1]!);
@@ -454,6 +455,8 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      // Версия дерева (treeVersionList = 0_1..0_5) — для авто-детекта рассинхрона с патчем датасета.
+      treeVersion = chosen.treeVersion || undefined;
     }
   }
 
@@ -516,6 +519,7 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
     level: levelRaw ? parseInt(levelRaw, 10) : undefined,
     skills,
     passiveNodes,
+    treeVersion,
     gear,
     stats,
     skillGroups,
@@ -635,6 +639,7 @@ function fromXml(xml: string): BuildImport {
     level: parsed.level,
     skills: parsed.skills ?? [],
     passiveNodes: parsed.passiveNodes ?? [],
+    treeVersion: parsed.treeVersion,
     gear: parsed.gear ?? {},
     stats: parsed.stats,
     skillGroups: parsed.skillGroups,

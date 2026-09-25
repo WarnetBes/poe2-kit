@@ -81,9 +81,13 @@ const pob2Xml = `<?xml version="1.0" encoding="UTF-8"?>
 \t\t</ConfigSet>
 \t</Config>
 \t<Notes>CI билд, приоритет — резисты.</Notes>
+	<Tree activeSpec="1">
+		<Spec ascendClassId="1" classId="6" treeVersion="0_3" nodes="attributes1,12876"/>
+	</Tree>
 </PathOfBuilding2>`;
 const imp = await importBuild(pob2Xml);
 ok(imp.level === 95 && imp.class === 'Monk' && imp.ascendancy === 'Invoker', 'PoB2: Build level/class/asc');
+ok(imp.treeVersion === '0_3' && imp.passiveNodes.length === 2 && imp.passiveNodes[0] === 'attributes1', `PoB2: treeVersion из <Spec> = ${imp.treeVersion}, nodes = ${imp.passiveNodes.length}`);
 ok(imp.skillGroups?.length === 2, `PoB2: skill groups = ${imp.skillGroups?.length}`);
 ok(imp.skillGroups?.[1]?.main === true && imp.skillGroups?.[1]?.gems[0]?.name === 'Herald of Ice', 'PoB2: main group = Herald of Ice (mainSocketGroup=2)');
 ok(imp.skillGroups?.[0]?.gems[0]?.name === 'Ice Strike' && imp.skillGroups?.[0]?.gems[0]?.level === 21 && imp.skillGroups?.[0]?.gems[1]?.name === 'Rapid Attacks II', 'PoB2: первая группа — Ice Strike L21 + support');
@@ -351,9 +355,20 @@ ok(tqItem.query.type === 'Ruby Ring', 'buildTradeQueryFromItem baseType');
 ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem modsв†’stats');
 
 console.log('offline datasets (data/game)');
-const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds, getPassiveNodeById, resolvePassiveNodes, getPassiveTree } = core;
+const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds, getPassiveNodeById, resolvePassiveNodes, getPassiveTree, checkTreeVersion } = core;
 const ver = getDatasetVersion();
 ok(ver.patch_version === '0.5' && ver.data_revision >= 12, `dataset version ${ver.released_as}`);
+console.log('version desync check (P0-2): treeVersion vs dataset patch');
+const v0 = checkTreeVersion('0_5');
+ok(v0.status === 'current' && v0.label === 'актуальна' && v0.datasetPatch === '0.5', `p0-2: "0_5" в†’ current, patch ${v0.datasetPatch}`);
+const v1 = checkTreeVersion('0_3');
+ok(v1.status === 'older' && v1.message.includes('⚠ билд собран на другой версии дерева'), 'p0-2: "0_3" в†’ older (⚠ предупреждение)');
+const v2 = checkTreeVersion('0_6');
+ok(v2.status === 'newer' && v2.message.includes('датасет устарел'), 'p0-2: "0_6" в†’ newer (датасет устарел)');
+const v3 = checkTreeVersion(null);
+ok(v3.status === 'missing' && v3.treeVersion === null, 'p0-2: без treeVersion в†’ missing');
+const v4 = checkTreeVersion('bogus');
+ok(v4.status === 'unparseable', 'p0-2: "bogus" в†’ unparseable');
 const monkAsc = getAscendanciesByClass('Monk');
 ok(monkAsc.some((a) => a.displayName === 'Invoker'), 'ascendancies: Monkв†’Invoker');
 const ice = searchSkillGems('Ice Strike');

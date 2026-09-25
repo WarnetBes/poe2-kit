@@ -54,6 +54,91 @@ export function getDatasetVersion(): DatasetVersion {
   return versionCache;
 }
 
+// ─── Проверка версии дерева билда (P0-2) ───────────────────────────────────
+
+/** Итог сверки treeVersion билда с патчем датасета. */
+export interface TreeVersionCheckReport {
+  /** treeVersion из <Spec> PoB2 (как в экспорте: "0_3") или null, если не указана. */
+  treeVersion: string | null;
+  /** Патч датасета (version.json: "0.5"). */
+  datasetPatch: string;
+  /**
+   * - 'current' — версия билда = патчу датасета;
+   * - 'older' — билд собран на более старом дереве (узлы могли переехать);
+   * - 'newer' — датасет старее билда (нужно обновить данные);
+   * - 'unparseable' — формат не из treeVersionList (0_1..0_5);
+   * - 'missing' — treeVersion в билде не указана.
+   */
+  status: 'current' | 'older' | 'newer' | 'unparseable' | 'missing';
+  /** Короткая подпись статуса для вывода ("актуальна", "старее патча", …). */
+  label: string;
+  /** Готовая строка для человекочитаемых сводок (с предупреждением ⚠ при рассинхроне). */
+  message: string;
+}
+
+/** "0_3"/"0.5" → {major,minor}; null, если не разобрать. */
+function parseVersionPair(v: string): { major: number; minor: number } | null {
+  const m = /^\s*(\d+)[_.](\d+)\s*$/.exec(v);
+  if (!m) return null;
+  return { major: parseInt(m[1]!, 10), minor: parseInt(m[2]!, 10) };
+}
+
+/**
+ * Сверка версии дерева билда (treeVersion из <Spec> PoB2: list 0_1..0_5)
+ * с патчем офлайн-датасета. Если билд собран на более старом дереве —
+ * узлы могли переехать и имена/статы из датасета к нему неприменимы.
+ */
+export function checkTreeVersion(treeVersion: string | null | undefined): TreeVersionCheckReport {
+  const { patch_version: datasetPatch, patch_name: patchName } = getDatasetVersion();
+  const tv = (treeVersion ?? '').trim();
+  if (!tv) {
+    return {
+      treeVersion: null,
+      datasetPatch,
+      status: 'missing',
+      label: 'версия дерева не указана',
+      message: 'В билде не указана версия дерева (treeVersion) — актуальность узлов не проверить, сверить в Path of Building.',
+    };
+  }
+  const build = parseVersionPair(tv);
+  const dataset = parseVersionPair(datasetPatch);
+  if (!build || !dataset) {
+    return {
+      treeVersion: tv,
+      datasetPatch,
+      status: 'unparseable',
+      label: 'версия дерева не распознана',
+      message: `Версию дерева билда «${tv}» не удалось сопоставить с патчем ${datasetPatch} — сверить в Path of Building.`,
+    };
+  }
+  const diff = build.major - dataset.major || build.minor - dataset.minor;
+  if (diff === 0) {
+    return {
+      treeVersion: tv,
+      datasetPatch,
+      status: 'current',
+      label: 'актуальна',
+      message: `Версия дерева билда ${tv} актуальна для патча ${datasetPatch} (${patchName}).`,
+    };
+  }
+  if (diff < 0) {
+    return {
+      treeVersion: tv,
+      datasetPatch,
+      status: 'older',
+      label: 'старее патча',
+      message: `⚠ билд собран на другой версии дерева: treeVersion ${tv} старее патча датасета ${datasetPatch} (${patchName}). Узлы могли переехать — перенести дерево в PoB2 на актуальную версию и заново экспортировать.`,
+    };
+  }
+  return {
+    treeVersion: tv,
+    datasetPatch,
+    status: 'newer',
+    label: 'новее патча',
+    message: `⚠ версия дерева билда ${tv} новее патча датасета ${datasetPatch} (${patchName}) — датасет устарел, обновить данные poe2-kit.`,
+  };
+}
+
 // ─── Асценданси ─────────────────────────────────────────────────────────────
 
 export interface AscendancyClass {

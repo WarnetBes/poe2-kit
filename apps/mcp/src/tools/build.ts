@@ -16,6 +16,9 @@ function formatBuild(b: BuildImport): string {
     `- **Уровень:** ${b.level ?? '—'}`,
     b.passiveNodes.length ? `- **Узлы пассивок:** ${b.passiveNodes.length}` : null,
   ];
+  // Авто-детект рассинхрона версий: treeVersion билда vs патч датасета (P0-2).
+  const version = versionSection(b);
+  if (version) lines.push(...version);
   // Резолв ID узлов дерева в имена (keystone/notable — с описаниями, остальные счётчиком).
   const tree = treeSection(b.passiveNodes);
   if (tree) lines.push(tree);
@@ -63,6 +66,16 @@ function formatBuild(b: BuildImport): string {
   return lines.filter((l): l is string => l !== null).join('\n');
 }
 
+/** Сверка версии дерева билда с патчем датасета: строка treeVersion + предупреждение при рассинхроне. */
+function versionSection(b: BuildImport): string[] | null {
+  const check = core.dataset.checkTreeVersion(b.treeVersion);
+  if (check.status === 'missing') return null;
+  if (check.status === 'current') {
+    return [`- **Версия дерева (treeVersion):** ${check.treeVersion} — актуальна (патч датасета ${check.datasetPatch})`];
+  }
+  return [`- **Версия дерева (treeVersion):** ${check.treeVersion}`, `- ${check.message}`];
+}
+
 /** Дерево пассивок билда: ID → имена; keystone/notable — с полными статами, остальные счётчиком. */
 function treeSection(ids: string[]): string | null {
   if (!ids.length) return null;
@@ -106,7 +119,7 @@ export function registerBuildTools(server: McpServer): number {
   - as_xml (boolean, опц.): если true — вернуть сырой XML (по умолчанию false).
 
 Возвращает декодированный XML (или структуру BuildImport: класс, уровень, скиллы,
-узлы дерева, снаряжение).
+узлы дерева, снаряжение) со сверкой версии дерева против патча датасета (treeVersion).
 
 Примеры:
   - "Разбери мой билд" → вставь share-код
@@ -142,6 +155,7 @@ export function registerBuildTools(server: McpServer): number {
   - xml (string): декодированный XML-контент PathOfBuilding.
 
 Возвращает компактный обзор: класс/аскандаси, уровень, основные скиллы, узлы и снаряжение.
+Предупреждает о рассинхроне версий: treeVersion билда vs патч датасета (если билд собран на более старом дереве).
 `,
       inputSchema: {
         xml: z.string().min(20).describe('XML PathOfBuilding'),

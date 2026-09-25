@@ -101,6 +101,8 @@ export interface BuildImport {
   skills: string[];
   /** Распределённые узлы дерева пассивок */
   passiveNodes: string[];
+  /** Версия дерева активного <Spec treeVersion="0_3"> (PoB2: "0_1".."0_5"; undefined, если не указана). */
+  treeVersion?: string;
   gear: Record<string, string>;
   /** Ключевые расчётные характеристики PoB (TotalDPS, CombinedDPS, Life, ES, …), если в экспорте есть <PlayerStat>. */
   stats?: Record<string, number>;
