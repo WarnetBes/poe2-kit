@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 # Repo tree without node_modules/dist/.git/deploy and local debug files
 # (start-overlay.bat now lives in the repo root and is zipped automatically)
-robocopy $repo $stage /E /XD node_modules dist .git deploy /XF WORK_LOG.md '_*.mjs' '_*.log' '_*.txt' 'e2e_code.txt' '*.tsbuildinfo' | Out-Null
+robocopy $repo $stage /E /XD node_modules dist .git deploy /XF WORK_LOG.md 'README-netfix.md' '_*.mjs' '_*.log' '_*.txt' '_*.py' '_*.json' 'e2e_code.txt' '*.tsbuildinfo' | Out-Null
 
 # Transfer package README + bootstrap script for the git auto-update path
 Copy-Item "$PSScriptRoot\README.md" (Join-Path $stage 'README-OVERLAY.md') -Force
