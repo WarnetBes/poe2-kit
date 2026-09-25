@@ -271,6 +271,9 @@ const TRACK_INTERVAL_MS = 350;
 let lastHwndKey = '';
 let lastRectKey = '';
 let trackerTimer: NodeJS.Timeout | null = null;
+/** Троттлинг HiDPI-лога позиционирования: максимум одна строка в N мс. */
+const HIDPI_LOG_INTERVAL_MS = 5000;
+let lastHiDpiLogTs = 0;
 /** Гистерезис скрытия: прячем окно только после N плохих тиков подряд
  *  (~0.7 с при TRACK_INTERVAL_MS=350), иначе единичный промах EnumWindows
  *  или краткая потеря фокуса игрой мигает окном (show/hide-хлопки). */
@@ -1133,19 +1136,39 @@ async function createOverlayWindow(): Promise<void> {
   overlayWindow.setVisibleOnAllWorkspaces?.(true);
 }
 
+/** Масштаб дисплея (Win32 100/125/150%…, в Electron это `scaleFactor`) для точки в физических пикселях. */
+function displayScaleForPoint(x: number, y: number): number {
+  let disp;
+  try {
+    disp = screen.getDisplayNearestPoint({ x, y });
+  } catch {
+    disp = screen.getPrimaryDisplay();
+  }
+  return disp.scaleFactor || 1;
+}
+
+/** Краткая сводка всех дисплеев: id/primary, масштаб (100/125/150%), bounds — для HiDPI-диагностики. */
+function displayScaleSummary(): string {
+  const primaryId = screen.getPrimaryDisplay().id;
+  return screen
+    .getAllDisplays()
+    .map((d) => {
+      const b = d.bounds;
+      return (
+        `#${d.id}${d.id === primaryId ? '(primary)' : ''} scale=${d.scaleFactor} ` +
+        `(${Math.round(d.scaleFactor * 100)}%) bounds=${b.x},${b.y} ${b.width}x${b.height}`
+      );
+    })
+    .join(' | ');
+}
+
 /** Конвертирует физические пиксели (GetWindowRect) в DIP для Electron-окна. */
 function physicalRectToDip(
   r: { left: number; top: number; right: number; bottom: number },
 ): { x: number; y: number; width: number; height: number } {
   const cx = Math.round((r.left + r.right) / 2);
   const cy = Math.round((r.top + r.bottom) / 2);
-  let disp;
-  try {
-    disp = screen.getDisplayNearestPoint({ x: cx, y: cy });
-  } catch {
-    disp = screen.getPrimaryDisplay();
-  }
-  const sf = disp.scaleFactor || 1;
+  const sf = displayScaleForPoint(cx, cy);
   return {
     x: r.left / sf,
     y: r.top / sf,
@@ -1225,6 +1248,18 @@ function trackGameWindow(): void {
       width: overlayWidth,
       height: overlayHeight,
     });
+    // HiDPI-диагностика: что реально применили (DIP), какой масштаб отдал screen
+    // и какое смещение (dx,dy) пользователя участвовало. Троттлинг — не спамить.
+    const now = Date.now();
+    if (now - lastHiDpiLogTs >= HIDPI_LOG_INTERVAL_MS) {
+      lastHiDpiLogTs = now;
+      const sf = displayScaleForPoint(found.rect.left, found.rect.top);
+      console.log(
+        `[overlay] hiDPI: setBounds DIP=(${x},${y} ${overlayWidth}x${overlayHeight}) ` +
+          `scale=${sf} (${Math.round(sf * 100)}%) dx=${userOffset?.x ?? 0} dy=${userOffset?.y ?? 0} ` +
+          `winBounds=${JSON.stringify(win.getBounds())}`,
+      );
+    }
   }
 
   if (!win.isVisible()) {
@@ -1587,6 +1622,19 @@ app.whenReady().then(async () => {
   console.log(
     `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width}`,
   );
+
+  // HiDPI-диагностика: что Electron видит как масштаб каждого дисплея (100/125/150%).
+  // Напоминание: включён force-device-scale-factor=1 — DIP окна == пиксель 1:1,
+  // поэтому scaleFactor из screen может отличаться от реального масштаба Windows.
+  console.log(`[overlay] hiDPI: displays → ${displayScaleSummary()}`);
+  // Живьём ловим смену масштаба дисплея (например, 125% → 150% в настройках Windows).
+  screen.on('display-metrics-changed', (_e, display, changedMetrics) => {
+    console.log(
+      `[overlay] hiDPI: display-metrics-changed #${display.id} scale=${display.scaleFactor} ` +
+        `(${Math.round(display.scaleFactor * 100)}%) метрики=${changedMetrics.join(',')}`,
+    );
+    console.log(`[overlay] hiDPI: displays теперь → ${displayScaleSummary()}`);
+  });
 
   // Восстанавливаем сохранённое смещение оверлея (если пользователь его двигал).
   userOffset = loadUserOffset();
