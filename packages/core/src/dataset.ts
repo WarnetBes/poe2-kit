@@ -226,6 +226,96 @@ export function searchPassiveTree(query: string, opts: { limit?: number; keyston
   return out;
 }
 
+// ─── Резолв узлов по ID (как в PoB <Spec nodes="…"> или URL дерева) ──────────────────
+//
+// В датасете две схемы ID:
+//  - обычное дерево (passive_tree/tree.json) — СИМВОЛЬНЫЕ ключи/фрагменты PoB-схемы
+//    ("attributes1", …). Числовых ID (как в PoB/URL дерева) у обычного дерева нет.
+//  - асценданси (ascendancies/nodes.json) — ЧИСЛОВЫЕ ID игры (12876 = "Faith is a Choice").
+// PoB2 пишет в <Spec nodes="…"> числовые ID игры; они резолвятся только для
+// асценданси, обычное дерево по числовым ID офлайн не находится (нужна полная
+// числовая карта дерева из игровых данных — при её добавлении резолвы заработают
+// автоматически, схема ниже это уже поддерживает).
+
+export interface ResolvedPassiveNode extends PassiveNode {
+  /** 'tree' — обычное дерево (символьный ID), 'ascendancy' — узел асценданси. */
+  source: 'tree' | 'ascendancy';
+  /** kind из асценданси-датасета (start/small/notable) — только для source='ascendancy'. */
+  kind: string;
+}
+
+export interface PassiveNodeResolveReport {
+  /** Сколько уникальных ID было запрошено. */
+  requested: number;
+  /** Найденные узлы (в порядке ввода, дубликаты отброшены). */
+  resolved: ResolvedPassiveNode[];
+  /** ID, которых нет ни в одном датасете. */
+  missing: string[];
+  /** Из missing — числовые ID (обычное дерево из PoB; карты чисел для него пока нет). */
+  missingNumeric: string[];
+  /** Из missing — символьные ID (не найдено даже среди ключей tree.json). */
+  missingSymbolic: string[];
+}
+
+let treeById: Map<string, PassiveNode> | null = null;
+let ascNodeById: Map<string, AscendancyNode> | null = null;
+
+const _isNumeric = (k: string): boolean => /^\d+$/.test(k);
+
+/** Узел по ID: сначала символьные ключи обычного дерева (~9605), затем числовые ID асценданси. */
+export function getPassiveNodeById(id: string): ResolvedPassiveNode | undefined {
+  const key = String(id).trim();
+  if (!key) return undefined;
+  if (!treeById) treeById = new Map(getPassiveTree().map((n) => [String(n.id), n]));
+  const treeHit = treeById.get(key);
+  if (treeHit) return { ...treeHit, source: 'tree', kind: '' };
+  if (!ascNodeById) ascNodeById = new Map(getAscendancyNodes().map((n) => [String(n.id), n]));
+  const ascHit = ascNodeById.get(key);
+  if (!ascHit) return undefined;
+  return {
+    id: ascHit.id,
+    name: ascHit.name,
+    isKeystone: false,
+    isNotable: ascHit.kind === 'notable',
+    ascendancy: ascHit.ascendancy,
+    stats: ascHit.stats,
+    source: 'ascendancy',
+    kind: ascHit.kind,
+  };
+}
+
+/** Резолв списка ID в узлы: порядок ввода сохраняется, дубликаты и ненайденные отбрасываются. */
+export function getPassiveNodesByIds(ids: string[]): ResolvedPassiveNode[] {
+  return resolvePassiveNodes(ids).resolved;
+}
+
+/** Резолв списка ID с полным отчётом: найденные + ненайденные (числовые/символьные отдельно). */
+export function resolvePassiveNodes(ids: string[]): PassiveNodeResolveReport {
+  const seen = new Set<string>();
+  const requested: string[] = [];
+  for (const raw of ids) {
+    const key = String(raw).trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      requested.push(key);
+    }
+  }
+  const resolved: ResolvedPassiveNode[] = [];
+  const missing: string[] = [];
+  for (const key of requested) {
+    const node = getPassiveNodeById(key);
+    if (node) resolved.push(node);
+    else missing.push(key);
+  }
+  return {
+    requested: requested.length,
+    resolved,
+    missing,
+    missingNumeric: missing.filter(_isNumeric),
+    missingSymbolic: missing.filter((k) => !_isNumeric(k)),
+  };
+}
+
 // ─── Базовые предметы ────────────────────────────────────────────────────────
 
 export interface BaseItem {

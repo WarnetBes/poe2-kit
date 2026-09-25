@@ -129,6 +129,68 @@ export function registerDatasetTools(server: McpServer): number {
   );
   count++;
 
+  // ── Резолв узлов дерева по ID ───────────────────────────────────────────────
+  server.registerTool(
+    'poe2_tree_ids',
+    {
+      title: 'PoE2 Passive Tree Nodes By ID',
+      description: `Резолв узлов дерева пассивок PoE2 по их ID. Понимает обе схемы ID:
+  - символьные (как их возвращает poe2_tree_search: "attributes1", …) — обычное дерево,
+  - числовые (как в PoB: <Spec nodes="…"> или URL дерева, например 12876) — узлы асценданси.
+Возвращает имя, тип (keystone/notable/обычная), асценданси и статы.
+⚠ Числовые ID обычного дерева (не асценданси) в офлайн-датасете пока не резолвятся
+(нужна числовая карта дерева) — тул честно сообщит, какие не найдены.
+
+Аргументы:
+  - ids (string[], обяз.): массив ID узлов (символьные или числовые строки).
+  - keystones_only (boolean, опц.): только keystone/notable-узлы.
+  - show_stats (boolean, опц., по умолч. true): показывать статы узлов.
+
+Примеры:
+  - "Что за узлы 12876, 7621, 8143?" → ids: ["12876", "7621", "8143"]
+  - "Разбери дерево билда" → ids из poe2_build_decode
+`,
+      inputSchema: {
+        ids: z.array(z.string().min(1)).describe('ID узлов дерева (как в PoB)'),
+        keystones_only: z.boolean().optional().describe('Только keystone/notable-узлы'),
+        show_stats: z.boolean().optional().describe('Показывать статы узлов'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ ids, keystones_only, show_stats }) => {
+      const normalized = (Array.isArray(ids) ? ids : [ids])
+        .map((s) => String(s).trim())
+        .filter(Boolean);
+      if (!normalized.length) {
+        return { isError: true, content: [{ type: 'text', text: 'Укажите хотя бы один ID узла.' }] };
+      }
+      const report = core.dataset.resolvePassiveNodes(normalized);
+      const shown = keystones_only
+        ? report.resolved.filter((n) => n.isKeystone || n.isNotable)
+        : report.resolved;
+
+      const lines = [`## Узлы по ID — найдено ${report.resolved.length} из ${report.requested}`, ''];
+      for (const n of shown) {
+        const type = n.isKeystone ? '🔑 KEYSTONE' : n.isNotable ? '★ notable' : '· малый';
+        const asc = n.ascendancy ? ` (${n.ascendancy})` : '';
+        const stats = show_stats !== false && n.stats.length ? `: ${n.stats.join('; ')}` : '';
+        const src = n.source === 'ascendancy' ? ' · асценданси' : '';
+        lines.push(`- **${n.id}** — ${type}${asc}${src} **${n.name}**${stats}`);
+      }
+      if (report.missing.length) {
+        lines.push('');
+        lines.push(`⚠ Не найдено в датасете (${report.missing.length}): ${report.missing.slice(0, 40).join(', ')}${report.missing.length > 40 ? '…' : ''}`);
+        if (report.missingNumeric.length === report.missing.length) {
+          lines.push('_Все ненайденные — числовые ID обычного (не асценданси) дерева: датасет хранит обычное дерево по символьным ключам PoB, а числовая карта «ID игры → узел» пока недоступна офлайн._');
+        } else {
+          lines.push('_Возможно, узлы из другой версии дерева (PoB treeVersion ≠ актуальному патчу) — сверить в Path of Building._');
+        }
+      }
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    },
+  );
+  count++;
+
   // ── Саппорт-гемы ──────────────────────────────────────────────────────────
   server.registerTool(
     'poe2_support_gems_lookup',

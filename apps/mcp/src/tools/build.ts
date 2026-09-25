@@ -16,6 +16,9 @@ function formatBuild(b: BuildImport): string {
     `- **Уровень:** ${b.level ?? '—'}`,
     b.passiveNodes.length ? `- **Узлы пассивок:** ${b.passiveNodes.length}` : null,
   ];
+  // Резолв ID узлов дерева в имена (keystone/notable — с описаниями, остальные счётчиком).
+  const tree = treeSection(b.passiveNodes);
+  if (tree) lines.push(tree);
   // Группы камней: главная — с уровнями, остальные списком
   if (b.skillGroups?.length) {
     const main = b.skillGroups.find((g) => g.main);
@@ -58,6 +61,37 @@ function formatBuild(b: BuildImport): string {
     lines.push('', '### Заметки билда', b.notes.length >= 2000 ? `${b.notes}…` : b.notes);
   }
   return lines.filter((l): l is string => l !== null).join('\n');
+}
+
+/** Дерево пассивок билда: ID → имена; keystone/notable — с полными статами, остальные счётчиком. */
+function treeSection(ids: string[]): string | null {
+  if (!ids.length) return null;
+  const report = core.dataset.resolvePassiveNodes(ids);
+  const all = report.resolved;
+  const keystones = all.filter((n) => n.isKeystone);
+  const notables = all.filter((n) => n.isNotable && !n.isKeystone);
+  const small = all.length - keystones.length - notables.length;
+  const out = [
+    '',
+    '### Дерево пассивок',
+    `- Узлов: **${report.requested}** (распознано ${all.length}: keystone ${keystones.length} · notable ${notables.length} · малых ${small})`,
+  ];
+  if (!all.length) {
+    out.push('_Узлы не найдены в офлайн-датасете (возможно, другая версия дерева — сверить в Path of Building)._');
+  }
+  for (const n of [...keystones, ...notables]) {
+    const src = n.source === 'ascendancy' && n.ascendancy ? ` (${n.ascendancy})` : '';
+    out.push(`- ${n.isKeystone ? '🔑' : '★'} **${n.name}**${src}: ${n.stats.join('; ')}`);
+  }
+  if (report.missing.length) {
+    out.push(`- ⚠ Не распознано (${report.missing.length}): ${report.missing.slice(0, 20).join(', ')}${report.missing.length > 20 ? '…' : ''}`);
+    if (report.missingNumeric.length === report.missing.length) {
+      out.push('  _Это числовые ID обычного дерева — датасет хранит его по символьным ключам PoB (числовая карта появится с обновлением данных; асценданси по числовым ID распознаются)._');
+    } else {
+      out.push('  _Вероятно, другая версия дерева (treeVersion ≠ актуальному патчу) — сверить в Path of Building._');
+    }
+  }
+  return out.join('\n');
 }
 
 export function registerBuildTools(server: McpServer): number {

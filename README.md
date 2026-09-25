@@ -8,7 +8,7 @@
 |---|---|---|
 | 🌐 Веб-приложение | `apps/web` | Дашборд: курсы валют, прайс-чек, гид по прокачке, импорт билда |
 | 🖥️ Windows-оверлей | `apps/overlay` | Прозрачное окно поверх игры: прайс-чек по хоткею |
-| 🧠 MCP-сервер для ИИ | `apps/mcp` | 10 инструментов `poe2_*` для ИИ-ассистентов (OpenCode и др.) |
+| 🧠 MCP-сервер для ИИ | `apps/mcp` | 36 инструментов `poe2_*` для ИИ-ассистентов (OpenCode и др.) |
 
 Цены и торговля — **только с бесплатных публичных API**: [poe.ninja](https://poe.ninja), [poe2scout](https://poe2scout.com), официальный `trade2` Path of Exile 2 и открытые данные RePoE. Ключей не требуется.
 
@@ -79,7 +79,7 @@ npm run test  -w @poe2-kit/mcp           # build + --smoke
 npm run start -w @poe2-kit/mcp -- --smoke
 ```
 
-Инструменты `poe2_*` (12 шт): `poe2_currency_prices`, `poe2_currency_check`, `poe2_leagues`, `poe2_parse_item`, `poe2_price_check`, `poe2_leveling_plan`, `poe2_build_decode`, `poe2_build_summary`, `poe2_build_price`, `poe2_items_db`, `poe2_mod_tier`, `poe2_ai_ask`. См. `apps/mcp/ASSISTANT_GUIDE.md`.
+Инструменты `poe2_*` (36 шт): валюта/лиги, прайс-чек и разбор предметов, прокачка (8 классов), декод и оценка билдов, дерево пассивок (поиск + резолв узлов по ID `poe2_tree_ids`), гемы, статус персонажа, лестница лиги, духи (spirit), EHP, статы врагов, wiki/poe2db и др. Полный список и примеры — в `apps/mcp/ASSISTANT_GUIDE.md`.
 
 ---
 
@@ -114,6 +114,24 @@ const build = core.build.decodeShareCode(code);
 ## Лиги
 
 По умолчанию берётся **актуальная текущая лига** из poe2scout (помечена ✦ в `poe2_leagues`, напр. «Forbidden Rites»). Управляется через `core.trade.setLeague(name)` (MCP: аргумент `league` у торговых/валютных инструментов). Если лига не указана — MCP сам подставляет текущую.
+
+---
+
+## План развития
+
+Открытые задачи и wishlist — в `WORK_LOG.md` (раздел «План задач: что добавить/улучшить»). Приоритеты:
+
+| Приоритет | Задача |
+|-----------|--------|
+| **P0** | `poe2_tree_ids` — ресолвер узлов дерева по ID; дерево в `poe2_build_decode` сразу с именами |
+| **P0** | Авто-детект рассинхрона версий PoB vs датасет (treeVersion, XML) |
+| **P0** | «Следующий апгрейд» на основе оценки билда (`poe2_build_advice`) |
+| **P0** | SSF-режим в `poe2_build_price` / `poe2_price_check` (`mode: "ssf"`) |
+| **P0** | Источник гема (Uncut Support / quest / drop) в `poe2_gems_lookup` |
+| **P1** | `poe2_build_compare` (свой билд vs топ-лестница класса), истории цен, поиск по дереву по набору статов |
+| **P1** | Оверлей: пакетный прайс-чек, watchlist-алерты, UI настроек, слежение за HiDPI-смещением |
+| **P2** | Веб: просмотрщик дерева, чек-лист прокачки, сравнение билдов, вставка предмета из игры |
+| **P2** | CI-смоки против живых API, диагностика оверлея, документация (#4), `poe2_build_guide` |
 
 ---
 

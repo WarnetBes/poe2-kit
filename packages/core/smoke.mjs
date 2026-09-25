@@ -351,7 +351,7 @@ ok(tqItem.query.type === 'Ruby Ring', 'buildTradeQueryFromItem baseType');
 ok((tqItem.query.stats?.[0]?.filters ?? []).length === 2, 'buildTradeQueryFromItem modsв†’stats');
 
 console.log('offline datasets (data/game)');
-const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds } = core;
+const { getDatasetVersion, getAscendanciesByClass, searchSkillGems, getSkillGemDetails, searchPassiveTree, searchBaseItems, getStatIds, getPassiveNodeById, resolvePassiveNodes, getPassiveTree } = core;
 const ver = getDatasetVersion();
 ok(ver.patch_version === '0.5' && ver.data_revision >= 12, `dataset version ${ver.released_as}`);
 const monkAsc = getAscendanciesByClass('Monk');
@@ -364,6 +364,16 @@ const ks = searchPassiveTree('Shockproof');
 ok(ks.length >= 1 && ks[0].isNotable && ks[0].stats.some((s) => s.includes('Shock')), `tree: "Shockproof" notable в†’ ${ks.length} nodes`);
 const byStat = searchPassiveTree('increased chance to Shock', { limit: 5 });
 ok(byStat.length >= 1 && byStat.some((n) => n.stats.join(' ').includes('chance to Shock')), 'tree: search by stat text');
+const symNode = getPassiveNodeById(byStat[0].id);
+ok(!!symNode && symNode.source === 'tree' && symNode.name === byStat[0].name, `tree ids: symbolic id "${byStat[0].id}" в†’ "${symNode?.name}"`);
+ok(getPassiveTree().length >= 9000, `tree ids: dataset size ${getPassiveTree().length}`);
+const faith = getPassiveNodeById('12876');
+ok(!!faith && faith.source === 'ascendancy' && faith.isNotable && faith.name === 'Faith is a Choice' && faith.stats.includes('Grants Skill: Meditate'), 'tree ids: numeric 12876 в†’ "Faith is a Choice" (ascendancy)');
+const report = resolvePassiveNodes(['attributes1', '12876', '12876', '999999', 'no-such-id']);
+ok(report.requested === 4 && report.resolved.length === 2
+  && report.missingNumeric.length === 1 && report.missingSymbolic.length === 1
+  && report.resolved.some((n) => n.id === 'attributes1') && report.resolved.some((n) => n.id === '12876'),
+  `tree ids: report dedupe+missing split (resolved ${report.resolved.length}/${report.requested})`);
 const ring = searchBaseItems('Ruby Ring');
 ok(ring.length >= 1 && ring.some((b) => b.name === 'Ruby Ring'), 'base_items: Ruby Ring found');
 ok(getStatIds().length > 20000, `stats: ${getStatIds().length} stat ids`);
