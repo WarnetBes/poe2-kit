@@ -13,6 +13,7 @@
 
 import { parseItemText } from './parse.js';
 import { httpJson } from './http.js';
+import { resolveLeague } from './trade.js';
 
 // ─── Типы запроса trade2 ────────────────────────────────────────────────────
 
@@ -137,25 +138,25 @@ export function buildTradeQuery(input: TradeQueryInput): TradeQueryPayload {
   const tf: Record<string, { option?: string; min?: number; max?: number }> = {};
   if (input.rarity) tf.rarity = { option: input.rarity };
   if (input.itemLevelMin != null) tf.ilvl = { min: input.itemLevelMin };
-  if (Object.keys(tf).length) query.filters!.type_filters = { filters: { ...tf, ...(query.filters!.type_filters?.filters ?? {}) } };
-
   const trf: Record<string, { option?: string; min?: number; max?: number }> = {};
   if (input.priceMin != null || input.priceMax != null) {
     trf.price = { min: input.priceMin, max: input.priceMax };
   }
   if (Object.keys(trf).length) query.filters!.trade_filters = { filters: trf };
 
-  const wf: Record<string, { min?: number; max?: number }> = {};
-  if (input.dpsMin != null) wf.dps = { min: input.dpsMin };
-  if (input.pdpsMin != null) wf.pdps = { min: input.pdpsMin };
-  if (input.edpsMin != null) wf.edps = { min: input.edpsMin };
-  if (Object.keys(wf).length) query.filters!.weapon_filters = { filters: wf };
-
+  // ВАЖНО (trade2 PoE2): группы weapon_filters НЕ СУЩЕСТВУЕТ — API отвечает
+  // 400 "Unknown filter group: weapon_filters". Фильтры урона (dps/pdps/edps)
+  // живут в type_filters. Проверено живыми запросами ( Forbidden Rites, 0.5 ).
   const af: Record<string, { min?: number; max?: number }> = {};
   if (input.armourMin != null) af.ar = { min: input.armourMin };
   if (input.evasionMin != null) af.ev = { min: input.evasionMin };
   if (input.esMin != null) af.es = { min: input.esMin };
   if (Object.keys(af).length) query.filters!.armour_filters = { filters: af };
+
+  if (input.dpsMin != null) tf.dps = { min: input.dpsMin };
+  if (input.pdpsMin != null) tf.pdps = { min: input.pdpsMin };
+  if (input.edpsMin != null) tf.edps = { min: input.edpsMin };
+  if (Object.keys(tf).length) query.filters!.type_filters = { filters: { ...tf, ...(query.filters!.type_filters?.filters ?? {}) } };
 
   if (input.stats?.length) {
     query.stats = [
@@ -178,10 +179,20 @@ export function buildTradeQuery(input: TradeQueryInput): TradeQueryPayload {
  * Известные stat-id официального trade API PoE2 (pseudo-статы для итоговых
  * значений + явные хэши популярных модов). Пополнение по мере сбора.
  * Строки-паттерны: '#' — число.
+ *
+ * Все explicit-id ниже проверены живыми запросами trade2 (патч 0.5,
+ * лига Forbidden Rites) через /api/trade2/data/stats и POST /search.
+ * Для weapon-модов (локальные "increased Physical Damage", "Attack Speed (Local)",
+ * flat phys) id зависит от домена — выбор через opts.weapon.
  */
-export const MOD_TEXT_TO_STAT: Array<{ pattern: RegExp; id: string; label: string }> = [
-  { pattern: /maximum Life/, id: 'pseudo.pseudo_total_life', label: 'Life' },
-  { pattern: /maximum Energy Shield/, id: 'pseudo.pseudo_total_energy_shield', label: 'Energy Shield' },
+export const MOD_TEXT_TO_STAT: Array<{
+  pattern: RegExp;
+  id: string | ((weapon: boolean) => string);
+  label: string;
+}> = [
+  // Плоские значения → pseudo-итоги (порядок важен: сначала flat, потом процентные).
+  { pattern: /\d+ to maximum Life/, id: 'pseudo.pseudo_total_life', label: 'Life (flat)' },
+  { pattern: /\d+ to (?:maximum )?Energy Shield/, id: 'pseudo.pseudo_total_energy_shield', label: 'Energy Shield (flat)' },
   { pattern: /to (?:Armour|Armour Rating)/, id: 'pseudo.pseudo_total_armour', label: 'Armour' },
   { pattern: /to (?:Evasion Rating|Evasion)/, id: 'pseudo.pseudo_total_evasion_rating', label: 'Evasion' },
   { pattern: /to Fire Resistance/, id: 'pseudo.pseudo_total_fire_resistance', label: 'Fire Res' },
@@ -193,6 +204,16 @@ export const MOD_TEXT_TO_STAT: Array<{ pattern: RegExp; id: string; label: strin
   { pattern: /to Strength/, id: 'pseudo.pseudo_total_strength', label: 'Strength' },
   { pattern: /to Dexterity/, id: 'pseudo.pseudo_total_dexterity', label: 'Dexterity' },
   { pattern: /to Intelligence/, id: 'pseudo.pseudo_total_intelligence', label: 'Intelligence' },
+  // Проценты/урон/скорость — явные explicit-id (проверены живыми запросами).
+  { pattern: /% increased (?:maximum )?Energy Shield/, id: 'explicit.stat_2482852589', label: 'Energy Shield %' },
+  { pattern: /Adds [\d.]+ to [\d.]+ Physical Damage to Attacks/, id: 'explicit.stat_3032590688', label: 'Flat Phys (Attacks)' },
+  { pattern: /Adds [\d.]+ to [\d.]+ Physical Damage/, id: (w) => (w ? 'explicit.stat_1940865751' : 'explicit.stat_3032590688'), label: 'Flat Phys' },
+  { pattern: /% increased Attack Speed/, id: (w) => (w ? 'explicit.stat_210067635' : 'explicit.stat_681332047'), label: 'Attack Speed' },
+  { pattern: /% increased Physical Damage/, id: (w) => (w ? 'explicit.stat_1509134228' : ''), label: 'Physical Damage %' },
+  { pattern: /% increased Critical Damage Bonus/, id: 'explicit.stat_3556824919', label: 'Critical Damage Bonus %' },
+  { pattern: /% increased Cold Damage/, id: 'explicit.stat_3291658075', label: 'Cold Damage %' },
+  { pattern: /% increased Skill Speed/, id: 'explicit.stat_970213192', label: 'Skill Speed %' },
+  { pattern: /Gain additional Stun Threshold equal to [\d.]+% of maximum Energy Shield/, id: 'explicit.stat_416040624', label: 'Stun Threshold from ES' },
 ];
 
 /**
@@ -201,9 +222,10 @@ export const MOD_TEXT_TO_STAT: Array<{ pattern: RegExp; id: string; label: strin
  */
 export function modsToStatFilters(
   modTexts: string[],
-  opts: { tolerance?: number } = {},
+  opts: { tolerance?: number; weapon?: boolean } = {},
 ): Array<{ id: string; min?: number; max?: number; label?: string; value?: number }> {
   const tol = opts.tolerance ?? 0; // 0..: насколько ниже значения предмета искать
+  const weapon = opts.weapon ?? false;
   const out = new Map<string, { id: string; min: number; label: string; value: number }>();
   for (const text of modTexts) {
     const num = /([+-]?\d+(?:\.\d+)?)/.exec(text);
@@ -212,10 +234,11 @@ export function modsToStatFilters(
     if (Number.isNaN(value)) continue;
     for (const entry of MOD_TEXT_TO_STAT) {
       if (entry.pattern.test(text)) {
-        if (value > 0) {
-          const prev = out.get(entry.id);
+        const id = typeof entry.id === 'function' ? entry.id(weapon) : entry.id;
+        if (id && value > 0) {
+          const prev = out.get(id);
           const min = Math.max(0, Math.round(value - tol));
-          if (!prev || min > prev.min) out.set(entry.id, { id: entry.id, min, label: entry.label, value });
+          if (!prev || min > prev.min) out.set(id, { id, min, label: entry.label, value });
         }
         break;
       }
@@ -252,7 +275,10 @@ export function buildTradeQueryFromItem(itemText: string, opts: { tolerance?: nu
   if (parsed.rarity === 'Rare' || parsed.rarity === 'Magic') input.rarity = parsed.rarity.toLowerCase() as 'rare' | 'magic';
   if (opts.priceMax != null) input.priceMax = opts.priceMax;
 
-  const statFilters = modsToStatFilters(parsed.mods.map((m) => m.text), { tolerance: opts.tolerance });
+  // Предмет с уроном/APS — оружие: его моды "increased Physical Damage"/"Attack Speed"
+  // локальные, выбор explicit-id зависит от этого флага.
+  const isWeapon = input.dpsMin != null || input.pdpsMin != null || input.edpsMin != null;
+  const statFilters = modsToStatFilters(parsed.mods.map((m) => m.text), { tolerance: opts.tolerance, weapon: isWeapon });
   if (statFilters.length) input.stats = statFilters.map((s) => ({ id: s.id, min: s.min }));
 
   return buildTradeQuery(input);
@@ -276,7 +302,16 @@ export async function searchTradeQuery(
   payload: TradeQueryPayload,
   opts: { league?: string; limit?: number } = {},
 ): Promise<{ queryId: string | null; total?: number; listings: TradeQueryListing[]; error?: string }> {
-  const league = opts.league ?? 'Standard';
+  // trade2 принимает ТОЛЬКО отображаемое имя лиги ("Forbidden Rites" с пробелом),
+  // слаги poe.ninja/scout ("forbiddenrites") дают 400 "Invalid query".
+  // Резолвим любой ввод через список лиг poe2scout.
+  let league = opts.league ?? 'Standard';
+  try {
+    const resolved = await resolveLeague(league);
+    if (resolved?.id) league = resolved.id;
+  } catch {
+    /* оставляем как есть — API сам ответит ошибкой */
+  }
   const limit = Math.min(opts.limit ?? 10, 20);
   try {
     const search = await httpJson<{ id?: string; total?: number; result?: string[]; error?: string }>(
