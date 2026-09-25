@@ -139,6 +139,18 @@ function readW(
 
 // ── Публичное API ───────────────────────────────────────────────────────────
 
+/** Классы окон браузеров: их заголовки часто содержат «Path of Exile»
+ *  (вкладки poe-сайтов, Google-поиск), но это не окно игры — оверлей,
+ *  привязанный к такому окну, «мигает» и прыгает. */
+const EXCLUDED_CLASSES = new Set([
+  'Chrome_WidgetWin_1', // Chrome / Edge / Brave / Vivaldi (все Chromium)
+  'Chrome_WidgetWin_0',
+  'MozillaWindowClass', // Firefox
+  'OperaWindowClass', // Opera
+  'ApplicationFrameWindow', // UWP-приложения (Edge, Почта)
+  'Windows.UI.Core.CoreWindow', // UWP / системные всплывашки
+]);
+
 export interface FindGameOptions {
   /** Подстрока заголовка искомого окна (без учёта регистра). */
   titleKeyword?: string;
@@ -158,6 +170,8 @@ export function findGameWindow(options: FindGameOptions = {}): GameWindowInfo | 
   let found: GameWindowInfo | null = null;
   enumSink = (info) => {
     if (found) return; // уже нашли — дальше не интересно
+    if (info.minimized) return; // свёрнутое окно не подходит
+    if (EXCLUDED_CLASSES.has(info.className)) return; // браузер ≠ игра
     if (info.title.toLowerCase().includes(keyword)) {
       found = info;
     }

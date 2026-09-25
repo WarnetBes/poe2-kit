@@ -256,6 +256,12 @@ const TRACK_INTERVAL_MS = 350;
 let lastHwndKey = '';
 let lastRectKey = '';
 let trackerTimer: NodeJS.Timeout | null = null;
+/** Гистерезис скрытия: прячем окно только после N плохих тиков подряд
+ *  (~0.7 с при TRACK_INTERVAL_MS=350), иначе единичный промах EnumWindows
+ *  или краткая потеря фокуса игрой мигает окном (show/hide-хлопки). */
+const HIDE_AFTER_TICKS = 2;
+let missTicks = 0;
+let inactiveTicks = 0;
 
 // Единственный экземпляр. Если прошлый процесс ещё жив (зомби после краша) —
 // новый старт мгновенно завершается; пишем причину, чтобы это было видно.
@@ -1040,6 +1046,9 @@ async function createOverlayWindow(): Promise<void> {
     y: -overlayHeight,
     show: false,
     transparent: true,
+    // Без этого прозрачное окно на первый кадр мигает чёрным/белым
+    // (известный баг Chromium на Windows). Полная прозрачность с самого старта.
+    backgroundColor: '#00000000',
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -1108,17 +1117,30 @@ function trackGameWindow(): void {
   const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
 
   if (!found) {
-    // Игра/окно не найдено — прячем оверлей (кроме режима перемещения).
-    if (!moveUnlocked && win.isVisible()) win.hide();
+    // Игра/окно не найдено — прячем оверлей (кроме режима перемещения),
+    // но не мгновенно: единичный «промах» перечисления окон не должен
+    // мигать окном.
+    if (!moveUnlocked) {
+      if (++missTicks >= HIDE_AFTER_TICKS && win.isVisible()) {
+        win.hide();
+        console.log('[overlay] tracker: hide (окно игры не найдено)');
+      }
+    }
     return;
   }
+  missTicks = 0;
 
-  // Игра не в фокусе или свёрнута — прячем оверлей (кроме режима перемещения).
+  // Игра не в фокусе или свёрнута — прячем оверлей (кроме режима перемещения),
+  // тоже с гистерезисом: alt-tab на долю секунды не должен мигать окном.
   const active = isGameForeground(found);
   if (!active && !moveUnlocked) {
-    if (win.isVisible()) win.hide();
+    if (++inactiveTicks >= HIDE_AFTER_TICKS && win.isVisible()) {
+      win.hide();
+      console.log('[overlay] tracker: hide (игра не в фокусе/свёрнута)');
+    }
     return;
   }
+  inactiveTicks = 0;
 
   if (moveUnlocked) {
     // Пользователь тащит окно — не дёргаем позицию и не прячем его.
@@ -1157,7 +1179,12 @@ function trackGameWindow(): void {
     });
   }
 
-  if (!win.isVisible()) win.show();
+  if (!win.isVisible()) {
+    win.show();
+    console.log(
+      `[overlay] tracker: show (привязка к окну "${found.title.slice(0, 60)}" hwnd=${found.hwnd})`,
+    );
+  }
 }
 
 function startGameTracker(): void {
