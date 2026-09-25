@@ -3,3 +3,4 @@
 # Git при checkout/clone на Windows теперь всегда конвертирует их в CRLF.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+*.ps1 text eol=crlf
