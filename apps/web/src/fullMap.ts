@@ -143,7 +143,7 @@ async function allNodes(): Promise<Node[]> {
 }
 
 // Светлая читаемая палитра и увеличенные размеры (под светлый фон канваса).
-const NORMAL_COLOR = '#6a7894';
+const NORMAL_COLOR = '#7e8fb3';
 const NORMAL_R = 3.6;
 const ASC_R = 5.2;
 const NOTABLE_R = 6.6;
@@ -159,8 +159,8 @@ function nodeRadius(n: Node): number {
 
 function nodeColor(n: Node): string {
   if (n.ascendancy) return ascColor(n.ascendancy);
-  if (n.isKeystone) return '#c07a0a';
-  if (n.isNotable) return '#1f7fd6';
+  if (n.isKeystone) return '#e8b84a';
+  if (n.isNotable) return '#7cc7ff';
   return NORMAL_COLOR;
 }
 
@@ -196,8 +196,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       <summary>Легенда асценданси</summary>
       <ul class="tree-legend-list">
         <li><i style="background:${NORMAL_COLOR}"></i> обычное дерево</li>
-        <li><i style="background:#1f7fd6"></i> notable</li>
-        <li><i style="background:#c07a0a"></i> keystone</li>
+        <li><i style="background:#7cc7ff"></i> notable</li>
+        <li><i style="background:#e8b84a"></i> keystone</li>
         ${POSITIONED_ASCENDANCIES.map((a) => `<li><i style="background:${ascColor(a)}"></i> ${escAttr(a)}</li>`).join('')}
       </ul>
     </details>
@@ -245,8 +245,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     c.setAttribute('cy', String(n.y));
     c.setAttribute('r', String(r));
     c.setAttribute('fill', nodeColor(n));
-    if (n.isKeystone || n.ascendancy) c.setAttribute('stroke', '#00000055');
-    c.setAttribute('stroke-width', '1.2');
+    c.setAttribute('stroke', '#00000077');
+    c.setAttribute('stroke-width', '1.1');
     circles[n.id] = c;
     g.appendChild(c);
     if (n.isNotable && !n.ascendancy) {

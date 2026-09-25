@@ -562,7 +562,7 @@ a { color: var(--gold); }
   overflow: hidden;
 }
 .tree-canvas.map-canvas {
-  background: radial-gradient(ellipse at center, #edf1f7, #d9e0ea 72%);
+  background: radial-gradient(ellipse at center, #141a26, #0a0d14 72%);
 }
 .tree-svg { display: block; touch-action: none; }
 .tree-svg.panning { cursor: grabbing; }
@@ -570,14 +570,14 @@ a { color: var(--gold); }
 .tree-svg .tnode:hover { filter: brightness(1.25); }
 .tree-svg .mnode { stroke-width: 1.2px; }
 .tnode-label {
-  fill: #1c2432;
+  fill: #dbe6f5;
   font-size: 13px;
   font-weight: 700;
   font-family: 'EB Garamond', Georgia, serif;
   text-anchor: middle;
   pointer-events: none;
   paint-order: stroke;
-  stroke: #ffffffcc;
+  stroke: #06090e;
   stroke-width: 4px;
 }
 .tree-detail {
@@ -634,11 +634,11 @@ a { color: var(--gold); }
 .tree-svg .mnode { transition: opacity 0.12s linear; }
 .tree-svg .mstart {
   fill: none;
-  stroke: #1c2a44;
+  stroke: #ffe9b0;
   stroke-width: 2.2px;
   stroke-dasharray: 4 2;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 @media (max-width: 720px) {
