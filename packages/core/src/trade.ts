@@ -587,6 +587,83 @@ async function priceUniqueWithTimeout(
  * Поиск по официальному торговому сайту без авторизации.
  * Лигу передаём явно — работает во всех лигах (translation), иначе fallback на активную.
  */
+/** Каноническое имя базового типа в каталоге RePoE (для fallback-поиска
+ *  по типу). Build Planner/клир-текст иногда дают имена, которые trade2 не
+ *  признаёт («Quarterstaff» вместо «Sinister Quarterstaff», «Life Flask»,
+ *  «Wand»...): резолвим через base_items.json (5382 записи) + кэш. */
+const baseTypeByName = new Map<string, string | null>();
+let baseTypeByNameLoaded = false;
+async function loadBaseTypeByName(): Promise<void> {
+  if (baseTypeByNameLoaded) return;
+  baseTypeByNameLoaded = true;
+  try {
+    const { getBaseItems } = await import('./dataset.js');
+    for (const b of getBaseItems()) {
+      const n = (b.name ?? '').trim();
+      if (n && !baseTypeByName.has(n)) baseTypeByName.set(n, n);
+    }
+  } catch {
+    // локальный датасет недоступен (браузер/оффлайн) — маппинг будет частичным
+  }
+}
+
+/** trade2-имя базового типа: проверяет, что trade2 принимает `type` (кэш на
+ *  30 мин; «Unknown item base type» → null), иначе подсказывает каноническое
+ *  имя из RePoE по префиксу/суффиксу/содержанию. Кэшируем оба исхода. */
+const tradeTypeValidation = new Map<string, { at: number; ok: boolean; canonical?: string }>();
+const TRADE_TYPE_VALIDATION_TTL = 30 * 60 * 1000;
+export async function resolveTradeBaseType(
+  type: string,
+  opts: { league?: string } = {},
+): Promise<string | null> {
+  const t = type.trim();
+  if (!t) return null;
+  const hit = tradeTypeValidation.get(t);
+  if (hit && Date.now() - hit.at < TRADE_TYPE_VALIDATION_TTL) {
+    return hit.ok ? t : (hit.canonical ?? null);
+  }
+  const league = (await resolveLeague(opts.league ?? ''))?.id ?? null;
+  try {
+    // пустой stats — «неизвестный» фильтр не сработает; ищем любой предмет
+    const listings = await postTradeSearch(
+      { query: { status: { option: 'online' }, type: { option: t }, stats: [] }, sort: { price: 'asc' } },
+      { league: league ?? undefined, limit: 1 },
+    );
+    const ok = listings.length > 0;
+    tradeTypeValidation.set(t, { at: Date.now(), ok });
+    return ok ? t : null;
+  } catch {
+    // 400 «Unknown item base type» или сетевая ошибка — пробуем маппинг
+    const mapped = await mapBaseTypeViaRePoe(t);
+    if (mapped && mapped !== t) {
+      const okMapped = await resolveTradeBaseType(mapped, opts);
+      if (okMapped) tradeTypeValidation.set(t, { at: Date.now(), ok: false, canonical: okMapped });
+      return okMapped;
+    }
+    tradeTypeValidation.set(t, { at: Date.now(), ok: false });
+    return null;
+  }
+}
+
+/** Подобрать каноническое имя base type по RePoE (точный match уже проверен
+ *  вызывающим; здесь — префикс/суффикс/содержание). */
+async function mapBaseTypeViaRePoe(t: string): Promise<string | null> {
+  await loadBaseTypeByName();
+  if (baseTypeByName.size === 0) return null;
+  const lower = t.toLowerCase();
+  let best: { name: string; score: number } | null = null;
+  for (const name of baseTypeByName.keys()) {
+    const nl = name.toLowerCase();
+    let score = 0;
+    if (nl === lower) score = 100;
+    else if (nl.endsWith(' ' + lower)) score = 80; // «...Quarterstaff»
+    else if (nl.startsWith(lower + ' ')) score = 70; // «Sinister ...»
+    else if (nl.includes(lower)) score = 50;
+    if (score >= 50 && (!best || score > best.score)) best = { name, score };
+  }
+  return best?.name ?? null;
+}
+
 export async function searchTrade(
   query: { type?: string; name?: string },
   opts: { limit?: number; league?: string } = {},
@@ -766,7 +843,11 @@ async function postTradeSearchUncached(
   opts: { limit?: number; league?: string },
 ): Promise<TradeListing[]> {
   const limit = opts.limit ?? 10;
-  const league = opts.league && opts.league !== '' ? opts.league : (getLeague() ?? 'Runes of Aldur');
+  const rawLeague = opts.league && opts.league !== '' ? opts.league : (getLeague() ?? 'Runes of Aldur');
+  // trade2 принимает league-ID («Forbidden Rites»), а НЕ shortCode
+  // («forbiddenrites»): с shortCode API отвечает 400 «Invalid query»
+  // на любой запрос, включая без фильтров. Резолвим через живой список лиг.
+  const league = (await resolveLeague(rawLeague))?.id ?? rawLeague;
   try {
     await throttleTradeSearch();
     // POST-поиск и fetch листингов кэшируем на диск (30 мин): повторный
@@ -797,6 +878,15 @@ async function postTradeSearchUncached(
     }
     return listings;
   } catch (e) {
+    // Ошибка trade2 раньше глоталась молча (return []) — прайс-чек раров
+    // «не работал» без единого признака. Логируем причину: HTTP 400
+    // «Invalid query»/«Unknown item base type», 429 и т.д.
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn(
+        '[poe2-kit] trade2 search failed:',
+        e instanceof Error ? e.message : String(e),
+      );
+    }
     // 429 от trade2 → выставляем окно бана, чтобы следующие поиски не долбили
     if (e instanceof Error && /HTTP 429/.test(e.message)) {
       tradeBanUntil = Date.now() + 60_000;
@@ -838,21 +928,32 @@ async function listingsToChaosPrices(
 }
 
 /** Медианная оценка из массива цен (в Chaos). Нужно > 2 валидных цен. */
+/** Медианная оценка из массива цен (в Chaos). Нужно >= 3 валидных цен —
+ *  меньше считаем недостоверным (шум единичных листингов) и помечаем low. */
 function estimateFromPrices(prices: number[]): PriceEstimate | null {
   const np = prices.filter((p) => Number.isFinite(p) && p > 0);
-  if (np.length <= 2) return null;
+  if (np.length < 3) return null;
   np.sort((a, b) => a - b);
   return {
     min: np[0]!,
     max: np[np.length - 1]!,
     median: np[Math.floor(np.length / 2)]!,
-    confidence: 'approx',
+    confidence: np.length >= 5 ? 'approx' : 'low',
   };
 }
 
 // ────────────────────────────────────────────────
 // Прайс-чек
 // ────────────────────────────────────────────────
+
+/** Отладочный лог priceCheck: включается переменной окружения POE2K_DEBUG
+ *  (любой непустой значение). Помогает разбираться, почему предмет не
+ *  оценивается: парсинг, сопоставление модов со статами, ответы trade2. */
+function debugLog(...args: unknown[]): void {
+  if (typeof process !== 'undefined' && process.env && process.env.POE2K_DEBUG) {
+    console.log('[poe2-kit:priceCheck]', ...args);
+  }
+}
 
 /**
  * Выполнить прайс-чек предмета.
@@ -866,8 +967,19 @@ export async function priceCheck(
 ): Promise<PriceCheckResult> {
   const league = opts.league ?? currentLeague ?? undefined;
   const parsed = parseItemText(itemText);
+  debugLog(
+    'parse:',
+    JSON.stringify({
+      rarity: parsed.rarity,
+      name: parsed.name,
+      baseType: parsed.baseType,
+      mods: parsed.mods.map((m) => `[${m.type}] ${m.text}`),
+      league: league ?? '(active)',
+    }),
+  );
   let estimate: PriceEstimate | null = null;
   let listings: TradeListing[] = [];
+  let note: string | undefined;
 
   if (parsed.rarity === 'Unique' && (parsed.name ?? parsed.baseType)) {
     const v = await priceUniqueWithTimeout(
@@ -914,55 +1026,93 @@ export async function priceCheck(
   ) {
     try {
       const { filters, unmatched } = await matchModsToStatFilters(explicitMods);
+      debugLog(
+        'matchModsToStatFilters:',
+        `${filters.length} filters, ${unmatched.length} unmatched`,
+        filters.map((f) => `${f.id}${f.min != null ? ` min=${f.min}` : ''}`),
+        unmatched,
+      );
       // ищем по статам, если распознано больше половины модов
       if (filters.length && unmatched.length <= Math.ceil(explicitMods.length / 2)) {
-        const type = parsed.baseType;
-        const searchOpts = { league, limit: 10 };
-        const pause = () => new Promise((r) => setTimeout(r, 300));
-        // Лестница ослабления: точное попадание всех целевых аффиксов редко,
-        // ищем ближайшие аналоги.
-        // 1) все статы с минимумами («роллы не хуже ×0.9»)
-        listings = await searchTradeByStats({ type, filters }, searchOpts);
-        // 2) «не менее 2/3 целевых статов» с минимумами
-        if (!listings.length && filters.length >= 3) {
-          await pause();
-          listings = await searchTradeByStats(
-            {
-              type,
-              filters,
-              group: { type: 'count', value: Math.max(2, Math.ceil((filters.length * 2) / 3)) },
-            },
-            searchOpts,
-          );
+        // trade2-имя базового типа (валидация + маппинг через RePoE)
+        const resolvedType = await resolveTradeBaseType(parsed.baseType!, { league });
+        if (!resolvedType) {
+          debugLog('resolveTradeBaseType: no valid type for', parsed.baseType);
+        } else {
+          const searchOpts = { league, limit: 10 };
+          const pause = () => new Promise((r) => setTimeout(r, 300));
+          // Лестница ослабления: точное попадание всех целевых аффиксов редко,
+          // ищем ближайшие аналоги.
+          // 1) все статы с минимумами («роллы не хуже ×0.9»)
+          listings = await searchTradeByStats({ type: resolvedType, filters }, searchOpts);
+          debugLog('searchTradeByStats and:', `${listings.length} listings`);
+          // 2) «не менее 2/3 целевых статов» с минимумами
+          if (!listings.length && filters.length >= 3) {
+            await pause();
+            listings = await searchTradeByStats(
+              {
+                type: resolvedType,
+                filters,
+                group: { type: 'count', value: Math.max(2, Math.ceil((filters.length * 2) / 3)) },
+              },
+              searchOpts,
+            );
+            debugLog('searchTradeByStats count:', `${listings.length} listings`);
+          }
+          estimate = estimateFromPrices(await listingsToChaosPrices(listings, league));
         }
-        estimate = estimateFromPrices(await listingsToChaosPrices(listings, league));
+      } else {
+        debugLog('skip byStats: too few matched filters');
       }
-    } catch {
+    } catch (e) {
       // каталог статов недоступен — ниже фолбэк по базовому типу
+      debugLog('byStats error:', e instanceof Error ? e.message : String(e));
     }
   }
 
   if (!listings.length) {
     if (parsed.rarity === 'Rare' && parsed.baseType) {
       // фолбэк рара: хотя бы листинги базового типа (без учёта аффиксов)
-      listings = await searchTrade({ type: parsed.baseType }, { league });
+      const resolvedType = await resolveTradeBaseType(parsed.baseType, { league });
+      if (resolvedType) {
+        listings = await searchTrade({ type: resolvedType }, { league });
+        debugLog('fallback by base type:', `${listings.length} listings`);
+        if (listings.length) note = 'Оценка по базовому типу без учёта аффиксов';
+      } else {
+        debugLog('fallback: no valid base type for', parsed.baseType);
+      }
     } else if (parsed.name || parsed.baseType) {
+      const resolvedType = parsed.baseType
+        ? await resolveTradeBaseType(parsed.baseType, { league })
+        : null;
       listings = await searchTrade(
-        { name: parsed.name ?? undefined, type: parsed.baseType ?? undefined },
+        { name: parsed.name ?? undefined, type: resolvedType ?? undefined },
         { league },
       );
+      debugLog('fallback by name/type:', `${listings.length} listings`);
     }
   }
   if (!estimate && listings.length) {
     // медиана по листингам с конвертацией валют в Chaos
     estimate = estimateFromPrices(await listingsToChaosPrices(listings, league));
+    if (estimate && !note && parsed.rarity === 'Rare') {
+      note = 'Оценка по листингам базового типа';
+    }
   }
+  if (estimate?.confidence === 'low') {
+    note = note ? `${note}; мало листингов (low)` : 'Мало листингов (low)';
+  }
+  debugLog(
+    'result:',
+    JSON.stringify({ estimate, listings: listings.length, note, sources: null }),
+  );
 
   return {
     itemName: itemDisplayName(parsed) || 'Неизвестный предмет',
     rarity: parsed.rarity.toLowerCase(),
     estimate,
     listings,
+    note,
     sources: Array.from(
       new Set([
         ...(parsed.rarity === 'Unique' && estimate ? ['poe2scout'] : []),
@@ -1009,6 +1159,7 @@ export async function priceBuild(
           estimate: res.estimate,
           sources: res.sources,
           listingsCount: res.listings.length,
+          ...(res.note ? { note: res.note } : {}),
         };
       } catch {
         results[i] = {
@@ -1018,6 +1169,7 @@ export async function priceBuild(
           estimate: null,
           sources: [],
           listingsCount: 0,
+          note: 'Ошибка при прайс-чеке',
         };
       }
     }
@@ -1029,7 +1181,9 @@ export async function priceBuild(
   const priced = (results as BuildPricedItem[]).filter(
     (r) => r.estimate?.median != null,
   );
-  const totalMin = priced.reduce((sum, r) => sum + (r.estimate!.median ?? 0), 0);
+  const totalMin = priced.reduce((sum, r) => sum + (r.estimate!.min ?? 0), 0);
+  const totalMax = priced.reduce((sum, r) => sum + (r.estimate!.max ?? 0), 0);
+  const totalMedian = priced.reduce((sum, r) => sum + (r.estimate!.median ?? 0), 0);
 
   return {
     league,
@@ -1037,6 +1191,9 @@ export async function priceBuild(
       slot: '', name: '—', rarity: 'other', estimate: null, sources: [], listingsCount: 0,
     })) as BuildPricedItem[],
     totalMin,
+    totalMax,
+    totalMedian,
+    totalCurrency: 'chaos',
     pricedCount: priced.length,
     totalItems: gear.length,
     elapsedMs: Date.now() - started,

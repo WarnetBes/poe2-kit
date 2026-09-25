@@ -158,11 +158,12 @@ export function registerBuildTools(server: McpServer): number {
           `- **Лига:** ${report.league ?? '—'}`,
           `- **Предметов обработано:** ${report.totalItems}`,
           `- **Оценено цен:** ${report.pricedCount}`,
-          `- **Суммарная нижняя граница:** ${report.totalMin.toFixed(2)} ${report.league ?? ''}`,
+          `- **Суммарно (min–max):** ${report.totalMin.toFixed(2)}–${(report.totalMax ?? 0).toFixed(2)} ${report.totalCurrency ?? 'chaos'}`,
+          `- **Суммарная медиана:** ${report.totalMedian != null ? report.totalMedian.toFixed(2) : '—'} ${report.totalCurrency ?? 'chaos'}`,
           `- **Время:** ${report.elapsedMs} мс`,
           ``,
-          `| Слот | Имя | Редкость | Медиана | Оценка (min–max) | Объявл. |`,
-          `| --- | --- | --- | --- | --- | --- |`,
+          `| Слот | Имя | Редкость | Медиана | Оценка (min–max) | Объявл. | Примечание |`,
+          `| --- | --- | --- | --- | --- | --- | --- |`,
         ];
         for (const it of report.items) {
           const median = it.estimate?.median;
@@ -170,7 +171,7 @@ export function registerBuildTools(server: McpServer): number {
             ? `${it.estimate.min.toFixed(2)}–${it.estimate.max.toFixed(2)}`
             : '—';
           lines.push(
-            `| ${it.slot || '—'} | ${it.name || '—'} | ${it.rarity} | ${median != null ? median.toFixed(2) : '—'} | ${range} | ${it.listingsCount} |`,
+            `| ${it.slot || '—'} | ${it.name || '—'} | ${it.rarity} | ${median != null ? median.toFixed(2) : '—'} | ${range} | ${it.listingsCount} | ${it.note ?? ''} |`,
           );
         }
         return { content: [{ type: 'text', text: lines.join('\n') }] };

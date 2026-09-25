@@ -43,6 +43,8 @@ export interface PriceCheckResult {
   estimate: PriceEstimate | null;
   /** Список похожих объявлений с торгового сайта */
   listings: TradeListing[];
+  /** Пояснение к оценке (fallback без аффиксов, low-доверие и т.п.). */
+  note?: string;
   /** Источники */
   sources: string[];
   /** Лига, для которой выполнялся прайс-чек (или null, если активная не выбрана). */
@@ -55,8 +57,8 @@ export interface PriceEstimate {
   min: number;
   max: number;
   median: number;
-  /** Качество оценки: exact/approx/no-data */
-  confidence: 'exact' | 'approx' | 'no-data';
+  /** Качество оценки: exact/approx/low/no-data (low — оценка по < 5 ценам) */
+  confidence: 'exact' | 'approx' | 'low' | 'no-data';
 }
 
 export interface TradeListing {
@@ -133,6 +135,8 @@ export interface BuildPricedItem {
   estimate: PriceEstimate | null;
   sources: string[];
   listingsCount: number;
+  /** Пояснение, откуда взята оценка (fallback без аффиксов, low-доверие и т.п.). */
+  note?: string;
 }
 
 /** Отчёт прайс-чека всего снаряжения билда. */
@@ -141,9 +145,15 @@ export interface BuildPriceReport {
   items: BuildPricedItem[];
   /**
    * Суммарная нижняя (консервативная) граница стоимости снаряжения в валюте лиги.
-   * Считается по median оценок тех предметов, где цена известна.
+   * Считается по min оценок тех предметов, где цена известна.
    */
   totalMin: number;
+  /** Суммарная верхняя граница (по max оценок оценённых предметов). */
+  totalMax?: number;
+  /** Суммарная медиана оценок. */
+  totalMedian?: number;
+  /** Валюта сумм (по умолчанию — chaos). */
+  totalCurrency?: string;
   /** Число предметов, чью цену удалось оценить. */
   pricedCount: number;
   /** Общее число обработанных предметов снаряжения. */
