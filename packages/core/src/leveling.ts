@@ -8,6 +8,7 @@
  */
 
 import type { LevelingZone } from './types.js';
+import { getAscendancies, getSkillGems } from './dataset.js';
 
 interface QuestReward {
   /** Название зоны, где получаем награду */
@@ -187,11 +188,11 @@ export function getZoneByActAct(act: number): LevelingZone[] {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Ice Strike Monk — специализированный гид прокачки
+// Билд-специфичные гиды прокачки — все 8 базовых классов PoE2
 // ════════════════════════════════════════════════════════════════════════
 
-/** Совет по прокачке Ice Strike Monk, привязанный к диапазону уровней. */
-export interface MonkLevelingTip {
+/** Совет по прокачке конкретного класса, привязанный к диапазону уровней. */
+export interface ClassLevelingTip {
   /** Нижняя граница уровня (включительно). */
   fromLevel: number;
   /** Верхняя граница уровня (включительно), null — до конца. */
@@ -204,9 +205,24 @@ export interface MonkLevelingTip {
   notes?: string[];
 }
 
+/** Гид прокачки одного базового класса. */
+export interface ClassLevelingGuide {
+  /** Базовый класс: 'Monk', 'Warrior', 'Sorceress', 'Ranger', 'Mercenary', 'Witch', 'Druid', 'Huntress'. */
+  baseClass: string;
+  /** Краткая характеристика архетипа. */
+  tagline: string;
+  /** Источник и приоритеты урона. */
+  damage: string[];
+  /** Приоритеты защиты. */
+  defense: string[];
+  /** Советы по диапазонам уровней (Акты 1–4, эндгейм). */
+  tips: ClassLevelingTip[];
+}
+
+
 /** Ключевые камни и приоритеты Ice Strike Monk для прокачки Актов 1–4.
  *  Камни названы как в игре; уровень — ориентировочный момент получения. */
-export const MONK_LEVELING_TIPS: MonkLevelingTip[] = [
+export const MONK_LEVELING_TIPS: ClassLevelingTip[] = [
   {
     fromLevel: 1,
     toLevel: 11,
@@ -289,49 +305,480 @@ export const MONK_LEVELING_TIPS: MonkLevelingTip[] = [
   },
 ];
 
-/** Полный набор советов Ice Strike Monk по порядку кампании. */
-export function getMonkLevelingTips(
+// ════════════════════════════════════════════════════════════════════════
+// Гиды всех 8 базовых классов (камни сверены с датасетом skill_gems 0.5)
+// ════════════════════════════════════════════════════════════════════════
+
+/** Гид прокачки одного базового класса. */
+export interface ClassLevelingGuide {
+  /** Базовый класс: Monk, Warrior, Sorceress, Ranger, Mercenary, Witch, Druid, Huntress. */
+  baseClass: string;
+  /** Краткая характеристика архетипа. */
+  tagline: string;
+  /** Приоритеты урона. */
+  damage: string[];
+  /** Приоритеты защиты. */
+  defense: string[];
+  /** Советы по диапазонам уровней. */
+  tips: ClassLevelingTip[];
+}
+
+/** Все 8 базовых классов PoE2 (ключ — lowercase имя базового класса).
+ *  Все имена камней проверены по датасету skill_gems (см. validateGuideGems). */
+export const CLASS_LEVELING_GUIDES: Record<string, ClassLevelingGuide> = {
+  monk: {
+    baseClass: 'Monk',
+    tagline: 'Ближний бой с quarterstaff: комбо, крит, холод/молния, ES+уклонение.',
+    damage: ['Физический урон оружия (конверсия в Cold/Lightning)', 'Critical Hit Chance + Critical Damage Bonus', 'Elemental damage и +Level of All Skills'],
+    defense: ['Energy Shield + Evasion гибрид', 'Мобильность (кайт комбо)', 'Резисты на бижутерии'],
+    tips: MONK_LEVELING_TIPS,
+  },
+  warrior: {
+    baseClass: 'Warrior',
+    tagline: 'Тяжёлые булавы, броня, оглушение и размашистые слэмы.',
+    damage: ['Физический урон булав', '% increased Physical Damage', 'Heavy Stun → Boneshatter взрывы'],
+    defense: ['Armour + максимум жизни', 'Блок со щитом (Shield Charge)', 'Stun Threshold'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Mace Strike', 'Sunder'],
+        gear: ['Булава с высоким физическим уроном', 'Броня: Armour + Flat Life на каждом слоте'],
+        notes: [
+          'Sunder — основной клир: АоЕ-удар по земле бьёт по линии.',
+          'Воин танкует в упор: собирайте жизнь и броню с первого акта.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Sunder', 'Boneshatter', 'Shield Charge', 'Earthquake'],
+        gear: ['Булава с % increased Physical Damage', 'Щит с Block Chance для блочного сетапа', 'Резисты'],
+        notes: [
+          'Boneshatter: сначала heavy stun (длинная полоска над врагом), потом взрыв — цикл stun → shatter.',
+          'Shield Charge — мобильность и вход в пачку.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Earthquake', 'Boneshatter', 'Leap Slam', 'Herald of Ash'],
+        gear: ['Высокий pdps на булаву', 'Armour + Stun Threshold', 'Spirit-предметы под Herald'],
+        notes: [
+          'Leap Slam — мгновенное перемещение к пачке.',
+          'Earthquake для АоЕ-клира, Boneshatter — по одиночным целям.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Earthquake', 'Boneshatter', 'Rolling Slam', 'Shockwave Slam', 'Herald of Ash'],
+        gear: ['Двуручная булава: большой phys + attack speed', 'Полный life/armour сетап', 'Резервация Spirit под Herald'],
+        notes: [
+          'Асценданси: Titan — усиление слэмов, Warbringer — броня и тотемы, Smith of Kitava — огненный арсенал.',
+          'Копите poise-урон: heavy stun боссов = окна для Boneshatter.',
+        ],
+      },
+    ],
+  },
+  sorceress: {
+    baseClass: 'Sorceress',
+    tagline: 'Стихийные заклинания: Cold/Lightning/Fire с дистанции, Energy Shield.',
+    damage: ['Elemental spell damage', 'Cast Speed + Critical Hit Chance', '+Level of Spell Skills'],
+    defense: ['Energy Shield', 'Freeze/Slow контроль', 'Кайт и дистанция'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Spark', 'Frost Bomb', 'Firestorm'],
+        gear: ['Wand для кастеров (+Spell Damage)', 'Ранние поддержки основного стихийного гема'],
+        notes: [
+          'Spark рикошетит от стен — прижимайте паки к замкнутым комнатам.',
+          'Frost Bomb замораживает: контроль ранних боссов.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Comet', 'Orb of Storms', 'Lightning Warp', 'Solar Orb'],
+        gear: ['+Level of Spell Skills на wand/focus', 'Energy Shield на шлеме и щите', 'Резисты'],
+        notes: [
+          'Comet — огромный бурст по замороженной цели.',
+          'Orb of Storms ставьте в центр пачки — пассивный клир.',
+          'Lightning Warp — телепорт-мобильность кастера.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Comet', 'Cast on Critical', 'Orb of Storms', 'Frost Bomb'],
+        gear: ['Spell Damage + Cast Speed на wand', 'ES/жизнь гибрид', '+Level of Cold Skills'],
+        notes: [
+          'Cast on Critical — основа спелл-билдов: crit-шанс триггерит автокаст.',
+          'Асценданси Sorceress (0.5): Stormweaver — молния, Chronomancer — время, Disciple of Varashta — стихийные скиллы.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Comet', 'Firestorm', 'Cast on Critical', 'Orb of Storms', 'Herald of Ash'],
+        gear: ['Wand+щит или двойной wand с +Spell Level', 'Полный ES или ES/жизнь', 'Резервация под 2 герольда'],
+        notes: [
+          'Финал: CoC-Comet (молния) или Ignite-Firestorm (огонь).',
+          'Список асценданси Sorceress: Stormweaver, Chronomancer, Disciple of Varashta.',
+        ],
+      },
+    ],
+  },
+  ranger: {
+    baseClass: 'Ranger',
+    tagline: 'Луки и дальний бой: скорость, снаряды, уклонение.',
+    damage: ['Bow damage (физ + Lightning)', 'Attack Speed + Projectile Speed', 'Крит через Deadeye'],
+    defense: ['Evasion Rating', 'Movement Speed', 'Кайт'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Galvanic Shards', 'Rain of Arrows'],
+        gear: ['Лук с высоким физическим уроном', 'Квиксилвер-фляга — постоянное движение'],
+        notes: [
+          'Galvanic Shards фрагментирует по пачке — держите дистанцию.',
+          'Rain of Arrows перекрывает широкие проходы.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Lightning Arrow', 'Rain of Arrows', 'Snipe', 'Herald of Ice'],
+        gear: ['Лук с Added Lightning', 'Evasion на броне', 'Кольца с flat lightning'],
+        notes: [
+          'Snipe — заряжаемый выстрел по элите (держите кнопку дольше).',
+          'Herald of Ice даёт цепные взрывы после убийств — быстрый клир.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Lightning Arrow', 'Twister', 'Snipe', 'Herald of Ice'],
+        gear: ['Высокий pdps лук + attack speed', 'Evasion', 'Перчатки с attack speed'],
+        notes: [
+          'Twister — торнадо затягивает и бьёт АоЕ, топ-клир.',
+          'Deadeye усиливает снаряды и разгон атаки.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Lightning Arrow', 'Twister', 'Snipe', 'Herald of Ice'],
+        gear: ['Rare-лук с pdps/критом', 'Полный Evasion', 'Spirit под герольда'],
+        notes: [
+          'Финал Deadeye: разгон лука до 6+ атак/сек.',
+          'Pathfinder — альтернатива через фляги и яды.',
+        ],
+      },
+    ],
+  },
+  mercenary: {
+    baseClass: 'Mercenary',
+    tagline: 'Арбалеты и гранаты: гибрид Armour + Evasion.',
+    damage: ['Physical/Cold/Fire болты', 'Reload + attack speed', 'Гранаты: Gas/Plague комбо'],
+    defense: ['Armour + Evasion', 'Stun Threshold', 'Дистанция'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Explosive Shot', 'Permafrost Bolts'],
+        gear: ['Арбалет с высоким физическим уроном', 'Гибридная броня (Armour + Evasion)'],
+        notes: [
+          'Explosive Shot — ранний клир с взрывом.',
+          'Permafrost Bolts охлаждают: замедляйте погонь.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Explosive Shot', 'Gas Arrow', 'Salvo', 'Rapid Shot'],
+        gear: ['Арбалет с Added Fire/Cold', 'Armour + Evasion', 'Резисты'],
+        notes: [
+          'Gas Arrow + поджог — мощное АоЕ против пачек.',
+          'Salvo — залп для толп в проходах.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Explosive Shot', 'Gas Grenade', 'Plague Bearer', 'Rapid Shot'],
+        gear: ['Арбалет с pdps + reload speed', 'Гибрид брони', 'Stun Threshold'],
+        notes: [
+          'Gas Grenade накрывает площадь — комбо с поджогом.',
+          'Асценданси Mercenary (0.5): Witchhunter — против элиты и проклятых, Gemling Legionnaire — статы и гибкость, Tactician — гранаты и тактика.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Explosive Shot', 'Gas Grenade', 'Rapid Shot', 'Salvo'],
+        gear: ['Финальный арбалет с критом', 'Armour/Evasion баланс', 'Резиты + Spirit'],
+        notes: [
+          'Финал: бурсты по кулдаунам + контроль гранатами.',
+          'Support-гемы на reloading компенсируют паузы volley.',
+        ],
+      },
+    ],
+  },
+  witch: {
+    baseClass: 'Witch',
+    tagline: 'Миньоны, Chaos DoT и Energy Shield.',
+    damage: ['Minion Damage (Skeletal Arsonist / Frost Mage / Reaver)', 'Essence Drain + Contagion (Chaos DoT)', 'Raging Spirits'],
+    defense: ['Energy Shield', 'Миньоны как щит', 'Spirit для второй армии'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Raise Zombie', 'Skeletal Warrior Minion', 'Skeletal Arsonist Minion', 'Essence Drain'],
+        gear: ['Wand с +Minion Damage', 'Ранние minion-поддержки'],
+        notes: [
+          'Essence Drain — DoT, который лечит вас.',
+          'Держите миньонов между собой и пачками.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Skeletal Arsonist Minion', 'Skeletal Frost Mage Minion', 'Skeletal Cleric Minion', 'Contagion', 'Essence Drain'],
+        gear: ['Spirit на предметах: больше миньонов', '+Level of Minion Skills', 'ES на шлеме'],
+        notes: [
+          'Contagion + Essence Drain: DoT распространяется по трупам — цепные пачки.',
+          'Skeletal Cleric лечит армию.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Skeletal Reaver Minion', 'Skeletal Storm Mage Minion', 'Raging Spirits', 'Contagion'],
+        gear: ['Spirit-экип под вторую армию', 'Energy Shield + Chaos Res', 'Minion-life поддержки'],
+        notes: [
+          'Raging Spirits — временные короткие бёрсты для дерга боссов.',
+          'Lich — ES и сустейн; Blood Mage — касты за жизнь.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Skeletal Reaver Minion', 'Skeletal Storm Mage Minion', 'Raging Spirits', 'Contagion', 'Essence Drain', 'Summon Infernal Hound'],
+        gear: ['Полный ES-сетап', '+Level of Minion Skills на wand/focus', 'Spirit под третью армию'],
+        notes: [
+          'Финал: армия + Contagion-DoT накрывает карты.',
+          'Cast on Minion Death — триггер-касты при смерти миньонов.',
+        ],
+      },
+    ],
+  },
+  druid: {
+    baseClass: 'Druid',
+    tagline: 'Форма медведя, слэмы и Ferocity.',
+    damage: ['Slam-урон (Maul / Shockwave Slam)', 'Физический урон в форме', 'Ferocity: усиленные слэмы'],
+    defense: ['Max Life + Armour', 'Формы и само-восстановление', 'Ward/resists от природы'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Maul', 'Leap Slam', 'Sunder'],
+        gear: ['Булава с физическим уроном', 'Жизнь и броня на старте'],
+        notes: [
+          'Maul в форме медведя бьёт АоЕ.',
+          'Leap Slam — вход в пачку и мобильность.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Brambleslam', 'Shockwave Slam', 'Ferocious Roar'],
+        gear: ['Булава с % increased Physical Damage', 'Armour + Stun Threshold', 'Резисты'],
+        notes: [
+          'Brambleslam — АоЕ с дистанцией.',
+          'Ferocious Roar усиляет следующие слэмы: кастуйте перед боссом.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Shockwave Slam', 'Rolling Slam', 'Leap Slam', 'Ferocious Roar'],
+        gear: ['Высокий pdps двуручной булавы', 'Life + Armour приоритет'],
+        notes: [
+          'Rolling Slam — вращающийся АоЕ по большой пачке.',
+          'Ferocity копится на элите: усиленный slam ломает poise боссов.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Shockwave Slam', 'Rolling Slam', 'Ferocious Roar', 'Wild Protector'],
+        gear: ['Двуручная булава с большим phys', 'Полный life/armour', 'Spirit под формовые скиллы'],
+        notes: [
+          'Финал: стаки Ferocity → Ferocious Roar → Shockwave Slam.',
+          'Асценданси Druid (0.5): Oracle и Shaman — детали узлов см. poe2_ascendancy_nodes.',
+        ],
+      },
+    ],
+  },
+  huntress: {
+    baseClass: 'Huntress',
+    tagline: 'Копья: ближний бой и метание, ловушки охоты.',
+    damage: ['Spear damage (melee/thrown)', 'Lightning Spear + Tornado АоЕ', 'Blood Hunt добивания'],
+    defense: ['Evasion и движение', 'Контратаки/доги', 'Резисты на бижутерии'],
+    tips: [
+      {
+        fromLevel: 1,
+        toLevel: 11,
+        gems: ['Spear Stab', 'Spear Throw', 'Rock Throw'],
+        gear: ['Копьё с высоким физическим уроном', 'Уклонение и движение'],
+        notes: [
+          'Spear Throw — ранний дальний бой.',
+          'Чередуйте Stab (ближний) и Throw (дальний) под ситуацию.',
+        ],
+      },
+      {
+        fromLevel: 12,
+        toLevel: 27,
+        gems: ['Lightning Spear', 'Tornado', 'Spear Throw', 'Blood Hunt'],
+        gear: ['Копьё с Added Lightning', 'Evasion на всех слотах', 'Кольца с flat lightning'],
+        notes: [
+          'Tornado затягивает врагов — сетап под Lightning Spear.',
+          'Blood Hunt: добивайте раненых — восстановление через убийства.',
+        ],
+      },
+      {
+        fromLevel: 28,
+        toLevel: 47,
+        gems: ['Lightning Spear', 'Explosive Spear', 'Spear Throw', 'Hex Bloom'],
+        gear: ['Высокий pdps spear + attack speed', 'Evasion', 'Крит-моды'],
+        notes: [
+          'Explosive Spear втыкается и взрывается АоЕ — топ-клир.',
+          'Amazon — ярость охоты и бешенство копьеметания.',
+        ],
+      },
+      {
+        fromLevel: 48,
+        toLevel: null,
+        gems: ['Lightning Spear', 'Tornado', 'Explosive Spear', 'Spear Dash'],
+        gear: ['Финальное копьё: крит + speed', 'Полный Evasion', 'Spirit под герольда'],
+        notes: [
+          'Amazon — копья и ярость; Ritualist — кровавые ритуалы; Spirit Walker — духи и живучесть.',
+          'Spear Dash — мобильность и обстановка пачек.',
+        ],
+      },
+    ],
+  },
+};
+
+/** Список базовых классов с краткой характеристикой. */
+export function listLevelingClasses(): Array<{ baseClass: string; tagline: string; tipCount: number }> {
+  return Object.values(CLASS_LEVELING_GUIDES).map((g) => ({
+    baseClass: g.baseClass,
+    tagline: g.tagline,
+    tipCount: g.tips.length,
+  }));
+}
+
+/** Резолвит гайд по базовому классу ИЛИ асценданси ('Invoker' → Monk, 'Lich' → Witch).
+ *  Кейс-инсенсивно; принимает английские имена классов и асценданси. */
+export function resolveLevelingClass(query: string | null | undefined): ClassLevelingGuide | null {
+  if (!query) return null;
+  const q = query.trim().toLowerCase();
+  if (CLASS_LEVELING_GUIDES[q]) return CLASS_LEVELING_GUIDES[q]!;
+  for (const guide of Object.values(CLASS_LEVELING_GUIDES)) {
+    if (guide.baseClass.toLowerCase() === q) return guide;
+  }
+  // По асценданси через датасет PoE2 (Invoker, Pathfinder, Lich, Titan, ...).
+  for (const asc of getAscendancies()) {
+    const name = asc.displayName.toLowerCase();
+    if (name === q || name.includes(q)) {
+      const g = CLASS_LEVELING_GUIDES[asc.baseClass.toLowerCase()];
+      if (g) return g;
+    }
+  }
+  return null;
+}
+
+/** Советы по прокачке для класса/асценданси по диапазону уровней.
+ *  query: базовый класс ('Monk') или асценданси ('Invoker'); null → Monk (совместимость). */
+export function getClassLevelingTips(
+  query?: string | null,
   level?: number,
-): MonkLevelingTip[] {
-  if (level == null) return MONK_LEVELING_TIPS;
-  return MONK_LEVELING_TIPS.filter(
+): ClassLevelingTip[] {
+  const guide = resolveLevelingClass(query) ?? CLASS_LEVELING_GUIDES.monk!;
+  if (level == null) return guide.tips;
+  return guide.tips.filter(
     (t) => level >= t.fromLevel && (t.toLevel == null || level <= t.toLevel),
   );
 }
 
-/** Совет Ice Strike Monk, подходящий текущему уровню (один, самый приоритетный). */
-export function getMonkLevelingHint(level?: number): string {
-  const tips = getMonkLevelingTips(level);
-  if (!tips.length) {
-    return 'Ice Strike Monk: держите высокий физический quarterstaff и добавляйте крит + холодный урон.';
-  }
+/** Самый приоритетный совет для класса на текущем уровне. */
+export function getClassLevelingHint(query?: string | null, level?: number): string {
+  const guide = resolveLevelingClass(query) ?? CLASS_LEVELING_GUIDES.monk!;
+  const tips = getClassLevelingTips(query, level);
+  if (!tips.length) return `${guide.baseClass}: ${guide.tagline}`;
   const parts: string[] = [];
-  if (tips[0]?.gems?.length) {
-    parts.push('Камни: ' + tips[0].gems.join(', '));
-  }
-  if (tips[0]?.notes?.length) {
-    parts.push(tips[0].notes[0]);
-  }
-  if (tips[0]?.gear?.length) {
-    parts.push('Экип: ' + tips[0].gear[0]);
-  }
+  if (tips[0]?.gems?.length) parts.push('Камни: ' + tips[0].gems.join(', '));
+  if (tips[0]?.notes?.length) parts.push(tips[0].notes[0]!);
+  if (tips[0]?.gear?.length) parts.push('Экип: ' + tips[0].gear[0]);
   return parts.join(' | ');
 }
 
-/** Общий план прокачки, обогащённый билд-специфичными советами Ice Strike Monk.
- *  Расширяет шаги зон, по которым «наступает» новый совет по камням/приоритетам.
- *  Не мутирует исходный кэш — возвращает новую копию. */
-export function getMonkLevelingPlan(): LevelingZone[] {
+/** Общий план прокачки, обогащённый советами конкретного класса.
+ *  query: базовый класс или асценданси; null/undefined → Monk (совместимость). */
+export function getClassLevelingPlan(query?: string | null): LevelingZone[] {
+  const guide = resolveLevelingClass(query) ?? CLASS_LEVELING_GUIDES.monk!;
+  const tag = guide.baseClass;
   return getLevelingPlan().map((z) => {
-    // Выбираем диапазон советов, чей fromLevel приходится на уровень зоны.
-    const tip = MONK_LEVELING_TIPS.find(
+    const tip = guide.tips.find(
       (t) => z.monsterLevel >= t.fromLevel && (t.toLevel == null || z.monsterLevel <= t.toLevel),
     );
     if (!tip) return z;
     const extras: string[] = [];
-    if (tip.gems?.length) extras.push(`🧊 Ice Strike Monk: используйте ${tip.gems.join(', ')}`);
+    if (tip.gems?.length) extras.push(`⚔ ${tag}: используйте ${tip.gems.join(', ')}`);
     if (tip.notes?.length) extras.push(`💡 ${tip.notes[0]}`);
     if (tip.gear?.length) extras.push(`🛠 ${tip.gear[0]}`);
     return { ...z, steps: [...z.steps, ...extras] };
   });
+}
+
+/** Проверить, что все камни в гайдах существуют в датасете PoE2.
+ *  Возвращает словарь className → список неизвестных гемов ('Warrior → ...').
+ *  Аннотации в скобках отбрасываются: 'Herald of Ice (при Spirit)' → 'Herald of Ice'. */
+export function validateGuideGems(): Record<string, string[]> {
+  const known = new Set(getSkillGems().map((g) => g.name.trim().toLowerCase()));
+  const bad: Record<string, string[]> = {};
+  for (const guide of Object.values(CLASS_LEVELING_GUIDES)) {
+    const missing: string[] = [];
+    for (const tip of guide.tips) {
+      for (const gem of tip.gems ?? []) {
+        const base = gem.replace(/\s*\(.*\)\s*$/, '').trim().toLowerCase();
+        if (!base || base.includes('/')) continue; // слэши = альтернативы, проверим каждую часть
+        for (const part of base.split('/').map((s) => s.trim()).filter(Boolean)) {
+          if (!known.has(part)) missing.push(part);
+        }
+      }
+    }
+    if (missing.length) bad[guide.baseClass] = [...new Set(missing)];
+  }
+  return bad;
+}
+
+// ─── Совместимость: старые Monk-функции делегируют новым generic ────────────
+
+/** Полный набор советов Ice Strike Monk по порядку кампании (deprecated: getClassLevelingTips). */
+export function getMonkLevelingTips(level?: number): ClassLevelingTip[] {
+  return getClassLevelingTips('Monk', level);
+}
+
+/** Совет Ice Strike Monk, подходящий текущему уровню (deprecated: getClassLevelingHint). */
+export function getMonkLevelingHint(level?: number): string {
+  return getClassLevelingHint('Monk', level);
+}
+
+/** План прокачки с советами Ice Strike Monk (deprecated: getClassLevelingPlan). */
+export function getMonkLevelingPlan(): LevelingZone[] {
+  return getClassLevelingPlan('Monk');
 }

@@ -1,7 +1,7 @@
 ﻿// Smoke-С‚РµСЃС‚ РїСЂРѕС‚РёРІ СЃРѕР±СЂР°РЅРЅРѕРіРѕ dist (Node ESM, Р±РµР· СЃРµС‚Рё).
 import { decodeShareCode, encodeShareCode, PobCodeError, importBuild } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
-import { getMonkLevelingTips, getMonkLevelingHint, getMonkLevelingPlan } from './dist/leveling.js';
+import { getMonkLevelingTips, getMonkLevelingHint, getMonkLevelingPlan, listLevelingClasses, resolveLevelingClass, getClassLevelingTips, getClassLevelingHint, getClassLevelingPlan, validateGuideGems } from './dist/leveling.js';
 import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
 import * as core from './dist/index.js';
 
@@ -25,6 +25,26 @@ console.log('Ice Strike Monk guide');
   ok(getMonkLevelingHint(1).includes('Ice Strike'), 'monk hint: Ice Strike present at lvl1');
   ok(getMonkLevelingPlan().length === getLevelingPlan().length, 'monk plan: same zone count');
   ok(getMonkLevelingPlan().some((z) => z.steps.some((s) => s.includes('Ice Strike Monk'))), 'monk plan: enriched steps');
+
+console.log('Class guides: all 8 base classes');
+const classes = listLevelingClasses();
+  ok(classes.length === 8, `8 base classes (got ${classes.length}): ` + classes.map((c) => c.baseClass).join(','));
+  for (const c of classes) {
+    ok(c.tipCount >= 3, `${c.baseClass}: ${c.tipCount} tip ranges`);
+  }
+  const guideBy = (q) => resolveLevelingClass(q)?.baseClass;
+  ok(guideBy('Invoker') === 'Monk', 'resolve: Invoker→Monk');
+  ok(guideBy('Lich') === 'Witch', 'resolve: Lich→Witch');
+  ok(guideBy('Titan') === 'Warrior', 'resolve: Titan→Warrior');
+  ok(guideBy('Deadeye') === 'Ranger', 'resolve: Deadeye→Ranger');
+  ok(guideBy('Witchhunter') === 'Mercenary', 'resolve: Witchhunter→Mercenary');
+  ok(guideBy('amazon') === 'Huntress', 'resolve: amazon→Huntress (case-insensitive)');
+  ok(guideBy('sorceress') === 'Sorceress', 'resolve: base class itself');
+  ok(getClassLevelingTips('Witch', 20).length >= 1, 'witch tips at lvl20');
+  ok(getClassLevelingHint('Titan', 5).length > 10, 'titan hint at lvl5 non-empty');
+  ok(getClassLevelingPlan('Witch').length === getLevelingPlan().length, 'witch plan: same zone count');
+  const badGems = validateGuideGems();
+  ok(Object.keys(badGems).length === 0, `validateGuideGems: all gems known (bad: ${JSON.stringify(badGems)})`);
 
 console.log('PoB roundtrip');
 const xml = `<?xml version="1.0"?><PathOfBuilding><Build level="20"/></PathOfBuilding>`;

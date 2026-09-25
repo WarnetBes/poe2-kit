@@ -12,7 +12,12 @@
  */
 
 import type { AIProviderInfo, AIRequest, AIResponse } from './types.js';
-import { getMonkLevelingHint, getMonkLevelingTips } from './leveling.js';
+import {
+  getClassLevelingHint,
+  getClassLevelingTips,
+  resolveLevelingClass,
+  CLASS_LEVELING_GUIDES,
+} from './leveling.js';
 
 export interface OpenAICompatibleChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -122,20 +127,32 @@ export function listAIProviders(): AIProviderInfo[] {
 }
 
 /**
- * Rule-based советы по Ice Strike Monk — доступны даже без live-модели.
- * Использует данные гида прокачки (leveling.ts) + подсказки по камням/экипировке.
- * Возвращает компактный текст-совет под текущий уровень (если указан).
+ * Rule-based советы по прокачке — доступны даже без live-модели.
+ * Универсально: класс берётся из context.className/ascendancy ('Warrior',
+ * 'Invoker', 'Sorceress', 'Lich', ...), по умолчанию Monk (совместимость).
  */
 export function iceStrikeMonkAdvice(context?: Record<string, unknown>): string {
+  return classLevelingAdvice(context);
+}
+
+/** Советы по прокачке для любого класса/асценданси из context. */
+export function classLevelingAdvice(context?: Record<string, unknown>): string {
   const lvl =
     typeof context?.level === 'number'
       ? context.level
       : typeof context?.playerLevel === 'number'
         ? context.playerLevel
         : undefined;
+  const query =
+    (typeof context?.ascendancy === 'string' && context.ascendancy) ||
+    (typeof context?.className === 'string' && context.className) ||
+    undefined;
+  const guide = resolveLevelingClass(query) ?? CLASS_LEVELING_GUIDES.monk!;
 
-  const tips = getMonkLevelingTips(lvl);
-  const lines: string[] = ['🧊 **Ice Strike Monk — советы по прокачке**'];
+  const tips = getClassLevelingTips(query || guide.baseClass, lvl);
+  const lines: string[] = [`${guide.baseClass} — советы по прокачке`, `_${guide.tagline}_`];
+  if (guide.damage?.length) lines.push(`Урон: ${guide.damage.join('; ')}`);
+  if (guide.defense?.length) lines.push(`Защита: ${guide.defense.join('; ')}`);
   for (const t of tips) {
     const range = t.toLevel == null ? `${t.fromLevel}+` : `${t.fromLevel}–${t.toLevel}`;
     lines.push(`\n**Уровни ${range}**:`);
@@ -148,9 +165,8 @@ export function iceStrikeMonkAdvice(context?: Record<string, unknown>): string {
     }
   }
   if (!tips.length) {
-    lines.push(`\n  • ${getMonkLevelingHint(lvl)}`);
+    lines.push(`\n  • ${getClassLevelingHint(query || guide.baseClass, lvl)}`);
   }
-  lines.push('\nСовет общий: Ice Strike конвертит физику в холод — собирайте высокий физический quarterstaff, крит и холодный адд-урон.');
   return lines.join('\n');
 }
 
@@ -183,13 +199,17 @@ export async function askAI(req: AIRequest): Promise<AIResponse> {
     }
   }
 
-  // Нет доступной модели — даём полезный fallback: контекстный совет Ice Strike Monk.
+  // Нет доступной модели — даём полезный fallback: советы по классу из контекста.
   const level = typeof req.context?.level === 'number' ? req.context.level : undefined;
-  const hint = getMonkLevelingHint(level);
+  const query =
+    (typeof req.context?.ascendancy === 'string' && req.context.ascendancy) ||
+    (typeof req.context?.className === 'string' && req.context.className) ||
+    undefined;
+  const hint = getClassLevelingHint(query, level);
   return {
     text:
       `Нет доступной AI-модели (настройте POE2KIT_AI_BASE/POE2KIT_AI_MODEL, напр. eliza-deepseek/deepseek-v4-flash, или POE2KIT_OLLAMA_MODEL).\n\n` +
-      `Пока могу предоставить заложенные советы по вашему билду:\n${iceStrikeMonkAdvice(req.context)}\n\n` +
+      `Пока могу предоставить заложенные советы по вашему билду:\n${classLevelingAdvice(req.context)}\n\n` +
       `Быстрый совет: ${hint}`,
     provider: 'none',
     source: 'none',
