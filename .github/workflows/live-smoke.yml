@@ -6,6 +6,9 @@
 name: live-smoke (#19)
 
 on:
+  # push в main — чтобы регресс stat-id ловился мгновенно (и для валидации воркфлоу)
+  push:
+    branches: [main]
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch: {}
