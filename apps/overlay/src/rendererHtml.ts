@@ -116,6 +116,44 @@ export const rendererHtml = `<!doctype html>
   #buildSum .gap { color: var(--warn); }
   #buildNote { font-size: 12px; color: var(--ok); }
   #buildErr { font-size: 11px; color: var(--warn); }
+
+  /* Панель настроек (Ctrl+F6). */
+  #settingsPanel {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(13,17,23,0.96);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto;
+  }
+  #settingsPanel.hide { display: none; }
+  #settingsPanel h3 { margin: 0; font-size: 13px; color: #fff; display: flex;
+    justify-content: space-between; align-items: center; }
+  #settingsPanel h3 .close { color: var(--dim); cursor: pointer; font-size: 15px;
+    background: none; border: none; padding: 0 4px; }
+  #settingsPanel h3 .close:hover { color: var(--accent); }
+  .set-row { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--fg); }
+  .set-row .lbl { display: flex; justify-content: space-between; color: var(--dim); }
+  .set-row .lbl var { color: var(--accent); font-style: normal; }
+  .set-row input[type=range] { width: 100%; accent-color: var(--accent); }
+  .corner-row { display: flex; gap: 6px; }
+  .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--dim); border-radius: 6px; }
+  .corner-row button.on { background: rgba(240,136,62,0.22); border-color: var(--accent); color: var(--accent); }
+  .hk-grid { display: flex; flex-direction: column; gap: 4px; }
+  .hk-grid .hk { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; }
+  .hk-grid .hk input { font-size: 11px; font-family: Consolas, monospace; padding: 2px 4px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--fg); border-radius: 5px; width: 130px; }
+  .set-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+  .set-actions button { flex: 1; font-size: 12px; padding: 5px 8px; cursor: pointer;
+    border-radius: 6px; border: 1px solid transparent; }
+  #settingsSave { background: var(--accent); color: #1a1208; font-weight: 700; }
+  #settingsSave:hover { filter: brightness(1.1); }
+  #settingsResetHK { background: transparent; color: var(--dim); border-color: rgba(255,255,255,0.2); }
+  #settingsPanel .tip { font-size: 10px; color: var(--dim); line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -152,7 +190,48 @@ export const rendererHtml = `<!doctype html>
         <div id="buildSum"></div>
         <div id="buildErr" class="hide"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5</div>
+      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6</div>
+    </div>
+    <div id="settingsPanel" class="hide">
+      <h3>⚙ Настройки
+        <button class="close" id="settingsClose" title="Закрыть (Ctrl+F6)">✕</button>
+      </h3>
+
+      <div class="set-row">
+        <div class="lbl"><span>Прозрачность фона</span><var id="setOpacityVal">—</var></div>
+        <input type="range" id="setOpacity" min="25" max="100" step="1" value="86" />
+      </div>
+
+      <div class="set-row">
+        <div class="lbl"><span>Масштаб текста</span><var id="setScaleVal">—</var></div>
+        <input type="range" id="setScale" min="70" max="140" step="5" value="100" />
+      </div>
+
+      <div class="set-row">
+        <div class="lbl"><span>Ширина оверлея</span><var id="setWidthVal">—</var></div>
+        <input type="range" id="setWidth" min="280" max="640" step="10" value="420" />
+      </div>
+
+      <div class="set-row">
+        <span>Угол прикрепления</span>
+        <div class="corner-row" id="cornerRow">
+          <button data-corner="top-left">В·л</button>
+          <button data-corner="top-right">В·п</button>
+          <button data-corner="bottom-left">Н·л</button>
+          <button data-corner="bottom-right">Н·п</button>
+        </div>
+      </div>
+
+      <div class="set-row">
+        <span>Горячие клавиши (Ctrl+F1…F6)</span>
+        <div class="hk-grid" id="hkGrid"></div>
+        <div class="tip">Формат: <b>Control+F1</b>, <b>Alt+Shift+Q</b>. Пустое поле = стандарт.</div>
+      </div>
+
+      <div class="set-actions">
+        <button id="settingsResetHK">Сбросить клавиши</button>
+        <button id="settingsSave">Сохранить</button>
+      </div>
     </div>
   </div>
 <script>
@@ -466,6 +545,158 @@ export const rendererHtml = `<!doctype html>
     } else {
       lw.classList.add('hide');
     }
+  });
+// ─── Панель настроек (Ctrl+F6) ─────────────────────────────────────────────
+  var setDirty = {};
+  var HK_ACTIONS = [
+    ['price', 'Прайс'],
+    ['leveling', 'Прокачка'],
+    ['move', 'Перемещение'],
+    ['buildImport', 'Импорт билда'],
+    ['buildPanel', 'Панель билда'],
+    ['settings', 'Настройки']
+  ];
+  var hkInputs = {};
+
+  function currentDraft() {
+    return {
+      corner: document.querySelector('#cornerRow .on')?.getAttribute('data-corner') || 'top-right',
+      opacity: Number($('setOpacity').value) / 100,
+      scale: Number($('setScale').value) / 100,
+      width: Number($('setWidth').value),
+      hotkeys: {}
+    };
+  }
+
+  function collectHotkeys() {
+    var hk = {};
+    HK_ACTIONS.forEach(function (a) {
+      var v = (hkInputs[a[0]] || {}).value || '';
+      if (v) hk[a[0]] = v;
+    });
+    return hk;
+  }
+
+  function buildSettingsPanel(s) {
+    setDirty = {};
+    // Слайдеры.
+    $('setOpacity').value = Math.round((s.opacity || 0.86) * 100);
+    $('setScale').value = Math.round((s.scale || 1) * 100);
+    $('setWidth').value = Math.round(s.width || 420);
+    setDirty.opacity = true; setDirty.scale = true; setDirty.width = true;
+
+    // Угол.
+    var corners = document.querySelectorAll('#cornerRow button');
+    for (var i = 0; i < corners.length; i++) {
+      corners[i].classList.toggle('on', corners[i].getAttribute('data-corner') === s.corner);
+    }
+
+    // Хоткеи: поля для каждого действия; значения по умолчанию подсвечены как плейсхолдер.
+    var grid = $('hkGrid');
+    grid.innerHTML = '';
+    hkInputs = {};
+    HK_ACTIONS.forEach(function (a) {
+      var action = a[0];
+      var label = a[1];
+      var val = (s.hotkeys && s.hotkeys[action]) || '';
+      var def = (s.defaultHotkeys && s.defaultHotkeys[action]) || '';
+      var row = document.createElement('div');
+      row.className = 'hk';
+      row.innerHTML = '<span>' + esc(label) +
+        (val === '' ? ' <span class="tip">(' + esc(def) + ')</span>' : '') + '</span>';
+      var inp = document.createElement('input');
+      inp.placeholder = def;
+      inp.value = val;
+      inp.spellcheck = false;
+      row.appendChild(inp);
+      hkInputs[action] = inp;
+      grid.appendChild(row);
+    });
+  }
+
+  function refreshDraftValues() {
+    $('setOpacityVal').textContent = Math.round(Number($('setOpacity').value)) + '%';
+    $('setScaleVal').textContent = Math.round(Number($('setScale').value)) + '%';
+    $('setWidthVal').textContent = Math.round(Number($('setWidth').value)) + ' px';
+  }
+
+  function openSettings() {
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.add('hide');
+    $('settingsPanel').classList.remove('hide');
+    window.poe2k.settingsGet().then(function (s) {
+      if (!s) return;
+      buildSettingsPanel(s);
+      refreshDraftValues();
+      requestSize();
+    }).catch(function () {});
+  }
+
+  function closeSettings() {
+    $('settingsPanel').classList.add('hide');
+    $('idle').classList.remove('hide');
+    requestSize();
+  }
+
+  $('settingsClose').addEventListener('click', closeSettings);
+  $('settingsSave').addEventListener('click', function () {
+    var draft = currentDraft();
+    draft.hotkeys = collectHotkeys();
+    window.poe2k.settingsApply(draft).then(function (res) {
+      if (res && res.ok) {
+        closeSettings();
+      } else {
+        var msg = (res && res.error) || 'Не удалось сохранить';
+        $('settingsSave').textContent = '✕ ' + msg;
+        setTimeout(function () { $('settingsSave').textContent = 'Сохранить'; }, 2500);
+      }
+    }).catch(function () {});
+  });
+  $('settingsResetHK').addEventListener('click', function () {
+    HK_ACTIONS.forEach(function (a) { hkInputs[a[0]].value = ''; });
+  });
+  ['setOpacity', 'setScale', 'setWidth'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      setDirty[id] = true;
+      refreshDraftValues();
+    });
+  });
+  var cornerBtns = document.querySelectorAll('#cornerRow button');
+  for (var ci = 0; ci < cornerBtns.length; ci++) {
+    cornerBtns[ci].addEventListener('click', function () {
+      for (var c2 = 0; c2 < cornerBtns.length; c2++) cornerBtns[c2].classList.remove('on');
+      this.classList.add('on');
+    });
+  }
+
+  // Открытие/закрытие панели настроек (Ctrl+F6 из main).
+  window.poe2k.onSettingsToggle(function () {
+    if ($('settingsPanel').classList.contains('hide')) openSettings();
+    else closeSettings();
+  });
+
+  // Применение настроек отображения из main (прозрачность/масштаб/ширина/угол).
+  window.poe2k.onSettingsDisplay(function (s) {
+    if (!s) return;
+    // Прозрачность фона панели (свой --bg альфа), текст остаётся читаемым.
+    var alpha = (typeof s.opacity === 'number' ? s.opacity : 0.86);
+    document.documentElement.style.setProperty('--bg', 'rgba(13,17,23,' + alpha.toFixed(2) + ')');
+    // Масштаб UI через zoom (учитывается в авторазмере высоты).
+    var z = (typeof s.scale === 'number' ? s.scale : 1);
+    var panel = $('panel');
+    if (typeof panel.style.zoom === 'string') panel.style.zoom = String(z);
+    else panel.style.transform = 'scale(' + z + ')';
+    // Обновляем элементы панели настроек, если она открыта.
+    if (!$('settingsPanel').classList.contains('hide')) {
+      buildSettingsPanel({
+        corner: s.corner, opacity: alpha, scale: z,
+        width: (typeof s.width === 'number' ? s.width : 420),
+        hotkeys: {}, defaultHotkeys: {}
+      });
+      refreshDraftValues();
+    }
+    requestSize();
   });
 })();
 </script>

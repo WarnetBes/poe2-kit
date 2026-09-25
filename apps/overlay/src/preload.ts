@@ -22,6 +22,14 @@ export interface OverlayAPI {
   buildGet(): Promise<unknown>;
   /** Подогнать высоту окна под контент ( авторазмер, px в DIP). */
   autosize(px: number): Promise<number>;
+  /** Получить текущие настройки (угол, прозрачность, масштаб, ширина, хоткеи). */
+  settingsGet(): Promise<unknown>;
+  /** Применить настройки из панели. */
+  settingsApply(next: unknown): Promise<unknown>;
+  /** Слушать переключение панели настроек (Ctrl+F6). */
+  onSettingsToggle(cb: () => void): () => void;
+  /** Слушать применение настроек отображения (прозрачность/масштаб/ширина/угол). */
+  onSettingsDisplay(cb: (s: unknown) => void): () => void;
 }
 
 const api: OverlayAPI = {
@@ -77,6 +85,22 @@ const api: OverlayAPI = {
   buildGet: () => ipcRenderer.invoke('build:get'),
 
   autosize: (px) => ipcRenderer.invoke('overlay:autosize', px),
+
+  settingsGet: () => ipcRenderer.invoke('settings:get'),
+
+  settingsApply: (next) => ipcRenderer.invoke('settings:apply', next),
+
+  onSettingsToggle: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('settings:toggle', listener);
+    return () => ipcRenderer.removeListener('settings:toggle', listener);
+  },
+
+  onSettingsDisplay: (cb) => {
+    const listener = (_evt: unknown, s: unknown) => cb(s);
+    ipcRenderer.on('settings:display', listener);
+    return () => ipcRenderer.removeListener('settings:display', listener);
+  },
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

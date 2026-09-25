@@ -77,13 +77,60 @@ const LEVELING_HOTKEY = 'Control+F4';
 const MOVE_HOTKEY = 'Control+F5';
 const BUILD_IMPORT_HOTKEY = 'Control+F3';
 const BUILD_PANEL_HOTKEY = 'Control+F2';
+const SETTINGS_HOTKEY = 'Control+F6';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
-/** Смещение оверлея относительно «закреплённой» позиции (правый верхний угол игры). */
+/** Смещение оверлея относительно «закреплённой» позиции (угол окна игры). */
 interface OverlayOffset {
   x: number;
   y: number;
 }
+
+/** Угол окна игры, к которому прикрепляется оверлей. */
+type OverlayCorner = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+
+/** Полностью настраиваемые параметры оверлея (переживают перезапуск). */
+interface OverlaySettings {
+  /** Угол прикрепления к окну игры. */
+  corner: OverlayCorner;
+  /** Непрозрачность фона панели, 0.25–1.0. */
+  opacity: number;
+  /** Масштаб текста/элементов, 0.7–1.4. */
+  scale: number;
+  /** Ширина оверлея (DIP). */
+  width: number;
+  /** Переопределения хоткеев (по умолчанию пусто = стандартные Ctrl+F1..F6). */
+  hotkeys: Partial<Record<HotkeyAction, string>>;
+}
+
+type HotkeyAction =
+  | 'price'
+  | 'leveling'
+  | 'move'
+  | 'buildImport'
+  | 'buildPanel'
+  | 'settings';
+
+const DEFAULT_SETTINGS: OverlaySettings = {
+  corner: 'top-right',
+  opacity: 0.86,
+  scale: 1,
+  width: 420,
+  hotkeys: {},
+};
+
+/** Стандартные хоткеи для действия (если пользователь не переопределил). */
+const DEFAULT_HOTKEYS: Record<HotkeyAction, string> = {
+  price: PRICE_HOTKEY,
+  leveling: LEVELING_HOTKEY,
+  move: MOVE_HOTKEY,
+  buildImport: BUILD_IMPORT_HOTKEY,
+  buildPanel: BUILD_PANEL_HOTKEY,
+  settings: SETTINGS_HOTKEY,
+};
+
+/** Активные настройки оверлея. */
+let settings: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
 
 let activeLeague: string | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -191,12 +238,14 @@ function saveCharSync(): void {
 }
 
 // ─── Геометрия оверлея и привязка к окну игры ──────────────────────────────
-const OVERLAY_WIDTH = 420;
+const DEFAULT_OVERLAY_WIDTH = 420;
 const OVERLAY_HEIGHT = 320;
 /** Минимальная высота оверлея (DIP). */
 const OVERLAY_MIN_HEIGHT = 140;
 /** Текущая высота оверлея — подгоняется рендерером под контент (overlay:autosize). */
 let overlayHeight = OVERLAY_HEIGHT;
+/** Текущая ширина оверлея (DIP) — следует за настройками пользователя. */
+let overlayWidth = DEFAULT_OVERLAY_WIDTH;
 /** Отступ оверлея от краёв игрового окна (в DIP). */
 const MARGIN = 8;
 /** Подстрока заголовка окна PoE2 (без учёта регистра). */
@@ -263,6 +312,47 @@ function writtenRendererPath(): string {
   return file;
 }
 
+/** Файл настроек оверлея (переживает перезапуск). */
+function settingsFile(): string {
+  return path.join(app.getPath('userData'), 'overlay-settings.json');
+}
+
+function loadSettings(): OverlaySettings {
+  const base: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
+  try {
+    const raw = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    if (raw && typeof raw === 'object') {
+      const corners: OverlayCorner[] = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
+      if (corners.includes(raw.corner)) base.corner = raw.corner;
+      if (typeof raw.opacity === 'number') base.opacity = clamp(raw.opacity, 0.25, 1);
+      if (typeof raw.scale === 'number') base.scale = clamp(raw.scale, 0.7, 1.4);
+      if (typeof raw.width === 'number') base.width = clamp(Math.round(raw.width), 280, 640);
+      if (raw.hotkeys && typeof raw.hotkeys === 'object') base.hotkeys = { ...raw.hotkeys };
+    }
+  } catch {
+    /* нет файла или он битый — берём настройки по умолчанию */
+  }
+  return base;
+}
+
+function saveSettings(s: OverlaySettings): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(settingsFile(), JSON.stringify(s), 'utf8');
+  } catch {
+    /* некритично */
+  }
+}
+
+function hotkeyFor(action: HotkeyAction): string {
+  return settings.hotkeys[action] ?? DEFAULT_HOTKEYS[action];
+}
+
+/** Ограничить число диапазоном [min, max]. */
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
 /** Файл со смещением оверлея (выбор пользователя переживает перезапуск). */
 function offsetStateFile(): string {
   return path.join(app.getPath('userData'), 'overlay-offset.json');
@@ -295,10 +385,20 @@ function pinnedPosition(rect: { x: number; y: number; width: number; height: num
   x: number;
   y: number;
 } {
-  return {
-    x: Math.round(rect.x + rect.width - OVERLAY_WIDTH - MARGIN),
-    y: Math.round(rect.y + MARGIN),
-  };
+  const c = settings.corner;
+  const rightX = rect.x + rect.width - overlayWidth - MARGIN;
+  const leftX = rect.x + MARGIN;
+  const topY = rect.y + MARGIN;
+  const bottomY = rect.y + rect.height - overlayHeight - MARGIN;
+  let x = rightX;
+  let y = topY;
+  if (c === 'top-left') x = leftX;
+  else if (c === 'bottom-right') y = bottomY;
+  else if (c === 'bottom-left') {
+    x = leftX;
+    y = bottomY;
+  }
+  return { x: Math.round(x), y: Math.round(y) };
 }
 
 /**
@@ -343,6 +443,70 @@ function resetOverlayOffset(): void {
   saveUserOffset(null);
   lastRectKey = '';
   console.log('[overlay] смещение сброшено');
+}
+
+// ─── Панель настроек: прозрачность, масштаб, ширина, угол, хоткеи ────────────
+
+/** Применить настройки отображения к окну и рендереру. */
+function applyDisplaySettings(): void {
+  const win = overlayWindow;
+  if (win && !win.isDestroyed()) {
+    win.setOpacity(settings.opacity);
+    // Сбрасываем трекер: при смене ширины/угла пересчитаем закреплённую позицию.
+    lastRectKey = '';
+    trackGameWindow();
+  }
+  pushDisplaySettings();
+}
+
+/** Отправить текущие настройки отображения рендереру (CSS-переменные). */
+function pushDisplaySettings(): void {
+  overlayWindow?.webContents.send('settings:display', {
+    opacity: settings.opacity,
+    scale: settings.scale,
+    width: overlayWidth,
+    corner: settings.corner,
+  });
+}
+
+/** Переключить панель настроек (Ctrl+F6). */
+function toggleSettingsPanel(): void {
+  overlayWindow?.webContents.send('settings:toggle');
+}
+
+/**
+ * Применить новые настройки целиком (сохранить + применить отображение +
+ * перерегистрировать хоткеи). Вызывается при сохранении из панели.
+ */
+function applySettings(next: OverlaySettings): void {
+  settings = { ...next, hotkeys: { ...next.hotkeys } };
+  saveSettings(settings);
+  overlayWidth = settings.width;
+  // Перерегистрируем хоткеи (убрать старые закрепления, зарегистрировать новые).
+  if (app.isReady()) {
+    globalShortcut.unregisterAll();
+    registerHotkeys();
+  }
+  applyDisplaySettings();
+}
+
+/** Привести входящие данные из панели к валидным настройкам. */
+function normalizeSettings(input: unknown): OverlaySettings {
+  const raw =
+    input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+  const corners: OverlayCorner[] = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
+  const next: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
+  if (corners.includes(raw.corner as OverlayCorner)) next.corner = raw.corner as OverlayCorner;
+  if (typeof raw.opacity === 'number') next.opacity = clamp(raw.opacity, 0.25, 1);
+  if (typeof raw.scale === 'number') next.scale = clamp(raw.scale, 0.7, 1.4);
+  if (typeof raw.width === 'number') next.width = clamp(Math.round(raw.width), 280, 640);
+  next.hotkeys = {};
+  if (raw.hotkeys && typeof raw.hotkeys === 'object') {
+    for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
+      if (typeof combo === 'string' && combo.trim()) next.hotkeys[action as HotkeyAction] = combo.trim();
+    }
+  }
+  return next;
 }
 
 // ─── Билд-ассистент: импорт из буфера, прайсинг, сопоставление ───────────────
@@ -870,16 +1034,17 @@ async function createOverlayWindow(): Promise<void> {
   overlayWindow = new BrowserWindow({
     // Прозрачное безрамочное окно поверх всего. Позицию/видимость задаёт трекер
     // окна игры (см. trackGameWindow), поэтому стартуем скрытым в углу экрана.
-    width: OVERLAY_WIDTH,
-    height: OVERLAY_HEIGHT,
-    x: -OVERLAY_WIDTH,
-    y: -OVERLAY_HEIGHT,
+    width: overlayWidth,
+    height: overlayHeight,
+    x: -overlayWidth,
+    y: -overlayHeight,
     show: false,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    opacity: settings.opacity,
     hasShadow: false,
     minimizable: false,
     maximizable: false,
@@ -970,7 +1135,7 @@ function trackGameWindow(): void {
   // режиме окна игры (оконный → полный экран) и вынести оверлей за границу
   // монитора — тогда его просто не видно.
   const area = screen.getDisplayMatching(physicalRectToDip(found.rect)).workArea;
-  x = Math.min(Math.max(x, area.x), area.x + area.width - OVERLAY_WIDTH);
+  x = Math.min(Math.max(x, area.x), area.x + area.width - overlayWidth);
   y = Math.min(Math.max(y, area.y), area.y + Math.max(area.height - overlayHeight, 100));
 
   // Если сменился HWND игры (перезапуск PoE2) — форсируем обновление позиции.
@@ -987,7 +1152,7 @@ function trackGameWindow(): void {
     win.setBounds({
       x,
       y,
-      width: OVERLAY_WIDTH,
+      width: overlayWidth,
       height: overlayHeight,
     });
   }
@@ -1167,10 +1332,10 @@ async function runLevelingContext(): Promise<unknown> {
 }
 
 function registerHotkeys(): void {
-  const ok = globalShortcut.register(PRICE_HOTKEY, hotkeyAction);
-  const okL = globalShortcut.register(LEVELING_HOTKEY, hotkeyLevelAction);
-  const okM = globalShortcut.register(MOVE_HOTKEY, () => {
-    console.log('[overlay] hotkey fired: Ctrl+F5 (перемещение оверлея)');
+  const ok = globalShortcut.register(hotkeyFor('price'), hotkeyAction);
+  const okL = globalShortcut.register(hotkeyFor('leveling'), hotkeyLevelAction);
+  const okM = globalShortcut.register(hotkeyFor('move'), () => {
+    console.log('[overlay] hotkey fired: перемещение оверлея');
     toggleMoveMode();
   });
   // Сброс пользовательского смещения — если оверлей «потерялся» (закреплён
@@ -1185,20 +1350,25 @@ function registerHotkeys(): void {
       overlayWindow?.setIgnoreMouseEvents(true, { forward: true });
     }
   });
-  const okBI = globalShortcut.register(BUILD_IMPORT_HOTKEY, () => {
-    console.log('[overlay] hotkey fired: Ctrl+F3 (импорт билда из буфера)');
+  const okBI = globalShortcut.register(hotkeyFor('buildImport'), () => {
+    console.log('[overlay] hotkey fired: импорт билда из буфера');
     void runBuildImport();
   });
-  const okBP = globalShortcut.register(BUILD_PANEL_HOTKEY, () => {
-    console.log(`[overlay] hotkey fired: ${BUILD_PANEL_HOTKEY} (панель билда)`);
+  const okBP = globalShortcut.register(hotkeyFor('buildPanel'), () => {
+    console.log('[overlay] hotkey fired: панель билда');
     toggleBuildPanel();
   });
-  console.log(`[overlay] hotkey ${PRICE_HOTKEY} registered=${ok}`);
-  console.log(`[overlay] hotkey ${LEVELING_HOTKEY} registered=${okL}`);
-  console.log(`[overlay] hotkey ${MOVE_HOTKEY} registered=${okM}`);
+  const okS = globalShortcut.register(hotkeyFor('settings'), () => {
+    console.log('[overlay] hotkey fired: панель настроек');
+    toggleSettingsPanel();
+  });
+  console.log(`[overlay] hotkey ${hotkeyFor('price')} registered=${ok}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('leveling')} registered=${okL}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('move')} registered=${okM}`);
   console.log('[overlay] hotkey Control+Shift+F5 registered=' + okR);
-  console.log(`[overlay] hotkey ${BUILD_IMPORT_HOTKEY} registered=${okBI}`);
-  console.log(`[overlay] hotkey ${BUILD_PANEL_HOTKEY} registered=${okBP}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('buildImport')} registered=${okBI}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('buildPanel')} registered=${okBP}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('settings')} registered=${okS}`);
 }
 
 function setupIPC(): void {
@@ -1218,7 +1388,27 @@ function setupIPC(): void {
     return activeLeague;
   });
 
-  ipcMain.handle('hotkey:get', () => PRICE_HOTKEY);
+  ipcMain.handle('hotkey:get', () => hotkeyFor('price'));
+
+  // Настройки: получить/применить всё.
+  ipcMain.handle('settings:get', () => ({
+    corner: settings.corner,
+    opacity: settings.opacity,
+    scale: settings.scale,
+    width: settings.width,
+    hotkeys: { ...settings.hotkeys },
+    defaultHotkeys: { ...DEFAULT_HOTKEYS },
+  }));
+
+  ipcMain.handle('settings:apply', (_evt, next) => {
+    try {
+      const s = normalizeSettings(next);
+      applySettings(s);
+      return { ok: true, settings: s };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 
   // Перемещение оверлея: переключение режима и сброс смещения из рендерера.
   ipcMain.handle('move:toggle', () => {
@@ -1268,7 +1458,7 @@ function setupIPC(): void {
     const b = win.getBounds();
     if (h !== b.height) {
       overlayHeight = h;
-      win.setBounds({ x: b.x, y: b.y, width: OVERLAY_WIDTH, height: h });
+      win.setBounds({ x: b.x, y: b.y, width: overlayWidth, height: h });
       console.log(`[overlay] autosize: height=${h}`);
     }
     return overlayHeight;
@@ -1278,6 +1468,14 @@ function setupIPC(): void {
 const IS_SMOKE = process.argv.includes('--smoke');
 
 app.whenReady().then(async () => {
+  // Восстанавливаем сохранённые настройки (угол, прозрачность, масштаб, ширина,
+  // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
+  settings = loadSettings();
+  overlayWidth = settings.width;
+  console.log(
+    `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width}`,
+  );
+
   // Восстанавливаем сохранённое смещение оверлея (если пользователь его двигал).
   userOffset = loadUserOffset();
   console.log(`[overlay] saved offset: ${userOffset ? JSON.stringify(userOffset) : 'нет (штатная позиция)'}`);
@@ -1328,7 +1526,7 @@ app.whenReady().then(async () => {
       await overlayWindow?.webContents.send('price:busy', false);
       const parsed = core.parse.parseItemText('Rarity: Unique\nBrutal Grenaade\nMace');
       console.log(`[smoke] windows=${BrowserWindow.getAllWindows().length}`);
-      console.log(`[smoke] hotkey_ok=${globalShortcut.isRegistered(PRICE_HOTKEY)}`);
+      console.log(`[smoke] hotkey_ok=${globalShortcut.isRegistered(hotkeyFor('price'))}`);
       console.log(`[smoke] parse_ok=${core.parse.itemDisplayName(parsed)} (${parsed.rarity})`);
       console.log('[smoke] SMOKE OK');
       app.exit(0);
