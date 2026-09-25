@@ -21,6 +21,7 @@ import {
 } from './ui';
 import { showChecklist } from './checklist';
 import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
+import { pasteFromClipboard } from './clipboard';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -71,9 +72,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
       <section id="pane-price" class="pane">
         <h2>Прайс-чек предмета</h2>
-        <p class="hint">Вставь текст предмета из игры (Ctrl+C). Цены: poe2scout / poe.ninja / trade2.</p>
+        <p class="hint">Вставь текст предмета из игры (Ctrl+C). Цены: poe2scout / poe.ninja / trade2. Или нажми «Из буфера», чтобы прочитать его прямо из клипборда.</p>
         <textarea id="price-input" rows="10" placeholder="Rarity: Unique&#10;Brutal Grenaade&#10;Mace&#10;--------&#10;..."></textarea>
-        <button id="btn-price" class="primary">Оценить цену</button>
+        <div class="aitools">
+          <button id="btn-price" class="primary">Оценить цену</button>
+          <button id="btn-price-paste" class="ghost">📋 Из буфера и оценить</button>
+        </div>
         <div id="out-price" class="out"></div>
       </section>
 
@@ -234,6 +238,7 @@ document.querySelector('#btn-currencies')!.addEventListener('click', () => showC
 document.querySelector('#btn-price')!.addEventListener('click', () =>
   showPriceCheck((document.querySelector('#price-input') as HTMLTextAreaElement).value),
 );
+document.querySelector('#btn-price-paste')!.addEventListener('click', () => void pasteFromClipboard());
 document.querySelector('#btn-leveling')!.addEventListener('click', () => showLevelingPlan());
 document.querySelector('#btn-build')!.addEventListener('click', () =>
   showBuildImport((document.querySelector('#build-input') as HTMLTextAreaElement).value),
