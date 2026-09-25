@@ -1,0 +1,36 @@
+# Live-смок против живых API PoE2 (P2 #19).
+# Ежесуточно (03:17 UTC) + ручной запуск.
+# Цель — регресс-защита: stat-id таблица trade2 и схемы poe2scout / poe.ninja
+# меняются на патчах; если сломались — проверка падает с ненулевым кодом.
+
+name: live-smoke (#19)
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build core (dist)
+        run: npm run build -w @poe2-kit/core
+
+      - name: Live smoke против живых API
+        run: node packages/core/live-smoke.mjs
+        env:
+          # Свой кэш HTTP — в CI он всегда свежий, ходим в реальные эндпоинты.
+          POE2_KIT_CACHE_DIR: ${{ runner.temp }}/poe2k-live-cache

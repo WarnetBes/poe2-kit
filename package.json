@@ -15,7 +15,8 @@
     "web": "npm run dev -w @poe2-kit/web",
     "overlay": "npm run dev -w @poe2-kit/overlay",
     "mcp": "npm run start -w @poe2-kit/mcp",
-    "test": "npm run test -w @poe2-kit/core"
+    "test": "npm run test -w @poe2-kit/core",
+    "live-smoke": "npm run build -w @poe2-kit/core && npm run live-smoke -w @poe2-kit/core"
   },
   "engines": {
     "node": ">=20"
