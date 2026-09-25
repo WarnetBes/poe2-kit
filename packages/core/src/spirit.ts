@@ -43,6 +43,63 @@ export interface SpiritOptimization {
   target: string;
 }
 
+/** Кандидат на резерв (P1 #9): готовая Spirit-стоимость и приоритет. */
+export interface SpiritCandidate {
+  name: string;
+  /** Конечная Spirit-стоимость (уже с саппортами, ceil). */
+  cost: number;
+  /** 1-10: ниже = важнее — сначала берутся важные. */
+  priority: number;
+}
+
+/** Что из кандидатов помещается в остаток (P1 #9). */
+export interface SpiritFitResult {
+  /** Доступный (свободный) Spirit — бюджет. */
+  budget: number;
+  /** Выбранные (влезли), по приоритету. */
+  selected: SpiritCandidate[];
+  /** Остаток после выбора. */
+  remaining: number;
+  /** Сколько всего выбрано / стоимость всех выбранных. */
+  costUsed: number;
+  /** Не влезли (с причиной). */
+  skipped: Array<{ name: string; cost: number; priority: number; reason: string }>;
+}
+
+/**
+ * «Что влезает в остаток» (P1 #9): жадный наброс кандидатов по приоритету
+ * (1 = важнее) в доступный бюджет Spirit. При равном приоритете берётся
+ * более дорогой (максимизируем ценность резерва). Честно: это приближение —
+ * не точный рюкзак (knapsack), но для «ауры/миньоны в остаток» правит порядок.
+ */
+export function fitSpiritByPriority(
+  candidates: SpiritCandidate[],
+  budget: number,
+): SpiritFitResult {
+  const sorted = [...candidates].sort(
+    (a, b) => a.priority - b.priority || b.cost - a.cost,
+  );
+  const selected: SpiritCandidate[] = [];
+  const skipped: SpiritFitResult['skipped'] = [];
+  let remaining = budget;
+  for (const c of sorted) {
+    if (c.cost <= 0) continue;
+    if (c.cost <= remaining) {
+      selected.push(c);
+      remaining -= c.cost;
+    } else {
+      skipped.push({ name: c.name, cost: c.cost, priority: c.priority, reason: 'не влезает в остаток' });
+    }
+  }
+  return {
+    budget,
+    selected,
+    remaining,
+    costUsed: budget - remaining,
+    skipped,
+  };
+}
+
 /** Квестовые черепа PoE2: +30 / +30 / +40 = базовые 100 Spirit. */
 export const QUEST_SPIRIT_SKULLS = [30, 30, 40] as const;
 

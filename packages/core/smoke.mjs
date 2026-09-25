@@ -513,6 +513,25 @@ scAuto.addReservation('Main', 60, 'aura', [], 1);
 scAuto.addReservation('Extra', 50, 'other', [], 9);
 scAuto.autoResolveOverflow();
 ok(scAuto.availableSpirit() >= 0, 'spirit: autoResolveOverflow frees >= 0');
+// P1 #9: «что влезает в остаток» — жадный наброс по приоритету.
+const fit = core.default.spirit.fitSpiritByPriority(
+  [
+    { name: 'Aura A', cost: 40, priority: 1 },
+    { name: 'Minion B', cost: 30, priority: 3 },
+    { name: 'Aura C', cost: 40, priority: 4 },
+    { name: 'Big D', cost: 200, priority: 2 },
+  ],
+  100,
+);
+ok(
+  fit.selected.length === 2 &&
+    fit.selected[0].name === 'Aura A' &&
+    fit.selected[1].name === 'Minion B' &&
+    fit.remaining === 30 &&
+    fit.costUsed === 70 &&
+    fit.skipped.length === 2,
+  'p1-9: fitSpiritByPriority брать важные в остаток (2 влезают, остаток 30)',
+);
 const ls = core.default.stun.lightStunChance(200, 1000, 'physical', 'melee');
 ok(Math.abs(ls.finalChance - 45) < 0.001 && ls.willStun, `stun: light 200/1000 phys melee = ${ls.finalChance}%`);
 ok(core.default.stun.hitsToStun(200, 1000, 'physical', 'melee').hitsToHeavyStun === 3, 'stun: 3 hits to heavy stun');

@@ -97,8 +97,10 @@ export function registerCalculatorTools(server: McpServer): number {
   - includeQuestSkulls (bool, по умолч. true): добавить базовые квестовые +100 Spirit.
   - reservations: массив [{ name, cost, type?, supports?: [[name, mult]...], priority? }] (1 = важнейшая).
   - suggest (bool, по умолч. true): как высвободить Spirit при нехватке.
+  - budget (int, опц.): свободный Spirit для режима «что влезает в остаток».
+  - candidates: массив [{ name, cost, priority? }] — ауры/миньоны-кандидаты; при наличии — режим «что влезает в остаток» (жадно по приоритету; бюджет = указанный budget или свободный Spirit).
 
-Полезно для «хватит ли Spirit на всех миньонов/ауры».`,
+Полезно для «хватит ли Spirit на всех миньонов/ауры» и «что из кандидатов влезает в остаток».`,
       inputSchema: {
         sources: z.array(z.object({
           name: z.string(),
@@ -114,10 +116,16 @@ export function registerCalculatorTools(server: McpServer): number {
           priority: z.number().int().min(1).max(10).optional(),
         })).optional(),
         suggest: z.boolean().optional(),
+        budget: z.number().int().min(0).optional().describe('Свободный Spirit для режима «что влезает в остаток»'),
+        candidates: z.array(z.object({
+          name: z.string(),
+          cost: z.number().int().min(0),
+          priority: z.number().int().min(1).max(10).optional(),
+        })).optional().describe('Ауры/миньоны-кандидаты для режима «что влезает в остаток»'),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ sources, includeQuestSkulls, reservations, suggest }) => {
+    async ({ sources, includeQuestSkulls, reservations, suggest, budget, candidates }) => {
       try {
         const sc = new core.spirit.SpiritCalculator();
         if (includeQuestSkulls !== false) sc.addDefaultQuestSpirit();
@@ -127,6 +135,31 @@ export function registerCalculatorTools(server: McpServer): number {
         for (const r of reservations ?? []) {
           const sups = (r.supports ?? []) as Array<[string, number]>;
           sc.addReservation(r.name, r.cost, (r.type as SpiritReservationType | undefined) ?? 'other', sups, r.priority ?? 5);
+        }
+        // Режим P1 #9 «что влезает в остаток».
+        if (candidates && candidates.length) {
+          const available = budget != null ? budget : sc.availableSpirit();
+          const cands = candidates.map((c) => ({ name: c.name, cost: c.cost, priority: c.priority ?? 5 }));
+          const fit = core.spirit.fitSpiritByPriority(cands, available);
+          const lines2: string[] = [
+            '## Spirit — что влезает в остаток',
+            '',
+            `Свободно: **${available}** Spirit${budget != null ? ' (задан бюджет)' : ' (рассчитано из источников/резерваций)'}`,
+            '',
+            '### Влезают (по приоритету)',
+          ];
+          if (fit.selected.length) {
+            for (const c of fit.selected) lines2.push(`- ✓ **${c.name}**: ${c.cost} Spirit (p${c.priority})`);
+          } else {
+            lines2.push('- —');
+          }
+          lines2.push('', `Занято из остатка: **${fit.costUsed}** Spirit; **осталось после: ${fit.remaining}**.`);
+          if (fit.skipped.length) {
+            lines2.push('', '### Не влезают');
+            for (const s of fit.skipped) lines2.push(`- ✗ ${s.name}: ${s.cost} Spirit (p${s.priority}) — ${s.reason}`);
+          }
+          if (fit.skipped.length) lines2.push('', '_Приближение: жадный наброс по приоритету, не точный рюкзак._');
+          return { content: [{ type: 'text', text: lines2.join('\n') }] };
         }
         const sum = sc.summary();
         const lines: string[] = [];
