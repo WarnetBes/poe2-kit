@@ -15,14 +15,16 @@
  *  - stats.json              — внутренние stat_id
  */
 
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
 
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'game');
+/** Datadir только под Node (в браузере датасеты недоступны с диска). */
+function dataDir(): string {
+  return pathMod!.join(pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)), '..', 'data', 'game');
+}
 
 function loadJson<T>(rel: string): T {
-  return JSON.parse(readFileSync(path.join(dataDir, rel), 'utf8')) as T;
+  if (!HAS_DISK) throw new Error('Офлайн-датасеты недоступны в браузере: ' + rel);
+  return JSON.parse(fsMod!.readFileSync(pathMod!.join(dataDir(), rel), 'utf8')) as T;
 }
 
 // ─── Версия данных ───────────────────────────────────────────────────────────

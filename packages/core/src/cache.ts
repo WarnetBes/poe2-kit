@@ -16,13 +16,8 @@
  * httpCacheInfo() и MCP-инструмент poe2_data_freshness.
  */
 
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-
-/** Не экспортируем наружу httpJson/httpBytes — кэш применяется поверх. */
 import { httpBytes, httpJson, type HttpOptions } from './http.js';
+import { HAS_DISK, cryptoMod, fsMod, osMod, pathMod } from './nodeenv.js';
 
 export interface CacheEnvelope {
   url: string;
@@ -47,14 +42,16 @@ export const DEFAULT_TTLS = {
 } as const;
 
 function cacheDir(): string {
-  const dir = process.env['POE2_KIT_CACHE_DIR'] ?? path.join(tmpdir(), 'poe2-kit-cache');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!HAS_DISK) return '';
+  const fs = fsMod!;
+  const dir = process.env['POE2_KIT_CACHE_DIR'] ?? pathMod!.join(osMod!.tmpdir(), 'poe2-kit-cache');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
 function cachePath(url: string): string {
-  const hash = createHash('sha1').update(url).digest('hex');
-  return path.join(cacheDir(), hash + '.json');
+  const hash = cryptoMod!.createHash('sha1').update(url).digest('hex');
+  return pathMod!.join(cacheDir(), hash + '.json');
 }
 
 export interface CachedResult<T> {
@@ -66,10 +63,12 @@ export interface CachedResult<T> {
 }
 
 function loadEnvelope(url: string): CacheEnvelope | null {
+  if (!HAS_DISK) return null;
+  const fs = fsMod!;
   const p = cachePath(url);
-  if (!existsSync(p)) return null;
+  if (!fs.existsSync(p)) return null;
   try {
-    const raw = readFileSync(p, 'utf8');
+    const raw = fs.readFileSync(p, 'utf8');
     const env = JSON.parse(raw) as CacheEnvelope;
     if (env.url !== url) return null;
     return env;
@@ -93,7 +92,7 @@ export async function cachedJson<T = unknown>(
   }
   try {
     const data = await httpJson<T>(url, opts);
-    writeFileSync(cachePath(url), JSON.stringify({ url, fetchedAt: Date.now(), data } satisfies CacheEnvelope));
+    if (HAS_DISK) fsMod!.writeFileSync(cachePath(url), JSON.stringify({ url, fetchedAt: Date.now(), data } satisfies CacheEnvelope));
     return { data, fetchedAt: Date.now(), stale: false };
   } catch (error) {
     if (cached) return { data: cached.data as T, fetchedAt: cached.fetchedAt, stale: true };
@@ -114,7 +113,7 @@ export async function cachedPostJson<T = unknown>(
   const key =
     url +
     '#post-' +
-    createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 20);
+    cryptoMod!.createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 20);
   const cached = loadEnvelope(key);
   if (cached && Date.now() - cached.fetchedAt < ttl) {
     return { data: cached.data as T, fetchedAt: cached.fetchedAt, stale: false };
@@ -123,8 +122,8 @@ export async function cachedPostJson<T = unknown>(
     const data = await httpJson<T>(url, { ...opts, method: 'POST', body });
     // пустые результаты не кэшируем (skipCache): прайс-чек билда добирает
     // пустые слоты повторами, negative-кэш ломал эту механику
-    if (!(opts.skipCache && opts.skipCache(data))) {
-      writeFileSync(
+    if (!(opts.skipCache && opts.skipCache(data)) && HAS_DISK) {
+      fsMod!.writeFileSync(
         cachePath(key),
         JSON.stringify({ url: key, fetchedAt: Date.now(), data } satisfies CacheEnvelope),
       );
@@ -151,14 +150,16 @@ export async function cachedBytes(
   }
   try {
     const data = await httpBytes(url, opts);
-    writeFileSync(
-      cachePath(url),
-      JSON.stringify({
-        url,
-        fetchedAt: Date.now(),
-        dataB64: Buffer.from(data).toString('base64'),
-      } satisfies CacheEnvelope),
-    );
+    if (HAS_DISK) {
+      fsMod!.writeFileSync(
+        cachePath(url),
+        JSON.stringify({
+          url,
+          fetchedAt: Date.now(),
+          dataB64: Buffer.from(data).toString('base64'),
+        } satisfies CacheEnvelope),
+      );
+    }
     return { data, fetchedAt: Date.now(), stale: false };
   } catch (error) {
     if (cached?.dataB64) {
@@ -177,12 +178,14 @@ export interface CacheEntryInfo {
 
 /** Сводка кэша: чем и когда питаемся (для версионирования ответов MCP). */
 export function httpCacheInfo(): CacheEntryInfo[] {
+  if (!HAS_DISK) return [];
+  const fs = fsMod!;
   const dir = cacheDir();
   const out: CacheEntryInfo[] = [];
-  for (const f of readdirSync(dir)) {
+  for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.json')) continue;
     try {
-      const env = JSON.parse(readFileSync(path.join(dir, f), 'utf8')) as CacheEnvelope;
+      const env = JSON.parse(fs.readFileSync(pathMod!.join(dir, f), 'utf8')) as CacheEnvelope;
       out.push({
         file: f,
         url: env.url,
@@ -198,12 +201,14 @@ export function httpCacheInfo(): CacheEntryInfo[] {
 
 /** Полностью очистить дисковый кэш (после патча, вручную). */
 export function clearHttpCache(): number {
+  if (!HAS_DISK) return 0;
+  const fs = fsMod!;
   const dir = cacheDir();
-  const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
   let n = 0;
   for (const f of files) {
     try {
-      rmSync(path.join(dir, f));
+      fs.rmSync(pathMod!.join(dir, f));
       n++;
     } catch {
       // занят/нет прав — пропускаем

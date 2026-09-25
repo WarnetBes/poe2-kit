@@ -14,11 +14,13 @@
  * для standalone-клиента.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { HAS_DISK, fsMod, pathMod } from './nodeenv.js';
 
 const CONFIG_FILENAME = 'poe2_production_Config.ini';
-const MY_GAMES_SUFFIX = path.join('My Games', 'Path of Exile 2', CONFIG_FILENAME);
+/** После скольких уровней вложенности искать ini (вычисляется лениво — только Node). */
+function myGamesSuffix(): string {
+  return pathMod!.join('My Games', 'Path of Exile 2', CONFIG_FILENAME);
+}
 
 /** current_act_environment → человеческая метка (данные игры каноничны, это подсказка). */
 const ACT_ENV_HINTS: Record<string, string> = {
@@ -32,24 +34,26 @@ const ACT_ENV_HINTS: Record<string, string> = {
 
 /** Кандидаты пути конфига: OneDrive-редирект Documents в приоритете. */
 function candidateConfigPaths(): string[] {
+  if (!HAS_DISK) return [];
   const candidates: string[] = [];
   const userprofile = process.env['USERPROFILE'];
   if (userprofile) {
-    candidates.push(path.join(userprofile, 'OneDrive', 'Documents', MY_GAMES_SUFFIX));
-    candidates.push(path.join(userprofile, 'Documents', MY_GAMES_SUFFIX));
+    candidates.push(pathMod!.join(userprofile, 'OneDrive', 'Documents', myGamesSuffix()));
+    candidates.push(pathMod!.join(userprofile, 'Documents', myGamesSuffix()));
   }
   const onedrive = process.env['OneDrive'];
   if (onedrive) {
-    candidates.push(path.join(onedrive, 'Documents', MY_GAMES_SUFFIX));
+    candidates.push(pathMod!.join(onedrive, 'Documents', myGamesSuffix()));
   }
   return candidates;
 }
 
 /** Найти конфиг по стандартным путям. null — не найден (игра не ставилась/пути другие). */
 export function discoverGameConfigPath(explicit?: string): string | null {
-  if (explicit) return existsSync(explicit) ? explicit : null;
+  if (!HAS_DISK) return null;
+  if (explicit) return fsMod!.existsSync(explicit) ? explicit : null;
   for (const c of candidateConfigPaths()) {
-    if (existsSync(c)) return c;
+    if (fsMod!.existsSync(c)) return c;
   }
   return null;
 }
@@ -129,7 +133,7 @@ export function getGameConfigSummary(explicitPath?: string): GameConfigSummary {
   }
   let ini: Record<string, Record<string, string>>;
   try {
-    ini = parseGameConfigIni(readFileSync(configPath, 'utf8'));
+    ini = parseGameConfigIni(fsMod!.readFileSync(configPath, 'utf8'));
   } catch (error) {
     return {
       available: false,

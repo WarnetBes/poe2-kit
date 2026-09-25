@@ -10,15 +10,15 @@
  * notes содержат, каких боссов убить и какие награды (гемы/пассивки) получить.
  */
 
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
 
 import type { ClientGameState } from './log.js';
 import type { LevelingZone } from './types.js';
 import { getZonesByAct, nextZones, levelDiff, rewardsOf } from './leveling.js';
 
-const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
+function dataDir(): string {
+  return pathMod!.join(pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)), '..', 'data');
+}
 
 interface RawZoneNote {
   lockNoteOption: string;
@@ -40,7 +40,7 @@ let actCache: RawActNote[] | null = null;
 
 function load(): { zoneNotes: RawZoneNote[]; actNotes: RawActNote[] } {
   if (!zoneCache || !actCache) {
-    const raw = JSON.parse(readFileSync(path.join(dataDir, 'zoneNotes.json'), 'utf8')) as {
+    const raw = JSON.parse(fsMod!.readFileSync(pathMod!.join(dataDir(), 'zoneNotes.json'), 'utf8')) as {
       zoneNotes?: RawZoneNote[];
       actNotes?: RawActNote[];
     };

@@ -17,9 +17,9 @@
  *    (bounded-tail чтение через seek, свёртка событий в текущее состояние)
  */
 
-import { existsSync, openSync, readSync, closeSync, statSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+// Браузер: живое чтение Client.txt недоступно (node-only). В браузере
+// функции поиска/чтения лога честно возвращают пустоту — см. IS_NODE-guard'ы.
+import { IS_NODE, fsMod, osMod, pathMod } from './nodeenv.js';
 
 // ─── Коды зон ────────────────────────────────────────────────────────────────
 
@@ -209,8 +209,9 @@ export function parseLogLine(line: string): ClientLogEvent | null {
 
 /** Кандидаты путей установки PoE2 (Steam / standalone / доп. библиотеки Steam). */
 function installCandidates(): string[] {
+  if (!IS_NODE) return [];
   const p = (drive: string, root: string) =>
-    path.join(drive, root, 'logs');
+    pathMod!.join(drive, root, 'logs');
   const roots = [
     'Program Files (x86)\\Steam\\steamapps\\common\\Path of Exile 2',
     'Program Files\\Steam\\steamapps\\common\\Path of Exile 2',
@@ -225,7 +226,7 @@ function installCandidates(): string[] {
     for (let code = 67; code <= 90; code++) {
       const d = `${String.fromCharCode(code)}:`;
       try {
-        if (existsSync(`${d}\\`)) drives.push(d);
+        if (fsMod!.existsSync(`${d}\\`)) drives.push(d);
       } catch {
         /* диск недоступен — пропускаем */
       }
@@ -233,13 +234,13 @@ function installCandidates(): string[] {
     for (const d of drives) for (const r of roots) out.push(p(d, r));
   }
   if (process.platform === 'darwin') {
-    out.push(path.join(os.homedir(), 'Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs'));
+    out.push(pathMod!.join(osMod!.homedir(), 'Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs'));
   }
   if (process.platform === 'linux') {
     out.push(
-      path.join(os.homedir(), '.steam/steam/steamapps/common/Path of Exile 2/logs'),
-      path.join(
-        os.homedir(),
+      pathMod!.join(osMod!.homedir(), '.steam/steam/steamapps/common/Path of Exile 2/logs'),
+      pathMod!.join(
+        osMod!.homedir(),
         '.local/share/Steam/steamapps/compatdata/2694490/pfx/drive_c/Program Files (x86)/Steam/steamapps/common/Path of Exile 2/logs',
       ),
     );
@@ -273,9 +274,9 @@ export function resolveClientLogPath(opts: LogPathOptions = {}): ResolvedLogPath
   const tried: string[] = [];
   const check = (dir: string): string | null => {
     for (const name of ['LatestClient.txt', 'Client.txt']) {
-      const p = path.join(dir, name);
+      const p = pathMod!.join(dir, name);
       tried.push(p);
-      if (existsSync(p)) return p;
+      if (fsMod!.existsSync(p)) return p;
     }
     return null;
   };
@@ -283,12 +284,12 @@ export function resolveClientLogPath(opts: LogPathOptions = {}): ResolvedLogPath
   if (opts.overridePath && opts.overridePath.trim() !== '') return { logPath: opts.overridePath, fallbackPath: null, tried };
 
   if (opts.poe2InstallPath && opts.poe2InstallPath.trim() !== '') {
-    const found = check(path.join(opts.poe2InstallPath, 'logs'));
+    const found = check(pathMod!.join(opts.poe2InstallPath, 'logs'));
     if (found) {
       const fb = found.endsWith('LatestClient.txt')
         ? found.replace('LatestClient.txt', 'Client.txt')
         : null;
-      return { logPath: found, fallbackPath: fb && existsSync(fb) ? fb : null, tried };
+      return { logPath: found, fallbackPath: fb && fsMod!.existsSync(fb) ? fb : null, tried };
     }
   }
 
@@ -298,7 +299,7 @@ export function resolveClientLogPath(opts: LogPathOptions = {}): ResolvedLogPath
       const fb = found.endsWith('LatestClient.txt')
         ? found.replace('LatestClient.txt', 'Client.txt')
         : null;
-      return { logPath: found, fallbackPath: fb && existsSync(fb) ? fb : null, tried };
+      return { logPath: found, fallbackPath: fb && fsMod!.existsSync(fb) ? fb : null, tried };
     }
   }
   return { logPath: null, fallbackPath: null, tried: opts.collectTried ? tried : [] };
@@ -311,23 +312,24 @@ export function resolveClientLogPath(opts: LogPathOptions = {}): ResolvedLogPath
  * (лог может быть в сотни МБ). Через seek, с отбрасыванием частной первой строки.
  */
 export function readLogTailBytes(filePath: string, maxBytes = 1_048_576): string[] {
+  if (!IS_NODE) return [];
   let size = 0;
   try {
-    size = statSync(filePath).size;
+    size = fsMod!.statSync(filePath).size;
   } catch {
     return [];
   }
   const start = Math.max(0, size - maxBytes);
-  const fd = openSync(filePath, 'r');
+  const fd = fsMod!.openSync(filePath, 'r');
   try {
     const buf = Buffer.alloc(size - start);
-    readSync(fd, buf, 0, buf.length, start);
+    fsMod!.readSync(fd, buf, 0, buf.length, start);
     const text = buf.toString('utf8');
     const lines = text.split(/\r?\n/);
     if (start > 0 && lines.length) lines.shift(); // первая строка обрезана — drop
     return lines.filter((l) => l.trim() !== '');
   } finally {
-    closeSync(fd);
+    fsMod!.closeSync(fd);
   }
 }
 
@@ -403,7 +405,7 @@ export function getClientState(opts: GetStateOptions = {}): ClientGameState {
     events: [],
     zoneVisits: [],
   };
-  if (!logPath || !existsSync(logPath)) {
+  if (!logPath || !IS_NODE || !fsMod!.existsSync(logPath)) {
     return {
       ...base,
       reason: logPath

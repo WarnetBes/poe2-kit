@@ -681,6 +681,45 @@ export function listLevelingClasses(): Array<{ baseClass: string; tagline: strin
   }));
 }
 
+/**
+ * Статическое соответствие «асценданси → базовый класс» (факты игры 0.5).
+ * Работает без офлайн-датасета — в том числе в браузере (apps/web),
+ * где дисковые датасеты недоступны.
+ */
+const ASCENDANCY_BASE: Record<string, string> = {
+  // Druid
+  oracle: 'Druid',
+  shaman: 'Druid',
+  // Huntress
+  amazon: 'Huntress',
+  ritualist: 'Huntress',
+  'spirit walker': 'Huntress',
+  // Mercenary
+  'gemling legionnaire': 'Mercenary',
+  tactician: 'Mercenary',
+  witchhunter: 'Mercenary',
+  // Monk
+  'acolyte of chayula': 'Monk',
+  invoker: 'Monk',
+  'martial artist': 'Monk',
+  // Ranger
+  deadeye: 'Ranger',
+  pathfinder: 'Ranger',
+  // Sorceress
+  chronomancer: 'Sorceress',
+  'disciple of varashta': 'Sorceress',
+  stormweaver: 'Sorceress',
+  // Warrior
+  'smith of kitava': 'Warrior',
+  titan: 'Warrior',
+  warbringer: 'Warrior',
+  // Witch
+  'abyssal lich': 'Witch',
+  'blood mage': 'Witch',
+  infernalist: 'Witch',
+  lich: 'Witch',
+};
+
 /** Резолвит гайд по базовому классу ИЛИ асценданси ('Invoker' → Monk, 'Lich' → Witch).
  *  Кейс-инсенсивно; принимает английские имена классов и асценданси. */
 export function resolveLevelingClass(query: string | null | undefined): ClassLevelingGuide | null {
@@ -690,13 +729,23 @@ export function resolveLevelingClass(query: string | null | undefined): ClassLev
   for (const guide of Object.values(CLASS_LEVELING_GUIDES)) {
     if (guide.baseClass.toLowerCase() === q) return guide;
   }
-  // По асценданси через датасет PoE2 (Invoker, Pathfinder, Lich, Titan, ...).
-  for (const asc of getAscendancies()) {
-    const name = asc.displayName.toLowerCase();
-    if (name === q || name.includes(q)) {
-      const g = CLASS_LEVELING_GUIDES[asc.baseClass.toLowerCase()];
-      if (g) return g;
+  // Статическая карта асценданси — работает и без датасета (браузер).
+  const base = ASCENDANCY_BASE[q];
+  if (base) {
+    const g = CLASS_LEVELING_GUIDES[base.toLowerCase()];
+    if (g) return g;
+  }
+  // Fallback: датасет PoE2 (только Node — в браузере getAscendancies кидает).
+  try {
+    for (const asc of getAscendancies()) {
+      const name = asc.displayName.toLowerCase();
+      if (name === q || name.includes(q)) {
+        const g = CLASS_LEVELING_GUIDES[asc.baseClass.toLowerCase()];
+        if (g) return g;
+      }
     }
+  } catch {
+    // нет дискового датасета (браузер) — уже попробовали статическую карту
   }
   return null;
 }
