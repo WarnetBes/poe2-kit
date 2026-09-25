@@ -16,6 +16,7 @@ export * from './dataset.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './ladder.js';
+export * from './advice.js';
 export * from './cache.js';
 export * from './gameConfig.js';
 // ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
@@ -54,6 +55,7 @@ import * as dsmod from './dataset.js';
 import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
 import * as ladmod from './ladder.js';
+import * as advicemod from './advice.js';
 import * as cachemod from './cache.js';
 import * as gameConfigMod from './gameConfig.js';
 
@@ -73,6 +75,7 @@ export const core = {
   poe2db: p2dbmod,
   zoneNotes: znmod,
   ladder: ladmod,
+  advice: advicemod,
   cache: cachemod,
   gameConfig: gameConfigMod,
   ehp: ehpmod,

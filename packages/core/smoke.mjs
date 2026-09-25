@@ -336,6 +336,46 @@ ok(est.weapon.weapon !== null && est.weapon.physDps > 0, `estimateBuild weaponDp
 ok(est.gaps.length > 0 && est.gaps[0].severity >= est.gaps[est.gaps.length-1].severity, `estimateBuild gaps sorted (${est.gaps.length})`);
 ok(est.notes.length >= 2, 'estimateBuild honest notes');
 
+console.log('advice (P0-3): «следующий апгрейд» — CI/ES/Spirit/мета-референс');
+const { adviseBuild, buildReferenceFromRows, fmtSuffix, ADVICE_DEFAULTS } = core;
+const ciXml = `<?xml version="1.0"?><PathOfBuilding><Build level="90" className="Monk" ascendClassName="Invoker"/>
+<PlayerStat stat="Life" value="1"/><PlayerStat stat="EnergyShield" value="3500"/>
+<PlayerStat stat="Spirit" value="236"/><PlayerStat stat="SpiritUnreserved" value="-1"/>
+<PlayerStat stat="CritChance" value="75.45"/><PlayerStat stat="CritMultiplier" value="5.29"/>
+<Items><ItemSet><Slot name="Body Armour" itemId="1"/></ItemSet>
+<Item id="1">Rarity: RARE\nCI Body\nChiselled Vest\nEnergy Shield: 3000\n+80 to maximum Life</Item></Items></PathOfBuilding>`;
+const estA = await estimateBuild(ciXml);
+const advA = adviseBuild(estA);
+ok(advA.priorities.length > 0, `p0-3: advice non-empty (${advA.priorities.length})`);
+ok(advA.priorities[0].priority === 'blocking' && advA.priorities[0].area === 'spirit' && advA.priorities[0].title.includes('Spirit в перерасходе'), 'p0-3: Spirit overflow → первый блокер');
+ok(advA.priorities.some((p) => p.title.includes('ES-пул ниже порога CI')), 'p0-3: CI ES ниже порога → совет');
+ok(advA.totals.blocking >= 1 && advA.checklist.length === advA.priorities.length, 'p0-3: totals+checklist согласованы');
+ok(estA.pobStats.Life === 1, 'p0-3: CI детект из PlayerStat Life=1');
+const refRows = [
+  { classLabel: 'Invoker', 'dps.total': '1m', 'ehp__str': '50k' },
+  { classLabel: 'Invoker', 'dps.total': '500k', 'ehp__str': '40k' },
+  { classLabel: 'Invoker', 'dps.total': '200k', 'ehp__str': '20k' },
+];
+const refRef = buildReferenceFromRows(refRows, { className: 'Invoker', dps: 150000, ehp: 15000 });
+ok(refRef.poolSize === 3 && refRef.medianDps === 500000 && refRef.topDps === 1000000, 'p0-3: ref median/top');
+ok(refRef.dpsPercentile === 0 && refRef.ehpPercentile === 0, 'p0-3: ref процентили (ниже всех)');
+const metXml = `<?xml version="1.0"?><PathOfBuilding><Build level="90" className="Monk" ascendClassName="Invoker"/>
+<PlayerStat stat="Life" value="1"/><PlayerStat stat="EnergyShield" value="8645"/>
+<PlayerStat stat="TotalDPS" value="150000"/><PlayerStat stat="TotalEHP" value="15000"/>
+<PlayerStat stat="SpiritUnreserved" value="100"/>
+<Items><ItemSet><Slot name="Body Armour" itemId="1"/></ItemSet>
+<Item id="1">Rarity: RARE\nMeta Body\nLeather Vest\nEvasion Rating: 5000\n+80 to maximum Life</Item></Items></PathOfBuilding>`;
+const estB = await estimateBuild(metXml);
+const advB = adviseBuild(estB, { rows: refRows });
+ok(advB.classification.includes('проседает'), `p0-3: классификация "${advB.classification}"`);
+ok(advB.priorities.some((p) => p.title.includes('DPS просел')), 'p0-3: DPS против меты → совет');
+ok(advB.priorities.some((p) => p.title.includes('Живучесть (EHP) ниже меты')), 'p0-3: EHP против меты → совет');
+ok(advB.priorities[0].priority === 'high' && advB.checklist[0] === '1. ' + advB.priorities[0].title, 'p0-3: первым high (блокеров нет), checklist согласован');
+ok(fmtSuffix(449538) === '450k' && fmtSuffix(3200000) === '3.2M' && fmtSuffix(null) === '—', 'p0-3: fmtSuffix');
+const noRef = adviseBuild(estA);
+ok(noRef.classification.includes('предварительная оценка'), 'p0-3: без меты → предв. классификация');
+ok(ADVICE_DEFAULTS.CI_MIN_ES === 5000 && ADVICE_DEFAULTS.LOW_PERCENTILE === 25, 'p0-3: дефолтные пороги');
+
 console.log('trade query builder (trade2)');
 const { buildTradeQuery, buildTradeQueryFromItem, modsToStatFilters, TRADE_CATEGORY_MAP } = core;
 const q1 = buildTradeQuery({ type: 'ring', stats: [{ id: 'pseudo.pseudo_total_life', min: 60 }], priceMax: 50 });

@@ -5,7 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
-import type { BuildImport } from '@poe2-kit/core';
+import type { BuildImport, BuildEstimate, BuildAdvice, LadderRow } from '@poe2-kit/core';
 
 /** Человекочитаемая расширенная сводка билда (использует новые поля парсера). */
 function formatBuild(b: BuildImport): string {
@@ -308,5 +308,97 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 4;
+  // ── «Следующий апгрейд»: приоритизированный список «чини → потом» (P0-3) ──
+  server.registerTool(
+    'poe2_build_advice',
+    {
+      title: 'PoE2 Build Advice (следующий апгрейд)',
+      description: `«Что чинить первым» по оценке билда. Объединяет слабые места защиты (резисты, CI-ES-пул), бюджет Spirit, DPS оружия и позицию билда по DPS/EHP относительно лeстницы того же класса. Возвращает УПОРЯДОЧЕННЫЙ список приоритетов «чини X → потом Y» с пояснением и действием для каждого пункта.
+
+Работает по PoB share-коду или XML (PoB-движок НЕ нужен). Референс меты качается с poe.ninja live (текущая лига — forbiddenrites, если не указана).
+
+Аргументы:
+  - code (string, обяз.): PoB share-код ИЛИ готовый XML PathOfBuilding.
+  - league (string, опц.): снапшот-лига для референса меты (по умолчанию forbiddenrites).
+  - hit_size (number, опц.): урон за удар для брони (по умолчанию 1000).
+  - accuracy (number, опц.): точность атакующего (по умолчанию 2000).
+
+Примеры:
+  - "Что апгрейдить в моём билде в первую очередь?" → вставь share-код
+  - "Я CI, у меня отрицательные резисты и ES низкий" → вернёт блокеры до прокачки
+`,
+      inputSchema: {
+        code: z.string().min(5).describe('PoB share-код или XML'),
+        league: z.string().optional().describe('Снапшот-лига референса (default forbiddenrites)'),
+        hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ code, league, hit_size, accuracy }) => {
+      try {
+        const leagueSlug = league?.trim() ? league.trim() : 'forbiddenrites';
+        const est = await core.estimate.estimateBuild(code, {
+          expectedHitSize: hit_size ?? 1000,
+          attackerAccuracy: accuracy ?? 2000,
+        });
+        const className = est.ascendancy ?? est.className;
+        // Референс меты: пул лeстницы того же класса (по DPS).
+        let rows: Awaited<ReturnType<typeof core.ladder.topLadderBuilds>> = [];
+        if (className) {
+          try {
+            rows = await core.ladder.topLadderBuilds(leagueSlug, { className, sort: 'dps', limit: 100 });
+          } catch {
+            rows = [];
+          }
+        }
+        const advice = core.advice.adviseBuild(est, { rows });
+        return { content: [{ type: 'text', text: formatAdvice(est, advice, rows, className) }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка совета по билду: ${msg}` }] };
+      }
+    },
+  );
+
+  return 5;
+}
+
+/** Отформатировать совет P0-3 в читаемый markdown. */
+function formatAdvice(
+  est: BuildEstimate,
+  advice: BuildAdvice,
+  rows: LadderRow[],
+  className: string | null,
+): string {
+  const out: (string | null)[] = ['## «Следующий апгрейд» — приоритеты', ''];
+  out.push(`- Персонаж: **${est.className ?? '?'}${est.ascendancy ? ` / ${est.ascendancy}` : ''}**, уровень ${est.characterLevel ?? '?'}, источник: ${est.source === 'pob+gear' ? 'гир + PlayerStat PoB' : 'только гир'}`);
+  out.push(`- **Диагноз:** ${advice.classification}`);
+  out.push(`- **Итог:** ${advice.summary}`);
+  if (rows.length && className) {
+    const ref = core.advice.buildReferenceFromRows(rows, {
+      dps: est.pobStats.TotalDPS ?? undefined,
+      ehp: est.pobStats.TotalEHP ?? undefined,
+      className,
+    });
+    out.push(
+      `- Референс меты: **${ref.poolSize}** строк ${className} (медиана DPS ${core.advice.fmtSuffix(ref.medianDps)}, топ ${core.advice.fmtSuffix(ref.topDps)}; EHP ${core.advice.fmtSuffix(ref.medianEhp)}/${core.advice.fmtSuffix(ref.topEhp)})`,
+    );
+  }
+  if (!advice.priorities.length) {
+    out.push('', 'Серьёзных проблем не найдено — осталась полировка.', '');
+  } else {
+    out.push('', '### Порядок «чини → потом»');
+    for (let i = 0; i < advice.priorities.length; i++) {
+      const p = advice.priorities[i]!;
+      out.push(
+        `**${i + 1}. [${p.priority}] ${p.title}** — ${p.detail}`,
+        `   - Почему: ${p.reason}`,
+        `   - Что делать: ${p.action}`,
+        p.reference ? `   - Сравнение: ${p.reference}` : null,
+      );
+    }
+    out.push('', '_Чини блокеры → потом высокий → средний → низкий приоритет._');
+  }
+  return out.filter((l): l is string => l != null).join('\n');
 }
