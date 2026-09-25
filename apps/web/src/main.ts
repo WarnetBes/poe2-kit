@@ -22,6 +22,7 @@ import {
 import { showChecklist } from './checklist';
 import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
 import { pasteFromClipboard } from './clipboard';
+import { renderFullMap } from './fullMap';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -55,6 +56,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="build" class="tab">Импорт билда</button>
         <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
+        <button data-tab="map" class="tab">Карта</button>
         <button data-tab="ai" class="tab">AI-чат</button>
         <span class="tab league-wrap">
           <label class="league-label" for="league-select">Лига</label>
@@ -140,6 +142,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-tree-last" class="ghost">Из последнего билда</button>
         </div>
         <div id="out-tree" class="out"></div>
+      </section>
+
+      <section id="pane-map" class="pane">
+        <h2>Полная карта дерева пассивок <small>все классы и асценданси</small></h2>
+        <p class="hint">Всё общее дерево + деревья асценданси всех классов «как в игре»: панорамирование (перетаскивание), масштаб (колесо), раскраска по асценданси, фильтр по классу, клик по узлу — статы.</p>
+        <div id="out-map" class="out"></div>
       </section>
 
       <section id="pane-ai" class="pane">
@@ -259,6 +267,14 @@ document.querySelector('#btn-compare')!.addEventListener('click', () =>
 
 // Чек-лист прокачки: открытие вкладки рендерит список (состояние из localStorage)
 document.querySelector('[data-tab="checklist"]')!.addEventListener('click', () => showChecklist());
+
+// Полная карта дерева: рендер лениво (только при открытии вкладки)
+let mapRendered = false;
+document.querySelector('[data-tab="map"]')!.addEventListener('click', () => {
+  if (mapRendered) return;
+  mapRendered = true;
+  void renderFullMap(document.querySelector<HTMLDivElement>('#out-map')!);
+});
 
 // ── AI-чат ─────────────────────────────────────────────
 showAIChat();
