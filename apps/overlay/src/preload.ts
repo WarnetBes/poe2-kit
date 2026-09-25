@@ -46,6 +46,10 @@ export interface OverlayAPI {
   onWatchAlert(cb: (alert: unknown) => void): () => void;
   /** Диагностика оверлея: собрать хвост overlay.log + конфиг машины, вернуть текст (буфер/файл ставит main). */
   diagCollect(): Promise<unknown>;
+  /** Журнал обучения: сколько записей накоплено, включён ли. */
+  learnInfo(): Promise<unknown>;
+  /** Сформировать вклад в библиотеку предметов: текст уже в буфере обмена + файл в userData. */
+  learnContribute(): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -137,6 +141,10 @@ const api: OverlayAPI = {
   },
 
   diagCollect: () => ipcRenderer.invoke('diag:collect'),
+
+  learnInfo: () => ipcRenderer.invoke('learn:info'),
+
+  learnContribute: () => ipcRenderer.invoke('learn:contribute'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

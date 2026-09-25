@@ -113,7 +113,7 @@ export const rendererHtml = `<!doctype html>
     padding: 4px 8px; font-size: 12px; }
   .watch-actions button:hover { background: rgba(240,136,62,0.24); }
 
-  #diagSection { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
+  #diagSection, #learnSection { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
   .diag-actions { display: flex; gap: 6px; margin-top: 6px; }
   .diag-actions button { flex: 1; cursor: pointer; background: rgba(240,136,62,0.12);
     border: 1px solid rgba(240,136,62,0.4); color: var(--text); border-radius: 8px;
@@ -297,6 +297,21 @@ export const rendererHtml = `<!doctype html>
           <button id="watchCheckNow">Проверить</button>
         </div>
         <div class="tip">Нажмите <b>Ctrl+C</b> на предмете в игре → «➕ Из буфера», либо кнопкой «👁 Следить» в прайс-токе. Проверка каждые 5 мин, алерт «цена упала с X до Y».</div>
+      </div>
+
+      <div class="set-row" id="learnSection">
+        <div class="lbl">
+          <span>Журнал обучения <small>— запоминать структуру предметов (локально)</small></span>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:4px">
+            <input type="checkbox" id="setLearn" style="width:auto" />
+            <span id="learnRecords" style="font-size:10px;color:var(--dim)">Включить (opt-in)</span>
+          </label>
+        </div>
+        <div class="diag-actions">
+          <button id="learnShareBtn">📤 Поделиться предметами</button>
+        </div>
+        <div id="learnOut" class="diag-out"></div>
+        <div class="tip">Выключено по умолчанию. Пишется только структура предмета (редкость/база/моды), без персонажа и аккаунта, в файл на вашем диске. «Поделиться» копирует готовый текст для issue на SourceCraft — одной вставкой.</div>
       </div>
 
       <div class="set-row" id="diagSection">
@@ -822,6 +837,7 @@ export const rendererHtml = `<!doctype html>
       opacity: Number($('setOpacity').value) / 100,
       scale: Number($('setScale').value) / 100,
       width: Number($('setWidth').value),
+      learn: !!$('setLearn').checked,
       hotkeys: {}
     };
   }
@@ -841,7 +857,14 @@ export const rendererHtml = `<!doctype html>
     $('setOpacity').value = Math.round((s.opacity || 0.86) * 100);
     $('setScale').value = Math.round((s.scale || 1) * 100);
     $('setWidth').value = Math.round(s.width || 420);
+    $('setLearn').checked = !!s.learn;
     setDirty.opacity = true; setDirty.scale = true; setDirty.width = true;
+    window.poe2k.learnInfo().then(function (li) {
+      if (!li) return;
+      $('learnRecords').textContent = li.enabled
+        ? 'Включён · записей: ' + (li.records || 0)
+        : 'Включить (opt-in)';
+    }).catch(function () {});
 
     // Угол.
     var corners = document.querySelectorAll('#cornerRow button');
@@ -934,6 +957,28 @@ export const rendererHtml = `<!doctype html>
       btn.disabled = false;
       btn.textContent = '📋 Отправить диагностику';
       out.textContent = 'Ошибка вызова диагностики';
+      requestSize();
+    });
+  });
+  $('learnShareBtn').addEventListener('click', function () {
+    var btn = $('learnShareBtn');
+    var out = $('learnOut');
+    btn.disabled = true;
+    btn.textContent = 'Готовлю…';
+    window.poe2k.learnContribute().then(function (r) {
+      if (r && r.ok) {
+        out.textContent = '✓ ' + r.count + ' предметов — текст скопирован в буфер.\\nТеперь вставьте его в issue: sourcecraft.dev/volkovpartilaholin/poe2-kit/issues/new\\nФайл: ' + r.file;
+        showToast('Вклад скопирован — вставьте в issue на SourceCraft');
+      } else {
+        out.textContent = 'Ошибка: ' + ((r && r.error) || 'неизвестно');
+      }
+      btn.disabled = false;
+      btn.textContent = '📤 Поделиться предметами';
+      requestSize();
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = '📤 Поделиться предметами';
+      out.textContent = 'Ошибка вызова';
       requestSize();
     });
   });

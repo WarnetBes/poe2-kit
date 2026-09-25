@@ -9,6 +9,8 @@ _price_report.json
 README-netfix.md
 # Дайджесты вклада пользователей (генерируются contribute-items.mjs — в репо не идут)
 poe2-items-contribution-*.json
+# Portable-сборки (make-portable.mjs) — артефакты в репо не идут
+_portable/
 
 # npm
 node_modules/

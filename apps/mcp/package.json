@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@poe2-kit/core": "0.1.0",
+    "@poe2-kit/core": "*",
     "zod": "^3.23.0"
   },
   "devDependencies": {

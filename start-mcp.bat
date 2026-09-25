@@ -31,13 +31,20 @@ if not exist node_modules (
   )
 )
 
-REM --- build core + mcp ---
+REM --- build core + mcp (portable: dist уже собран, пропускаем) ---
+if exist .portable (
+  if exist "packages\core\dist\index.js" if exist "apps\mcp\dist\index.js" (
+    echo Portable build: skipping compile (dist is already built).
+    goto smoke
+  )
+)
 echo Building core and mcp...
 call npm run build -w @poe2-kit/core
 if errorlevel 1 goto err
 call npm run build -w @poe2-kit/mcp
 if errorlevel 1 goto err
 
+:smoke
 REM --- smoke test ---
 echo.
 echo Smoke test...

@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@poe2-kit/core": "0.1.0"
+    "@poe2-kit/core": "*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

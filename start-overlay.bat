@@ -94,7 +94,14 @@ exit /b 1
 
 :electronok
 
-REM --- build core + overlay ---
+REM --- build core + overlay (portable: dist уже собран, пропускаем) ---
+if not exist .portable goto buildovl
+if not exist "packages\core\dist\index.js" goto buildovl
+if not exist "apps\overlay\dist\main.js" goto buildovl
+echo Portable build: skipping compile (dist is already built).
+goto startovl
+
+:buildovl
 echo.
 echo Building core and overlay...
 call npm run build -w @poe2-kit/core
@@ -102,6 +109,7 @@ if errorlevel 1 goto err
 call npm run build -w @poe2-kit/overlay
 if errorlevel 1 goto err
 
+:startovl
 echo.
 echo Starting the overlay...
 echo.

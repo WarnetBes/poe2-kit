@@ -1,5 +1,7 @@
 # poe2-kit
 
+[![English](https://img.shields.io/badge/README-English-blue)](README.en.md)
+
 Единый помощник для **Path of Exile 2**: гид по прокачке, AI-советы, универсальная торговля, анализ билдов и прайс-чек предметов.
 
 Одно ядро **`@poe2-kit/core`** обслуживает три формы помощника:
@@ -42,14 +44,17 @@ poe2-kit/
 
 Готового установщика .exe нет — распространяется исходником, но запуск автоматизирован.
 
-1. **Скачать код**: страница репозитория → **Releases** → последний релиз (v1.0.0) →
-   **«Source code (zip)»** → распаковать в любую папку.
-   (Либо с git: `git clone https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit.git`)
-2. **Node.js ≥ 20**: если не установлен — один раз запустите
-   `install-tools-minimal.bat` (скачает и поставит Node.js сам), или с
-   https://nodejs.org/.
-3. **Запустить нужную форму** — bat-файл сам установит зависимости и соберёт всё
-   при первом запуске (первые минуты уходит на загрузку, это нормально):
+1. **Скачать**: страница репозитория → **Releases** → последний релиз (v1.0.0):
+   - **`poe2-kit-portable-…-win64.zip`** — рекомендую: распаковать →
+     запустить `start-overlay.bat` → работает. Node.js не нужен, сеть не
+     нужна, ничего не компилируется.
+   - (Либо **«Source code (zip)»** — вариант «собери сам»: нужен Node.js ≥ 20
+     и интернет для первого запуска. Либо с git:
+     `git clone https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit.git`)
+2. **Для варианта «Source code»**: если Node.js не установлен — один раз
+   запустите `install-tools-minimal.bat` (скачает и поставит Node.js сам),
+   или с https://nodejs.org/. Для portable этот шаг не нужен.
+3. **Запустить нужную форму**:
    - **`start-overlay.bat`** — оверлей поверх игры (Windows). В игре: навести на
      предмет → Ctrl+C → **Ctrl+F1** — цена; Ctrl+F3 — импорт билда; Ctrl+F6 —
      настройки. Лог: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
@@ -57,6 +62,10 @@ poe2-kit/
      (прайс-чек, дерево, чек-лист прокачки, сравнение с лестницей).
    - **`start-mcp.bat`** — MCP-сервер для ИИ-ассистентов (42 инструмента
      `poe2_*`; подключается в OpenCode/другой MCP-клиент, stdio).
+
+В portable-сборке bat-файлы видят маркер `.portable` и пропускают установку
+зависимостей и компиляцию — старт за секунды. Собрать такой архив:
+`npm run portable` (для мейнтейнера).
 
 Отзывы/баги/идеи → [CONTRIBUTING.md](CONTRIBUTING.md) и issues на SourceCraft.
 
@@ -276,12 +285,17 @@ const build = core.build.decodeShareCode(code);
 Kit умеет учиться у сообщества:
 
 1. **Журнал обучения** — выключен по умолчанию. Включить:
-   `setx POE2K_LEARN 1` (PowerShell) и перезапустить kit. Каждый прайс-чек
-   пишет **локально** в `~/.poe2-kit/learn/items.jsonl` форму предмета:
-   редкость, база, моды, сматченные stat-id. Без имён персонажей/аккаунтов.
-2. **Вклад:** `npm run contribute-items -w @poe2-kit/core` →
-   `poe2-items-contribution-<дата>.json` → приложите к issue «Item data
-   contribution».
+   - **проще всего**: оверлей → **Ctrl+F6** (Настройки) → «Журнал обучения» →
+     поставить галочку → «Сохранить»;
+   - либо env: `setx POE2K_LEARN 1` и перезапустить kit.
+   Каждый прайс-чек пишет **локально** в `~/.poe2-kit/learn/items.jsonl`
+   форму предмета: редкость, база, моды, сматченные stat-id. Без имён
+   персонажей/аккаунтов.
+2. **Вклад:** в оверлее — **Ctrl+F6** → «📤 Поделиться предметами»: готовый
+   текст скопируется в буфер — останется вставить его в issue на SourceCraft
+   (ссылка и памятка уже в тексте). Для консоли: `npm run contribute-items
+   -w @poe2-kit/core` → `poe2-items-contribution-<дата>.json` → приложить
+   к issue «Item data contribution».
 3. **Библиотека** (`packages/core/data/game/learned/`): мейнтейнер валидирует
    вклады строгим валидатором (`merge-contributions.mjs`) и вливает. В kit
    она работает как **фолбэк матчинга статов**: если живой каталог trade2

@@ -12,12 +12,12 @@
     "test": "npm run build"
   },
   "dependencies": {
-    "@poe2-kit/core": "0.1.0",
-    "koffi": "^3.3.1"
+    "@poe2-kit/core": "*",
+    "koffi": "^3.3.1",
+    "electron": "^33.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "electron": "^33.0.0",
     "typescript": "^5.6.0"
   }
 }

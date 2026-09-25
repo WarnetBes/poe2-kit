@@ -8,6 +8,18 @@ if not errorlevel 1 (
   exit /b 0
 )
 
+REM --- Portable: раздаём готовую сборку apps\web\dist без vite.
+if exist .portable (
+  if exist "apps\web\dist\index.html" (
+    echo Starting PoE2 Kit web (portable static build) on http://0.0.0.0:5173 (LAN)
+    echo Open http://localhost:5173 on this PC, or http://%COMPUTERNAME%:5173 from another PC in LAN.
+    echo.
+    node apps\web\serve-dist.mjs
+    endlocal
+    exit /b 0
+  )
+)
+
 echo Starting PoE2 Kit web preview on http://0.0.0.0:5173 (LAN)
 echo From the game PC (192.168.0.200) open: http://192.168.0.196:5173
 echo.

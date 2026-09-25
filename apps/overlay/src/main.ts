@@ -118,6 +118,9 @@ interface OverlaySettings {
   width: number;
   /** Переопределения хоткеев (по умолчанию пусто = стандартные Ctrl+F1..F6). */
   hotkeys: Partial<Record<HotkeyAction, string>>;
+  /** Opt-in журнал обучения: запоминать структуру проверенных предметов
+   *  (локально; вклад — только по кнопке «Поделиться». См. PRIVACY/README). */
+  learn?: boolean;
 }
 
 type HotkeyAction =
@@ -597,6 +600,7 @@ function loadSettings(): OverlaySettings {
       if (typeof raw.scale === 'number') base.scale = clamp(raw.scale, 0.7, 1.4);
       if (typeof raw.width === 'number') base.width = clamp(Math.round(raw.width), 280, 640);
       if (raw.hotkeys && typeof raw.hotkeys === 'object') base.hotkeys = { ...raw.hotkeys };
+      if (typeof raw.learn === 'boolean') base.learn = raw.learn;
     }
   } catch {
     /* нет файла или он битый — берём настройки по умолчанию */
@@ -615,6 +619,15 @@ function saveSettings(s: OverlaySettings): void {
 
 function hotkeyFor(action: HotkeyAction): string {
   return settings.hotkeys[action] ?? DEFAULT_HOTKEYS[action];
+}
+
+/** Синхронизировать env POE2K_LEARN с галкой «журнал обучения» в настройках.
+ *  core-функции проверяют env при каждом вызове — достаточно выставить его
+ *  до первого прайс-чека (и при смене галки). */
+function syncLearnEnv(): void {
+  if (settings.learn) process.env['POE2K_LEARN'] = '1';
+  else delete process.env['POE2K_LEARN'];
+  console.log(`[overlay] learn log: ${settings.learn ? 'ON (opt-in)' : 'off'}`);
 }
 
 /** Ограничить число диапазоном [min, max]. */
@@ -749,6 +762,7 @@ function toggleSettingsPanel(): void {
  */
 function applySettings(next: OverlaySettings): void {
   settings = { ...next, hotkeys: { ...next.hotkeys } };
+  syncLearnEnv();
   saveSettings(settings);
   overlayWidth = settings.width;
   // Перерегистрируем хоткеи (убрать старые закрепления, зарегистрировать новые).
@@ -769,6 +783,7 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.opacity === 'number') next.opacity = clamp(raw.opacity, 0.25, 1);
   if (typeof raw.scale === 'number') next.scale = clamp(raw.scale, 0.7, 1.4);
   if (typeof raw.width === 'number') next.width = clamp(Math.round(raw.width), 280, 640);
+  if (typeof raw.learn === 'boolean') next.learn = raw.learn;
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
     for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
@@ -1916,6 +1931,7 @@ function setupIPC(): void {
     opacity: settings.opacity,
     scale: settings.scale,
     width: settings.width,
+    learn: settings.learn ?? false,
     hotkeys: { ...settings.hotkeys },
     defaultHotkeys: { ...DEFAULT_HOTKEYS },
   }));
@@ -2004,6 +2020,45 @@ function setupIPC(): void {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
+
+  // ─── Журнал обучения (opt-in): сводка + вклад в библиотеку предметов ──────
+  ipcMain.handle('learn:info', () => {
+    try {
+      const info = core.learn.learnLogInfo();
+      return { ok: true, enabled: settings.learn ?? false, records: info.records, dir: info.dir };
+    } catch {
+      return { ok: true, enabled: settings.learn ?? false, records: 0, dir: null };
+    }
+  });
+
+  ipcMain.handle('learn:contribute', () => {
+    try {
+      const contrib = core.learn.buildItemContribution();
+      const json = JSON.stringify(contrib, null, 2);
+      const file = path.join(
+        app.getPath('userData'),
+        'poe2-items-contribution-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json',
+      );
+      // Памятка для не-техника: что делать с этим текстом (вставить в issue).
+      const text =
+        'ВКЛАД В БИБЛИОТЕКУ ПРЕДМЕТОВ PoE2 Kit (предметов: ' + contrib.entries.length + ')\n' +
+        '----------------------------------------------------------------\n' +
+        '1. Откройте: https://sourcecraft.dev/volkovpartilaholin/poe2-kit/issues/new\n' +
+        '2. Название: «Item contribution (N items)». Вставьте этот текст в описание.\n' +
+        '3. Опубликуйте issue — на этом всё, спасибо!\n' +
+        'Вклад содержит ТОЛЬКО структуру предметов (редкость/база/моды),\n' +
+        'без персонажей, аккаунтов и лазаний. Подробнее: SECURITY.md / PRIVACY.\n' +
+        '----------------------------------------------------------------\n' +
+        json;
+      fs.writeFileSync(file, text, 'utf8');
+      clipboard.writeText(text);
+      console.log(`[overlay] learn contribution: ${contrib.entries.length} форм предметов, буфер=ON, файл=${file}`);
+      return { ok: true, count: contrib.entries.length, chars: text.length, file };
+    } catch (err) {
+      console.error('[overlay] learn contribution: ошибка', err);
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 }
 
 const IS_SMOKE = process.argv.includes('--smoke');
@@ -2030,6 +2085,7 @@ app.whenReady().then(async () => {
   // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
   settings = loadSettings();
   overlayWidth = settings.width;
+  syncLearnEnv();
   console.log(
     `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width}`,
   );
