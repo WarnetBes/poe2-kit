@@ -625,6 +625,8 @@ function hotkeyFor(action: HotkeyAction): string {
  *  core-функции проверяют env при каждом вызове — достаточно выставить его
  *  до первого прайс-чека (и при смене галки). */
 function syncLearnEnv(): void {
+  // Метка источника данных для журнала обучения (overlay/mcp/…).
+  if (!process.env['POE2K_LEARN_SOURCE']) process.env['POE2K_LEARN_SOURCE'] = 'overlay';
   if (settings.learn) process.env['POE2K_LEARN'] = '1';
   else delete process.env['POE2K_LEARN'];
   console.log(`[overlay] learn log: ${settings.learn ? 'ON (opt-in)' : 'off'}`);

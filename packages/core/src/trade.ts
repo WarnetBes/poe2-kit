@@ -1226,7 +1226,11 @@ export async function priceCheck(
   recordLearnedItem({
     at: new Date().toISOString(),
     league: league ?? null,
-    source: process.env['POE2K_LEARN_SOURCE'] ?? undefined,
+    source:
+      (typeof process !== 'undefined' &&
+        process.env &&
+        process.env['POE2K_LEARN_SOURCE']) ||
+      undefined,
     rarity: String(parsed.rarity ?? 'Unknown'),
     name: parsed.name,
     baseType: parsed.baseType ?? 'Unknown',

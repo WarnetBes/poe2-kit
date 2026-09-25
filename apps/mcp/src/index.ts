@@ -68,6 +68,8 @@ export function buildServer(): number {
 /** РўРѕС‡РєР° РІС…РѕРґР°: РїРѕРґРєР»СЋС‡РµРЅРёРµ РїРѕ stdio. */
 async function main(): Promise<void> {
   // Р РµР¶РёРј СЃР°РјРѕРїСЂРѕРІРµСЂРєРё: Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Рё РІС‹Р№С‚Рё.
+  // Метка источника для opt-in журнала обучения (overlay/mcp/…).
+  if (!process.env['POE2K_LEARN_SOURCE']) process.env['POE2K_LEARN_SOURCE'] = 'mcp';
   if (process.argv.includes('--smoke')) {
     const count = buildServer();
     console.error(`[smoke] Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРѕ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ: ${count}`);
