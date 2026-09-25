@@ -9,15 +9,14 @@ echo   PoE2 Kit - Windows Overlay
 echo ============================================
 echo.
 
-REM --- check Node.js ---
+REM --- check Node.js (friendly gate; install-tools.bat below handles setup) ---
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [ERROR] Node.js not found. Install the LTS version from https://nodejs.org
-  pause
-  exit /b 1
+  echo [WARN] Node.js not found. install-tools.bat below will install it.
+  echo.
 )
 for /f "tokens=*" %%v in ('node -v') do set NODEVER=%%v
-echo Node.js: %NODEVER%
+if defined NODEVER echo Node.js: %NODEVER%
 echo.
 
 REM ── Self-update: git pull (git-копия репозитория) ────────────────────────────
@@ -45,6 +44,34 @@ if not "%OLD_HEAD%"=="%NEW_HEAD%" (
 :afterupdate
 echo.
 
+REM --- ensure toolchain (Node + C++/VC++ redist) is present ---
+REM cheap when already installed; installs + elevates only when missing.
+call "%~dp0install-tools.bat"
+if errorlevel 1 (
+  echo [ERROR] Toolchain install-check failed. See messages above.
+  pause
+  exit /b 1
+)
+REM If Node was just installed by install-tools.bat, it may not be visible
+REM in THIS cmd session yet (PATH is machine-wide, refreshed on new processes).
+REM Prepend the default Node.js dir to the in-session PATH and re-check.
+where node >nul 2>nul
+if errorlevel 1 (
+  if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
+  if exist "%ProgramFiles(x86)%\nodejs\node.exe" set "PATH=%ProgramFiles(x86)%\nodejs;%PATH%"
+)
+where node >nul 2>nul
+if errorlevel 1 (
+  echo [ERROR] Node.js not found after install. Please close this console,
+  echo         reopen it (so PATH reloads) and run start-overlay.bat again.
+  pause
+  exit /b 1
+)
+echo.
+for /f "tokens=*" %%v in ('node -v') do set NODEVER=%%v
+if defined NODEVER echo Node.js ready: %NODEVER%
+echo.
+
 REM --- install dependencies (first run only) ---
 if not exist node_modules (
   echo Installing dependencies, first run only - this takes a few minutes...
@@ -54,8 +81,9 @@ if not exist node_modules (
     echo.
     echo [ERROR] npm ci failed.
     echo   - Check Node.js version: need ^>= 20 LTS.
-    echo   - If the native module "koffi" failed to install, install
-    echo     Visual Studio Build Tools with the C++ workload.
+    echo   - If the native module "koffi" failed to install, you need the
+    echo     C++ toolchain. Re-run: call "%~dp0install-tools.bat"
+    echo     (installs VS Build Tools C++ workload + VC++ Redist).
     echo   - If the Electron download timed out, re-run this script -
     echo     npm will resume; or set a mirror first:
     echo       set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
