@@ -235,6 +235,29 @@ textarea:focus, input[type="text"]:focus, input[type="password"]:focus {
 }
 textarea::placeholder, input::placeholder { color: #6b6455; font-style: italic; }
 
+/* Нативные выпадающие списки select рисуются ОС-белым фоном,
+   а светлый пергаментный текст на нём не читается — перекрашиваем. */
+select { color: var(--fg); }
+select option, select optgroup {
+  background: #16161d;
+  color: var(--fg);
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 14px;
+}
+select option:hover, select option:checked { background: #3a2f18; color: var(--gold-hi); }
+
+/* Автозаполнение Chrome заливает поля белым — возвращаем тёмную тему */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  -webkit-box-shadow: 0 0 0 1000px #101016 inset;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
 /* Строка выбора класса/асценданси на вкладке «Прокачка» */
 .lvset { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
 .lvset select {
