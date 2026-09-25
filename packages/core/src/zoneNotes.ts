@@ -25,12 +25,14 @@ interface RawZoneNote {
   zoneCode: string;
   zoneName: string;
   notes: string;
+  notes_ru?: string;
 }
 
 interface RawActNote {
   lockNoteOption: string;
   actName: string;
   notes: string;
+  notes_ru?: string;
 }
 
 let zoneCache: RawZoneNote[] | null = null;
@@ -49,28 +51,28 @@ function load(): { zoneNotes: RawZoneNote[]; actNotes: RawActNote[] } {
 }
 
 /** Заметка по коду зоны (G1_1, G1_2, ...). */
-export function getZoneNote(zoneCode: string): { zoneName: string; notes: string } | null {
+export function getZoneNote(zoneCode: string): { zoneName: string; notes: string; notes_ru?: string } | null {
   const hit = load().zoneNotes.find((z) => z.zoneCode === zoneCode);
-  return hit ? { zoneName: hit.zoneName, notes: hit.notes } : null;
+  return hit ? { zoneName: hit.zoneName, notes: hit.notes, notes_ru: hit.notes_ru } : null;
 }
 
 /** Заметка по имени зоны (регистр не важен). */
-export function getZoneNoteByName(zoneName: string): { zoneCode: string; zoneName: string; notes: string } | null {
+export function getZoneNoteByName(zoneName: string): { zoneCode: string; zoneName: string; notes: string; notes_ru?: string } | null {
   const q = zoneName.trim().toLowerCase();
   const hit = load().zoneNotes.find((z) => z.zoneName.toLowerCase() === q);
-  return hit ? { zoneCode: hit.zoneCode, zoneName: hit.zoneName, notes: hit.notes } : null;
+  return hit ? { zoneCode: hit.zoneCode, zoneName: hit.zoneName, notes: hit.notes, notes_ru: hit.notes_ru } : null;
 }
 
 /** Заметка по акту (1..4) или Interludes. */
-export function getActNote(act: number | 'Interludes'): { actName: string; notes: string } | null {
+export function getActNote(act: number | 'Interludes'): { actName: string; notes: string; notes_ru?: string } | null {
   const name = act === 'Interludes' ? act : `Act ${act}`;
   const hit = load().actNotes.find((a) => a.actName === name);
-  return hit ? { actName: hit.actName, notes: hit.notes } : null;
+  return hit ? { actName: hit.actName, notes: hit.notes, notes_ru: hit.notes_ru } : null;
 }
 
 /** Список всех заметок по зонам (для UI-оверлея — показать всё сразу). */
-export function listZoneNotes(): Array<{ zoneCode: string; zoneName: string; notes: string }> {
-  return load().zoneNotes.map((z) => ({ zoneCode: z.zoneCode, zoneName: z.zoneName, notes: z.notes }));
+export function listZoneNotes(): Array<{ zoneCode: string; zoneName: string; notes: string; notes_ru?: string }> {
+  return load().zoneNotes.map((z) => ({ zoneCode: z.zoneCode, zoneName: z.zoneName, notes: z.notes, notes_ru: z.notes_ru }));
 }
 
 export interface LevelingContext {
@@ -81,9 +83,9 @@ export interface LevelingContext {
   /** Код и имя текущей зоны. */
   zone: { areaCode: string; zoneName: string | null } | null;
   /** Заметки текущей зоны (что сделать, каких боссов убить, награды). */
-  zoneNotes: { zoneName: string; notes: string } | null;
+  zoneNotes: { zoneName: string; notes: string; notes_ru?: string } | null;
   /** Сводные заметки акта (награды за квесты по всем зонам). */
-  actNotes: { actName: string; notes: string } | null;
+  actNotes: { actName: string; notes: string; notes_ru?: string } | null;
   /** Следующие рекомендуемые зоны (для уровня персонажа). */
   nextZones: Array<LevelingZone & { rewardList: string[]; levelDelta: number | null }>;
   /** Зоны текущего акта (для оверлея). */
@@ -119,13 +121,23 @@ export function getLevelingContext(
 
   const hints: string[] = [];
   if (zoneNotes) {
-    // Первые строки заметок зоны — самые важные действия.
-    const heads = zoneNotes.notes
+    // Для русского вывода предпочитаем русскую сводку; первые строки — важные действия.
+    const src = zoneNotes.notes_ru ?? zoneNotes.notes;
+    const heads = src
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l && !l.startsWith('['))
+      .filter((l) => l && !l.startsWith('[') && !l.startsWith('•'))
       .slice(0, 3);
     hints.push(...heads.map((h) => `📍 ${h}`));
+  }
+  if (actNotes?.notes_ru) {
+    // Краткая русская сводка акта: берём первый реальный пункт награды (строку после заголовка).
+    const firstReward =
+      actNotes.notes_ru
+        .split('\n')
+        .map((l) => l.trim())
+        .find((l) => l.startsWith('•')) ?? actNotes.notes_ru.split('\n')[0];
+    hints.push(`🗂 Акт-награды: ${firstReward.replace(/^•\s*/, '')}`);
   }
   for (const z of nextZonesWithMeta.slice(0, 3)) {
     const lvlHint = z.levelDelta != null ? (z.levelDelta > 2 ? ` (⚠️инг +${z.levelDelta} к уровню зоны)` : '') : '';

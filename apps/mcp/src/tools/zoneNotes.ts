@@ -45,10 +45,10 @@ export function registerZoneNotesTools(server: McpServer): number {
         lines.push('', '### Подсказки');
         for (const h of ctx.hints) lines.push(`- ${h}`);
         if (ctx.zoneNotes && full_zone_notes) {
-          lines.push('', `### Полные заметки: ${ctx.zoneNotes.zoneName}`, '', ctx.zoneNotes.notes);
+          lines.push('', `### Полные заметки: ${ctx.zoneNotes.zoneName}`, '', ctx.zoneNotes.notes_ru ?? ctx.zoneNotes.notes);
         }
         if (ctx.actNotes && full_zone_notes) {
-          lines.push('', `### Награды акта (${ctx.actNotes.actName})`, '', ctx.actNotes.notes);
+          lines.push('', `### Награды акта (${ctx.actNotes.actName})`, '', ctx.actNotes.notes_ru ?? ctx.actNotes.notes);
         }
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (error) {

@@ -3,27 +3,32 @@
 		{
 			"lockNoteOption": "unlocked",
 			"actName": "Act 1",
-			"notes": "Clearfell       - Beira         - 10% Cold Res\nHunting Ground  - Crowbell Boss - 2 Passive Points\nFreythorn - King In The Mists - 30 Spirit + Lvl4 Spirit Gem\nOgham Farmlands - Una's Lute    - 2 Passive Points\nOgham Manor     - Candlemass    - +20 Life\n\nCtrl+Alt+S to open settings and drag/scale windows\n\nCheck Vendor at level up for\nMovespeed boots - Max 10% this Act\nNew Weapon\nPotions: Lvl 4, 10, 16, 23\nAct and Zone Notes are this wide----------------------------"
+			"notes": "Clearfell       - Beira         - 10% Cold Res\nHunting Ground  - Crowbell Boss - 2 Passive Points\nFreythorn - King In The Mists - 30 Spirit + Lvl4 Spirit Gem\nOgham Farmlands - Una's Lute    - 2 Passive Points\nOgham Manor     - Candlemass    - +20 Life\n\nCheck Vendor at level up for\nMovespeed boots - Max 10% this Act\nNew Weapon\nPotions: Lvl 4, 10, 16, 23",
+			"notes_ru": "Акт 1 — Пробуждение. Награды по ходу:\n• Clearfell: Беира → +10% к сопротивлению холоду\n• Hunting Grounds: Кроубэлл → +2 очка пассивок\n• Freythorn: Король в Туманах → +30 Духа и камень Духа 4 ур.\n• Ogham Farmlands: Лютня Уны → +2 очка пассивок\n• Ogham Manor: Канделмасс → +20 к жизни\n\nСоветы: обновляйте у торговца сапоги на скорость бега (до 10%) и новое оружие после поднятия уровня; зелья менять на 4/10/16/23 ур."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"actName": "Act 2",
-			"notes": "Traitor's Passage    - Balbala      - Ascendancy\nKeth                 - Kabala       - 2 Passive Points\nValley Of The Titans - Ancient Vows - Choice\nDeshar               - Final Letter - 2 Passive Points\nSpires Of Deshar - Sisters Of Garukhan - 10% Light res\n\nCheck Vendor at level up for\nMovespeed boots - Max 15% this Act\nNew Weapon\nPotions: Lvl 23, 30, 40"
+			"notes": "Traitor's Passage    - Balbala      - Ascendancy\nKeth                 - Kabala       - 2 Passive Points\nValley Of The Titans - Ancient Vows - Choice\nDeshar               - Final Letter - 2 Passive Points\nSpires Of Deshar - Sisters Of Garukhan - 10% Light res\n\nCheck Vendor at level up for\nMovespeed boots - Max 15% this Act\nNew Weapon\nPotions: Lvl 23, 30, 40",
+			"notes_ru": "Акт 2 — Пустыня. Ключевое:\n• Traitor's Passage: Балбала → Асценданси\n• Keth: Кабала → +2 очка пассивок\n• Valley of the Titans: Древние Обеты → выбор награды\n• Deshar: Финальное письмо → +2 очка пассивок\n• Spires of Deshar: Сёстры Гарухан → +10% к свету\n\nСоветы: скорость бега до 15%; зелья на 23/30/40 ур."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"actName": "Act 3",
-			"notes": "Sandswept Marsh - Orok Campfire     - Lesser Jeweller's\nJungle Ruins    - Mighty Silverfist - 2 Passive Points\nVenom Crypts    - Venom Draught     - Choice\nAzak Bog        - Ignagduk - 30 Spirit / Lvl10 spirit gem\nJiquani's Machinarium - Blackjaw    - +10% Fire res\nAggorat         - Blood Sacrifice   - 2 Passive Points\n\nCheck Vendor at level up for\nMovespeed boots - Max 20% this Act\nNew Weapon\nPotions: Lvl 30, 40, 50"
+			"notes": "Sandswept Marsh - Orok Campfire     - Lesser Jeweller's\nJungle Ruins    - Mighty Silverfist - 2 Passive Points\nVenom Crypts    - Venom Draught     - Choice\nAzak Bog        - Ignagduk - 30 Spirit / Lvl10 spirit gem\nJiquani's Machinarium - Blackjaw    - +10% Fire res\nAggorat         - Blood Sacrifice   - 2 Passive Points\n\nCheck Vendor at level up for\nMovespeed boots - Max 20% this Act\nNew Weapon\nPotions: Lvl 30, 40, 50",
+			"notes_ru": "Акт 3 — Город. Ключевое:\n• Sandswept Marsh: Лагерь Орока → Малый Jeweller's\n• Jungle Ruins: Могучий Сереброкулак → +2 очка пассивок\n• Venom Crypts: Ядовитое зелье → выбор награды\n• Azak Bog: Игнагдук → +30 Духа / Камень Духа 10 ур.\n• Jiquani's Machinarium: Блэкджоу → +10% к огню\n• Aggorat: Кровавое жертвоприношение → +2 очка пассивок\n\nСоветы: скорость бега до 20%; зелья на 30/40/50 ур."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"actName": "Act 4",
-			"notes": "Journey's End           - +2 Passives\nHalls of the Dead       - +5 for each Res or Stat \nHalls of the Dead       - 5% Increased Max Mana\nTrials of the Ancestors - +2 Passives\nAbandoned Prison        - Life/Mana Flask Recovery\nArastas - Evening Bell  - 3 Exalted Orbs\n\nEye of Hinekora when you free Matiki\nKedge Bay > Whakapanu > Prison > Arastas > Ngakanu\nShrike Island/Isle of Kin (maybe optional)\n\nCheck Vendor at level up for\nMovespeed boots - Max 25% this Act\nPotions: Lvl 40, 50, 60"
+			"notes": "Journey's End           - +2 Passives\nHalls of the Dead       - +5 for each Res or Stat \nHalls of the Dead       - 5% Increased Max Mana\nTrials of the Ancestors - +2 Passives\nAbandoned Prison        - Life/Mana Flask Recovery\nArastas - Evening Bell  - 3 Exalted Orbs\n\nEye of Hinekora when you free Matiki\nKedge Bay > Whakapanu > Prison > Arastas > Ngakanu\nShrike Island/Isle of Kin (maybe optional)\n\nCheck Vendor at level up for\nMovespeed boots - Max 25% this Act\nPotions: Lvl 40, 50, 60",
+			"notes_ru": "Акт 4 — Острова. Ключевое:\n• Journey's End → +2 очка пассивок\n• Halls of the Dead → +5 к каждому сопротивлению/стату + 5% к макс. мане\n• Trial of the Ancestors → +2 очка пассивок\n• Abandoned Prison → восстановление Life/Mana флаконов\n• Arastas: Вечерний колокол → 3 Exalted Orb\n\nПорядок: Kedge Bay → Whakapanu → Prison → Arastas → Ngakanu. Освободив Атики, зайдите в Eye of Hinekora. Навык бега до 25%; зелья на 40/50/60 ур."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"actName": "Interludes",
-			"notes": "No zone notes for Interludes :( change the zone to \nsee the bonuses each Interlude gives to choose your\nown order to do the Interludes\n\nCompleting all Interludes gives +2 Passives\n\nCheck Vendor at level up for\nMovespeed boots - Max 25% in Interludes\nPotions cap out at required level 60"
+			"notes": "Interludes are optional post-campaign zones. Each Interlude gives its own permanent bonus; completing all three grants +2 Passive Points.\n\nCurse of Holten:\n  Soul of the Ferryman (Holten) - cheap Greater Runes\n  Wolvenhold - +2 Passives\n\nThe Stolen Barya:\n  The Khari Crossing - Skullmaw Stairway - 5% Max Life\n  The Khari Crossing - Worm and Scorpion - +2 Passives\n  Qimah - choice of 7 buffs (can change later)\n\nDoriyani's Contingency:\n  Kriar Village - +40 Max Spirit\n  Howling Caves - +2 Passives\n  Kriar Peaks - Elder Maddox - Unique Item\n\nCheck Vendor at level up for\nMovespeed boots - Max 25% in Interludes\nPotions cap out at required level 60",
+			"notes_ru": "Интерлюдии — опциональные зоны после кампании. Каждая даёт постоянный бонус; за все три — +2 очка пассивок:\n\n• Дорога в Хольтен: Душа Паромщика (Хольтен) — дешёвые Greater-руны; Вольвенхольд → +2 очка пассивок\n• Украденная Бария: Лестница Черепопоима → +5% к макс. жизни; Черви и Скорпион → +2 очка пассивок; Кима → выбор из 7 баффов (позже можно сменить)\n• Запасной план Дорияни: Деревня Криар → +40 к макс. духу; Воющие пещеры → +2 очка пассивок; Пики Криар → Элдер Мэддокс → Уникальный предмет\n\nПорядок интерлюдий свободный — выбирайте под нужды билда."
 		}
 	],
 	"zoneNotes": [
@@ -31,37 +36,43 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_1",
 			"zoneName": "The Riverbank",
-			"notes": "Kill Hillock and Exit > Town\n\nThank you for using Path Of Levelling 2!"
+			"notes": "Kill Hillock and Exit > Town\n\nThank you for using Path Of Levelling 2!",
+			"notes_ru": "Убейте Хиллока и выходите в город (старт кампании)."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_2",
 			"zoneName": "Clearfell",
-			"notes": "[Optional] Mud Burrow boss has Lvl 2 Skill + Lvl 1 Support\n\nMinimap shows a grey-ish path to Mud Burrow if you don't\nhave transparent terrain\n\nIf entering up/left and you immediately see a bridge, Beira\nand exit is on your side, Mud Burrow is other side\nOtherwise entering up/left means only one bridge, and all \npoints of interest are on the other side of the bridge\n\nIf entering up/right, anything could be anywhere, good luck\n\nExit > The Grelwood"
+			"notes": "[Optional] Mud Burrow boss has Lvl 2 Skill + Lvl 1 Support\n\nMinimap shows a grey-ish path to Mud Burrow if you don't\nhave transparent terrain\n\nIf entering up/left and you immediately see a bridge, Beira\nand exit is on your side, Mud Burrow is other side\nOtherwise entering up/left means only one bridge, and all \npoints of interest are on the other side of the bridge\n\nIf entering up/right, anything could be anywhere, good luck\n\nExit > The Grelwood",
+			"notes_ru": "Босс Беира даёт +10% к холоду. Опционально: босс Mud Burrow → камень навыка 2 ур. + поддержка 1 ур. Выход → The Grelwood."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_3",
 			"zoneName": "Mud Burrow",
-			"notes": "Skippable area, Devourer drops Lvl 2 Skill + quest reward\nLvl 1 Support\n\nBoss is directly left/right/up/down from the entrance"
+			"notes": "Skippable area, Devourer drops Lvl 2 Skill + quest reward\nLvl 1 Support\n\nBoss is directly left/right/up/down from the entrance",
+			"notes_ru": "Пропускаемая зона. Девор (босс) даёт камень навыка 2 ур. и награду за квест — поддержку 1 ур. Босс прямо от входа."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_4",
 			"zoneName": "The Grelwood",
-			"notes": "Four locations, always shaped like a diamond\n\nIf you find The Grim Tangle or The Red Vale, go in and grab \nthe waypoint before coming back\n\n1) The Grim Tangle - enter and get the waypoint\n2) Tree Of Souls + Waypoint\n3) Brambleghast - Lvl 1 Skill\n4) Areagne's Hut - optional potions + Lvl 1 Skill\n\nExit > The Red Vale, usually same corner as Brambleghast"
+			"notes": "Four locations, always shaped like a diamond\n\nIf you find The Grim Tangle or The Red Vale, go in and grab \nthe waypoint before coming back\n\n1) The Grim Tangle - enter and get the waypoint\n2) Tree Of Souls + Waypoint\n3) Brambleghast - Lvl 1 Skill\n4) Areagne's Hut - optional potions + Lvl 1 Skill\n\nExit > The Red Vale, usually same corner as Brambleghast",
+			"notes_ru": "4 локации ромбом. Возьмите ви-поинты в The Grim Tangle и The Red Vale до выхода. Бремблегаст → камень навыка 1 ур.; хата Арене → зелья + камень 1 ур. Выход → The Red Vale."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_5",
 			"zoneName": "The Red Vale",
-			"notes": "Usually a spiral pattern, try following the zone clockwise\nor counterclockwise with the wall just offscreen\n\nListen for music when altar is nearby\n\nOne altar may randomly spawn in the middle of the zone\n\nKill the boss, TP > Town, then Waypoint > The Grim Tangle"
+			"notes": "Usually a spiral pattern, try following the zone clockwise\nor counterclockwise with the wall just offscreen\n\nListen for music when altar is nearby\n\nOne altar may randomly spawn in the middle of the zone\n\nKill the boss, TP > Town, then Waypoint > The Grim Tangle",
+			"notes_ru": "Спиральная зона. Убейте босса, телепорт в город, затем по ви-поинту → The Grim Tangle."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_6",
 			"zoneName": "The Grim Tangle",
-			"notes": "Go roughly up and left\n\nZone layout may be flipped vertically, so if you start north\ngo south\n\n[Optional] Rotten Druid drops a Lvl 1 Support\n\nExit > Cemetary Of The Eternals"
+			"notes": "Go roughly up and left\n\nZone layout may be flipped vertically, so if you start north\ngo south\n\n[Optional] Rotten Druid drops a Lvl 1 Support\n\nExit > Cemetary Of The Eternals",
+			"notes_ru": "Идите вверх и влево (компоновка может быть отзеркалена). Опционально: Гнилой Друид → поддержка 1 ур. Выход → Cemetary of the Eternals."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -85,43 +96,50 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_11",
 			"zoneName": "Hunting Grounds",
-			"notes": "Follow the edge of the zone clockwise\n\nKill Crowbell for 2 Passive Points. If you find a giant pit\nthe boss is nearby\n\nIf you find Ogham Farmlands or Freythorn then go in, get the\nwaypoint and come back\n\nExit > Freythorn, or TP Town then Waypoint if you got it\n\nSecond time here Exit/TP > Ogham Farmlands"
+			"notes": "Follow the edge of the zone clockwise\n\nKill Crowbell for 2 Passive Points. If you find a giant pit\nthe boss is nearby\n\nIf you find Ogham Farmlands or Freythorn then go in, get the\nwaypoint and come back\n\nExit > Freythorn, or TP Town then Waypoint if you got it\n\nSecond time here Exit/TP > Ogham Farmlands",
+			"notes_ru": "Идите по краю по часовой стрелке. Кроубэлл → +2 очка пассивок (рядом с гигантской ямой). Выход → Freythorn."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_12",
 			"zoneName": "Freythorn",
-			"notes": "This layout is busted, good luck.\n\nIf you find the final ritual without the other 3, there are\nwisps that point to the direction of the remaining rituals\n\nKill King In The Mist then TP > Town\nThen Waypoint > Hunting Grounds to Exit > Ogham Farmlands"
+			"notes": "This layout is busted, good luck.\n\nIf you find the final ritual without the other 3, there are\nwisps that point to the direction of the remaining rituals\n\nKill King In The Mist then TP > Town\nThen Waypoint > Hunting Grounds to Exit > Ogham Farmlands",
+			"notes_ru": "Сложная компоновка. Убейте Короля в Туманах → +30 Духа и камень Духа 4 ур. Виспы укажут на оставшиеся ритуалы. Затем по ви-поинту → Ogham Farmlands."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_13_1",
 			"zoneName": "Ogham Farmlands",
-			"notes": "Usually go down and left, exit always on opposite wall from\nentrance\n\nLast layout image is the Una's Lute tile. Quest item is\nalways on the other side of the broken down caravans\n\nExit > Ogham Village"
+			"notes": "Usually go down and left, exit always on opposite wall from\nentrance\n\nLast layout image is the Una's Lute tile. Quest item is\nalways on the other side of the broken down caravans\n\nExit > Ogham Village",
+			"notes_ru": "Идите вниз и влево; выход всегда на противоположной стене от входа. Лютня Уны → +2 очка пассивок (за разбитыми караванами). Выход → Ogham Village."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_13_2",
 			"zoneName": "Ogham Village",
-			"notes": "Follow the edge of the zone north\n\nIf you find the boss before Renly's Tools take Checkpoint to\nthe entrance then wall-follow south\n\nKill The Executioner then Exit > The Manor Ramparts"
+			"notes": "Follow the edge of the zone north\n\nIf you find the boss before Renly's Tools take Checkpoint to\nthe entrance then wall-follow south\n\nKill The Executioner then Exit > The Manor Ramparts",
+			"notes_ru": "Идите по краю на север. Палач → выход в The Manor Ramparts. Если босс раньше инструментов Ренли — вернитесь и идите по краю на юг."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_14",
 			"zoneName": "The Manor Ramparts",
-			"notes": "Layout could be flipped vertically! Usually go clockwise\n\n[Optional] Gallows on north wall has Lvl 1 Support, or south\nwall if layout is flipped"
+			"notes": "Layout could be flipped vertically! Usually go clockwise\n\n[Optional] Gallows on north wall has Lvl 1 Support, or south\nwall if layout is flipped",
+			"notes_ru": "Компоновка может быть отзеркалена, обычно по часовой стрелке. Опционально: виселицы → поддержка 1 ур."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G1_15",
 			"zoneName": "Ogham Manor",
-			"notes": "Each floor has a bridge roughly in the middle, find that\nfirst\n\nFirst Floor usually up and right\n\nSecond and Third floors go in the opposite direction as \nprevious floor\n\nExit > Act 2!"
+			"notes": "Each floor has a bridge roughly in the middle, find that\nfirst\n\nFirst Floor usually up and right\n\nSecond and Third floors go in the opposite direction as \nprevious floor\n\nExit > Act 2!",
+			"notes_ru": "Финальный босс акта 1 — Канделмасс → +20 к жизни. На каждом этаже мост в середине; 2-й и 3-й этажи идите в противоположную от прошлого сторону. Выход → Акт 2!"
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_1",
 			"zoneName": "Vastiri Outskirts",
-			"notes": "Zone layout may be flipped, Boss is either down/left or \ndown/right, rougly Z shape\n\nStay on the tip of Rathbreaker's cliff to avoid spears\n\nKill Rathbreaker then TP to start and Exit > Town\nIn Town Caravan > The Halani Gates, don't need to talk to \nSekhema just get the ! over her head then Exit > Town\n\nIn Town Caravan > Mawdun Quarry"
+			"notes": "Zone layout may be flipped, Boss is either down/left or \ndown/right, rougly Z shape\n\nStay on the tip of Rathbreaker's cliff to avoid spears\n\nKill Rathbreaker then TP to start and Exit > Town\nIn Town Caravan > The Halani Gates, don't need to talk to \nSekhema just get the ! over her head then Exit > Town\n\nIn Town Caravan > Mawdun Quarry",
+			"notes_ru": "Стойте на краю утёса Рэтбрейкера, чтобы избежать копий. Убейте Рэтбрейкера. Затем Караван → The Halani Gates (сначала взятие «!» над Секемой)."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -139,19 +157,22 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_2",
 			"zoneName": "Traitor's Passage",
-			"notes": "If you find Decree of Imprisonment lore item, follow pages\non the wall for Balbala, then the other direction for exit\n\nSix Sisters indicate you're going the right way. Could get\nreally early Six Sisters, there's a layout image for that\n\nExit > The Halani Gates"
+			"notes": "If you find Decree of Imprisonment lore item, follow pages\non the wall for Balbala, then the other direction for exit\n\nSix Sisters indicate you're going the right way. Could get\nreally early Six Sisters, there's a layout image for that\n\nExit > The Halani Gates",
+			"notes_ru": "Балбала → Асценданси (ключевая награда акта!). Следуйте за страницами на стене к Балбале. Шесть Сестёр указывают верный путь. Выход → The Halani Gates."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_3",
 			"zoneName": "The Halani Gates",
-			"notes": "Head to opposite corner from entrance\n\nRECOMMEND Lightning Resistance, Topaz Charm\n\nIn Town Caravan > Keth"
+			"notes": "Head to opposite corner from entrance\n\nRECOMMEND Lightning Resistance, Topaz Charm\n\nIn Town Caravan > Keth",
+			"notes_ru": "Идите в противоположный от входа угол. Рекомендуется сопротивление молнии + Сапфировый чарм. В городе: Караван → Keth."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_4_1",
 			"zoneName": "Keth",
-			"notes": "Wall-follow clockwise.\nIf you find exit before boss, Checkpoint > entrance and\n    wall-follow counter-clockwise\nIf you find exit before boss AGAIN, Checkpoint > entrance\n    and try the other two points in zone layout image\nThere is a head-shaped tile near boss, looks like a round \nburied building\n\nXP is great here\n\nExit > The Lost City"
+			"notes": "Wall-follow clockwise.\nIf you find exit before boss, Checkpoint > entrance and\n    wall-follow counter-clockwise\nIf you find exit before boss AGAIN, Checkpoint > entrance\n    and try the other two points in zone layout image\nThere is a head-shaped tile near boss, looks like a round \nburied building\n\nXP is great here\n\nExit > The Lost City",
+			"notes_ru": "Обходите по часовой стрелке. Кабала → +2 очка пассивок (головоподобная плитка у босса). Хороший опыт. Выход → The Lost City."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -187,7 +208,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_6",
 			"zoneName": "Valley Of The Titans",
-			"notes": "Wall-follow either direction for seals and permanent buff,\nthird seal might be in the middle of the zone\n\nExit > The Titan Grotto"
+			"notes": "Wall-follow either direction for seals and permanent buff,\nthird seal might be in the middle of the zone\n\nExit > The Titan Grotto",
+			"notes_ru": "Древние Обеты → выбор награды (постоянный бафф). Соберите 3 печати (третья может быть в центре). Выход → The Titan Grotto."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -199,7 +221,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_8",
 			"zoneName": "Deshar",
-			"notes": "Quest item is on the outside of one of the buildings\n\nExit is on the furthest edge of second area with buildings\n\nExit > Path Of Mourning"
+			"notes": "Quest item is on the outside of one of the buildings\n\nExit is on the furthest edge of second area with buildings\n\nExit > Path Of Mourning",
+			"notes_ru": "Квестовый предмет (Финальное письмо → +2 очка пассивок) снаружи одного из зданий. Выход на дальнем краю второй зоны → Path of Mourning."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -211,7 +234,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G2_9_2",
 			"zoneName": "The Spires Of Deshar",
-			"notes": "Don't forget the Sisters Of Garukhan!!!\nSisters should be in a G-shaped tile, use process of \nelimination to find it\n\nKill Tor Gul, TP > Town then Caravan > The Dreadnought"
+			"notes": "Don't forget the Sisters Of Garukhan!!!\nSisters should be in a G-shaped tile, use process of \nelimination to find it\n\nKill Tor Gul, TP > Town then Caravan > The Dreadnought",
+			"notes_ru": "Не забудьте Сёстер Гарухан → +10% к свету (в G-образной плитке, метод исключения). Убейте Тор Гула, затем Караван → The Dreadnought."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -229,13 +253,15 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_1",
 			"zoneName": "Sandswept Marsh",
-			"notes": "In swamp area kill Rootredge for Lvl 9 Skill Gem, usually in\nthe middle\n\nIn grass area Azak Campfire is on north or south of exit,\ndrops Lesser Jeweller's Orb\n\nExit > Town then Exit > Jungle Ruins"
+			"notes": "In swamp area kill Rootredge for Lvl 9 Skill Gem, usually in\nthe middle\n\nIn grass area Azak Campfire is on north or south of exit,\ndrops Lesser Jeweller's Orb\n\nExit > Town then Exit > Jungle Ruins",
+			"notes_ru": "В болоте убейте Рутреджа → камень навыка 9 ур. (обычно в центре). В траве Кемп Орока даёт Малый Jeweller's. Выход → Jungle Ruins."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_3",
 			"zoneName": "Jungle Ruins",
-			"notes": "Three main locations:\n1) Infested Barrens - opposite wall from entrance\n2) The Venom Crypts - in one of 9 places arranged in a grid\n3) Silverfist - usually top third of zone, occasionally in\n    the middle\n\nIf you find The Venom Crypts go in, get waypoint, come back\n\nSteps:\n1. Start following the downward wall to find 2) or 3)\n2. From opposite side checkpoint to the start and wall \n    follow the other way to find 1)\n3. If you found all 3 locations then Exit > Infested Barrens\n4. Else scan back and forth through the zone starting from\n    top/left third of map\n\n[Optional] Jungle grave for a belt\n[Optional] Troubled Camp for a vendor\n\nExit > Infested Barrens"
+			"notes": "Three main locations:\n1) Infested Barrens - opposite wall from entrance\n2) The Venom Crypts - in one of 9 places arranged in a grid\n3) Silverfist - usually top third of zone, occasionally in\n    the middle\n\nIf you find The Venom Crypts go in, get waypoint, come back\n\nSteps:\n1. Start following the downward wall to find 2) or 3)\n2. From opposite side checkpoint to the start and wall \n    follow the other way to find 1)\n3. If you found all 3 locations then Exit > Infested Barrens\n4. Else scan back and forth through the zone starting from\n    top/left third of map\n\n[Optional] Jungle grave for a belt\n[Optional] Troubled Camp for a vendor\n\nExit > Infested Barrens",
+			"notes_ru": "Сереброкулак → +2 очка пассивок (обычно в верхней трети). 3 локации: Infested Barrens (напротив входа), Venom Crypts (сетка 3×3), Сереброкулак. Возьмите ви-поинт в Venom Crypts. Выход → Infested Barrens."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -247,7 +273,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_7",
 			"zoneName": "The Azak Bog",
-			"notes": "Boss is generally in up-right quarter of the zone\n\nKill boss, TP > Town then Waypoint > Infested Barrens then\nCheckpoint > Chimeral Wetlands"
+			"notes": "Boss is generally in up-right quarter of the zone\n\nKill boss, TP > Town then Waypoint > Infested Barrens then\nCheckpoint > Chimeral Wetlands",
+			"notes_ru": "Игнагдук → +30 Духа / Камень Духа 10 ур. Босс обычно в верхнем-правом квадранте. Выход → Chimeral Wetlands."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -265,7 +292,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_6_1",
 			"zoneName": "Jiquani's Machinarium",
-			"notes": "Listen to loot filer sounds if you have one, quest item will\nmake a sound before you can see it\n\nBlackjaw is in far left or far right of zone\n\nExit > Jiquani's Sanctum"
+			"notes": "Listen to loot filer sounds if you have one, quest item will\nmake a sound before you can see it\n\nBlackjaw is in far left or far right of zone\n\nExit > Jiquani's Sanctum",
+			"notes_ru": "Блэкджоу → +10% к огню (в дальнем левом или правом краю). Слушайте звук квестового предмета. Выход → Jiquani's Sanctum."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -313,13 +341,15 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_16",
 			"zoneName": "Aggorat",
-			"notes": "Find the gigantic area with altar with the enemies praying, \ngo through the arch to get to second half of zone\n\nIn the second half of zone do the sacrificial heart for \n2 Passive Points\n\nExit to the Black Chambers is diagonal from the altar area\nExit > The Black Chambers"
+			"notes": "Find the gigantic area with altar with the enemies praying, \ngo through the arch to get to second half of zone\n\nIn the second half of zone do the sacrificial heart for \n2 Passive Points\n\nExit to the Black Chambers is diagonal from the altar area\nExit > The Black Chambers",
+			"notes_ru": "Найдите огромную площадку с алтарём и молящимися, пройдите арку во вторую половину. Сердце жертвоприношения → +2 очка пассивок. Выход в The Black Chambers — по диагонали от алтаря."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G3_17",
 			"zoneName": "The Black Chambers",
-			"notes": "Go left or right until you cross first bridge\n\nContinue in the same direction after the bridge to find \ncheckpoint with second bridge\n\nFollow the bridges that float out of the water\n\nKill Doriyani!"
+			"notes": "Go left or right until you cross first bridge\n\nContinue in the same direction after the bridge to find \ncheckpoint with second bridge\n\nFollow the bridges that float out of the water\n\nKill Doriyani!",
+			"notes_ru": "Финальная зона акта 3. Идите влево/вправо через первый мост, затем тем же направлением до чекпоинта со вторым мостом. Следуйте по мостам, всплывающим из воды. Убейте Дорияни!"
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -343,7 +373,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_2_2",
 			"zoneName": "Journey's End",
-			"notes": "Winding area, keep following the zone to the end\nCheckpoint to start to fight Omniphobia\nTP > Town then Sail > Whakapanu"
+			"notes": "Winding area, keep following the zone to the end\nCheckpoint to start to fight Omniphobia\nTP > Town then Sail > Whakapanu",
+			"notes_ru": "Извилистая зона, идите до конца. Чекпоинт перед боем с Омнифобией → +2 очка пассивок. Затем в город и по воде → Whakapanu."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -367,13 +398,15 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_4_2",
 			"zoneName": "Halls of the Dead",
-			"notes": "Don't miss all 3 Res/Stat tattoos\nFairly linear layout, kill the boss \nExit > Trial of the Ancestors"
+			"notes": "Don't miss all 3 Res/Stat tattoos\nFairly linear layout, kill the boss \nExit > Trial of the Ancestors",
+			"notes_ru": "Нелинейная зона, но простая. Не пропустите 3 тату (+5 к каждому сопротивлению/стату и +5% маны). Убейте босса → выход в Trial of the Ancestors."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_4_3",
 			"zoneName": "Trial of the Ancestors",
-			"notes": "Get the +2 Passives then TP > Town\nSail to the next island, follow the Act Notes"
+			"notes": "Get the +2 Passives then TP > Town\nSail to the next island, follow the Act Notes",
+			"notes_ru": "Триал Предков → +2 очка пассивок. Затем в город и по воде на следующий остров."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -397,7 +430,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_8b",
 			"zoneName": "Arastas",
-			"notes": "1. Get out of town square, there is nothing here\n2. Hug top wall to get to Evening Bell\n3. [Optional] Morning Bell is opposite side of\n  Coastal Ridge as Evening Bell\n4. Follow the coastal ridge then through town to\n  kill boss and Exit > The Excavation"
+			"notes": "1. Get out of town square, there is nothing here\n2. Hug top wall to get to Evening Bell\n3. [Optional] Morning Bell is opposite side of\n  Coastal Ridge as Evening Bell\n4. Follow the coastal ridge then through town to\n  kill boss and Exit > The Excavation",
+			"notes_ru": "Выйдите из площади. По верхней стене → Вечерний колокол → 3 Exalted Orb. Опционально: Утренний колокол на противоположной стороне хребта. Затем вдоль хребта через город → босс → выход в The Excavation."
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -415,7 +449,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_11_2",
 			"zoneName": "Heart of the Tribe",
-			"notes": "Keep trying to head north, every time you see a \nCheckpoint go back and find the fork, you went the\nwrong way\nKill Tavakai and you're done with Act 4!"
+			"notes": "Keep trying to head north, every time you see a \nCheckpoint go back and find the fork, you went the\nwrong way\nKill Tavakai and you're done with Act 4!",
+			"notes_ru": "Жмите на север; если видите чекпоинт — вернитесь к развилке, вы пошли не туда. Убейте Тавакаи — конец акта 4!"
 		},
 		{
 			"lockNoteOption": "unlocked",
@@ -427,19 +462,22 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "P1_Town",
 			"zoneName": "Curse of Holten",
-			"notes": "Holten - Sould of the Ferryman - Cheap Greater Runes\nWolvenhold - +2 Passives"
+			"notes": "Holten - Sould of the Ferryman - Cheap Greater Runes\nWolvenhold - +2 Passives",
+			"notes_ru": "Интерлюдия Дорога в Хольтен. Хольтен: Душа Паромщика → дешёвые Greater-руны; Вольвенхольд → +2 очка пассивок."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "P2_Town",
 			"zoneName": "The Stolen Barya",
-			"notes": "The Khari Crossing - Skullmaw Stairway - 5% Max Life\nThe Khari Crossing - Worm and Scorpion - +2 Passives\nQimah - Choice of 7 buffs (can change later)"
+			"notes": "The Khari Crossing - Skullmaw Stairway - 5% Max Life\nThe Khari Crossing - Worm and Scorpion - +2 Passives\nQimah - Choice of 7 buffs (can change later)",
+			"notes_ru": "Интерлюдия Украденная Бария. Кима-Кроссинг: Лестница Черепопоима → +5% к макс. жизни; Черви и Скорпион → +2 очка пассивок. Кима → выбор из 7 баффов (можно сменить)."
 		},
 		{
 			"lockNoteOption": "unlocked",
 			"zoneCode": "P3_Town",
 			"zoneName": "Doriyani's Contingency",
-			"notes": "Kriar Village - +40 Max Spirit\nHowling Caves - +2 Passives\nKriar Peaks - Elder Maddox - Unique Item"
+			"notes": "Kriar Village - +40 Max Spirit\nHowling Caves - +2 Passives\nKriar Peaks - Elder Maddox - Unique Item",
+			"notes_ru": "Интерлюдия Запасной план Дорияни. Деревня Криар → +40 к макс. духу; Воющие пещеры → +2 очка пассивок; Пики Криар → Элдер Мэддокс → уникальный предмет."
 		}
 	]
 }
