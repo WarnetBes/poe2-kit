@@ -624,17 +624,21 @@ export async function resolveTradeBaseType(
   }
   const league = (await resolveLeague(opts.league ?? ''))?.id ?? null;
   try {
-    // пустой stats — «неизвестный» фильтр не сработает; ищем любой предмет
+    // search без fetch (limit 0): валидация типа не тратит квоту fetch
+    // (на fetch trade2 отдаёт отдельные жёсткие 429 при concurrency).
     const listings = await postTradeSearch(
       { query: { status: { option: 'online' }, type: { option: t }, stats: [] }, sort: { price: 'asc' } },
-      { league: league ?? undefined, limit: 1 },
+      { league: league ?? undefined, limit: 0, searchTypes: true },
     );
     const ok = listings.length > 0;
     tradeTypeValidation.set(t, { at: Date.now(), ok });
     return ok ? t : null;
   } catch (e) {
-    // 429/500 — временные сбои, не кэшируем «невалиден» (см. isTransientTradeError)
-    if (isTransientTradeError(e)) return null;
+    // 429/500 — временные сбои, не кэшируем «невалиден» (см. isTransientTradeError).
+    // ВАЖНО: return t (а не null) — при временном сбое мы НЕ дошли до
+    // маппинга RePoE, поэтому вернём исходное имя: fallback-поиск получит
+    // рабочий запрос, а следующий вызов заново валидирует тип (кэш не тронут).
+    if (isTransientTradeError(e)) return t;
     // 400 «Unknown item base type» или сетевая ошибка — пробуем маппинг
     const mapped = await mapBaseTypeViaRePoe(t);
     if (mapped && mapped !== t) {
@@ -829,20 +833,24 @@ const TRADE_SEARCH_CACHE_TTL = 10 * 60 * 1000;
 
 async function postTradeSearch(
   searchQuery: Record<string, unknown>,
-  opts: { limit?: number; league?: string },
+  opts: { limit?: number; league?: string; searchTypes?: boolean } = {},
 ): Promise<TradeListing[]> {
   const league = opts.league ?? getLeague() ?? 'Runes of Aldur';
   const key = league + '\u0000' + JSON.stringify(searchQuery);
   const hit = tradeSearchCache.get(key);
   if (hit && Date.now() - hit.at < TRADE_SEARCH_CACHE_TTL) return hit.listings;
   const listings = await postTradeSearchUncached(searchQuery, opts);
-  tradeSearchCache.set(key, { at: Date.now(), listings });
+  // Пустые результаты НЕ кэшируем (повторы добирают пустые слоты);
+  // кэш searchTypes-маркера — только для повторных валидаций в одном процессе.
+  if (listings.length || opts.searchTypes) {
+    tradeSearchCache.set(key, { at: Date.now(), listings });
+  }
   return listings;
 }
 
 async function postTradeSearchUncached(
   searchQuery: Record<string, unknown>,
-  opts: { limit?: number; league?: string },
+  opts: { limit?: number; league?: string; searchTypes?: boolean },
 ): Promise<TradeListing[]> {
   const limit = opts.limit ?? 10;
   const rawLeague = opts.league && opts.league !== '' ? opts.league : (getLeague() ?? 'Runes of Aldur');
@@ -862,6 +870,9 @@ async function postTradeSearchUncached(
       { ttlMs: TRADE_CACHE_TTL, skipCache: (d) => !d?.id || !d.result?.length },
     );
     if (!search?.id || !search.result?.length) return [];
+    // Валидация типа (searchTypes) не требует цен — пропускаем fetch (экономит
+    // отдельную жёсткую квоту fetch; на fetch trade2 отдаёт 429 при concurrency).
+    if (opts.searchTypes) return [{ price: 0, currency: 'chaos' }];
     // fetch принимает ХЭШИ результатов (не id поиска): берём первые limit хэшей.
     const hashes = search.result.slice(0, Math.min(limit, 10)).join(',');
     const { data: fetchRes } = await cachedJson<{
@@ -893,12 +904,13 @@ async function postTradeSearchUncached(
     if (e instanceof Error && /HTTP 429/.test(e.message)) {
       tradeBanUntil = Date.now() + 60_000;
     }
-    // 429/500 trade2 — прокидываем дальше (не «пустой результат»):
-    // resolveTradeBaseType использует это, чтобы НЕ кэшировать ложное
-    // «тип невалиден» (postTradeSearch глотает ошибку → []).
-    if (isTransientTradeError(e)) throw e;
-    // Остальные ошибки (400 «Invalid query», «Unknown item base type», сеть)
-    // остаются пустым результатом для обычных поисков.
+    // 429/500 trade2 — временные сбои. В priceCheck/searchTradeByStats
+    // глотаем (ниже, после warn → return []): fallback-этап продолжит работу.
+    // В resolveTradeBaseType (searchTypes) — re-throw, чтобы НЕ кэшировать
+    // ложное «тип невалиден» и чтобы transient-ошибка была видна.
+    if (isTransientTradeError(e) && opts.searchTypes) {
+      throw e;
+    }
     return [];
   }
 }
@@ -1117,6 +1129,8 @@ export async function priceCheck(
   if (estimate?.confidence === 'low') {
     note = note ? `${note}; мало листингов (low)` : 'Мало листингов (low)';
   }
+  // note без estimate не осмыслен (оценивать нечего) — не вешаем ложную пометку.
+  if (!estimate) note = undefined;
   debugLog(
     'result:',
     JSON.stringify({ estimate, listings: listings.length, note, sources: null }),
