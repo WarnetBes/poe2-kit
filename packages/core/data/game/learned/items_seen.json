@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "updated": null,
+  "leagues": [],
+  "updateNote": "Библиотека «форм предметов», которые сообщество проверяло прайс-чеком (opt-in). Заполняется мейнтейнером через packages/core/merge-contributions.mjs. Это ТОЛЬКО данные: базы, редкость, моды, stat-id — без персонажей и аккаунтов (см. SECURITY.md).",
+  "entries": {}
+}
