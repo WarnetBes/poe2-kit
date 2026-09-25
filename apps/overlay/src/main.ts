@@ -37,8 +37,13 @@ function logFilePath(): string {
 function rotateLogIfNeeded(file: string): void {
   try {
     const stat = fs.statSync(file);
-    if (stat.size > LOG_MAX_BYTES) fs.rmSync(`${file}.1`, { force: true });
-    fs.renameSync(file, `${file}.1`);
+    // Ротация по размеру: активный лог ≤1МБ, храним два бэкапа (.1, .2),
+    // суммарный потолок ~3МБ — детально, но никогда не растёт в гигабайты.
+    if (stat.size > LOG_MAX_BYTES) {
+      fs.rmSync(`${file}.2`, { force: true });
+      if (fs.existsSync(`${file}.1`)) fs.renameSync(`${file}.1`, `${file}.2`);
+      fs.renameSync(file, `${file}.1`);
+    }
   } catch {
     /* файла ещё нет или занят — не критично */
   }
@@ -68,6 +73,16 @@ function teeConsoleToFile(): void {
   }
 }
 teeConsoleToFile();
+
+// ─── Аварийная телеметрия: необработанные ошибки в лог, а не в никуда ────────
+// Падение main-процесса без записи в лог означает «окно исчезло и причина
+// неизвестна». С этими обработчиками причина остаётся в overlay.log.
+process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
+  console.error('[overlay] uncaughtException:', err?.stack ?? String(err));
+});
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('[overlay] unhandledRejection:', String(reason));
+});
 
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 // Хоткеи — F-клавиши с Ctrl: почти не конфликтуют ни с игрой, ни с Intel/Discord
@@ -269,7 +284,11 @@ if (!app.requestSingleInstanceLock()) {
   console.warn(
     '[overlay] другой экземпляр оверлея уже запущен (или висит зомби-процесс electron.exe) — этот завершается. Закройте старый (Диспетчер задач → electron.exe) и запустите заново.',
   );
+  // Приложение падает в консоль/лог ДО инициализации окна — если лог пустой
+  // ниже по файлу, значит дело именно в этом (зомби-процесс).
   app.quit();
+} else {
+  console.log('[overlay] single-instance lock получен — этот процесс главный');
 }
 
 app.commandLine.appendSwitch('high-dpi-support', '1');
@@ -1077,6 +1096,34 @@ async function createOverlayWindow(): Promise<void> {
 
   overlayWindow.loadFile(writtenRendererPath());
 
+  // ─── Диагностическое логирование жизненного цикла окна/рендерера ──────────
+  // Всё уходит в overlay.log: по нему удалённо видно, чем болел оверлей.
+  overlayWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    // 0=INFOVerbose…3=ERROR; пишем всё, ротация ограничит объём.
+    console.log(`[renderer] level=${level} ${message} (${sourceId}:${line})`);
+  });
+  overlayWindow.webContents.on('did-finish-load', () => {
+    console.log('[overlay] renderer: did-finish-load (страница загружена)');
+  });
+  overlayWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error(`[overlay] renderer: did-fail-load ${url}: код=${code} (${desc})`);
+  });
+  overlayWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error(
+      `[overlay] renderer: ПРОЦЕСС РЕНДЕРЕРА ПАЛ (reason=${details.reason}, exitCode=${details.exitCode})`,
+    );
+  });
+  overlayWindow.webContents.on('unresponsive', () => {
+    console.error('[overlay] renderer: unresponsive (завис)');
+  });
+  overlayWindow.webContents.on('responsive', () => {
+    console.log('[overlay] renderer: responsive (откликнулся)');
+  });
+  overlayWindow.on('closed', () => {
+    console.log('[overlay] окно закрыто');
+    overlayWindow = null;
+  });
+
   // По умолчанию клики проходят в игру сквозь оверлей.
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
 
@@ -1495,6 +1542,14 @@ function setupIPC(): void {
 const IS_SMOKE = process.argv.includes('--smoke');
 
 app.whenReady().then(async () => {
+  // Стартовый баннер: удалённая диагностика без вопросов «какая версия?».
+  console.log(
+    `[overlay] init: electron=${process.versions.electron} node=${process.versions.node} chrome=${process.versions.chrome}, ${process.platform}/${process.arch}`,
+  );
+  console.log(
+    `[overlay] init: userData=${app.getPath('userData')} cwd=${process.cwd()} argv=${JSON.stringify(process.argv)}`,
+  );
+
   // Восстанавливаем сохранённые настройки (угол, прозрачность, масштаб, ширина,
   // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
   settings = loadSettings();
@@ -1573,7 +1628,8 @@ app.on('second-instance', () => {
   }
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', (_e) => {
+  console.log('[overlay] app: will-quit (выход из приложения)');
   stopGameTracker();
   globalShortcut.unregisterAll();
 });
