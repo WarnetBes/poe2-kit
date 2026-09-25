@@ -561,19 +561,24 @@ a { color: var(--gold); }
   border: 1px solid var(--border);
   overflow: hidden;
 }
+.tree-canvas.map-canvas {
+  background: radial-gradient(ellipse at center, #edf1f7, #d9e0ea 72%);
+}
 .tree-svg { display: block; touch-action: none; }
 .tree-svg.panning { cursor: grabbing; }
-.tree-svg .tnode { cursor: pointer; stroke: none; }
-.tree-svg .tnode:hover { fill: #fff; }
+.tree-svg .tnode { cursor: pointer; }
+.tree-svg .tnode:hover { filter: brightness(1.25); }
+.tree-svg .mnode { stroke-width: 1.2px; }
 .tnode-label {
-  fill: var(--dim);
-  font-size: 11px;
+  fill: #1c2432;
+  font-size: 13px;
+  font-weight: 700;
   font-family: 'EB Garamond', Georgia, serif;
   text-anchor: middle;
   pointer-events: none;
   paint-order: stroke;
-  stroke: #07070b;
-  stroke-width: 3px;
+  stroke: #ffffffcc;
+  stroke-width: 4px;
 }
 .tree-detail {
   flex: 0 0 260px;
@@ -629,10 +634,11 @@ a { color: var(--gold); }
 .tree-svg .mnode { transition: opacity 0.12s linear; }
 .tree-svg .mstart {
   fill: none;
-  stroke: #fff;
-  stroke-width: 1.6px;
-  stroke-dasharray: 3 2;
+  stroke: #1c2a44;
+  stroke-width: 2.2px;
+  stroke-dasharray: 4 2;
   pointer-events: none;
+  opacity: 0.85;
 }
 
 @media (max-width: 720px) {

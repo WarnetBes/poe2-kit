@@ -142,12 +142,13 @@ async function allNodes(): Promise<Node[]> {
   return out;
 }
 
-const NORMAL_COLOR = '#5a6b8a';
-const NORMAL_R = 2.8;
-const ASC_R = 4.2;
-const NOTABLE_R = 5.4;
-const KEYSTONE_R = 7.5;
-const START_R = 9;
+// Светлая читаемая палитра и увеличенные размеры (под светлый фон канваса).
+const NORMAL_COLOR = '#6a7894';
+const NORMAL_R = 3.6;
+const ASC_R = 5.2;
+const NOTABLE_R = 6.6;
+const KEYSTONE_R = 9.5;
+const START_R = 12;
 
 function nodeRadius(n: Node): number {
   if (n.ascendancy) return ASC_R;
@@ -158,8 +159,8 @@ function nodeRadius(n: Node): number {
 
 function nodeColor(n: Node): string {
   if (n.ascendancy) return ascColor(n.ascendancy);
-  if (n.isKeystone) return '#f0b53a';
-  if (n.isNotable) return '#7cc7ff';
+  if (n.isKeystone) return '#c07a0a';
+  if (n.isNotable) return '#1f7fd6';
   return NORMAL_COLOR;
 }
 
@@ -195,13 +196,13 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       <summary>Легенда асценданси</summary>
       <ul class="tree-legend-list">
         <li><i style="background:${NORMAL_COLOR}"></i> обычное дерево</li>
-        <li><i style="background:#7cc7ff"></i> notable</li>
-        <li><i style="background:#f0b53a"></i> keystone</li>
+        <li><i style="background:#1f7fd6"></i> notable</li>
+        <li><i style="background:#c07a0a"></i> keystone</li>
         ${POSITIONED_ASCENDANCIES.map((a) => `<li><i style="background:${ascColor(a)}"></i> ${escAttr(a)}</li>`).join('')}
       </ul>
     </details>
     <div class="tree-body">
-      <div class="tree-canvas"></div>
+      <div class="tree-canvas map-canvas"></div>
       <aside class="tree-detail"><em>Кликни по узлу на карте, чтобы увидеть статы.</em></aside>
     </div>`;
   host.appendChild(wrap);
@@ -244,7 +245,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     c.setAttribute('cy', String(n.y));
     c.setAttribute('r', String(r));
     c.setAttribute('fill', nodeColor(n));
-    if (n.isKeystone || n.ascendancy) c.setAttribute('stroke', '#ffffff33');
+    if (n.isKeystone || n.ascendancy) c.setAttribute('stroke', '#00000055');
+    c.setAttribute('stroke-width', '1.2');
     circles[n.id] = c;
     g.appendChild(c);
     if (n.isNotable && !n.ascendancy) {
