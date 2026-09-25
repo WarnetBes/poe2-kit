@@ -96,6 +96,21 @@ textarea, input[type="text"] {
   resize: vertical;
 }
 
+/* Строка выбора класса/асценданси на вкладке «Прокачка» */
+.lvset { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lvset select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.lvset input { flex: 1 1 240px; min-width: 220px; padding: 8px 10px; }
+.lvhead { margin: 0 0 10px; }
+.lvhead b { color: var(--fg); }
+.ctip { color: var(--fg); }
+
 button.primary {
   margin: 12px 0;
   padding: 8px 18px;

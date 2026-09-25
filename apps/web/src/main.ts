@@ -72,6 +72,21 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
       <section id="pane-leveling" class="pane">
         <h2>Гид по прокачке <small>Акты 1–4</small></h2>
+        <p class="hint">Советы под класс/асценданси: камни ⚔, механика 💡, экипировка 🛠 — в каждой зоне.</p>
+        <div class="lvset">
+          <select id="leveling-class">
+            <option value="">Общий план (без класса)</option>
+            <option value="Monk">Monk</option>
+            <option value="Warrior">Warrior</option>
+            <option value="Sorceress">Sorceress</option>
+            <option value="Ranger">Ranger</option>
+            <option value="Mercenary">Mercenary</option>
+            <option value="Witch">Witch</option>
+            <option value="Druid">Druid</option>
+            <option value="Huntress">Huntress</option>
+          </select>
+          <input id="leveling-asc" type="text" placeholder="или асценданси: Invoker, Lich, Titan, Deadeye…" />
+        </div>
         <button id="btn-leveling" class="primary">Показать план</button>
         <div id="out-leveling" class="out"></div>
       </section>

@@ -323,9 +323,30 @@ export async function showPriceCheck(text: string): Promise<void> {
 
 export async function showLevelingPlan(): Promise<void> {
   const el = out('out-leveling');
+  const sel = document.querySelector<HTMLSelectElement>('#leveling-class');
+  const ascInput = document.querySelector<HTMLInputElement>('#leveling-asc');
+  // Асценданси приоритетнее селекта: Invoker -> Monk, Lich -> Witch и т.д.
+  const raw = (ascInput?.value ?? '').trim() || (sel?.value ?? '').trim();
   el.innerHTML = '<em>Загрузка плана…</em>';
   try {
-    const plan = core.leveling.getLevelingPlan();
+    let plan: ReturnType<typeof core.leveling.getLevelingPlan>;
+    let header = '';
+    if (raw) {
+      const resolved = core.leveling.resolveLevelingClass(raw);
+      if (!resolved) {
+        el.innerHTML = `<p class="err">Неизвестный класс или асценданси: «${esc(raw)}». Выбери один из 8 классов или введи асценданси (Invoker, Lich, Titan, Deadeye…).</p>`;
+        setStatus('Класс не распознан.');
+        return;
+      }
+      plan = core.leveling.getClassLevelingPlan(resolved.baseClass);
+      const label =
+        raw.toLowerCase() === resolved.baseClass.toLowerCase()
+          ? esc(resolved.baseClass)
+          : `${esc(resolved.baseClass)} <span class="dim">(асценданси «${esc(raw)}»)</span>`;
+      header = `<p class="hint lvhead">⚔ <b>${label}</b>: ${esc(resolved.tagline ?? '')}</p>`;
+    } else {
+      plan = core.leveling.getLevelingPlan();
+    }
     const byAct = new Map<number, typeof plan>();
     for (const z of plan) {
       const arr = byAct.get(z.act) ?? [];
@@ -339,14 +360,14 @@ export async function showLevelingPlan(): Promise<void> {
           (z) =>
             `<li><b>${esc(z.zone)}</b> <span class="dim">(ур. ${z.monsterLevel})</span>` +
             (z.rewards.length ? ` <span class="reward">🏆 ${esc(z.rewards.join('; '))}</span>` : '') +
-            (z.steps.length ? `<ul class="steps">${z.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : '') +
+            (z.steps.length ? `<ul class="steps">${z.steps.map((s) => `<li>${s.startsWith('⚔') || s.startsWith('💡') || s.startsWith('🛠') ? `<span class="ctip">${esc(s)}</span>` : esc(s)}</li>`).join('')}</ul>` : '') +
             `</li>`,
         )
         .join('');
       blocks.push(`<div class="actblock"><h3>Акт ${act}</h3><ul class="zones">${zrows}</ul></div>`);
     }
-    el.innerHTML = blocks.join('');
-    setStatus(`Зон в плане: ${plan.length}.`);
+    el.innerHTML = header + blocks.join('');
+    setStatus(`Зон в плане: ${plan.length}${raw ? ' · советы по классу включены' : ' · общий план'}.`);
   } catch (e) {
     el.innerHTML = `<p class="err">Ошибка: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
   }
