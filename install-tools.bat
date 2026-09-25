@@ -6,14 +6,12 @@ REM ============================================================
 REM  install-tools.bat - install toolchain for PoE2 Kit on Windows
 REM  Installs, if not already present:
 REM    1) Node.js LTS  (v24, tested)
-REM    2) C++ toolchain - VS Build Tools (C++ workload) + VC++ Redist
 REM
 REM  Installer sources, in order:
 REM    - offline: <bat-dir>\downloads\  and  <bat-dir>\game-pc-tools\downloads\
-REM         (node-vXX.msi, vs_BuildTools.exe, vc_redist.x64.exe)
+REM         (node-vXX.msi)
 REM    - fallback: downloaded from official URLs (requires internet).
-REM  Node + VC++ Redist install silently. VS Build Tools downloads
-REM  components on first run; full offline needs a layout (see README).
+REM  Node installs silently.
 REM
 REM  This script requests administrator rights (UAC) on its own.
 REM ============================================================
@@ -21,7 +19,7 @@ REM ============================================================
 echo.
 echo ============================================
 echo   PoE2 Kit - Install Tools
-echo   Node.js + C++ Build Tools
+echo   Node.js
 echo ============================================
 echo.
 
@@ -59,32 +57,6 @@ if errorlevel 1 goto :errait
 for /f "tokens=*" %%v in ('node -v 2^>nul') do set "NODEVER=%%v"
 if defined NODEVER echo [OK] Node.js: %NODEVER%
 
-REM ----------------------------------------------------------------
-REM  2) C++ / VC++ Redist
-REM ----------------------------------------------------------------
-call :CHECK_VCREDIST
-if errorlevel 1 goto :needvc
-echo [OK] VC++ Runtime present.
-goto :havevc
-:needvc
-echo [..] VC++ Runtime missing - installing...
-call :INSTALL_VCREDIST
-:havevc
-
-REM ----------------------------------------------------------------
-REM  3) VS Build Tools (C++ workload)
-REM ----------------------------------------------------------------
-if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\" goto :havevs
-if exist "%ProgramFiles%\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\" goto :havevs
-where cl >nul 2>nul
-if not errorlevel 1 goto :havevs
-echo [..] VS Build Tools with C++ workload not found - installing...
-call :INSTALL_VSBUILDTOOLS
-if errorlevel 1 goto :errait
-goto :havevs
-:havevs
-echo [OK] VS Build Tools / MSVC compiler available.
-
 echo.
 echo ============================================
 echo   Toolchain ready. Run start-overlay.bat
@@ -114,55 +86,10 @@ echo   Installing Node.js LTS, quiet MSI...
 start "" /wait msiexec /i "%msi%" /qn /norestart ADDLOCAL=ALL >nul 2>nul
 exit /b %errorlevel%
 
-:CHECK_VCREDIST
-reg query "HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" /v Version >nul 2>nul
-if not errorlevel 1 exit /b 0
-reg query "HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" /v Version >nul 2>nul
-if not errorlevel 1 exit /b 0
-exit /b 1
-
-:INSTALL_VCREDIST
-set "vc="
-if defined DLOAD if exist "%DLOAD%\vc_redist.x64.exe" set "vc=%DLOAD%\vc_redist.x64.exe"
-if defined vc goto :vchavefile
-set "vc=%TEMP%\vc_redist.x64.exe"
-if exist "%vc%" goto :vchavefile
-echo   Downloading VC++ Redist x64...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%vc%' -UseBasicParsing" >nul 2>nul
-:vchavefile
-if not exist "%vc%" (
-  echo   [WARN] Cannot obtain vc_redist.x64.exe - skipping VC++ Redist.
-  exit /b 0
-)
-echo   Installing VC++ Redist, quiet...
-start "" /wait "%vc%" /install /quiet /norestart >nul 2>nul
-exit /b 0
-
-:INSTALL_VSBUILDTOOLS
-set "vsb="
-if defined DLOAD if exist "%DLOAD%\vs_BuildTools.exe" set "vsb=%DLOAD%\vs_BuildTools.exe"
-if defined vsb goto :vshavefile
-set "vsb=%TEMP%\vs_BuildTools.exe"
-if exist "%vsb%" goto :vshavefile
-echo   Downloading VS Build Tools bootstrap...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vs_BuildTools.exe' -OutFile '%vsb%' -UseBasicParsing" >nul 2>nul
-:vshavefile
-if not exist "%vsb%" (
-  echo   [ERROR] Cannot obtain vs_BuildTools.exe.
-  echo   Check internet access or put vs_BuildTools.exe into downloads\.
-  exit /b 1
-)
-echo   Installing VS Build Tools with C++ workload.
-echo   This downloads components and can take a while...
-"%vsb%" --quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended
-exit /b %errorlevel%
-
 :errait
 echo.
 echo [ERROR] A required component failed to install.
 echo   - Run install-tools.bat from an elevated prompt, right-click Run as administrator.
-echo   - The C++ workload needs internet on first install.
-echo   - Offline options are described in deploy/game-pc-tools/README.md.
 pause
 exit /b 1
 
