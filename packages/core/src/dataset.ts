@@ -173,6 +173,45 @@ export function getAscendanciesByClass(baseClass: string): AscendancyClass[] {
 
 // ─── Гемы ────────────────────────────────────────────────────────────────────
 
+/**
+ * Источник получения гема в PoE2 (P0 #5).
+ *
+ * Поскольку в офлайн-датасетах НЕТ пер-гем разметки «конкретный босс/квест»,
+ * классификация — ЧЕСТНАЯ ЭВРИСТИКА по типу гема (теги skillTypes, флаг is_support),
+ * а не выдуманные данные. Механика PoE2: гемы «разворачиваются» из uncut-гемов,
+ * поэтому источник почти всегда uncut-гем того же типа.
+ */
+export interface GemSource {
+  /** Машинный код типа источника. */
+  kind: 'UncutSkillGem' | 'UncutSupportGem' | 'UncutSpiritGem';
+  /** Человекочитаемое имя предмета-источника. */
+  item: string;
+  /** Характерный уровень «открытия» (для активных гемов — минимальный требуемый уровень), или null если неизвестен. */
+  unlockLevel: number | null;
+  /** Пояснение (эвристика, без выдуманных дроп-цифр). */
+  note: string;
+}
+
+function activeGemSource(skillTypes: string[], unlockLevel: number | null): GemSource {
+  const reserve = skillTypes.some((t) => t === 'Aura' || t === 'Herald');
+  if (reserve) {
+    return {
+      kind: 'UncutSpiritGem',
+      item: 'Uncut Spirit Gem',
+      unlockLevel,
+      note:
+        'Резервация (аура/вестник): получается из Uncut Spirit Gem. Uncut уровня N открывает гем уровня N; в SSF выпадает дропом, а не покупается.',
+    };
+  }
+  return {
+    kind: 'UncutSkillGem',
+    item: 'Uncut Skill Gem',
+    unlockLevel,
+    note:
+      'Активный гем: получается из Uncut Skill Gem. Uncut уровня N открывает гем уровня N (требуемый уровень персонажа под уровень гема указан в деталях); в SSF выпадает дропом, а не покупается.',
+  };
+}
+
 export interface SkillGem {
   id: string;
   name: string;
@@ -184,6 +223,8 @@ export interface SkillGem {
   /** Стоимость {Mana: n} на 1-м и последнем уровне. */
   firstLevelCost: Record<string, number> | null;
   lastLevelCost: Record<string, number> | null;
+  /** Источник получения (P0 #5): uncut-гем того же типа + уровень открытия. */
+  source?: GemSource;
 }
 
 interface RawGem {
@@ -191,7 +232,7 @@ interface RawGem {
   baseTypeName?: string;
   castTime?: number;
   skillTypes?: string[];
-  levels?: Array<{ cost?: Record<string, number> }>;
+  levels?: Array<{ cost?: Record<string, number>; levelRequirement?: number }>;
 }
 
 let gemsCache: SkillGem[] | null = null;
@@ -204,16 +245,31 @@ function rawGems(): Record<string, RawGem> {
 /** Все активные гемы (может быть ~150; данные центурируются лениво). */
 export function getSkillGems(): SkillGem[] {
   if (!gemsCache) {
-    gemsCache = Object.entries(rawGems()).map(([id, g]) => ({
-      id,
-      name: g.name ?? g.baseTypeName ?? id,
-      baseTypeName: g.baseTypeName ?? '',
-      castTime: g.castTime ?? 0,
-      skillTypes: g.skillTypes ?? [],
-      maxLevel: g.levels?.length ?? 0,
-      firstLevelCost: g.levels?.[0]?.cost ?? null,
-      lastLevelCost: g.levels?.[g.levels.length - 1]?.cost ?? null,
-    }));
+    gemsCache = Object.entries(rawGems()).map(([id, g]) => {
+      // Некоторые гемы (Cast on Melee Stun и т.п.) хранят levels как объект {lvl: {...}},
+      // а не массив — нормализуем к массиву, сортируя по ключу-уровню.
+      const rawLevels: unknown = g.levels ?? [];
+      const levels = Array.isArray(rawLevels)
+        ? (rawLevels as Array<{ cost?: Record<string, number>; levelRequirement?: number }>)
+        : Object.entries(rawLevels as Record<string, { cost?: Record<string, number>; levelRequirement?: number }>)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([, lv]) => lv);
+      const unlock =
+        levels.find((l) => (l.levelRequirement ?? 0) > 0)?.levelRequirement ??
+        levels[0]?.levelRequirement ??
+        null;
+      return {
+        id,
+        name: g.name ?? g.baseTypeName ?? id,
+        baseTypeName: g.baseTypeName ?? '',
+        castTime: g.castTime ?? 0,
+        skillTypes: g.skillTypes ?? [],
+        maxLevel: levels.length,
+        firstLevelCost: levels[0]?.cost ?? null,
+        lastLevelCost: levels[levels.length - 1]?.cost ?? null,
+        source: activeGemSource(g.skillTypes ?? [], unlock),
+      };
+    });
     gemsCache.sort((a, b) => a.name.localeCompare(b.name));
   }
   return gemsCache;
@@ -243,6 +299,10 @@ export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{
     levelRequirement: (l as { levelRequirement?: number }).levelRequirement ?? 0,
     baseMultiplier: (l as { baseMultiplier?: number }).baseMultiplier,
   }));
+  const unlock =
+    levels.find((l) => l.levelRequirement > 0)?.levelRequirement ??
+    levels[0]?.levelRequirement ??
+    null;
   return {
     id,
     name: g.name ?? g.baseTypeName ?? id,
@@ -253,6 +313,7 @@ export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{
     firstLevelCost: levels[0]?.cost ?? null,
     lastLevelCost: levels[levels.length - 1]?.cost ?? null,
     levels,
+    source: activeGemSource(g.skillTypes ?? [], unlock),
   };
 }
 
@@ -467,6 +528,8 @@ export interface SupportGemEntry {
   tags: string[];
   compatible_with: string[];
   max_level: number;
+  /** Источник получения (P0 #5): саппорт-гемы получаются из Uncut Support Gem. */
+  source?: GemSource;
 }
 
 let supportGemsCache: SupportGemEntry[] | null = null;
@@ -475,7 +538,16 @@ let supportGemsCache: SupportGemEntry[] | null = null;
 export function getSupportGems(): SupportGemEntry[] {
   if (!supportGemsCache) {
     const raw = loadJson<{ support_gems?: Record<string, SupportGemEntry> }>('support_gems/support_gems.json');
-    supportGemsCache = Object.values(raw.support_gems ?? {});
+    supportGemsCache = Object.values(raw.support_gems ?? {}).map((g) => ({
+      ...g,
+      source: {
+        kind: 'UncutSupportGem' as const,
+        item: 'Uncut Support Gem',
+        unlockLevel: null,
+        note:
+          'Саппорт-гем: получается из Uncut Support Gem. Uncut уровня N открывает поддержку уровня N; в SSF выпадает дропом, а не покупается.',
+      },
+    }));
   }
   return supportGemsCache;
 }

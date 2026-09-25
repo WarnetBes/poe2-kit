@@ -127,7 +127,7 @@ const build = core.build.decodeShareCode(code);
 | **P0** | ✅ Авто-детект рассинхрона версий PoB vs датасет (treeVersion, XML) |
 | **P0** | ✅ «Следующий апгрейд» на основе оценки билда (`poe2_build_advice`) |
 | **P0** | ✅ SSF-режим в `poe2_build_price` / `poe2_price_check` (`mode: "ssf"`) |
-| **P0** | Источник гема (Uncut Support / quest / drop) в `poe2_gems_lookup` |
+| **P0** | ✅ Источник гема (Uncut Support / quest / drop) в `poe2_gems_lookup` |
 | **P1** | `poe2_build_compare` (свой билд vs топ-лестница класса), истории цен, поиск по дереву по набору статов |
 | **P1** | Оверлей: пакетный прайс-чек, watchlist-алерты, UI настроек, слежение за HiDPI-смещением |
 | **P2** | Веб: просмотрщик дерева, чек-лист прокачки, сравнение билдов, вставка предмета из игры |

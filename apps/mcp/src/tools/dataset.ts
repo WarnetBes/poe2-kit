@@ -50,11 +50,11 @@ export function registerDatasetTools(server: McpServer): number {
     'poe2_gems_lookup',
     {
       title: 'PoE2 Skill Gems Lookup (offline)',
-      description: `Поиск активных гемов PoE2 в ОФФЛАЙН-датасете (патч 0.5): имя, теги скиллов, время каста, стоимость маны по уровням, максимум уровней.
+      description: `Поиск активных гемов PoE2 в ОФФЛАЙН-датасете (патч 0.5): имя, теги скиллов, время каста, стоимость маны по уровням, максимум уровней, а также ИСТОЧНИК получения (P0 #5): Uncut Skill/Spirit Gem + уровень открытия.
 
 Аргументы:
   - query (string, обяз.): имя гема или его часть (например "Ice Strike").
-  - details (boolean, опц., по умолч. false): полная запись первого совпадения — статы/стоимость по всем уровням.
+  - details (boolean, опц., по умолч. false): полная запись первого совпадения — статы/стоимость/требования по всем уровням.
   - limit (number, опц., по умолч. 5): сколько совпадений вернуть.
 `,
       inputSchema: {
@@ -72,8 +72,11 @@ export function registerDatasetTools(server: McpServer): number {
       const lines = [`## Гемы по запросу «${query}» — ${hits.length}`, ''];
       for (const g of hits) {
         const firstCost = g.firstLevelCost ? Object.entries(g.firstLevelCost).map(([k, n]) => `${n} ${k}`).join(', ') : '—';
+        const src = g.source
+          ? `${g.source.item}${g.source.unlockLevel != null ? ` (открытие ~ур. ${g.source.unlockLevel})` : ''}`
+          : '—';
         lines.push(
-          `- **${g.name}** — теги: ${g.skillTypes.slice(0, 6).join(', ') || '—'}; каст ${g.castTime}с; макс. уровень ${g.maxLevel}; стоимость 1-го уровня: ${firstCost}`,
+          `- **${g.name}** — теги: ${g.skillTypes.slice(0, 6).join(', ') || '—'}; каст ${g.castTime}с; макс. уровень ${g.maxLevel}; стоимость 1-го уровня: ${firstCost}; источник: ${src}`,
         );
       }
       if (details) {
@@ -83,6 +86,10 @@ export function registerDatasetTools(server: McpServer): number {
           for (const l of d.levels) {
             const cost = Object.entries(l.cost).map(([k, n]) => `${n} ${k}`).join(', ') || '—';
             lines.push(`| ${d.levels.indexOf(l) + 1} | ${l.levelRequirement} | ${cost} |`);
+          }
+          if (d.source) {
+            lines.push('', `**Источник (P0 #5):** ${d.source.item}${d.source.unlockLevel != null ? ` · открытие ~ур. ${d.source.unlockLevel}` : ''}`);
+            lines.push(`> ${d.source.note}`);
           }
         }
       }
@@ -196,7 +203,7 @@ export function registerDatasetTools(server: McpServer): number {
     'poe2_support_gems_lookup',
     {
       title: 'PoE2 Support Gems Lookup (offline)',
-      description: `Поиск саппорт-гемов PoE2 в ОФФЛАЙН-датасете (680 шт., патч 0.5): по имени («Concentrated» → Concentrated Area Support). Показывает id, совместимость (compatible_with).
+      description: `Поиск саппорт-гемов PoE2 в ОФФЛАЙН-датасете (680 шт., патч 0.5): по имени («Concentrated» → Concentrated Area Support). Показывает id, совместимость (compatible_with) и ИСТОЧНИК получения (P0 #5): Uncut Support Gem.
 
 Аргументы:
   - query (string, обяз.): имя гема или подстрока.
@@ -215,9 +222,11 @@ export function registerDatasetTools(server: McpServer): number {
       }
       const lines = [`## Саппорт-гемы: «${query}» — ${hits.length}`, ''];
       for (const g of hits) {
+        const src = g.source ? `${g.source.item} — ${g.source.note}` : '—';
         lines.push(
           `- **${g.name}** (${g.id})` +
-            (g.compatible_with.length ? ` — подходит для: ${g.compatible_with.slice(0, 4).join(', ')}` : ''),
+            (g.compatible_with.length ? ` — подходит для: ${g.compatible_with.slice(0, 4).join(', ')}` : '') +
+            `; источник: ${src}`,
         );
       }
       return { content: [{ type: 'text', text: lines.join('\n') }] };

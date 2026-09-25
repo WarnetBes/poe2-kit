@@ -624,5 +624,23 @@ const ssfReport = ssfBuildReport({ 'Weapon 1': 'Rarity: UNIQUE\nTempest Claw\nCl
 ok(ssfReport.length === 2, `ssf: report 2 slots (${ssfReport.length})`);
 ok(ssfReport.every((r) => r.assessment.rarity === 'Unique' || r.assessment.rarity === 'Rare'), 'ssf: report Названия предметов корректны');
 
+console.log('gem source (P0 #5): источник получения гема');
+const { getSupportGems, getSkillGems } = core;
+const heraldD = getSkillGemDetails('Herald of Ice');
+ok(heraldD?.source?.kind === 'UncutSpiritGem', `P0-5: details Herald of Ice source (${heraldD?.source?.item})`);
+const iceGem = searchSkillGems('Ice Strike', 1)[0];
+ok(iceGem.source?.kind === 'UncutSkillGem' && iceGem.source.item === 'Uncut Skill Gem', `P0-5: Ice Strike источник Uncut Skill Gem (${iceGem.source?.item})`);
+ok(iceGem.source?.unlockLevel === 3, `P0-5: Ice Strike открытие ~ур. 3 (levelRequirement 2-го уровня, по данным) → ${iceGem.source?.unlockLevel}`);
+ok(iceGem.source?.note && iceGem.source.note.length > 20, 'P0-5: source.note — эвристическое пояснение');
+const herald = searchSkillGems('Herald of Ice', 1)[0];
+ok(herald.source?.kind === 'UncutSpiritGem' && herald.source.item === 'Uncut Spirit Gem', `P0-5: аур/вестник → Uncut Spirit Gem (${herald.source?.item})`);
+const purity = searchSkillGems('Purity of Lightning', 1)[0];
+ok(purity.source?.kind === 'UncutSpiritGem', `P0-5: аура Purity of Lightning → Uncut Spirit Gem (${purity.source?.item})`);
+const supp = getSupportGems().find((g) => g.name.includes('Concentrated'));
+ok(supp?.source?.kind === 'UncutSupportGem' && supp.source.item === 'Uncut Support Gem', 'P0-5: саппорт → Uncut Support Gem');
+ok(getSupportGems().every((g) => g.source?.item === 'Uncut Support Gem'), 'P0-5: все саппорт-гемы помечены Uncut Support Gem');
+const allActive = searchSkillGems('', 5);
+ok(getSkillGems().every((g) => g.source && ['UncutSkillGem', 'UncutSpiritGem'].includes(g.source.kind)), 'P0-5: каждый активный гем имеет source (Skill/Spirit)');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
