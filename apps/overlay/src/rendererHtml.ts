@@ -113,6 +113,16 @@ export const rendererHtml = `<!doctype html>
     padding: 4px 8px; font-size: 12px; }
   .watch-actions button:hover { background: rgba(240,136,62,0.24); }
 
+  #diagSection { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
+  .diag-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .diag-actions button { flex: 1; cursor: pointer; background: rgba(240,136,62,0.12);
+    border: 1px solid rgba(240,136,62,0.4); color: var(--text); border-radius: 8px;
+    padding: 5px 8px; font-size: 12px; }
+  .diag-actions button:hover { background: rgba(240,136,62,0.24); }
+  .diag-actions button:disabled { opacity: 0.55; cursor: default; }
+  #diagOut { margin-top: 6px; font-size: 10px; color: var(--dim); line-height: 1.4;
+    word-break: break-all; white-space: pre-line; }
+
   .lvl-hint { font-size: 12px; line-height: 1.5; }
   .lvl-hint b { color: var(--accent); }
   .lvl-zone { font-size: 13px; font-weight: 700; color: #fff; }
@@ -287,6 +297,15 @@ export const rendererHtml = `<!doctype html>
           <button id="watchCheckNow">Проверить</button>
         </div>
         <div class="tip">Нажмите <b>Ctrl+C</b> на предмете в игре → «➕ Из буфера», либо кнопкой «👁 Следить» в прайс-токе. Проверка каждые 5 мин, алерт «цена упала с X до Y».</div>
+      </div>
+
+      <div class="set-row" id="diagSection">
+        <div class="lbl"><span>Диагностика</span></div>
+        <div class="diag-actions">
+          <button id="diagBtn">📋 Отправить диагностику</button>
+        </div>
+        <div id="diagOut" class="diag-out"></div>
+        <div class="tip">Соберёт хвост <b>overlay.log</b> + конфиг машины, скопирует всё в буфер обмена и сохранит файл в userData — готово для вставки в отчёт/issue, файлы искать вручную не нужно.</div>
       </div>
 
       <div class="set-actions">
@@ -895,6 +914,28 @@ export const rendererHtml = `<!doctype html>
   });
   $('settingsResetHK').addEventListener('click', function () {
     HK_ACTIONS.forEach(function (a) { hkInputs[a[0]].value = ''; });
+  });
+  $('diagBtn').addEventListener('click', function () {
+    var btn = $('diagBtn');
+    var out = $('diagOut');
+    btn.disabled = true;
+    btn.textContent = 'Собираю…';
+    window.poe2k.diagCollect().then(function (r) {
+      if (r && r.ok) {
+        out.textContent = '✓ ' + r.chars + ' симв. / ' + r.lines + ' строк — скопировано в буфер.\nФайл: ' + r.file;
+        showToast('Диагностика скопирована в буфер обмена');
+      } else {
+        out.textContent = 'Ошибка сбора: ' + ((r && r.error) || 'неизвестно');
+      }
+      btn.disabled = false;
+      btn.textContent = '📋 Отправить диагностику';
+      requestSize();
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = '📋 Отправить диагностику';
+      out.textContent = 'Ошибка вызова диагностики';
+      requestSize();
+    });
   });
   ['setOpacity', 'setScale', 'setWidth'].forEach(function (id) {
     $(id).addEventListener('input', function () {

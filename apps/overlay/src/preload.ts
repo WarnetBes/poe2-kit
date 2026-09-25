@@ -44,6 +44,8 @@ export interface OverlayAPI {
   watchCheck(): Promise<unknown>;
   /** Watchlist: слушать всплывающий алерт «цена упала с X до Y». */
   onWatchAlert(cb: (alert: unknown) => void): () => void;
+  /** Диагностика оверлея: собрать хвост overlay.log + конфиг машины, вернуть текст (буфер/файл ставит main). */
+  diagCollect(): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -133,6 +135,8 @@ const api: OverlayAPI = {
     ipcRenderer.on('watch:alert', listener);
     return () => ipcRenderer.removeListener('watch:alert', listener);
   },
+
+  diagCollect: () => ipcRenderer.invoke('diag:collect'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

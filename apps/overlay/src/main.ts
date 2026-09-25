@@ -20,6 +20,7 @@ import {
 } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { core } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
@@ -1806,6 +1807,76 @@ function registerHotkeys(): void {
   console.log(`[overlay] hotkey ${hotkeyFor('settings')} registered=${okS}`);
 }
 
+// ─── Диагностика (кнопка «Отправить диагностику» в панели настроек) ──────────
+// Собирает хвост overlay.log + конфиг машины в один текст, копирует в буфер
+// обмена и сохраняет файл в userData — пользователю не нужно самому искать файлы.
+function tailLines(file: string, n: number): string {
+  try {
+    if (!fs.existsSync(file)) return '';
+    const arr = fs.readFileSync(file, 'utf8').split('\n');
+    return arr.slice(-n).join('\n').replace(/\n+$/, '');
+  } catch {
+    return '(не удалось прочитать лог)';
+  }
+}
+
+const DIAG_FILES = [
+  'overlay.log',
+  'overlay.log.1',
+  'overlay.log.2',
+  'overlay-settings.json',
+  'watchlist.json',
+  'build-state.json',
+  'league.txt',
+  'char-sync.json',
+  'overlay-offset.json',
+  'overlay-diagnostics.txt',
+];
+
+function collectDiagnostics(): string {
+  const L: string[] = [];
+  const userData = app.getPath('userData');
+  L.push('=== PoE2 Kit overlay — диагностика (кнопка «Отправить диагностику») ===');
+  L.push('Дата (UTC): ' + new Date().toISOString());
+  L.push('Версия приложения: ' + app.getVersion());
+  L.push('Electron / Node / Chrome: ' + process.versions.electron + ' / ' + process.versions.node + ' / ' + process.versions.chrome);
+  L.push('Платформа: ' + process.platform + '/' + process.arch);
+  L.push('ОС: ' + os.type() + ' release=' + os.release());
+  L.push('CPU ядер: ' + os.cpus().length + '; RAM: ' + Math.round(os.totalmem() / 1024 ** 3) + ' ГБ');
+  L.push('userData: ' + userData);
+  L.push('cwd: ' + process.cwd());
+  L.push('');
+  L.push('-- Настройки оверлея --');
+  L.push('corner: ' + settings.corner);
+  L.push('opacity: ' + settings.opacity);
+  L.push('scale: ' + settings.scale);
+  L.push('width: ' + settings.width);
+  L.push('hotkeys: ' + JSON.stringify(settings.hotkeys));
+  L.push('');
+  L.push('-- Состояние --');
+  L.push('activeLeague: ' + (activeLeague ?? '(не выбрана)'));
+  L.push('watchlist: ' + watchlist.length + ' позиций (активных ' + watchlist.filter((w) => w.enabled).length + ')');
+  L.push('charSync: ' + (charSync ? charSync.character + ' (' + charSync.league + ')' : 'не задан'));
+  L.push('buildState: ' + (buildState ? 'есть' : 'нет'));
+  L.push('дисплеи (масштаб HiDPI): ' + displayScaleSummary());
+  L.push('');
+  L.push('-- Файлы в userData (имя: размер, существует/нет) --');
+  for (const name of DIAG_FILES) {
+    const fp = path.join(userData, name);
+    let info = 'нет';
+    try {
+      info = fs.statSync(fp).size + ' Б';
+    } catch {
+      info = 'нет';
+    }
+    L.push(name + ': ' + info);
+  }
+  L.push('');
+  L.push('-- Хвост overlay.log (последние 150 строк) --');
+  L.push(tailLines(path.join(userData, 'overlay.log'), 150) || '(лог пуст)');
+  return L.join('\n');
+}
+
 function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
@@ -1911,6 +1982,27 @@ function setupIPC(): void {
       console.log(`[overlay] autosize: height=${h}`);
     }
     return overlayHeight;
+  });
+
+  // Диагностика: собрать хвост overlay.log + конфиг машины, скопировать в буфер
+  // и сохранить файл в userData (кнопка «Отправить диагностику» в панели настроек).
+  ipcMain.handle('diag:collect', () => {
+    try {
+      const text = collectDiagnostics();
+      const file = path.join(
+        app.getPath('userData'),
+        'overlay-diagnostics-' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt',
+      );
+      fs.writeFileSync(file, text, 'utf8');
+      clipboard.writeText(text);
+      console.log(
+        `[overlay] diagnostics: ${text.length} симв. / ${text.split('\n').length} строк, скопировано в буфер; файл=${file}`,
+      );
+      return { ok: true, chars: text.length, lines: text.split('\n').length, file };
+    } catch (err) {
+      console.error('[overlay] diagnostics: ошибка сбора', err);
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   });
 }
 
