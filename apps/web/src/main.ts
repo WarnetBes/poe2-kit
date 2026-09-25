@@ -19,6 +19,7 @@ import {
   currentBuildContext,
   setStatus,
 } from './ui';
+import { showChecklist } from './checklist';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -48,6 +49,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="currency" class="tab active">Курсы валют</button>
         <button data-tab="price" class="tab">Прайс-чек</button>
         <button data-tab="leveling" class="tab">Прокачка</button>
+        <button data-tab="checklist" class="tab">Чек-лист</button>
         <button data-tab="build" class="tab">Импорт билда</button>
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="ai" class="tab">AI-чат</button>
@@ -92,6 +94,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
         <button id="btn-leveling" class="primary">Показать план</button>
         <div id="out-leveling" class="out"></div>
+      </section>
+
+      <section id="pane-checklist" class="pane">
+        <h2>Чек-лист прокачки <small>зоны · награды · покупки</small></h2>
+        <p class="hint">Отмечай пройденные зоны, полученные награды и купленное. Сохраняется в браузере под текущей лигой; «Сбросить для новой лиги» — начать заново на старте сезона.</p>
+        <div id="out-checklist" class="out"></div>
       </section>
 
       <section id="pane-build" class="pane">
@@ -224,6 +232,9 @@ document.querySelector('#btn-tree')!.addEventListener('click', () =>
   showBuildTreeFromText((document.querySelector('#tree-input') as HTMLTextAreaElement).value),
 );
 document.querySelector('#btn-tree-last')!.addEventListener('click', () => showBuildTreeFromLast());
+
+// Чек-лист прокачки: открытие вкладки рендерит список (состояние из localStorage)
+document.querySelector('[data-tab="checklist"]')!.addEventListener('click', () => showChecklist());
 
 // ── AI-чат ─────────────────────────────────────────────
 showAIChat();

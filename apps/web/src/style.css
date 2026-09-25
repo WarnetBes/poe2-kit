@@ -599,3 +599,64 @@ a { color: var(--gold); }
   .tree-detail { flex: 1 1 auto; max-height: none; }
   .tree-canvas { height: 380px; }
 }
+
+/* ── Чек-лист прокачки (P2 #16) ─────────────────────────────────────── */
+.ck-head {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel);
+  margin-bottom: 16px;
+}
+.ck-title { font-family: 'Cinzel', Georgia, serif; font-size: 17px; color: var(--gold); font-weight: 700; }
+.ck-total { color: var(--fg); font-size: 13px; }
+.ck-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button.ghost.mini.danger { color: #d9907a; }
+button.ghost.mini.danger:hover { color: #ffb3a0; border-color: #d9907a; }
+
+.ck-act {
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel); padding: 12px 14px; margin-bottom: 14px;
+}
+.ck-acthead {
+  display: flex; gap: 10px; align-items: baseline; justify-content: space-between;
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.ck-acthead h3 { margin: 0; font-size: 16px; color: var(--gold-hi); }
+.ck-progress { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.ck-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ck-list.ck-rewards { margin-left: 10px; margin-top: 6px; }
+.ck-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 4px 6px; border-radius: 6px; cursor: pointer;
+}
+.ck-row:hover { background: rgba(255, 255, 255, 0.03); }
+.ck-row input[type="checkbox"] { display: none; }
+.ck-box {
+  flex: 0 0 16px; width: 16px; height: 16px; margin-top: 2px;
+  border: 1px solid var(--border-hi); border-radius: 4px;
+  background: var(--bg); position: relative;
+}
+.ck-row input:checked + .ck-box { background: var(--currency); border-color: var(--currency); }
+.ck-row input:checked + .ck-box::after {
+  content: '✓'; position: absolute; inset: 0;
+  color: #0b0d10; font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.ck-txt { color: var(--fg); font-size: 14px; line-height: 1.45; }
+.ck-row.done .ck-txt { text-decoration: line-through; color: var(--dim); }
+.ck-remove {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: var(--dim); font-size: 14px; line-height: 1; padding: 2px 6px;
+}
+.ck-remove:hover { color: #d9907a; }
+
+.ck-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.ck-add input {
+  flex: 1 1 220px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--fg); padding: 8px 10px; font-size: 14px;
+}
+.ck-add input:focus { border-color: var(--border-hi); outline: none; }
