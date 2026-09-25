@@ -14,6 +14,7 @@ import { registerCurrencyTools } from './tools/currency.js';
 import { registerItemTools } from './tools/item.js';
 import { registerLevelingTools } from './tools/leveling.js';
 import { registerBuildTools } from './tools/build.js';
+import { registerBuildGuideTools } from './tools/buildGuide.js';
 import { registerDbTools } from './tools/db.js';
 import { registerAiTools } from './tools/ai.js';
 import { registerLogTools } from './tools/log.js';
@@ -47,6 +48,7 @@ export function buildServer(): number {
   count += registerItemTools(server);
   count += registerLevelingTools(server);
   count += registerBuildTools(server);
+  count += registerBuildGuideTools(server);
   count += registerDbTools(server);
   count += registerAiTools(server);
   count += registerLogTools(server);
