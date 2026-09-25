@@ -71,6 +71,16 @@ export const rendererHtml = `<!doctype html>
   table.list { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 2px; }
   table.list td { padding: 2px 6px; border-top: 1px solid rgba(255,255,255,0.06); }
   table.list .num { text-align: right; font-variant-numeric: tabular-nums; }
+  #priceBatchWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
+  #priceBatchHead { font-size: 12px; color: var(--dim); }
+  #priceBatchList { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+  .batch-item { border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 8px;
+    background: rgba(255,255,255,0.03); }
+  .batch-item .bi-name { font-size: 13px; font-weight: 700; }
+  .batch-item .bi-est { font-size: 16px; font-weight: 800; color: var(--accent); }
+  .batch-item .bi-note { font-size: 11px; color: var(--dim); }
+  .batch-item .bi-note .err-inline { color: var(--err); }
+  .muted { color: var(--dim); font-size: 11px; }
 
   .lvl-hint { font-size: 12px; line-height: 1.5; }
   .lvl-hint b { color: var(--accent); }
@@ -168,7 +178,7 @@ export const rendererHtml = `<!doctype html>
       <span style="color:#9aa4b0;font-size:11px">Ссылка на персонажа poe.ninja + Ctrl+F3 — автосинхронизация эквипа.</span>
     </div>
     <div id="body" class="hide">
-      <div class="head">
+      <div class="head" id="priceHead">
         <div class="item-name" id="itemName"></div>
       </div>
       <div id="est" class="est hide"></div>
@@ -176,6 +186,10 @@ export const rendererHtml = `<!doctype html>
       <div id="busy" class="status-busy hide">Оценка цены…</div>
       <div id="err" class="err-box hide"></div>
       <div id="meta" class="meta hide"></div>
+      <div id="priceBatchWrap" class="hide">
+        <div id="priceBatchHead"></div>
+        <div id="priceBatchList"></div>
+      </div>
       <div id="listWrap" class="hide">
         <table class="list" id="list"></table>
       </div>
@@ -470,12 +484,25 @@ export const rendererHtml = `<!doctype html>
     }
   });
 
-  window.poe2k.onPriceResult(function (res) {
-    if (!res) { setBusy(false); return; }
-    setBusy(false);
-    $('idle').classList.add('hide');
-    $('body').classList.remove('hide');
-    showMode('price');
+  function priceSingleView() {
+    $('priceBatchWrap').classList.add('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+  }
+  function priceBatchView() {
+    var h = $('priceHead');
+    if (h) h.classList.add('hide');
+    $('est').classList.add('hide');
+    $('buildNote').classList.add('hide');
+    $('meta').classList.add('hide');
+    $('listWrap').classList.add('hide');
+    $('err').classList.add('hide');
+    $('priceBatchWrap').classList.remove('hide');
+  }
+
+  // Один предмет из буфера — привычный детальный вид.
+  function renderSinglePrice(res) {
+    priceSingleView();
 
     // Название + редкость цветом.
     var name = $('itemName');
@@ -544,6 +571,58 @@ export const rendererHtml = `<!doctype html>
       lw.classList.remove('hide');
     } else {
       lw.classList.add('hide');
+    }
+  }
+
+  // Несколько предметов из буфера — список с оценками в одном виджете.
+  function renderBatchPrice(payload) {
+    priceBatchView();
+    var items = payload.items || [];
+    var head = $('priceBatchHead');
+    var total = payload.totalEstimate;
+    var headTxt = '📦 Предметов: ' + items.length;
+    if (total != null) headTxt += ' · сумма ~' + Number(total).toFixed(1) + ' chaos';
+    if (payload.elapsedMs != null) headTxt += ' · ' + Math.round(payload.elapsedMs / 1000) + 'с';
+    head.textContent = headTxt;
+
+    var cards = items.map(function (res, i) {
+      var rar = String(res.rarity || '').toLowerCase();
+      var estTxt;
+      if (res.estimate && res.estimate.median != null) {
+        var conf = res.estimate.confidence === 'exact' ? '' : (res.estimate.confidence === 'approx' ? ' ~' : ' грубо');
+        estTxt = '<span class="value">≈' + Number(res.estimate.median).toFixed(1) + ' chaos</span>' + '<span class="conf">(' + esc(conf) + ')</span>';
+      } else {
+        estTxt = '<span class="muted">н/д</span>';
+      }
+      var note = '';
+      if (res.buildMatch) {
+        note = '<span style="color:var(--ok)">✔ слот: ' + esc(res.buildMatch.slot) + '</span>';
+      } else if (res.buildCodeHint) {
+        note = '<span class="err-inline">' + esc(res.buildCodeHint) + '</span>';
+      } else if (res.parseError) {
+        note = '<span class="err-inline">' + esc('Оценка: ' + res.parseError) + '</span>';
+      } else if (!res.estimate) {
+        note = '<span class="muted">не найдено в бесплатных источниках</span>';
+      }
+      return '<div class="batch-item">' +
+        '<div class="bi-name rarity-' + rar + '">' + esc(res.itemName || ('Предмет ' + (i + 1))) + '</div>' +
+        '<div class="bi-est">' + estTxt + '</div>' +
+        '<div class="bi-note">' + note + '</div>' +
+        '</div>';
+    }).join('') || '<div class="muted">Пустой буфер.</div>';
+    $('priceBatchList').innerHTML = cards;
+  }
+
+  window.poe2k.onPriceBatch(function (payload) {
+    if (!payload || !payload.items) { setBusy(false); return; }
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    showMode('price');
+    if (payload.items.length === 1) {
+      renderSinglePrice(payload.items[0]);
+    } else {
+      renderBatchPrice(payload);
     }
   });
 // ─── Панель настроек (Ctrl+F6) ─────────────────────────────────────────────

@@ -1310,6 +1310,106 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   ]);
 }
 
+/** Разбивает буфер на блоки-предметы. Якорь — строка «Rarity:/Редкость:»:
+ *  каждый новый предмет начинается с неё. Разделители (пустые строки, «--------»)
+ *  внутри одного предмета игнорируются — счёт идёт по заголовкам Rarity. */
+function splitClipboardItems(text: string): string[] {
+  const lines = text.split(/\r?\n/);
+  const groups: string[][] = [];
+  let cur: string[] | null = null;
+  for (const ln of lines) {
+    if (/^\s*(?:Rarity|Редкость)\s*:/i.test(ln)) {
+      if (cur) groups.push(cur);
+      cur = [ln];
+    } else if (cur) {
+      cur.push(ln);
+    }
+  }
+  if (cur) groups.push(cur);
+  return groups
+    .filter((g) => g.some((l) => l.trim()))
+    .map((g) => g.join('\n').trim())
+    .filter((s) => s.length > 0);
+}
+
+/** Проверка цены одного предмета: ru→en переопределения, priceCheck, фолбэк на локальный парсинг. */
+async function checkPriceItem(itemText: string): Promise<Record<string, unknown>> {
+  // Русский клиент: trade2/poe2scout принимают только английские имена/базы.
+  // Моды остаются ru — их trade2 по базе статов не сопоставит, сработает fallback «по базовому типу».
+  let nameOverride: string | undefined;
+  let baseTypeOverride: string | undefined;
+  if (/[а-яё]/i.test(itemText)) {
+    try {
+      const parsed0 = core.parse.parseItemText(itemText);
+      if (parsed0.name && /[а-яё]/i.test(parsed0.name)) {
+        const en = toEn('unique', parsed0.name);
+        if (en !== parsed0.name) nameOverride = en;
+      }
+      if (parsed0.baseType && /[а-яё]/i.test(parsed0.baseType)) {
+        const en = toEn('base', parsed0.baseType);
+        if (en !== parsed0.baseType) baseTypeOverride = en;
+      }
+      if (nameOverride || baseTypeOverride) {
+        console.log(
+          `[overlay] ru→en: name=${JSON.stringify(nameOverride)} base=${JSON.stringify(baseTypeOverride)}`,
+        );
+      }
+    } catch {
+      // парсинг упал — priceCheck сам разберётся с сырым текстом
+    }
+  }
+
+  try {
+    const result = await withTimeout(
+      core.trade.priceCheck(itemText, { nameOverride, baseTypeOverride }),
+      HOTKEY_TIMEOUT_MS,
+      'priceCheck',
+    );
+    const itemName = (result as { itemName?: string } | undefined)?.itemName ?? '?';
+    console.log(
+      `[overlay] price done: item="${itemName}" estimate=${JSON.stringify(
+        (result as { estimate?: unknown } | undefined)?.estimate ?? null,
+      )} listings=${
+        (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0
+      }`,
+    );
+    return result as unknown as Record<string, unknown>;
+  } catch (err) {
+    console.warn('[overlay] priceCheck failed:', err instanceof Error ? err.message : err);
+    // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
+    const parsed = core.parse.parseItemText(itemText);
+    return {
+      itemName: core.parse.itemDisplayName(parsed) || 'Неизвестный предмет',
+      rarity: parsed.rarity.toLowerCase(),
+      estimate: null,
+      listings: [],
+      sources: [],
+      updatedAt: Date.now(),
+      parseOnly: true,
+      parseError: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Билд-ассистент: сопоставить предмет со слотом билда и отметить собранным. */
+function attachBuildMatch(result: Record<string, unknown>, itemText: string): void {
+  if (!buildState || !itemText.trim()) return;
+  try {
+    const parsed = core.parse.parseItemText(itemText);
+    const displayName = core.parse.itemDisplayName(parsed);
+    const matched = matchBuildSlot(displayName, parsed.baseType);
+    if (matched) {
+      console.log(
+        `[overlay] build slot matched: ${matched.slot} (item="${displayName}", base="${parsed.baseType}")`,
+      );
+      result.buildMatch = { slot: matched.slot, name: matched.name };
+      markSlotBought(matched);
+    }
+  } catch {
+    /* предмет из игры не парсится — ничего не сопоставляем */
+  }
+}
+
 async function runPriceCheck(): Promise<unknown> {
   if (busy) {
     console.warn('[overlay] pricecheck skipped: busy=true (предыдущий запрос ещё не завершился)');
@@ -1317,106 +1417,61 @@ async function runPriceCheck(): Promise<unknown> {
   }
   busy = true;
   try {
-    const itemText = clipboard.readText();
-    console.log(`[overlay] clipboard: ${itemText.length} chars`);
-    if (itemText.trim()) {
-      console.log(`[overlay] clipboard head: ${JSON.stringify(itemText.slice(0, 80))}`);
+    const raw = clipboard.readText();
+    console.log(`[overlay] clipboard: ${raw.length} chars`);
+    if (raw.trim()) {
+      console.log(`[overlay] clipboard head: ${JSON.stringify(raw.slice(0, 80))}`);
     } else {
       console.warn('[overlay] clipboard is empty — Ctrl+C в игре по наведённому предмету?');
     }
     await overlayWindow?.webContents.send('price:busy', true);
 
-    // Русский клиент: trade2/poe2scout принимают только английские имена/базы.
-    // Переводим через словарь poe2db ДО priceCheck (моды остаются ru — по базу
-    // статов trade2 их не сопоставит, сработает fallback «по базовому типу»).
-    let nameOverride: string | undefined;
-    let baseTypeOverride: string | undefined;
-    if (/[а-яё]/i.test(itemText)) {
+    const started = Date.now();
+    // Если ни одного заголовка Rarity — считаем весь буфер одним предметом
+    // (прежнее поведение; тут же сработает подсказка про PoB-код ниже).
+    const split = splitClipboardItems(raw);
+    const list = split.length > 0 ? split : [raw.trim()].filter(Boolean);
+
+    // ru-en словарь готовим один раз, если хоть один предмет на кириллице.
+    if (list.some((it) => /[а-яё]/i.test(it))) {
       await withTimeout(ensureRuEnDict(), 10_000, 'ensureRuEnDict').catch(() => {});
-      try {
-        const parsed0 = core.parse.parseItemText(itemText);
-        if (parsed0.name && /[а-яё]/i.test(parsed0.name)) {
-          const en = toEn('unique', parsed0.name);
-          if (en !== parsed0.name) nameOverride = en;
-        }
-        if (parsed0.baseType && /[а-яё]/i.test(parsed0.baseType)) {
-          const en = toEn('base', parsed0.baseType);
-          if (en !== parsed0.baseType) baseTypeOverride = en;
-        }
-        if (nameOverride || baseTypeOverride) {
-          console.log(
-            `[overlay] ru→en: name=${JSON.stringify(nameOverride)} base=${JSON.stringify(baseTypeOverride)}`,
-          );
-        }
-      } catch {
-        // парсинг упал — priceCheck сам разберётся с сырым текстом
+    }
+
+    const results: Record<string, unknown>[] = [];
+    for (const it of list) {
+      const r = await checkPriceItem(it);
+      attachBuildMatch(r, it);
+      results.push(r);
+    }
+
+    // Ctrl+F1 по ошибке с PoB-кодом билда в буфере? Подскажем про Ctrl+F3.
+    // («--------» внутри предмета не даёт ложных срабатываний: счёт по Rarity.)
+    if (results.length === 1 && raw.trim().length > 200) {
+      const t = raw.trim();
+      if (!/^\s*(Rarity|Редкость)\s*:/im.test(t) && /^[A-Za-z0-9+/=\s_-]+$/.test(t)) {
+        results[0].buildCodeHint =
+          'В буфере похоже PoB-код билда, а не предмет. Для импорта билда нажмите Ctrl+F3; для прайс-чека скопируйте предмет (Ctrl+C в игре по наведению).';
+        console.warn('[overlay] pricecheck: буфер похож на PoB-код билда (подсказка)');
       }
     }
 
-    let result;
-    try {
-      result = await withTimeout(
-        core.trade.priceCheck(itemText, { nameOverride, baseTypeOverride }),
-        HOTKEY_TIMEOUT_MS,
-        'priceCheck',
-      );
-      const itemName = (result as { itemName?: string } | undefined)?.itemName ?? '?';
-      console.log(
-        `[overlay] price done: item="${itemName}" estimate=${JSON.stringify(
-          (result as { estimate?: unknown } | undefined)?.estimate ?? null,
-        )} listings=${
-          (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0
-        }`,
-      );
-    } catch (err) {
-      console.warn('[overlay] priceCheck failed:', err instanceof Error ? err.message : err);
-      // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
-      const parsed = core.parse.parseItemText(itemText);
-      result = {
-        itemName: core.parse.itemDisplayName(parsed) || 'Неизвестный предмет',
-        rarity: parsed.rarity.toLowerCase(),
-        estimate: null,
-        listings: [],
-        sources: [],
-        updatedAt: Date.now(),
-        parseOnly: true,
-        parseError: err instanceof Error ? err.message : String(err),
-      };
-    }
+    const totalEstimate = results.reduce<number | null>((acc, r) => {
+      const m = (r.estimate as { median?: number } | undefined)?.median;
+      if (m == null) return acc;
+      return acc == null ? m : acc + m;
+    }, null);
 
-    // Ctrl+F1 по ошибке нажали с PoB-кодом билда в буфере? Подскажем про Ctrl+F3.
-    // (весь буфер целиком должен состоять из base64/URL-символов; строки-разделители
-    // «--------» внутри предмета не должны давать ложных срабатываний)
-    const likelyBuildCode =
-      itemText.trim().length > 200 &&
-      !/^\s*(Rarity|Редкость)\s*:/im.test(itemText) &&
-      /^[A-Za-z0-9+/=\s_-]+$/.test(itemText.trim());
-    if (likelyBuildCode) {
-      (result as { buildCodeHint?: string }).buildCodeHint =
-        'В буфере похоже PoB-код билда, а не предмет. Для импорта билда нажмите Ctrl+F3; для прайс-чека скопируйте предмет (Ctrl+C в игре по наведению).';
-      console.warn('[overlay] pricecheck: буфер похож на PoB-код билда (подсказка)');
-    }
-
-    // Билд-ассистент: сопоставить предмет со слотом билда и отметить собранным.
-    if (buildState && itemText.trim()) {
-      try {
-        const parsed = core.parse.parseItemText(itemText);
-        const displayName = core.parse.itemDisplayName(parsed);
-        const matched = matchBuildSlot(displayName, parsed.baseType);
-        if (matched) {
-          console.log(
-            `[overlay] build slot matched: ${matched.slot} (item="${displayName}", base="${parsed.baseType}")`,
-          );
-          (result as { buildMatch?: unknown }).buildMatch = { slot: matched.slot, name: matched.name };
-          markSlotBought(matched);
-        }
-      } catch {
-        /* предмет из игры не парсится — ничего не сопоставляем */
-      }
-    }
-
-    await overlayWindow?.webContents.send('price:result', result);
-    return result;
+    const payload = {
+      items: results,
+      count: results.length,
+      totalEstimate,
+      elapsedMs: Date.now() - started,
+    };
+    console.log(
+      `[overlay] price batch: items=${results.length} totalEstimate=${totalEstimate} elapsedMs=${payload.elapsedMs}`,
+    );
+    await overlayWindow?.webContents.send('price:batch', payload);
+    return payload;
   } finally {
     busy = false;
     await overlayWindow?.webContents.send('price:busy', false);

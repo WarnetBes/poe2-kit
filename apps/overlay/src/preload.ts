@@ -6,7 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 export interface OverlayAPI {
   priceCheck(): Promise<unknown>;
-  onPriceResult(cb: (result: unknown) => void): () => void;
+  onPriceBatch(cb: (payload: unknown) => void): () => void;
   onPriceBusy(cb: (busy: boolean) => void): () => void;
   onLevelResult(cb: (level: unknown) => void): () => void;
   getLeague(): Promise<string>;
@@ -41,10 +41,10 @@ const api: OverlayAPI = {
     return () => ipcRenderer.removeListener('level:result', listener);
   },
 
-  onPriceResult: (cb) => {
+  onPriceBatch: (cb) => {
     const listener = (_evt: unknown, data: unknown) => cb(data);
-    ipcRenderer.on('price:result', listener);
-    return () => ipcRenderer.removeListener('price:result', listener);
+    ipcRenderer.on('price:batch', listener);
+    return () => ipcRenderer.removeListener('price:batch', listener);
   },
 
   onPriceBusy: (cb) => {
