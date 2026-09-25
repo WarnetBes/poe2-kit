@@ -213,5 +213,163 @@ export function registerCalculatorTools(server: McpServer): number {
   );
   count++;
 
+  // ── Enemy stats ─────────────────────────────────────────────────────
+  server.registerTool(
+    'poe2_enemy_stats',
+    {
+      title: 'PoE2 Enemy Stats',
+      description: `Статы монстров PoE2 по уровню и пресеты боссов (канон PathOfBuilding-PoE2: Data/Misc.lua, ConfigOptions.lua).
+
+Таблицы по уровням 1..100: уклонение, точность, HP, урон, броня, пороги айлментов и poise.
+Пресеты боссов (Boss / Pinnacle / Uber): урон = monsterDamage × 1.5 × DPSMult (обычный 1/4.4, босс 4/4.4, пиннакл 8/4.4, убер 10/4.25), элем-резисты 0/30/50/50, пенетрация 0/0/3/8, poise-множитель ×1 / ×18.8 / ×56.3 / ×56.3, хаос-урон /2.5 (убер /4).
+
+Аргументы:
+  - level (нужно): уровень врага (для Pinnacle/Uber минимум 82).
+  - boss: none/boss/pinnacle/uber (по умолчанию none).
+  - armourMult, evasionMult: бонусы боссов из bossStats (1 = базовые таблицы).
+
+Полезно для «какие статы у босса 84 уровня», «сколько EHP нужно против пиннакла», «какой poise у босса».`,
+      inputSchema: {
+        level: z.number().int().min(1).max(100).describe('Уровень врага'),
+        boss: z.enum(['none', 'boss', 'pinnacle', 'uber']).optional().describe('Режим босса'),
+        armourMult: z.number().optional().describe('Множитель брони босса из bossStats (доля > 1)'),
+        evasionMult: z.number().optional().describe('Множитель уклонения босса из bossStats (доля > 1)'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async (args) => {
+      try {
+        const boss = args.boss ?? 'none';
+        const p = core.enemy.enemyPlaceholders(args.level, boss, {
+          ...(args.armourMult ? { armourMult: args.armourMult } : {}),
+          ...(args.evasionMult ? { evasionMult: args.evasionMult } : {}),
+        });
+        const m = core.enemy.monsterStats(args.level);
+        const lines: string[] = [];
+        lines.push(`## Враг ур. ${p.level}${boss !== 'none' ? ` [${boss === 'boss' ? 'Standard Boss' : boss === 'pinnacle' ? 'Pinnacle' : 'Uber Pinnacle'}]` : ''}`, '');
+        lines.push('| Стат | Значение |', '|---|---|');
+        lines.push(`| Урон за удар (phys/ele) | **${p.damage}** |`);
+        lines.push(`| Хаос-урон | ${p.chaosDamage} |`);
+        lines.push(`| HP (обычный монстр) | ${p.life} |`);
+        lines.push(`| Броня | ${p.armour} |`);
+        lines.push(`| Уклонение | ${p.evasion} (точность ${m.accuracy}) |`);
+        lines.push(`| Порог айлментов | ${m.ailmentThreshold} |`);
+        lines.push(`| Порог poise | **${p.poiseThreshold}** (множитель ×${p.poiseMultiplier.toFixed(2)}) |`);
+        lines.push(`| Элем-резисты | ${p.elementalResist}% (хаос ${p.chaosResist}%) |`);
+        lines.push(`| Пенетрация элем-резистов | ${p.elementalPenetration}% |`);
+        lines.push(`| Скорость | ${p.speed} |`);
+        lines.push(`| Крит | ${p.critChance}% шанс, +${p.critMultiplier}% мульти |`);
+        lines.push('', `_Канон: PathOfBuilding-PoE2, src/Data/Misc.lua (таблицы DefaultMonsterStats.dat), Modules/ConfigOptions.lua (пресеты боссов)._`);
+        if (boss !== 'none') lines.push('Учтите: у Pinnacle/Uber PoB умножает броню/уклонение на средние бонусы из data.bossStats (BossSkills) — передайте armourMult/evasionMult для точности.');
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text', text: `Ошибка enemy stats: ${error instanceof Error ? error.message : String(error)}` }] };
+      }
+    },
+  );
+  count++;
+
+  // ── Ailments (DoT + buildup) ────────────────────────────────────────
+  server.registerTool(
+    'poe2_ailments',
+    {
+      title: 'PoE2 Ailments Calculator',
+      description: `Айлменты PoE2 по канону PoB2: DoT (bleed/poison/ignite) и buildup (heavyStun/freeze/electrocute/pin).
+
+DoT: DPS = hitDmg × 0.15/0.2/0.2 (bleed/poison/ignite, % удара в сек) × эффект × rate × стак × (1−резист)(1+взятый); длительность 5/2/4 с, кап DoT-DPS 35 791 394.
+Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / порог poise цели; у боссов порог ×18.8 (Boss) или ×56.3 (Pinnacle/Uber) — см. poe2_enemy_stats.
+Шанс айлмента: (урон/порог × множитель[shock 25/ignite 20/прочие 25] + база) × (1+inc) × more.
+
+Аргументы:
+  - mode: dot / buildup / chance (нужно).
+  - Для dot: hitDamage, ailment, stacks, targetResistPercent, increasedAilmentEffectPercent, increasedRatePercent.
+  - Для buildup: hitDamage, type, enemyPoiseThreshold (или enemyLevel+boss — подставим из таблиц).
+  - Для chance: hitDamage, type, enemyAilmentThreshold (или enemyLevel), baseChancePercent.`,
+      inputSchema: {
+        mode: z.enum(['dot', 'buildup', 'chance']).describe('Режим расчёта'),
+        hitDamage: z.number().positive().describe('Средний урон удара-источника'),
+        ailment: z.enum(['bleed', 'poison', 'ignite']).optional().describe('DoT-айлмент (mode=dot)'),
+        type: z.enum(['heavyStun', 'freeze', 'electrocute', 'pin']).optional().describe('Buildup-тип (mode=buildup)'),
+        chanceType: z.enum(['shock', 'ignite', 'chill', 'bleed', 'poison']).optional().describe('Тип шанса (mode=chance)'),
+        stacks: z.number().int().min(1).optional().describe('Число стаков DoT'),
+        targetResistPercent: z.number().optional().describe('Резист цели, %'),
+        increasedAilmentEffectPercent: z.number().optional().describe('Increased ailment effect, %'),
+        increasedRatePercent: z.number().optional().describe('Increased DoT rate, %'),
+        increasedPercent: z.number().optional().describe('Increased buildup, %'),
+        enemyPoiseThreshold: z.number().positive().optional().describe('Порог poise цели (иначе из таблиц)'),
+        enemyAilmentThreshold: z.number().positive().optional().describe('Порог айлментов цели (иначе из таблиц)'),
+        enemyLevel: z.number().int().min(1).max(100).optional().describe('Уровень врага для порогов из таблиц'),
+        boss: z.enum(['none', 'boss', 'pinnacle', 'uber']).optional().describe('Режим босса для порога poise'),
+        baseChancePercent: z.number().optional().describe('Базовый шанс айлмента от мода, %'),
+        increasedChancePercent: z.number().optional().describe('Increased chance, %'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async (args) => {
+      try {
+        const ail = core.ailments;
+        const lines: string[] = [];
+        if (args.mode === 'dot') {
+          if (!args.ailment) throw new Error('Для mode=dot укажите ailment (bleed/poison/ignite)');
+          const r = ail.ailmentDotDps({
+            hitDamage: args.hitDamage,
+            ailment: args.ailment,
+            ...(args.stacks ? { stacks: args.stacks } : {}),
+            ...(args.targetResistPercent != null ? { targetResistPercent: args.targetResistPercent } : {}),
+            ...(args.increasedAilmentEffectPercent != null ? { increasedAilmentEffectPercent: args.increasedAilmentEffectPercent } : {}),
+            ...(args.increasedRatePercent != null ? { increasedRatePercent: args.increasedRatePercent } : {}),
+          });
+          lines.push(`## ${args.ailment} DoT (удар ${args.hitDamage})`, '');
+          lines.push(`- DoT-DPS: **${r.damagePerSecond.toFixed(0)}**${r.capped ? ' (КАП DotDpsCap 35 791 394!)' : ''}`);
+          lines.push(`- Длительность: ${r.durationSeconds.toFixed(2)} с; стаков: ${r.stacks}`);
+          lines.push(`- Урон за длительность: ${r.totalDamage.toFixed(0)}`);
+        } else if (args.mode === 'buildup') {
+          if (!args.type) throw new Error('Для mode=buildup укажите type (heavyStun/freeze/electrocute/pin)');
+          let poise = args.enemyPoiseThreshold;
+          if (poise == null) {
+            if (args.enemyLevel == null) throw new Error('Укажите enemyPoiseThreshold или enemyLevel');
+            const lvl = Math.max(args.enemyLevel, (args.boss === 'pinnacle' || args.boss === 'uber') ? 82 : 1);
+            const m = core.enemy.monsterStats(lvl);
+            poise = Math.round(m.poiseThreshold * core.enemy.poiseMultiplier(args.boss ?? 'none'));
+          }
+          const r = ail.buildupPerHit({
+            hitDamage: args.hitDamage,
+            type: args.type,
+            enemyPoiseThreshold: poise,
+            ...(args.increasedPercent != null ? { increasedPercent: args.increasedPercent } : {}),
+          });
+          lines.push(`## Buildup: ${args.type} (удар ${args.hitDamage}, порог poise ${poise})`, '');
+          lines.push(`- DamageScale: ${r.damageScale} (Misc.lua:49-66)`);
+          lines.push(`- Билдап за удар: **${r.buildupPercentPerHit.toFixed(2)}%** метра`);
+          lines.push(`- Ударов до срабатывания: **${Number.isFinite(r.hitsToTrigger) ? r.hitsToTrigger : '∞'}**`);
+        } else {
+          if (!args.chanceType) throw new Error('Для mode=chance укажите chanceType (shock/ignite/chill/bleed/poison)');
+          let threshold = args.enemyAilmentThreshold;
+          if (threshold == null) {
+            if (args.enemyLevel == null) throw new Error('Укажите enemyAilmentThreshold или enemyLevel');
+            threshold = core.enemy.monsterStats(args.enemyLevel).ailmentThreshold;
+          }
+          const r = ail.ailmentChance({
+            hitDamage: args.hitDamage,
+            enemyAilmentThreshold: threshold,
+            type: args.chanceType,
+            ...(args.baseChancePercent != null ? { baseChancePercent: args.baseChancePercent } : {}),
+            ...(args.increasedChancePercent != null ? { increasedChancePercent: args.increasedChancePercent } : {}),
+          });
+          lines.push(`## Шанс ${args.chanceType} (удар ${args.hitDamage}, порог айлментов ${threshold})`, '');
+          lines.push(`- Шанс: **${r.chancePercent.toFixed(1)}%**`);
+          lines.push(`- Удар для гарантированного наложения: ${r.minimumHitDamage.toFixed(0)}`);
+          if (args.chanceType === 'chill') lines.push(`- Порог Chill: ${ail.chillThreshold(threshold).toFixed(0)} (порог / ChillEffectMultiplier 100)`);
+          if (args.chanceType === 'shock') lines.push(`- Shock magnitude: ${ail.shockMagnitude(args.hitDamage, threshold).toFixed(0)}% (база 20)`);
+        }
+        lines.push('', '_Канон: PathOfBuilding-PoE2, CalcOffence.lua:5244-5624, Modules/Data.lua:259-267, Data/Misc.lua._');
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text', text: `Ошибка ailments: ${error instanceof Error ? error.message : String(error)}` }] };
+      }
+    },
+  );
+  count++;
+
   return count;
 }

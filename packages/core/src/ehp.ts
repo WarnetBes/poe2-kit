@@ -10,6 +10,9 @@
  *    кламп [5..100], кап уворота 95% (CalcDefence.lua:41-47, Misc.lua:111);
  *  - уклонение АТАКУЮЩЕГО (игрок бьёт монстра — другое!), см. attackerHitChance: 125·Acc/(Acc+0.3·Ev);
  *  - блок: базовый кап 50% (абс. предел с модами 90%);
+ *  - dodge (атак/заклинаний): кап 75 (DodgeChanceCap, Data.lua:252);
+ *  - spell suppression: эффект −50% только при 100% (CalcDefence.lua:2628-2641);
+ *  - ward поглощается ДО Life (CalcDefence.lua:524-525);
  *  - хаос снимает ES с коэффициентом 2 (CalcDefence.lua:592);
  *  - ES реберзит 12.5%/с после задержки 4с (400/(100+faster_start)%).
  */
@@ -41,7 +44,33 @@ export const DEFENSE_CONSTANTS = {
   BLOCK_MAX_CHANCE: 50,
   /** Абсолютный предел блока с модами "+X% to max Block" (BlockChanceCap, Data.lua:253). */
   BLOCK_ABSOLUTE_CAP: 90,
+  // ── Слои, добавленные по канону CalcDefence.lua:1567-1616, Data.lua:252-255 ──
+  /** Кап Attack/Spell Dodge (DodgeChanceCap, Data.lua:252). */
+  DODGE_MAX_CHANCE: 75,
+  /** Кап Spell Suppression (SuppressionChanceCap, Data.lua:254). */
+  SPELL_SUPPRESSION_CAP: 100,
+  /** Эффект подавления: −50% урона заклинания при 100% suppression (SuppressionEffect, Data.lua:255).
+   *  В EHP учитывается ТОЛЬКО при suppression = 100% (CalcDefence.lua:2628-2641). */
+  SPELL_SUPPRESSION_EFFECT: 50,
+  /** Кап Avoid Any Damage (AvoidChanceCap, Data.lua:256). */
+  AVOID_MAX_CHANCE: 75,
+  /** Deflect: отражает 40% урона (BasePercentDamageDeflected, Misc.lua:112; DeflectionChanceCap 95). */
+  DEFLECT_EFFECT: 40,
+  DEFLECT_MAX_CHANCE: 95,
 } as const;
+
+/** Шанс события с «lucky» (лучший из 2 роллов): 1 − (1−c)² (канон PoB2, CalcDefence.lua:1090-1092
+ *  — при кратном lucky применяется итеративно: 1−(1−c)^(2^n)). */
+export function luckyChance(chancePercent: number): number {
+  const c = Math.min(Math.max(chancePercent, 0), 100) / 100;
+  return (1 - (1 - c) ** 2) * 100;
+}
+
+/** Лучший из (extraRolls+1) независимых роллов: 1 − (1−c)^(n+1). */
+export function chanceWithExtraRolls(chancePercent: number, extraRolls: number): number {
+  const c = Math.min(Math.max(chancePercent, 0), 100) / 100;
+  return (1 - Math.pow(1 - c, Math.max(0, extraRolls) + 1)) * 100;
+}
 
 export type DamageType = 'physical' | 'fire' | 'cold' | 'lightning' | 'chaos';
 export const DAMAGE_TYPES: DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'chaos'];
@@ -58,6 +87,14 @@ export interface DefensiveStats {
   coldRes?: number;
   lightningRes?: number;
   chaosRes?: number;
+  /** Attack dodge, % (кап 75, DodgeChanceCap). Применяется к физ/атакам. */
+  attackDodgeChance?: number;
+  /** Spell dodge, % (кап 75 в PoB2). Применяется к заклинаниям (элементаль/хаos-урон здесь). */
+  spellDodgeChance?: number;
+  /** Spell suppression, %: в EHP даёт −50% урона ТОЛЬКО при значении 100 (CalcDefence.lua:2628-2641). */
+  spellSuppressionChance?: number;
+  /** Ward (Runic Ward): пул, поглощаемый ДО Life (CalcDefence.lua:524-525); реген 300%/мин. */
+  ward?: number;
 }
 
 export interface ThreatProfile {
@@ -234,8 +271,10 @@ export interface EhpResult {
   damageType: DamageType;
   rawHp: number;
   evadeMitigation: number;
+  dodgeMitigation: number;
   blockMitigation: number;
   armorDr: number;
+  suppressionMitigation: number;
   resistanceDr: number;
   totalMitigation: number;
   effectiveHp: number;
@@ -254,7 +293,9 @@ function rawHp(stats: DefensiveStats, damageType: DamageType): number {
   const life = stats.life ?? 0;
   const es = stats.energyShield ?? 0;
   // PoE2: хаос снимает ES с коэффициентом 2.
-  return damageType === 'chaos' ? life + es / 2 : life + es;
+  const pool = damageType === 'chaos' ? life + es / 2 : life + es;
+  // Ward поглощается ДО Life (CalcDefence.lua:524-525) — для EHP добавляем в пул.
+  return pool + (stats.ward ?? 0);
 }
 
 function resValue(stats: DefensiveStats, damageType: DamageType): number {
@@ -282,14 +323,27 @@ export function calculateEhp(
 
   const evade = (stats.evasion ?? 0) > 0 ? evasionChance(stats.evasion!, t.attackerAccuracy).evadeChancePercent / 100 : 0;
   const block = blockChance(stats.blockChance ?? 0).blockChancePercent / 100;
+  // Dodge — отдельный от уклонения слой (CalcDefence.lua:1600-1616, кап 75).
+  // Атаки (физ.) — attackDodge; элем./хаос считаем заклинаниями — spellDodge.
+  const dodge = Math.min(
+    damageType === 'physical' ? (stats.attackDodgeChance ?? 0) : (stats.spellDodgeChance ?? 0),
+    DEFENSE_CONSTANTS.DODGE_MAX_CHANCE,
+  ) / 100;
+  // Suppression даёт −50% урона ТОЛЬКО при 100% (CalcDefence.lua:2628-2641).
+  const suppression =
+    (stats.spellSuppressionChance ?? 0) >= DEFENSE_CONSTANTS.SPELL_SUPPRESSION_CAP
+      ? DEFENSE_CONSTANTS.SPELL_SUPPRESSION_EFFECT / 100
+      : 0;
   const aDr = damageType === 'physical' && (stats.armor ?? 0) > 0 && t.expectedHitSize > 0
     ? armorDr(stats.armor!, t.expectedHitSize).drPercent / 100
     : 0;
   const res = resistanceDr(resValue(stats, damageType)).drPercent / 100;
 
-  // Уклонение и блок — «шансы избежать удар»: исключают ВСЁ, включая армор.
-  let multiplier = (1 - evade) * (1 - block);
+  // Уклонение/дож/блок — «шансы избежать удар»: исключают ВСЁ, включая армор.
+  // Составной not-hit шанс: (1−evade)(1−dodge)(1−block) (CalcDefence.lua:2223-2226).
+  let multiplier = (1 - evade) * (1 - dodge) * (1 - block);
   if (damageType === 'physical') multiplier *= 1 - aDr;
+  if (damageType !== 'physical') multiplier *= 1 - suppression;
   multiplier *= 1 - res;
 
   const totalMitigation = 1 - multiplier;
@@ -297,8 +351,10 @@ export function calculateEhp(
     damageType,
     rawHp: hp,
     evadeMitigation: evade,
+    dodgeMitigation: dodge,
     blockMitigation: block,
     armorDr: aDr,
+    suppressionMitigation: suppression,
     resistanceDr: res,
     totalMitigation,
     effectiveHp: multiplier > 0 ? hp / multiplier : Infinity,

@@ -113,8 +113,15 @@ baseStunChance = m_min(StunBaseMult × enemyDamage / StunThreshold, 100)   -- St
 -- шанс учитывается только если baseStunChance > MinStunChanceNeeded = 20
 ```
 
-У боссов есть **PoiseThreshold** (`ConfigOptions.lua:2024,2066,2107`): Unique ×5, Xesht ×9.
-Длительность стана округляется к тику сервера 33 мс (`CalcDefence.lua:2799`).
+У боссов повышенный **PoiseThreshold** (`ConfigOptions.lua:2024-2025,2066-2067,2107-2108`) —
+MORE-моды перемножаются (×(1+pct/100)):
+- любой босс: `PoiseThreshold MORE 500` (MonsterUnique2) → **×6**;
+- Standard Boss дополнительно: `MORE 213` («Map Boss») → итого **×18.78**;
+- Pinnacle/Uber дополнительно: `MORE 838` («Xesht») → итого **×56.28**
+  (у Uber ещё `DamageTaken MORE −70` у врага).
+Длительность стана округляется к тику сервера 33 мс (`CalcDefence.lua:2799`); база 500 мс
+(`stun_base_duration_override_ms`). Heavy Stun длится 3000 мс у игрока (от монстра — гаснет
+по-иному) и 2000 мс у монстра (`Misc.lua:216,268`).
 
 ## 2. Урон (src/Modules/CalcOffence.lua)
 
@@ -129,7 +136,9 @@ baseStunChance = m_min(StunBaseMult × enemyDamage / StunThreshold, 100)   -- St
 ```lua
 -- CalcOffence.lua:3859-3901
 CritChance  = (base_crit + Sum("BASE","CritChance")) × (1 + INC/100) × more,  кап = CritChanceCap
-CritChance  = CritChance × AccuracyHitChance / 100        -- confirmation roll (не-крит может стать критом? нет: не-попадание)
+CritChance  = CritChance × AccuracyHitChance / 100        -- крит требует ВТОРУЮ проверку точности:
+                                                        -- провал = крит «деградирует» в обычный удар
+                                                        -- (комментарий PoB, CalcOffence.lua:3894-3898)
 CritChance  = (1 − (1 − CritChance/100)²) × 100           -- при lucky
 -- CalcOffence.lua:3983-4031
 CritMultiplier = 1 + max(0, Sum("BASE","CritMultiplier")/100)
@@ -165,12 +174,17 @@ TotalDPS      = AverageDamage × Speed × DpsMultiplier × quantityMultiplier
 
 | Режим | Моды врага | Множитель урона | Pen | Chaos |
 |---|---|---|---|---|
-| Boss | +30% эле-рез, 0 chaos-res | `stdBossDPSMult` ≈ 0.909 (`Data.lua:296`) | — | урон /2.5 |
-| Pinnacle | +50% эле-рез | `pinnacleBossDPSMult` ≈ 1.818 (`Data.lua:297`) | 3 (`Data.lua:298`) | — |
-| Uber | `DamageTaken MORE −70` у врага | `uberBossDPSMult` = 10/4.25 (`Data.lua:299`) | 8 (`Data.lua:300`) | /4 |
+| Boss | +30% эле-рез, 0 chaos-res | `stdBossDPSMult` = 4/4.40 (`Data.lua:308`) | — | урон /2.5 |
+| Pinnacle | +50% эле-рез | `pinnacleBossDPSMult` = 8/4.40 (`Data.lua:309`) | 3 (`Data.lua:310`) | — |
+| Uber | `DamageTaken MORE −70` у врага | `uberBossDPSMult` = 10/4.25 (`Data.lua:311`) | 8 (`Data.lua:311`) | /4 |
 
   Общее для боссов: `CurseEffectOnSelf MORE −50`, `ExposureEffectOnSelf MORE −50`,
-  `PoiseThreshold MORE 500` (Xesht: 838), `MinimumMovementSpeed 20`.
+  `KnockbackDistanceOnSelf MORE −75`, `SlowEffectOnSelf MORE −75`, `MinimumMovementSpeed 20`,
+  `PoiseThreshold MORE 500` (+213 у Standard Boss; +838 у Pinnacle/Uber), `WarcryPower 20`.
+  Обычный монстр — `normalEnemyDPSMult` = 1/4.40: урон = `monsterDamageTable[lvl] × 1.5 × mult`.
+  Pinnacle/Uber: уровень врага = max(lvl, 82), броня/уклонение умножаются на средние бонусы из
+  `data.bossStats` (считаются из `Data/BossSkills` при загрузке: `PinnacleArmourMean` и т.д.).
+  Крит врага по умолчанию: 5% шанс, +30% мульти (`base_critical_hit_damage_bonus`, `Misc.lua:254`).
 - Прочие inputs: `enemyPhysicalDamage/FireDamage/…`, `enemyFirePen/…`, `enemyPhysicalOverwhelm`,
   `enemyPhysicalReduction`, `enemyBlockChance`, `enemyEvasion`, `enemyArmour`,
   `enemyCritChance` (default 5), `enemyCritDamage`, `enemyDamageType`, `EHPUnluckyWorstOf`.
@@ -202,5 +216,127 @@ TotalDPS      = AverageDamage × Speed × DpsMultiplier × quantityMultiplier
 | Хаос vs ES | обходит ES | **снимает ES × 2** | `CalcDefence.lua:592` |
 | Уклонение от спеллов | нет | есть (`SpellEvasion`) | `CalcDefence.lua:1456` |
 | Механика Deflect | — | есть (cap 95%, 40% отражается) | `CalcDefence.lua:49-55` |
-| Poise у боссов | — | есть (×5..×9) | `ConfigOptions.lua:2024+` |
+| Poise у боссов | — | есть (Standard ×18.78, Pinnacle/Uber ×56.28) | `ConfigOptions.lua:2024+` |
 | Cap резистов (жёсткий) | 90 | 90, floor −200 | `Data.lua:248-249` |
+
+## 6. Таблицы монстров по уровням (src/Data/Misc.lua:6-14)
+
+Экспорт `DefaultMonsterStats.dat`, индекс = уровень 1..100. TS-порт —
+`packages/core/src/enemy.ts` (`monsterStats(level)`, `enemyPlaceholders(level, boss)`);
+массивы сверены с `Misc.lua` программно (100 элементов, побайтово).
+
+| Таблица | ур. 66 | ур. 82 | ур. 85 | ур. 100 |
+|---|---|---|---|---|
+| `monsterEvasionTable` | 677 | 941 | 996 | 1304 |
+| `monsterAccuracyTable` | 1158 | 2114 | 2357 | 4011 |
+| `monsterLifeTable` | 7079 | 32 956 | 36 012 | 56 106 |
+| `monsterDamageTable` | 219.11 | 353.67 | 385.42 | 584.05 |
+| `monsterArmourTable` | 2146 | 5375 | 6355 | 14 441 |
+| `monsterAilmentThresholdTable` | 10 228 | 71 303 | 79 967 | 123 287 |
+| `monsterPoiseThresholdTable` | 28 651 | 236 905 | 271 810 | 446 335 |
+
+Формулы-производные (`src/Export/Scripts/miscdata.lua:34-41`). Порог айлментов =
+фактический LIFE с экстраполяцией после ур. 75 (`CalcOffence.lua:5610`).
+
+## 7. DoT-айлменты: Bleed / Poison / Ignite (CalcOffence.lua:5244-5405)
+
+```lua
+-- базы (Data.lua:259-267; истоки Misc.lua:87-97):
+BleedPercentBase  = 900/60/100  = 0.15  (% удара в сек), длит. 5 с
+PoisonPercentBase = 1200/60/100 = 0.20, длит. 2 с
+IgnitePercentBase = 1200/60/100 = 0.20, длит. 4 с
+DotDpsCap = (2^31-1)/60 = 35 791 394
+
+-- формула (CalcOffence.lua:5354-5405):
+DPS = srcDmg(немитиг., взвеш. по криту: calcAilmentDamage, :5111-5121)
+      × PercentBase × magnitude × AilmentEffect-inc × rateMod
+      × stacks ≤ maxStacks × effMult,   min(DPS, DotDpsCap)
+effMult = (1−resist/100) × (1+incTaken/100) × moreTaken   (:5367/5377/5388)
+duration = base × durationMod / rateMod    (:5244-5248)
+```
+
+Средний roll при перенасыщении стаков: `(stacks−(max−1)/2)/(stacks+1)×100`, иначе 50
+(`:5306-5311`). Скоринг стаков: `HitChance × chance × DpsMult × duration × speed` (`:5254-5262`).
+TS-порт: `core.ailments.ailmentDotDps`.
+
+## 8. Buildup-состояния: Heavy Stun / Freeze / Electrocute / Pin (CalcOffence.lua:5569-5582)
+
+```lua
+buildup% за удар = DamageScale × hitDamage / enemyPoiseThreshold × (1+inc/100) × more
+enemyPoiseThreshold = monsterPoiseThresholdTable[enemyLevel] × PoiseThreshold-моды
+DamageScale (Misc.lua:49,55,61,66): HeavyStun 0.58 | Freeze 2.1 | Electrocute 1.7 | Pin 4.2
+```
+
+ThresholdModifier у каждой механики = 500 (Misc.lua). Chill: порог =
+`EnemyAilmentThreshold / ChillEffectMultiplier(100)`, кап эффекта 50% (`:5550-5552`, `Misc.lua:76-78`).
+Шанс ignite/shock: `(hitDmg/ailmentThreshold × ChanceMultiplier + base) × (1+inc) × more`, где
+множители `Misc.lua:72-74`: Shock 25, Ignite 20, прочие 25 (`:5614-5624`). Shock magnitude
+база 20 (`Misc.lua:75`). TS-порт: `core.ailments.buildupPerHit`, `ailmentChance`, `chillThreshold`,
+`shockMagnitude`.
+
+## 9. Урон: Double/Triple, скорость, добавленный урон
+
+- Double/Triple Damage (`CalcOffence.lua:4045-4062`): `TripleEffect = 2×TC/100`;
+  `DD_eff = max(DD − TD×DD/100, 0)`; AverageHit множитель `= 1 + DD_eff + TripleEffect`;
+  double damage only-on-crit взвешивается: `+DDonCrit × CritChance/100`.
+- Скорость **не капится** статом, но серверный тик: `Speed = min(Speed, ServerTickRate × Repeats)`
+  для НЕ-чаннелингов, `ServerTickRate = 1/0.033 ≈ 30.3/с` (`CalcOffence.lua:3016-3018`, `Data.lua:240-241`);
+  при кулдауне `Speed = min(Speed, 1/Cooldown × Repeats)` (`:3008`), кулдаун округляется вверх к тику (`:1833`).
+- Added damage: `baseMultiplier = gem.baseMulti or skillData.baseMulti or 1` (`:4131-4136`),
+  added-часть ДОПОЛНИТЕЛЬНО × на свой `AddedDamage`-мод (added damage effectiveness).
+- PvP (справочно): `(D/(T×M1))^E × T × M2`, константы `Data.lua:312-315`.
+
+## 10. Прочие слои обороны PoE2 (CalcDefence.lua)
+
+- **Spell Suppression** (`:1567-1598`): кап 100%, эффект 50% (`Data.lua:254-255`);
+  в EHP учитывается **только при 100%**: весь spell-урон ×(1−50%/…) (`:2628-2641`).
+- **Dodge** (`:1600-1616`, отдельная от уклонения механика): Attack/Spell Dodge кап 75
+  (`Data.lua:252`); Acrobatics: `SpellDodge = Suppression/2` (`:1572-1573`).
+- **Составные not-hit шансы** (`:2223-2226`):
+  `MeleeNotHit = 1−(1−EvadeMelee)(1−AttackDodge)(1−AvoidAll)`;
+  `SpellNotHit = 1−(1−SpellEvade)(1−SpellDodge)(1−AvoidAvoid)` (в PoE2 спеллы можно
+  *уклонять*: `can_evade_spells = 1`, `Misc.lua:226`).
+- **Ward** (`:524-525,688`): поглощается ДО Life, есть `WardBypass`; реген 300%/мин (`Misc.lua:129`).
+- **Deflect**: кап 95%, отражает 40% в атакующего (`BasePercentDamageDeflected`, `Misc.lua:112`).
+- **Отрицательная броня** (Armour Break): бонус урона к цели, кап +100% (`NegArmourDmgBonusCap`,
+  `Data.lua:258`).
+- **Lucky/unlucky-роллы** (`CalcDefence.lua:1085-1092, 3301-3305`):
+  lucky `P = 1−(1−c)²` (при кратном lucky итеративно: `1−(1−c)^(2^n)`);
+  worst-of через `EHPUnluckyWorstOf` делит шанс: `c²`, при worstOf=4 — `c⁴`.
+  n доп. роллов `P = 1−(1−c)^(n+1)`. TS-порт: `core.ehp.luckyChance`, `chanceWithExtraRolls`.
+- **Enemy crit как EHP-фактор**: `EnemyCritEffect = 1 + critChance×(critDmg −1)×(1−CritReduction)`
+  (паттерн `CalcDefence.lua:1735-1738`).
+
+TS-порты этих слоёв: `core.ehp` (`attackDodgeChance`, `spellDodgeChance`, `spellSuppressionChance`,
+`ward` в `calculateEhp`).
+
+## 11. Порядок митигации хита (скелет EHP)
+
+Канонический порядок операций по хиту (`CalcDefence.lua:94-124, 2066-2086`):
+1. резисты / пенетрация;
+2. броня — DR по урону ПОСЛЕ резистов (в нашей упрощённой модели применяется ДО —
+   осознанное упрощение EHP-оценки по гиру);
+3. flat DR + overwhelm;
+4. taken-множители (inc/more taken, suppressionMult);
+5. пулы: ward → guard/MoM → ES → life.
+
+## 12. Антиканон: PoE1-числа, НЕ переносящиеся в PoE2
+
+Проверено по `PathOfBuilding` (PoE1, HEAD 16de4b8) и `PathOfBuilding-PoE2-v2` (pre-EA форк, jan. 2025):
+- hit chance PoE1 `125·Acc / (Acc + (Ev/5)^0.9)` и v2 `1.5·Acc/(Acc+Ev)` — **не использовать**
+  (PoB2-v2 это PoE1-наследие);
+- K брони PoE1 = **5**;
+- `StunNotMeleeDamageMult 0.75` (v2 `Data.lua:191`) — в актуальном PoB2 отсутствует: НЕ переносить;
+- PoE1-механики, выпиленные из PoB2: Impale (в PoE2 нет: `ImpalePercentage` в Misc.lua — legacy),
+  PoE1-таблицы монстров (уровни до 110), suppression из PoE1 (**в PoE2 формула своя**, §10),
+  PoE1-стан-числа, cluster jewels/ward из PoE1 (ward PoE2 — Runic Ward, свой).
+
+## 13. Свежесть канона
+
+- Версия PoB2: `manifest.xml` → `<Version number>` (сейчас **0.23.1**), файл —
+  `https://raw.githubusercontent.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/master/manifest.xml`;
+  sha1 per-file в манифесте позволяет точечно проверять изменения `Data/*.lua`
+  (схема Updater: `update_manifest.py`).
+- Версии дерева игры: `src/Modules/GameVersions.lua` — `treeVersionList`, `latestTreeVersion`.
+- `PathOfBuilding-Launcher`/`-Updater` — только инфраструктура (реестр/Update.exe), формул не содержат;
+  `PathOfBuilding-PoE2-v2` — устаревший форк, использовать только как антиканон.

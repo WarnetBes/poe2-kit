@@ -165,17 +165,26 @@ Pantheon-атрибутов в PoB2 `<Build>` нет (механика PoE1).
 
 Наш парсер `packages/core/src/build.ts` (`parseBuildXml2`):
 - ✅ `<Build level/className/ascendClassName>`, `<PlayerStat>`, активный `<Spec nodes>`,
-  пул `<Item id>` + активный `<ItemSet><Slot name/itemId>`;
-- ⚠️ **не читает**: `mainSocketGroup`, `<FullDPSSkill>` (раскладка DPS по скиллам),
-  `<Buffs>` (список активных бафов/курсов — быстрый способ узнать, что реально включено),
-  уровни/quality/`variant`/`enabled` гемов, `label`/`source`/`mainActiveSkill` групп,
-  второй набор оружия, `RuneSlot`/`SocketIdURL`, заметки (Note/slot note gem note),
-  `<ConfigSet><Input>` (режим босса и условия боя!) и активный ConfigSet,
-  `<WeaponSet1/2>` узлы, jewel-сокеты `<Sockets>`, `<MinionStat>`;
+  пул `<Item id>` + активный `<ItemSet><Slot name/itemId>`, имена предметов из клир-текста
+  (`Rarity:` → первая строка не вида `Ключ: значение`);
+- ✅ `<Skills>`: группы `<Skill>`/`<Gem>` (уровни, quality, `enabled`, `variantId`), `mainSocketGroup`,
+  `label`/`source`, `<FullDPSSkill>`, `<Buffs>`;
+- ✅ `<Config>`: `<ConfigSet><Input>` (режим босса, уровень врага и пр.), активный ConfigSet, `<Notes>`;
+- ⚠️ **не читает**: `<WeaponSet1/2>` узлы, jewel-сокеты `<Sockets>`/`<SocketIdURL>`, `<RuneSlot>`,
+  `<MinionStat>`, `<StatSetIndex>`-мапы гемов, `<Placeholder>`, `<CustomModifierBlock>`;
 - ⚠️ regex-парсер: XML writer PoB2 сортирует атрибуты по алфавиту и кладёт текст
-  предмета СыНЬМИ элемента (между `<Item …>` и первым вложенным тегом) — наши
-  регулярки на это уже рассчитаны, но неviewer порядок атрибутов нельзя хардкодить.
+  предмета снаружи элемента (между `<Item …>` и первым вложенным тегом) — наши
+  регулярки на это уже рассчитаны, но порядок атрибутов хардкодить нельзя.
 
+## 6a. Прочие разделы
+
+- `<Import>` (`ImportTab.lua:136/263-272`): `<LastBuild>…</LastBuild>` — исходный share-code;
+  поддержано (`core.build.decodeShareCode`).
+- `<Party>` (`PartyTab.lua`): только состояние UI — для расчётов бесполезно.
+- `<TimelessData>`: легаси PoE1 (timeless jewels), в PoE2 пуст/отсутствует.
+- Раздела `Plan` (PoE1 gem/quest-plan) в PoE2 **нет**.
+- Префиксы строк модов: `{variant:N}` (варианты), `{tags:…}`, `{range:…}` (roll) — валидны в клир-тексте `<Item>`.
+- `<Calcs>` — в новых файлах только состояние UI-секций; боевой конфиг — в `<Config>`.
 ## 7. PoB1 vs PoB2 — сводка различий формата
 
 | Аспект | PoB1 | PoB2 |

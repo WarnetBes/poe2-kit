@@ -24,12 +24,16 @@ export * from './gameConfig.js';
 import * as ehpmod from './ehp.js';
 import * as spiritmod from './spirit.js';
 import * as stunmod from './stun.js';
+import * as enemymod from './enemy.js';
+import * as ailmentsmod from './ailments.js';
 
 // Типы калькуляторов (значения — через namespace core.ehp/core.spirit/core.stun,
 // чтобы не конфликтовать с estimate-слоем).
 export type {
   DefensiveStats, DamageType, ThreatProfile as CalcThreatProfile,
 } from './ehp.js';
+export type { BossMode, MonsterStats, EnemyPlaceholders } from './enemy.js';
+export type { DotsAilment, BuildupType, AilmentChanceType } from './ailments.js';
 export type {
   SpiritSourceType, SpiritReservationType, SpiritSupportGem, SpiritReservation, SpiritOptimization,
 } from './spirit.js';
@@ -74,6 +78,8 @@ export const core = {
   ehp: ehpmod,
   spirit: spiritmod,
   stun: stunmod,
+  enemy: enemymod,
+  ailments: ailmentsmod,
 };
 
 export default core;

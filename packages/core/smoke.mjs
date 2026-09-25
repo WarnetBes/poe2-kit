@@ -456,5 +456,54 @@ console.log('gameConfig: INI parse + act hints + discovery');
   ok(s.resolution === '1920x1080', 'gameConfig: resolution');
   ok(s.accountNameNote !== null, 'gameConfig: empty account_name note (Steam)');
 }
+console.log('enemy tables + boss presets (Misc.lua / ConfigOptions.lua)');
+ok(core.default.enemy.monsterEvasionTable.length === 100
+  && core.default.enemy.monsterPoiseThresholdTable.length === 100, 'enemy: tables 100 entries');
+const ms82 = core.default.enemy.monsterStats(82);
+ok(ms82.evasion === 941 && ms82.life === 32956 && ms82.poiseThreshold === 236905, 'enemy: level 82 sentinel');
+const pTop = core.default.enemy.enemyPlaceholders(84, 'pinnacle');
+ok(pTop.level === 84 && pTop.elementalResist === 50 && pTop.elementalPenetration === 3, 'enemy: pinnacle lvl>=82, res 50, pen 3');
+const pBoss = core.default.enemy.enemyPlaceholders(84, 'boss');
+ok(Math.abs(pBoss.poiseMultiplier - 18.78) < 0.01, `enemy: boss poise x${pBoss.poiseMultiplier.toFixed(2)}`);
+ok(Math.abs(pTop.poiseMultiplier - 56.28) < 0.01, `enemy: pinnacle poise x${pTop.poiseMultiplier.toFixed(2)}`);
+const pUber = core.default.enemy.enemyPlaceholders(84, 'uber');
+ok(pUber.chaosDamage === Math.round(pUber.damage / 4), 'enemy: uber chaos /4');
+ok(core.default.enemy.ENEMY_CONSTANTS.SERVER_TICK_RATE > 30.3
+  && core.default.enemy.ENEMY_CONSTANTS.SERVER_TICK_RATE < 30.31, 'enemy: server tick 1/0.033');
+
+console.log('ailments: dot / buildup / chance (CalcOffence.lua)');
+const ignite = core.default.ailments.ailmentDotDps({ hitDamage: 1000, ailment: 'ignite' });
+ok(Math.abs(ignite.damagePerSecond - 200) < 1e-9 && ignite.durationSeconds === 4, 'ailments: ignite 1000 hit -> 200 dps, 4s');
+const poison3 = core.default.ailments.ailmentDotDps({ hitDamage: 1000, ailment: 'poison', stacks: 3, targetResistPercent: 40 });
+ok(Math.abs(poison3.damagePerSecond - (200 * 3 * 0.6)) < 1e-9, `ailments: poison x3 vs 40% res -> ${poison3.damagePerSecond}`);
+const cap = core.default.ailments.ailmentDotDps({ hitDamage: 1e12, ailment: 'bleed', stacks: 10 });
+ok(cap.capped && cap.damagePerSecond === 35791394, 'ailments: DotDpsCap 35791394');
+const bu = core.default.ailments.buildupPerHit({
+  hitDamage: 1000, type: 'heavyStun',
+  enemyPoiseThreshold: Math.round(236905 * 18.78),
+});
+ok(Math.abs(bu.buildupPercentPerHit - (0.58 * 1000 / (236905 * 18.78)) * 100) < 1e-6
+  && bu.hitsToTrigger === Math.ceil(100 / bu.buildupPercentPerHit), 'ailments: heavyStun buildup scale 0.58');
+const ach = core.default.ailments.ailmentChance({
+  hitDamage: 50000, enemyAilmentThreshold: 71303, type: 'ignite',
+});
+ok(Math.abs(ach.chancePercent - (50000 / 71303 * 20)) < 1e-6, `ailments: ignite chance ${ach.chancePercent.toFixed(2)}%`);
+ok(core.default.ailments.chillThreshold(10000) === 10000
+  && core.default.ailments.AILMENT_CONSTANTS.CHILL_MAX_EFFECT === 50, 'ailments: chill multiplier 100');
+
+console.log('ehp: dodge / suppression / ward / lucky layers');
+const dodged = core.default.ehp.calculateAllEhp({ life: 4000, spellDodgeChance: 50, fireRes: 0 }, {});
+// spell-урон (fire): (1-0 dodge) x (1-0 res) -> x2
+ok(Math.abs(dodged.fire.effectiveHp - 8000) < 1e-9, `ehp: spell dodge 50% -> x${(dodged.fire.effectiveHp / 4000).toFixed(0)}`);
+const sup = core.default.ehp.calculateAllEhp({ life: 4000, spellSuppressionChance: 100, fireRes: 0 }, {});
+ok(Math.abs(sup.fire.effectiveHp - 8000) < 1e-9, 'ehp: suppression 100% -> -50% spell dmg');
+const sup90 = core.default.ehp.calculateAllEhp({ life: 4000, spellSuppressionChance: 90, fireRes: 0 }, {});
+ok(Math.abs(sup90.fire.effectiveHp - 4000) < 1e-9, 'ehp: suppression <100% ignored');
+const warded = core.default.ehp.calculateAllEhp({ life: 4000, ward: 1000, fireRes: 75 }, {});
+ok(Math.abs(warded.fire.rawHp - 5000 * 4) < 1e-9 || warded.fire.rawHp === 5000, 'ehp: ward added to pool');
+ok(Math.abs(core.default.ehp.luckyChance(50) - 75) < 1e-9, 'ehp: lucky 50% -> 75%');
+ok(Math.abs(core.default.ehp.luckyChance(75) - (1 - 0.25 ** 2) * 100) < 1e-9, 'ehp: lucky formula 1-(1-c)^2');
+ok(Math.abs(core.default.ehp.chanceWithExtraRolls(50, 1) - 75) < 1e-9, 'ehp: extra rolls');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
