@@ -30,6 +30,20 @@ export interface OverlayAPI {
   onSettingsToggle(cb: () => void): () => void;
   /** Слушать применение настроек отображения (прозрачность/масштаб/ширина/угол). */
   onSettingsDisplay(cb: (s: unknown) => void): () => void;
+  /** Watchlist: получить список отслеживаемых предметов. */
+  watchList(): Promise<unknown>;
+  /** Watchlist: добавить предмет (по itemText+label) в отслеживание. */
+  watchAdd(payload: unknown): Promise<unknown>;
+  /** Watchlist: добавить текущий буфер обмена (Ctrl+C по предмету) в отслеживание. */
+  watchAddBuffer(): Promise<unknown>;
+  /** Watchlist: удалить позицию по id. */
+  watchRemove(id: string): Promise<unknown>;
+  /** Watchlist: вкл/выкл позицию по id. */
+  watchToggle(id: string): Promise<unknown>;
+  /** Watchlist: принудительно проверить цены сейчас. */
+  watchCheck(): Promise<unknown>;
+  /** Watchlist: слушать всплывающий алерт «цена упала с X до Y». */
+  onWatchAlert(cb: (alert: unknown) => void): () => void;
 }
 
 const api: OverlayAPI = {
@@ -100,6 +114,24 @@ const api: OverlayAPI = {
     const listener = (_evt: unknown, s: unknown) => cb(s);
     ipcRenderer.on('settings:display', listener);
     return () => ipcRenderer.removeListener('settings:display', listener);
+  },
+
+  watchList: () => ipcRenderer.invoke('watch:list'),
+
+  watchAdd: (payload) => ipcRenderer.invoke('watch:add', payload),
+
+  watchAddBuffer: () => ipcRenderer.invoke('watch:addBuffer'),
+
+  watchRemove: (id) => ipcRenderer.invoke('watch:remove', id),
+
+  watchToggle: (id) => ipcRenderer.invoke('watch:toggle', id),
+
+  watchCheck: () => ipcRenderer.invoke('watch:check'),
+
+  onWatchAlert: (cb) => {
+    const listener = (_evt: unknown, alert: unknown) => cb(alert);
+    ipcRenderer.on('watch:alert', listener);
+    return () => ipcRenderer.removeListener('watch:alert', listener);
   },
 };
 

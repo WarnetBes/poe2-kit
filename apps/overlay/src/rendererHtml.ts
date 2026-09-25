@@ -81,6 +81,37 @@ export const rendererHtml = `<!doctype html>
   .batch-item .bi-note { font-size: 11px; color: var(--dim); }
   .batch-item .bi-note .err-inline { color: var(--err); }
   .muted { color: var(--dim); font-size: 11px; }
+  .batch-ww { cursor: pointer; background: none; border: 1px solid rgba(255,255,255,0.15);
+    color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 6px; margin-top: 3px; }
+  .batch-ww:hover { color: var(--accent); border-color: var(--accent); }
+
+  .watch-btn { display: block; width: 100%; margin-top: 6px; cursor: pointer;
+    background: rgba(240,136,62,0.14); border: 1px solid var(--accent); color: var(--accent);
+    border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
+  .watch-btn:hover { background: rgba(240,136,62,0.24); }
+
+  .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,26,34,0.96); border: 1px solid var(--warn); color: #ffe9c2;
+    border-radius: 10px; padding: 8px 12px; font-size: 12px; line-height: 1.4;
+    box-shadow: 0 6px 20px rgba(0,0,0,.5); z-index: 50; max-width: 90%; }
+  .toast b { color: var(--warn); }
+
+  .watch-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px;
+    overflow-y: auto; }
+  .watch-list .empty { color: var(--dim); font-size: 11px; }
+  .wl-row { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 5px 7px; background: rgba(255,255,255,0.03); font-size: 12px; }
+  .wl-row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wl-row .px { font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .wl-row .px.off { color: var(--dim); }
+  .wl-row button { cursor: pointer; background: none; border: 1px solid rgba(255,255,255,0.15);
+    color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 7px; }
+  .wl-row button:hover { color: var(--accent); border-color: var(--accent); }
+  .watch-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .watch-actions button { flex: 1; cursor: pointer; background: rgba(240,136,62,0.14);
+    border: 1px solid var(--accent); color: var(--accent); border-radius: 8px;
+    padding: 4px 8px; font-size: 12px; }
+  .watch-actions button:hover { background: rgba(240,136,62,0.24); }
 
   .lvl-hint { font-size: 12px; line-height: 1.5; }
   .lvl-hint b { color: var(--accent); }
@@ -190,6 +221,10 @@ export const rendererHtml = `<!doctype html>
         <div id="priceBatchHead"></div>
         <div id="priceBatchList"></div>
       </div>
+      <div id="watchBtnWrap" class="hide">
+        <button id="watchBtn" class="watch-btn">👁 Следить за ценой</button>
+      </div>
+      <div id="toast" class="toast hide"></div>
       <div id="listWrap" class="hide">
         <table class="list" id="list"></table>
       </div>
@@ -242,6 +277,18 @@ export const rendererHtml = `<!doctype html>
         <div class="tip">Формат: <b>Control+F1</b>, <b>Alt+Shift+Q</b>. Пустое поле = стандарт.</div>
       </div>
 
+      <div id="watchlistSection" class="set-row">
+        <div class="lbl">
+          <span>Watchlist <small>— следить за ценой, алерт при падении</small></span>
+        </div>
+        <div id="watchList" class="watch-list"></div>
+        <div class="watch-actions">
+          <button id="watchAddBuffer">➕ Из буфера</button>
+          <button id="watchCheckNow">Проверить</button>
+        </div>
+        <div class="tip">Нажмите <b>Ctrl+C</b> на предмете в игре → «➕ Из буфера», либо кнопкой «👁 Следить» в прайс-токе. Проверка каждые 5 мин, алерт «цена упала с X до Y».</div>
+      </div>
+
       <div class="set-actions">
         <button id="settingsResetHK">Сбросить клавиши</button>
         <button id="settingsSave">Сохранить</button>
@@ -263,6 +310,98 @@ export const rendererHtml = `<!doctype html>
     $('idle').classList.toggle('hide', b);
     $('body').classList.toggle('hide', b);
   }
+
+  // ─── Watchlist ──────────────────────────────────────────────────────────────
+  var watchTarget = null;        // предмет в детальном прайс-виде (для кнопки «Следить»)
+  var batchWatchTargets = [];    // предметы в пачке (индекс ↔ data-idx кнопок «Следить»)
+
+  function showToast(msg) {
+    var t = $('toast');
+    if (!t) return;
+    t.innerHTML = msg;
+    t.classList.remove('hide');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { t.classList.add('hide'); }, 3500);
+    requestSize();
+  }
+
+  function doWatchAdd(t, btn) {
+    if (!t || !t.itemText) return;
+    window.poe2k.watchAdd({ itemText: t.itemText, label: t.label, rarity: t.rarity }).then(function (r) {
+      if (r && r.ok) {
+        if (btn) { btn.textContent = '✓ В списке'; btn.disabled = true; }
+        showToast('✓ Добавлено в watchlist: ' + esc(t.label));
+      } else {
+        showToast('Не удалось добавить в watchlist');
+      }
+    }).catch(function () {});
+  }
+
+  // Кнопка «Следить» в детальном прайс-токе.
+  $('watchBtn').addEventListener('click', function () { doWatchAdd(watchTarget, this); });
+
+  // Кнопки «Следить» в карточках пачки (делегирование).
+  $('priceBatchList').addEventListener('click', function (ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('.batch-ww') : null;
+    if (!btn || btn.disabled) return;
+    var idx = btn.getAttribute('data-idx');
+    doWatchAdd(batchWatchTargets[idx], btn);
+  });
+
+  // Всплывающий алерт «цена упала с X до Y» из main.
+  window.poe2k.onWatchAlert(function (a) {
+    if (!a) return;
+    var from = Number(a.from), to = Number(a.to), l = String(a.label || 'Предмет');
+    var fromTxt = Number.isFinite(from) ? from.toFixed(1) : '—';
+    var toTxt = Number.isFinite(to) ? to.toFixed(1) : '—';
+    showToast('<b>📉 Цена упала:</b> ' + esc(l) + '<br/>' + fromTxt + ' → ' + toTxt + ' chaos');
+  });
+
+  function refreshWatchlist() {
+    window.poe2k.watchList().then(function (r) {
+      var entries = (r && r.entries) || [];
+      var box = $('watchList');
+      if (!box) return;
+      if (!entries.length) {
+        box.innerHTML = '<div class="empty">Список пуст. Нажмите «👁 Следить» в прайс-токе или «➕ Из буфера».</div>';
+        requestSize();
+        return;
+      }
+      box.innerHTML = entries.map(function (e) {
+        var px = (e.lastPrice == null) ? '—' : Number(e.lastPrice).toFixed(1) + ' chaos';
+        return '<div class="wl-row">' +
+          '<span class="nm ' + (e.enabled ? '' : ' off') + '">' + esc(e.label) + (e.enabled ? '' : ' <small>(пауза)</small>') + '</span>' +
+          '<span class="px ' + (e.enabled ? '' : ' off') + '">' + px + '</span>' +
+          '<button data-act="tg" data-id="' + esc(e.id) + '">' + (e.enabled ? '⏸' : '▶') + '</button>' +
+          '<button data-act="rm" data-id="' + esc(e.id) + '" title="Убрать">✕</button>' +
+          '</div>';
+      }).join('');
+      requestSize();
+    }).catch(function () {});
+  }
+
+  // Управление списком watchlist: пауза/вкл / удалить (делегирование).
+  $('watchList').addEventListener('click', function (ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('button[data-act]') : null;
+    if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    var id = btn.getAttribute('data-id');
+    if (act === 'tg') window.poe2k.watchToggle(id).then(refreshWatchlist);
+    else if (act === 'rm') window.poe2k.watchRemove(id).then(refreshWatchlist);
+  });
+
+  $('watchAddBuffer').addEventListener('click', function () {
+    window.poe2k.watchAddBuffer().then(function (r) {
+      refreshWatchlist();
+      if (r && r.ok) showToast('✓ Предмет из буфера добавлен в watchlist');
+      else showToast('Буфер пуст — нажмите Ctrl+C на предмете в игре');
+    }).catch(function () {});
+  });
+
+  $('watchCheckNow').addEventListener('click', function () {
+    showToast('Проверяю цены watchlist…');
+    window.poe2k.watchCheck().then(function () { setTimeout(refreshWatchlist, 900); }).catch(function () {});
+  });
 
   // Авторазмер окна: контент панели изменился — просим main подогнать высоту.
   var _sizeTimer = null;
@@ -305,6 +444,7 @@ export const rendererHtml = `<!doctype html>
     $('listWrap').classList.toggle('hide', mode !== 'price');
     $('buildNote').classList.toggle('hide', mode !== 'price');
     $('meta').classList.toggle('hide', mode !== 'price');
+    $('watchBtnWrap').classList.toggle('hide', mode !== 'price');
     $('lvlWrap').classList.toggle('hide', mode !== 'level');
     $('buildWrap').classList.toggle('hide', mode !== 'build');
   }
@@ -497,6 +637,7 @@ export const rendererHtml = `<!doctype html>
     $('meta').classList.add('hide');
     $('listWrap').classList.add('hide');
     $('err').classList.add('hide');
+    $('watchBtnWrap').classList.add('hide');
     $('priceBatchWrap').classList.remove('hide');
   }
 
@@ -572,12 +713,25 @@ export const rendererHtml = `<!doctype html>
     } else {
       lw.classList.add('hide');
     }
+
+    // Кнопка «Следить»: добавить предмет в watchlist (если есть сырой itemText).
+    var ww = $('watchBtnWrap');
+    if (res.itemText) {
+      watchTarget = { itemText: res.itemText, label: res.itemName || 'Предмет', rarity: res.rarity };
+      ww.classList.remove('hide');
+      var wb = $('watchBtn');
+      wb.textContent = '👁 Следить за ценой';
+      wb.disabled = false;
+    } else {
+      ww.classList.add('hide');
+    }
   }
 
   // Несколько предметов из буфера — список с оценками в одном виджете.
   function renderBatchPrice(payload) {
     priceBatchView();
     var items = payload.items || [];
+    batchWatchTargets = [];
     var head = $('priceBatchHead');
     var total = payload.totalEstimate;
     var headTxt = '📦 Предметов: ' + items.length;
@@ -603,6 +757,12 @@ export const rendererHtml = `<!doctype html>
         note = '<span class="err-inline">' + esc('Оценка: ' + res.parseError) + '</span>';
       } else if (!res.estimate) {
         note = '<span class="muted">не найдено в бесплатных источниках</span>';
+      }
+      batchWatchTargets.push(
+        res.itemText ? { itemText: res.itemText, label: res.itemName || ('Предмет ' + (i + 1)), rarity: res.rarity } : null,
+      );
+      if (res.itemText) {
+        note = note + '<button class="batch-ww" data-idx="' + i + '">👁 Следить</button>';
       }
       return '<div class="batch-item">' +
         '<div class="bi-name rarity-' + rar + '">' + esc(res.itemName || ('Предмет ' + (i + 1))) + '</div>' +
@@ -708,6 +868,7 @@ export const rendererHtml = `<!doctype html>
       if (!s) return;
       buildSettingsPanel(s);
       refreshDraftValues();
+      refreshWatchlist();
       requestSize();
     }).catch(function () {});
   }

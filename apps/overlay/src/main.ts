@@ -15,6 +15,7 @@ import {
   clipboard,
   globalShortcut,
   ipcMain,
+  Notification,
   screen,
 } from 'electron';
 import path from 'node:path';
@@ -154,6 +155,245 @@ let busy = false;
 let moveUnlocked = false;
 /** Пользовательское смещение (DIP) от закреплённой позиции; переживает перезапуск. */
 let userOffset: OverlayOffset | null = null;
+
+// ─── Watchlist: следить за ценой предмета, алерт при падении ─────────────────
+
+/** Одна отслеживаемая позиция (база/уникалка/валюта) — перепроверяется в фоне. */
+interface WatchEntry {
+  id: string;
+  /** Человекочитаемое имя для уведомлений. */
+  label: string;
+  rarity?: string;
+  /** Полный клир-текст предмета из игры — то, что шлём в priceCheck при каждом поллинге. */
+  itemText: string;
+  /** Последняя известная медианная оценка (в хаосах), null — ещё не проверялся. */
+  lastPrice: number | null;
+  /** Уже уведомили о текущем падении (базовая линия не двигалась). */
+  alerted: boolean;
+  enabled: boolean;
+  /** Время последнего успешного поллинга (ms). 0 — нужно проверить сразу. */
+  updatedAt: number;
+  /** Период проверки (ms). */
+  pollMs: number;
+}
+
+/** Тик фонового поллинга watchlist. */
+const WATCH_TICK_MS = 60_000;
+/** Период проверки одной позиции по умолчанию (5 мин). */
+const WATCH_POLL_DEFAULT_MS = 5 * 60_000;
+
+let watchlist: WatchEntry[] = [];
+let watchBusy = false;
+let watchTimer: NodeJS.Timeout | null = null;
+
+function watchlistFile(): string {
+  return path.join(app.getPath('userData'), 'watchlist.json');
+}
+
+function loadWatchlist(): void {
+  try {
+    const raw = JSON.parse(fs.readFileSync(watchlistFile(), 'utf8'));
+    if (Array.isArray(raw)) {
+      watchlist = raw
+        .filter((e) => e && typeof e.itemText === 'string' && e.itemText.length > 0)
+        .map((e) => ({
+          id:
+            typeof e.id === 'string' && e.id
+              ? e.id
+              : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          label: typeof e.label === 'string' && e.label ? e.label : 'Предмет',
+          rarity: typeof e.rarity === 'string' ? e.rarity : undefined,
+          itemText: e.itemText,
+          lastPrice: typeof e.lastPrice === 'number' ? e.lastPrice : null,
+          alerted: !!e.alerted,
+          enabled: e.enabled !== false,
+          updatedAt: typeof e.updatedAt === 'number' ? e.updatedAt : 0,
+          pollMs: typeof e.pollMs === 'number' ? e.pollMs : WATCH_POLL_DEFAULT_MS,
+        }));
+      console.log(`[overlay] watchlist: загружено ${watchlist.length} позиций`);
+    }
+  } catch {
+    watchlist = [];
+  }
+}
+
+function saveWatchlist(): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(watchlistFile(), JSON.stringify(watchlist), 'utf8');
+  } catch {
+    /* некритично */
+  }
+}
+
+/** Публичное представление для рендерера (по умолчанию без сырого itemText). */
+function watchlistPublic(includeItemText = false): unknown[] {
+  return watchlist.map((e) => {
+    const o: Record<string, unknown> = {
+      id: e.id,
+      label: e.label,
+      rarity: e.rarity,
+      lastPrice: e.lastPrice,
+      alerted: e.alerted,
+      enabled: e.enabled,
+      updatedAt: e.updatedAt,
+      pollMs: e.pollMs,
+    };
+    if (includeItemText) o.itemText = e.itemText;
+    return o;
+  });
+}
+
+function addWatchEntry(p: { itemText?: string; label?: string; rarity?: string }): {
+  ok: boolean;
+  entries: unknown[];
+} {
+  const text = typeof p?.itemText === 'string' ? p.itemText.trim() : '';
+  if (!text) return { ok: false, entries: watchlistPublic() };
+  // Дедупликация: тот же предмет уже в списке — ничего не меняем.
+  if (watchlist.some((e) => e.itemText === text)) {
+    return { ok: true, entries: watchlistPublic() };
+  }
+  const label =
+    (typeof p?.label === 'string' && p.label.trim()) ||
+    core.parse.itemDisplayName(core.parse.parseItemText(text)) ||
+    'Предмет';
+  watchlist.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    label,
+    rarity: typeof p?.rarity === 'string' ? p.rarity : undefined,
+    itemText: text,
+    lastPrice: null,
+    alerted: false,
+    enabled: true,
+    updatedAt: 0,
+    pollMs: WATCH_POLL_DEFAULT_MS,
+  });
+  saveWatchlist();
+  console.log(`[overlay] watchlist: добавлено "${label}" (всего ${watchlist.length})`);
+  return { ok: true, entries: watchlistPublic() };
+}
+
+function removeWatchEntry(id: string): { ok: boolean; entries: unknown[] } {
+  watchlist = watchlist.filter((e) => e.id !== id);
+  saveWatchlist();
+  return { ok: true, entries: watchlistPublic() };
+}
+
+function toggleWatchEntry(id: string): { ok: boolean; entries: unknown[] } {
+  const e = watchlist.find((x) => x.id === id);
+  if (e) {
+    e.enabled = !e.enabled;
+    saveWatchlist();
+  }
+  return { ok: true, entries: watchlistPublic() };
+}
+
+function fmtChaos(v: number): string {
+  return Number.isFinite(v) ? Number(v).toFixed(1) : String(v);
+}
+
+/** Всплывающее уведомление о падении цены: системный тост Windows + инлайн-тост в оверлее. */
+function notifyWatchDrop(entry: WatchEntry, from: number, to: number): void {
+  const body = `${entry.label}: ${fmtChaos(from)} → ${fmtChaos(to)} chaos`;
+  console.log(`[overlay] watchlist ALERT: ${body}`);
+  try {
+    if (Notification.isSupported()) {
+      new Notification({ title: '📉 Цена упала', body }).show();
+    } else {
+      console.warn('[overlay] watchlist: системные уведомления не поддерживаются — только тост в оверлей');
+    }
+  } catch {
+    /* уведомления недоступны — всё равно шлём тост в оверлей ниже */
+  }
+  overlayWindow?.webContents.send('watch:alert', {
+    id: entry.id,
+    label: entry.label,
+    from,
+    to,
+    ts: Date.now(),
+  });
+}
+
+/** Проверить одну позицию: обновить цену, при падении от базовой линии — алерт. */
+async function pollWatchEntry(entry: WatchEntry): Promise<void> {
+  let result: Record<string, unknown> | undefined;
+  try {
+    result = await checkPriceItem(entry.itemText);
+  } catch {
+    result = undefined;
+  }
+  const m = (result?.estimate as { median?: number } | undefined)?.median;
+  if (m == null) {
+    // Цены нет (не торгуется / сети нет) — базу не двигаем, но время обновляем,
+    // чтобы не молотить один и тот же неуспех каждый тик.
+    entry.updatedAt = Date.now();
+    return;
+  }
+  if (entry.lastPrice == null) {
+    // Первое наблюдение — ставим базовую линию, алерта здесь быть не должно.
+    entry.lastPrice = m;
+    entry.alerted = false;
+    entry.updatedAt = Date.now();
+    return;
+  }
+  const dropped = m < entry.lastPrice;
+  if (dropped && !entry.alerted) {
+    // Падение от базовой линии: уведомляем один раз, базу не двигаем,
+    // следующий алерт возможен после восстановления цены.
+    entry.alerted = true;
+    notifyWatchDrop(entry, entry.lastPrice, m);
+  } else if (!dropped) {
+    // Цена выросла/равна — новая базовая линия, алерт снова можно выдавать.
+    entry.alerted = false;
+    if (m > entry.lastPrice) entry.lastPrice = m;
+  }
+  entry.updatedAt = Date.now();
+}
+
+/** Фоновый поллинг watchlist, строго последовательно (rate-limit trade2 под капотом). */
+async function runWatchPoll(force = false): Promise<void> {
+  if (watchBusy) return;
+  if (busy && !force) return; // идёт ручной прайс-чек — не сталкиваемся по rate-limit
+  watchBusy = true;
+  try {
+    const now = Date.now();
+    let touched = false;
+    for (const e of watchlist) {
+      if (!e.enabled) continue;
+      const due = force || e.updatedAt === 0 || now - e.updatedAt >= e.pollMs;
+      if (!due) continue;
+      try {
+        await pollWatchEntry(e);
+        touched = true;
+      } catch (err) {
+        console.warn(
+          `[overlay] watchlist poll failed: "${e.label}": ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    if (touched) saveWatchlist();
+  } finally {
+    watchBusy = false;
+  }
+}
+
+function startWatchTimer(): void {
+  if (watchTimer) return;
+  // Прошли один раз сразу (задать базовые цены), дальше — по тику.
+  void runWatchPoll();
+  watchTimer = setInterval(() => void runWatchPoll(), WATCH_TICK_MS);
+  console.log(
+    `[overlay] watchlist: timer запущен (tick=${WATCH_TICK_MS}ms, pollDefault=${WATCH_POLL_DEFAULT_MS}ms)`,
+  );
+}
+
+function stopWatchTimer(): void {
+  if (watchTimer) {
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+}
 
 // ─── Билд-ассистент: шопинг-лист по билду ────────────────────────────────────
 
@@ -1373,7 +1613,7 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
         (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0
       }`,
     );
-    return result as unknown as Record<string, unknown>;
+    return { ...(result as unknown as Record<string, unknown>), itemText };
   } catch (err) {
     console.warn('[overlay] priceCheck failed:', err instanceof Error ? err.message : err);
     // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
@@ -1387,6 +1627,7 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
       updatedAt: Date.now(),
       parseOnly: true,
       parseError: err instanceof Error ? err.message : String(err),
+      itemText,
     };
   }
 }
@@ -1582,6 +1823,20 @@ function setupIPC(): void {
     return activeLeague;
   });
 
+  // Watchlist: список / добавить / удалить / вкл-выкл / проверить сейчас / из буфера.
+  ipcMain.handle('watch:list', () => ({ entries: watchlistPublic() }));
+  ipcMain.handle('watch:add', (_evt, p) => addWatchEntry(p));
+  ipcMain.handle('watch:remove', (_evt, id) => removeWatchEntry(String(id)));
+  ipcMain.handle('watch:toggle', (_evt, id) => toggleWatchEntry(String(id)));
+  ipcMain.handle('watch:check', () => {
+    void runWatchPoll(true);
+    return { ok: true };
+  });
+  ipcMain.handle('watch:addBuffer', () => {
+    const text = clipboard.readText();
+    return addWatchEntry({ itemText: text });
+  });
+
   ipcMain.handle('hotkey:get', () => hotkeyFor('price'));
 
   // Настройки: получить/применить всё.
@@ -1670,6 +1925,15 @@ app.whenReady().then(async () => {
     `[overlay] init: userData=${app.getPath('userData')} cwd=${process.cwd()} argv=${JSON.stringify(process.argv)}`,
   );
 
+  // Windows: без AppUserModelID системные тосты (уведомления о падении цены) не показываются.
+  if (process.platform === 'win32') {
+    try {
+      app.setAppUserModelId('com.poe2kit.overlay');
+    } catch {
+      /* некритично */
+    }
+  }
+
   // Восстанавливаем сохранённые настройки (угол, прозрачность, масштаб, ширина,
   // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
   settings = loadSettings();
@@ -1719,11 +1983,15 @@ app.whenReady().then(async () => {
   console.log(
     `[overlay] char sync source: ${charSync ? `${charSync.character} (${charSync.league})` : 'не задан'}`,
   );
+  // Watchlist: восстанавливаем список отслеживаемых предметов из userData.
+  loadWatchlist();
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
   if (!loadRuEnDict()) void ensureRuEnDict();
   setupIPC();
   void createOverlayWindow().then(() => {
     startGameTracker();
+    // Watchlist: фоновый поллинг цен после создания окна.
+    startWatchTimer();
     // После создания окна — выслать текущее состояние билда (если есть).
     if (buildState) {
       buildState.panelVisible = false;
@@ -1743,6 +2011,7 @@ app.whenReady().then(async () => {
       console.log(`[smoke] windows=${BrowserWindow.getAllWindows().length}`);
       console.log(`[smoke] hotkey_ok=${globalShortcut.isRegistered(hotkeyFor('price'))}`);
       console.log(`[smoke] parse_ok=${core.parse.itemDisplayName(parsed)} (${parsed.rarity})`);
+      console.log(`[smoke] watchlist_ok=${Array.isArray(watchlist)} entries=${watchlist.length}`);
       console.log('[smoke] SMOKE OK');
       app.exit(0);
     }, 2500);
@@ -1764,6 +2033,7 @@ app.on('second-instance', () => {
 app.on('will-quit', (_e) => {
   console.log('[overlay] app: will-quit (выход из приложения)');
   stopGameTracker();
+  stopWatchTimer();
   globalShortcut.unregisterAll();
 });
 
