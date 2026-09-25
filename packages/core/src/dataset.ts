@@ -549,6 +549,27 @@ export function resolvePassiveNodes(ids: string[]): PassiveNodeResolveReport {
   };
 }
 
+// ─── Координаты дерева (P2 #15 — «взятые узлы на карте») ──────────────────────
+
+let passivePositions: Map<string, [number, number]> | null = null;
+
+/** Карта координат узлов дерева: game node ID → [x, y] (в игровых координатах карты). */
+export function getPassiveTreePositions(): Map<string, [number, number]> {
+  if (!passivePositions) {
+    const raw = loadJson<{ positions?: Record<string, [number, number]> }>('passive_tree/positions.json');
+    passivePositions = new Map();
+    for (const [id, p] of Object.entries(raw.positions ?? {})) {
+      if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) passivePositions.set(id, [p[0], p[1]]);
+    }
+  }
+  return passivePositions;
+}
+
+/** Позиция узла дерева по ID (числовой game ID), если известна. */
+export function getPassiveNodePosition(id: string): [number, number] | null {
+  return getPassiveTreePositions().get(String(id).trim()) ?? null;
+}
+
 // ─── Базовые предметы ────────────────────────────────────────────────────────
 
 export interface BaseItem {

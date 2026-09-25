@@ -11,6 +11,8 @@ import {
   showLevelingPlan,
   showBuildImport,
   showBuildPrice,
+  showBuildTreeFromText,
+  showBuildTreeFromLast,
   showAIChat,
   sendAIMessage,
   clearAIChat,
@@ -47,6 +49,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="price" class="tab">Прайс-чек</button>
         <button data-tab="leveling" class="tab">Прокачка</button>
         <button data-tab="build" class="tab">Импорт билда</button>
+        <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="ai" class="tab">AI-чат</button>
         <span class="tab league-wrap">
           <label class="league-label" for="league-select">Лига</label>
@@ -101,6 +104,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
         <div id="out-build" class="out"></div>
         <div id="out-build-price" class="out"></div>
+      </section>
+
+      <section id="pane-tree" class="pane">
+        <h2>Карта дерева пассивок <small>взятые узлы</small></h2>
+        <p class="hint">ID узлов (как в PoB: числа через запятую/пробел) — или бери узлы последнего разобранного билда. Клик по узлу на карте — статы; перетаскивание — смещение, колесо — масштаб.</p>
+        <textarea id="tree-input" rows="4" placeholder="12876, 11672, 48773, …"></textarea>
+        <div class="aitools">
+          <button id="btn-tree" class="primary">Показать дерево</button>
+          <button id="btn-tree-last" class="ghost">Из последнего билда</button>
+        </div>
+        <div id="out-tree" class="out"></div>
       </section>
 
       <section id="pane-ai" class="pane">
@@ -206,6 +220,10 @@ document.querySelector('#btn-build')!.addEventListener('click', () =>
 document.querySelector('#btn-build-price')!.addEventListener('click', () =>
   showBuildPrice((document.querySelector('#build-input') as HTMLTextAreaElement).value),
 );
+document.querySelector('#btn-tree')!.addEventListener('click', () =>
+  showBuildTreeFromText((document.querySelector('#tree-input') as HTMLTextAreaElement).value),
+);
+document.querySelector('#btn-tree-last')!.addEventListener('click', () => showBuildTreeFromLast());
 
 // ── AI-чат ─────────────────────────────────────────────
 showAIChat();

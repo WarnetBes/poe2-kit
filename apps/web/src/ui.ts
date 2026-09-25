@@ -7,6 +7,7 @@ import {
   KNOWN_LEAGUES,
   type League,
 } from '@poe2-kit/core';
+import { renderTreeMap } from './treeMap';
 
 export { core, KNOWN_LEAGUES };
 
@@ -384,6 +385,7 @@ export async function showBuildImport(code: string): Promise<void> {
   try {
     const xml = core.build.decodeShareCode(code.trim());
     const b = await core.build.importBuild(xml);
+    _lastBuildNodes = Array.isArray(b.passiveNodes) ? b.passiveNodes.map((n) => String(n)) : [];
     const ls: string[] = ['<h3>Билд</h3>', '<ul class="kv">'];
     ls.push(`<li>Класс: <b>${esc(b.class ?? '—')}</b>${b.ascendancy ? ` / ${esc(b.ascendancy)}` : ''}</li>`);
     ls.push(`<li>Уровень: <b>${b.level ?? '—'}</b></li>`);
@@ -425,6 +427,50 @@ export async function showBuildImport(code: string): Promise<void> {
     el.innerHTML = `<p class="err">Ошибка декода: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
     setStatus('Ошибка декода.');
   }
+}
+
+/** Узлы последнего разобранного билда (для карты дерева). */
+let _lastBuildNodes: string[] = [];
+
+/** Узлы последнего разобранного билда. */
+export function getLastBuildNodes(): string[] {
+  return _lastBuildNodes.slice();
+}
+
+/** Показать интерактивную карту дерева по списку ID узлов. */
+export async function showBuildTree(ids: string[]): Promise<void> {
+  const el = out('out-tree');
+  const cleaned = (ids ?? []).map((x) => String(x).trim()).filter(Boolean);
+  if (!cleaned.length) {
+    el.innerHTML = '<p class="err">Нет ID узлов.</p>';
+    return;
+  }
+  el.innerHTML = '<em>Загрузка карты дерева…</em>';
+  setStatus('Строю карту дерева…');
+  try {
+    await renderTreeMap(el, cleaned);
+    setStatus(`На карте узлов: ${cleaned.length}. Клик по узлу — статы, колесо — масштаб.`);
+  } catch (e) {
+    el.innerHTML = `<p class="err">Ошибка карты: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
+    setStatus('Ошибка карты дерева.');
+  }
+}
+
+/** Показать карту дерева по ID, введённым в поле (пробелы, запятые, переводы строк). */
+export async function showBuildTreeFromText(text: string): Promise<void> {
+  const ids = (text || '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+  await showBuildTree(ids);
+}
+
+/** Показать карту дерева последнего разобранного билда. */
+export async function showBuildTreeFromLast(): Promise<void> {
+  const el = out('out-tree');
+  const ids = _lastBuildNodes.length ? _lastBuildNodes.slice() : [];
+  if (!ids.length) {
+    el.innerHTML = '<p class="err">Сначала разбери билд (вкладка «Импорт билда») или введи ID узлов в поле выше.</p>';
+    return;
+  }
+  await showBuildTree(ids);
 }
 
 /** Прайс-чек всего снаряжения билда по живым ценам. */

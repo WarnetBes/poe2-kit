@@ -525,3 +525,77 @@ a { color: var(--gold); }
   .league-wrap { margin-left: 0; }
   .brand { font-size: 18px; }
 }
+
+/* ── Карта дерева пассивок (P2 #15) ───────────────────────────────────────── */
+
+.tree-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.tree-top .badge {
+  font-size: 12.5px;
+  padding: 3px 10px;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.tree-top .badge b { color: var(--gold-hi); }
+.tree-top .badge.warn b { color: var(--rare); }
+.btn-fit {
+  margin-left: auto;
+  background: linear-gradient(180deg, #3a2f18, #241d0f);
+  border: 1px solid var(--border-hi);
+  color: var(--gold-hi);
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-fit:hover { color: #fff; }
+.tree-body { display: flex; gap: 10px; min-height: 420px; }
+.tree-canvas {
+  flex: 1 1 auto;
+  height: 520px;
+  position: relative;
+  background: radial-gradient(ellipse at center, #101018, #07070b 70%);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.tree-svg { display: block; touch-action: none; }
+.tree-svg.panning { cursor: grabbing; }
+.tree-svg .tnode { cursor: pointer; stroke: none; }
+.tree-svg .tnode:hover { fill: #fff; }
+.tnode-label {
+  fill: var(--dim);
+  font-size: 11px;
+  font-family: 'EB Garamond', Georgia, serif;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #07070b;
+  stroke-width: 3px;
+}
+.tree-detail {
+  flex: 0 0 260px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: 520px;
+}
+.tree-detail em { color: var(--dim); }
+.tname { font-size: 16px; color: var(--gold-hi); margin-bottom: 6px; }
+.tbadges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.pill {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-hi);
+  color: var(--gold);
+}
+.pill.mono { font-family: ui-monospace, Consolas, monospace; letter-spacing: 0; color: var(--dim); }
+.tstats { margin: 0; padding-left: 18px; }
+.tstats li { line-height: 1.5; color: var(--fg); }
+.dim { color: var(--dim); }
+@media (max-width: 720px) {
+  .tree-body { flex-direction: column; }
+  .tree-detail { flex: 1 1 auto; max-height: none; }
+  .tree-canvas { height: 380px; }
+}
