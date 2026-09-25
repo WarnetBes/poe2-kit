@@ -3,7 +3,12 @@
 # Локальные рабочие файлы: пользовательский лог и временные отладочные скрипты (_*.mjs)
 WORK_LOG.md
 _*.mjs
+_*.py
 _price_run*.log
+_price_report.json
+README-netfix.md
+# Дайджесты вклада пользователей (генерируются contribute-items.mjs — в репо не идут)
+poe2-items-contribution-*.json
 
 # npm
 node_modules/

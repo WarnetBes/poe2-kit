@@ -14,6 +14,8 @@ export * from './estimate.js';
 export * from './tradeQuery.js';
 export * from './dataset.js';
 export * from './uniques.js';
+export * from './learnlog.js';
+export * from './learnedStats.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './ladder.js';
@@ -62,6 +64,8 @@ import * as advicemod from './advice.js';
 import * as ssfmod from './ssf.js';
 import * as cachemod from './cache.js';
 import * as gameConfigMod from './gameConfig.js';
+import * as learnmod from './learnlog.js';
+import * as learnedStatsMod from './learnedStats.js';
 
 export const core = {
   trade,
@@ -84,6 +88,8 @@ export const core = {
   ssf: ssfmod,
   cache: cachemod,
   gameConfig: gameConfigMod,
+  learn: learnmod,
+  learnedStats: learnedStatsMod,
   ehp: ehpmod,
   spirit: spiritmod,
   stun: stunmod,

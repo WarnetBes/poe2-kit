@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Единое ядро PoE2 Kit: цены, торговля, билды, прокачка, AI-слой",
   "main": "dist/index.js",
@@ -15,6 +15,8 @@
     "build": "tsc -p tsconfig.json",
     "smoke": "node smoke.mjs",
     "live-smoke": "node live-smoke.mjs",
+    "contribute-items": "node contribute-items.mjs",
+    "merge-contributions": "node merge-contributions.mjs",
     "test": "npm run build && npm run smoke"
   },
   "devDependencies": {

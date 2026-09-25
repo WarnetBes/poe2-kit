@@ -15,6 +15,8 @@ import { cachedJson, cachedPostJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
 import { scountCategoryForUnique } from './uniques.js';
+import { recordLearnedItem } from './learnlog.js';
+import { getLearnedStatTemplates } from './learnedStats.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -808,13 +810,40 @@ export function matchStatFilter(
 export async function matchModsToStatFilters(
   modTexts: string[],
 ): Promise<{ filters: TradeStatFilter[]; unmatched: string[] }> {
-  const entries = await fetchTradeStats();
+  let entries: TradeStatEntry[] = [];
+  try {
+    entries = await fetchTradeStats();
+  } catch (e) {
+    // живой каталог статов недоступен (патч сменил схему / сеть) —
+    // выручает библиотека выученных статов (stale-but-known)
+    entries = getLearnedStatTemplates() as TradeStatEntry[];
+    debugLog(
+      'fetchTradeStats failed, using learned stat library:',
+      `${entries.length} learned entries`,
+      e instanceof Error ? e.message : String(e),
+    );
+  }
   const filters: TradeStatFilter[] = [];
-  const unmatched: string[] = [];
+  let unmatched: string[] = [];
   for (const t of modTexts) {
     const f = matchStatFilter(t, entries);
     if (f) filters.push(f);
     else unmatched.push(t);
+  }
+  // Второй проход: моды, не найденные в живом каталоге, пробуем по
+  // библиотеке выученных статов (патч ещё не отразился в /data/stats или
+  // живой каталог неполон). Библиотека — только дополнение, не замена.
+  if (unmatched.length && entries.length) {
+    const learned = getLearnedStatTemplates() as TradeStatEntry[];
+    if (learned.length) {
+      const stillUnmatched: string[] = [];
+      for (const t of unmatched) {
+        const f = matchStatFilter(t, learned);
+        if (f) filters.push(f);
+        else stillUnmatched.push(t);
+      }
+      unmatched = stillUnmatched;
+    }
   }
   return { filters, unmatched };
 }
@@ -1064,6 +1093,8 @@ export async function priceCheck(
   let estimate: PriceEstimate | null = null;
   let listings: TradeListing[] = [];
   let note: string | undefined;
+  // stat-id, сматченные по explicit-модам (для журнала обучения — см. learnlog.ts)
+  let learnedStatIds: string[] = [];
 
   if (parsed.rarity === 'Unique' && (parsed.name ?? parsed.baseType)) {
     const v = await priceUniqueWithTimeout(
@@ -1110,6 +1141,7 @@ export async function priceCheck(
   ) {
     try {
       const { filters, unmatched } = await matchModsToStatFilters(explicitMods);
+      learnedStatIds = filters.map((f) => f.id);
       debugLog(
         'matchModsToStatFilters:',
         `${filters.length} filters, ${unmatched.length} unmatched`,
@@ -1189,6 +1221,22 @@ export async function priceCheck(
   }
   // note без estimate не осмыслен (оценивать нечего) — не вешаем ложную пометку.
   if (!estimate) note = undefined;
+
+  // Журнал обучения (opt-in, PRIVACY: только структура предмета — см. learnlog.ts)
+  recordLearnedItem({
+    at: new Date().toISOString(),
+    league: league ?? null,
+    source: process.env['POE2K_LEARN_SOURCE'] ?? undefined,
+    rarity: String(parsed.rarity ?? 'Unknown'),
+    name: parsed.name,
+    baseType: parsed.baseType ?? 'Unknown',
+    itemClass: parsed.itemClass ?? null,
+    itemLevel: parsed.itemLevel,
+    reqLevel: parsed.requirements?.level ?? null,
+    mods: explicitMods,
+    statIds: learnedStatIds,
+  });
+
   debugLog(
     'result:',
     JSON.stringify({ estimate, listings: listings.length, note, sources: null }),
