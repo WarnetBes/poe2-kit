@@ -163,6 +163,7 @@ function normalizeTemplate(text: string): string {
   return text
     .replace(/\([\d.]+-[\d.]+\)/g, '#')
     .replace(/[\d.]+/g, '#')
+    .replace(/\+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
