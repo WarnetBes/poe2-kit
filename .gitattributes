@@ -1,5 +1,5 @@
-# Windows batch-файлы обязаны быть CRLF: cmd.exe на LF ломается
-# (goto/скобочные блоки/переносы ^) и окно закрывается мгновенно.
+# Пакетные файлы Windows обязаны иметь CRLF-переносы: cmd.exe некорректно
+# исполняет .bat с LF (обрывки вида "'evel' is not recognized" на if errorlevel).
+# Git при checkout/clone на Windows теперь всегда конвертирует их в CRLF.
 *.bat text eol=crlf
 *.cmd text eol=crlf
-*.ps1 text eol=crlf
