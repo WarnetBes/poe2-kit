@@ -12,6 +12,7 @@
  */
 
 import type { AIProviderInfo, AIRequest, AIResponse } from './types.js';
+import { getMonkLevelingHint, getMonkLevelingTips } from './leveling.js';
 
 export interface OpenAICompatibleChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -121,6 +122,39 @@ export function listAIProviders(): AIProviderInfo[] {
 }
 
 /**
+ * Rule-based советы по Ice Strike Monk — доступны даже без live-модели.
+ * Использует данные гида прокачки (leveling.ts) + подсказки по камням/экипировке.
+ * Возвращает компактный текст-совет под текущий уровень (если указан).
+ */
+export function iceStrikeMonkAdvice(context?: Record<string, unknown>): string {
+  const lvl =
+    typeof context?.level === 'number'
+      ? context.level
+      : typeof context?.playerLevel === 'number'
+        ? context.playerLevel
+        : undefined;
+
+  const tips = getMonkLevelingTips(lvl);
+  const lines: string[] = ['🧊 **Ice Strike Monk — советы по прокачке**'];
+  for (const t of tips) {
+    const range = t.toLevel == null ? `${t.fromLevel}+` : `${t.fromLevel}–${t.toLevel}`;
+    lines.push(`\n**Уровни ${range}**:`);
+    if (t.gems?.length) lines.push(`  • Камни: ${t.gems.join(', ')}`);
+    if (t.gear?.length) {
+      lines.push(`  • Экипировка: ${t.gear.join('; ')}`);
+    }
+    if (t.notes?.length) {
+      for (const n of t.notes) lines.push(`  • ${n}`);
+    }
+  }
+  if (!tips.length) {
+    lines.push(`\n  • ${getMonkLevelingHint(lvl)}`);
+  }
+  lines.push('\nСовет общий: Ice Strike конвертит физику в холод — собирайте высокий физический quarterstaff, крит и холодный адд-урон.');
+  return lines.join('\n');
+}
+
+/**
  * Авто-детекция и вызов: пробуем внешний эндпоинт (OpenCode-модель),
  * затем локальную Ollama, иначе возвращаем fallback.
  */
@@ -149,8 +183,14 @@ export async function askAI(req: AIRequest): Promise<AIResponse> {
     }
   }
 
+  // Нет доступной модели — даём полезный fallback: контекстный совет Ice Strike Monk.
+  const level = typeof req.context?.level === 'number' ? req.context.level : undefined;
+  const hint = getMonkLevelingHint(level);
   return {
-    text: 'Нет доступной AI-модели. Настройте POE2KIT_AI_BASE/POE2KIT_AI_MODEL (напр. OpenCode-модель eliza-deepseek/deepseek-v4-flash) или POE2KIT_OLLAMA_MODEL. Пока могу только по уже заложенным правилам.',
+    text:
+      `Нет доступной AI-модели (настройте POE2KIT_AI_BASE/POE2KIT_AI_MODEL, напр. eliza-deepseek/deepseek-v4-flash, или POE2KIT_OLLAMA_MODEL).\n\n` +
+      `Пока могу предоставить заложенные советы по вашему билду:\n${iceStrikeMonkAdvice(req.context)}\n\n` +
+      `Быстрый совет: ${hint}`,
     provider: 'none',
     source: 'none',
   };

@@ -1,6 +1,7 @@
 ﻿// Smoke-С‚РµСЃС‚ РїСЂРѕС‚РёРІ СЃРѕР±СЂР°РЅРЅРѕРіРѕ dist (Node ESM, Р±РµР· СЃРµС‚Рё).
 import { decodeShareCode, encodeShareCode, PobCodeError, importBuild } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
+import { getMonkLevelingTips, getMonkLevelingHint, getMonkLevelingPlan } from './dist/leveling.js';
 import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
 import * as core from './dist/index.js';
 
@@ -17,6 +18,13 @@ ok(JSON.stringify([...new Set(plan.map(z => z.act))].sort()) === '[1,2,3,4]', 'a
 ok(plan[0].monsterLevel < plan[plan.length-1].monsterLevel, 'monster level rises');
 ok(getZonesByAct(1).length > 10, 'act1 zones');
 ok(levelDiff(5, getZonesByAct(1)[0]) === 5 - getZonesByAct(1)[0].monsterLevel, 'levelDiff');
+
+console.log('Ice Strike Monk guide');
+  ok(getMonkLevelingTips().length >= 4, 'monk tips: 4+ ranges');
+  ok(getMonkLevelingTips(30).some((t) => t.fromLevel <= 30 && (t.toLevel == null || t.toLevel >= 30)), 'monk tips: lvl30 matched');
+  ok(getMonkLevelingHint(1).includes('Ice Strike'), 'monk hint: Ice Strike present at lvl1');
+  ok(getMonkLevelingPlan().length === getLevelingPlan().length, 'monk plan: same zone count');
+  ok(getMonkLevelingPlan().some((z) => z.steps.some((s) => s.includes('Ice Strike Monk'))), 'monk plan: enriched steps');
 
 console.log('PoB roundtrip');
 const xml = `<?xml version="1.0"?><PathOfBuilding><Build level="20"/></PathOfBuilding>`;

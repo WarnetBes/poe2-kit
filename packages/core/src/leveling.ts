@@ -185,3 +185,153 @@ export const LEVELING_PLAN: LevelingZone[] = buildLevelingPlan();
 export function getZoneByActAct(act: number): LevelingZone[] {
   return getZonesByAct(act);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// Ice Strike Monk — специализированный гид прокачки
+// ════════════════════════════════════════════════════════════════════════
+
+/** Совет по прокачке Ice Strike Monk, привязанный к диапазону уровней. */
+export interface MonkLevelingTip {
+  /** Нижняя граница уровня (включительно). */
+  fromLevel: number;
+  /** Верхняя граница уровня (включительно), null — до конца. */
+  toLevel?: number | null;
+  /** Какие камни/способности иметь в этом диапазоне (названия из игры). */
+  gems?: string[];
+  /** Приоритеты экипировки/статов. */
+  gear?: string[];
+  /** На что обратить внимание по механике. */
+  notes?: string[];
+}
+
+/** Ключевые камни и приоритеты Ice Strike Monk для прокачки Актов 1–4.
+ *  Камни названы как в игре; уровень — ориентировочный момент получения. */
+export const MONK_LEVELING_TIPS: MonkLevelingTip[] = [
+  {
+    fromLevel: 1,
+    toLevel: 11,
+    gems: [
+      'Ice Strike',
+      'Wind Blast',
+      'Frozen Locus',
+      'Herald of Ice (при доступном Spirit)',
+    ],
+    gear: [
+      'Quarterstaff: как можно больше physical damage и attack speed',
+      'Ранние поддержки: Added Cold / Basic Attack Speed / Melee Physical',
+    ],
+    notes: [
+      'Ice Strike конвертирует 80% физического урона в холод — физ на оружии усиляет весь урон.',
+      'Третий удар комбо бьёт АоЕ и дальше — научитесь добивать толпу третьим ударом.',
+      'Herald of Ice сильно ускоряет зачистку отрядов (холодный взрыв).',
+    ],
+  },
+  {
+    fromLevel: 12,
+    toLevel: 27,
+    gems: [
+      'Tempest Flurry (альтернатива на lightning)',
+      'Killing Palm',
+      'Tempest Bell',
+      'Frozen Locus',
+    ],
+    gear: [
+      'Ищите quarterstaff с +Level of all Melee Skills — топовый аффикс.',
+      'Добавляйте крит (Critical Hit Chance/Damage Bonus).',
+      'Резы: приоритет Fire/Cold/Lightning на броне.',
+    ],
+    notes: [
+      'Из Акта 1 таймайте Killing Palm для генерации Power Charges (усиливают крит).',
+      'Tempest Bell — большой АоЕ-берст с кулдауном: стабится под толпой/боссом.',
+      'При наличии Spirit держите Herald (ледяной или ярости) для клира.',
+    ],
+  },
+  {
+    fromLevel: 28,
+    toLevel: 47,
+    gems: [
+      'Charged Staff',
+      'Siphoning Strike',
+      'Storm Wave (обзорно)',
+      'Tempest Bell',
+    ],
+    gear: [
+      'Цельтесь в 100% крит или высокий крит-шанс + Freeze/Pierce для клира.',
+      'Energy Shield + Evasion: бой в ближнем бою требует выживаемости.',
+      'Резервация духа: обычно хватает на Herald + один бафф.',
+    ],
+    notes: [
+      'Charged Staff потребляет Power Charges ради большого lightning-буста — связка с Killing Palm/Siphoning Strike.',
+      'Siphoning Strike генерирует Power Charges через Shock — для стабильного Charged Staff.',
+      'Прокачка после Акта 2 — держитесь близко к рекомендованному уровню зон.',
+    ],
+  },
+  {
+    fromLevel: 48,
+    toLevel: null,
+    gems: [
+      'Ice Strike (основной)',
+      'Tempest Bell',
+      'Herald of Ice',
+      'Charged Staff',
+      'Killing Palm / Siphoning Strike',
+    ],
+    gear: [
+      'Высокий физический quarterstaff + крит-мультипликатор.',
+      'Физ→холод конверсия и аддитивный холод на оружии/кольцах.',
+      'Набирайте Spirit-предметы для второго резервного баффа.',
+    ],
+    notes: [
+      'Финальный сетап Ice Strike Monk: ледяной крит-берст + аое третьим ударом.',
+      'Держите Tempest Bell для бурста и ломайте вещи на мощных боссах.',
+      'При переносе на укрепления/карты — ставьте Herald of Ice в резервацию для клира.',
+    ],
+  },
+];
+
+/** Полный набор советов Ice Strike Monk по порядку кампании. */
+export function getMonkLevelingTips(
+  level?: number,
+): MonkLevelingTip[] {
+  if (level == null) return MONK_LEVELING_TIPS;
+  return MONK_LEVELING_TIPS.filter(
+    (t) => level >= t.fromLevel && (t.toLevel == null || level <= t.toLevel),
+  );
+}
+
+/** Совет Ice Strike Monk, подходящий текущему уровню (один, самый приоритетный). */
+export function getMonkLevelingHint(level?: number): string {
+  const tips = getMonkLevelingTips(level);
+  if (!tips.length) {
+    return 'Ice Strike Monk: держите высокий физический quarterstaff и добавляйте крит + холодный урон.';
+  }
+  const parts: string[] = [];
+  if (tips[0]?.gems?.length) {
+    parts.push('Камни: ' + tips[0].gems.join(', '));
+  }
+  if (tips[0]?.notes?.length) {
+    parts.push(tips[0].notes[0]);
+  }
+  if (tips[0]?.gear?.length) {
+    parts.push('Экип: ' + tips[0].gear[0]);
+  }
+  return parts.join(' | ');
+}
+
+/** Общий план прокачки, обогащённый билд-специфичными советами Ice Strike Monk.
+ *  Расширяет шаги зон, по которым «наступает» новый совет по камням/приоритетам.
+ *  Не мутирует исходный кэш — возвращает новую копию. */
+export function getMonkLevelingPlan(): LevelingZone[] {
+  return getLevelingPlan().map((z) => {
+    // Выбираем диапазон советов, чей fromLevel приходится на уровень зоны.
+    const tip = MONK_LEVELING_TIPS.find(
+      (t) => z.monsterLevel >= t.fromLevel && (t.toLevel == null || z.monsterLevel <= t.toLevel),
+    );
+    if (!tip) return z;
+    const extras: string[] = [];
+    if (tip.gems?.length) extras.push(`🧊 Ice Strike Monk: используйте ${tip.gems.join(', ')}`);
+    if (tip.notes?.length) extras.push(`💡 ${tip.notes[0]}`);
+    if (tip.gear?.length) extras.push(`🛠 ${tip.gear[0]}`);
+    return { ...z, steps: [...z.steps, ...extras] };
+  });
+}

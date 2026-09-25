@@ -139,9 +139,13 @@ export async function sendAIMessage(text: string, context?: Record<string, unkno
   const el = out('out-ai');
   const settings = loadAISettings();
   if (!settings.base || !settings.model) {
-    el.innerHTML =
-      '<p class="err">Сначала настрой ИИ в полях выше: базовый URL эндпоинта (OpenAI-совместимый) и модель. Пример: <code>https://…/v1</code> и <code>glm-5-3</code>.</p>';
-    setStatus('Нужны настройки ИИ.');
+    _chatHistory.push({ role: 'user', content: text });
+    _chatHistory.push({
+      role: 'assistant',
+      content: 'ИИ-модель не настроена (нужен базовый URL OpenAI-совместимого эндпоинта и модель). Пока дам встроенные советы Ice Strike Monk:\n\n' + core.ai.iceStrikeMonkAdvice(context),
+    });
+    _renderChat();
+    setStatus('ИИ не настроен — встроенные советы.');
     return;
   }
   if (!text?.trim()) {
@@ -156,7 +160,10 @@ export async function sendAIMessage(text: string, context?: Record<string, unkno
     const reply = await core.ai.callChatEndpoint(settings.base, settings.key || undefined, settings.model, text, context);
     _chatHistory.push({ role: 'assistant', content: reply });
   } catch (e) {
-    _chatHistory.push({ role: 'assistant', content: `⚠ Ошибка: ${e instanceof Error ? e.message : String(e)}\n\nПроверь URL/key/модель и доступность эндпоинта.` });
+    _chatHistory.push({
+      role: 'assistant',
+      content: '⚠ Ошибка: ' + (e instanceof Error ? e.message : String(e)) + '\n\nПроверь URL/key/модель и доступность эндпоинта. Могу предложить встроенные советы Ice Strike Monk:\n\n' + core.ai.iceStrikeMonkAdvice(context),
+    });
   }
   _renderChat();
   setStatus('Готово.');
