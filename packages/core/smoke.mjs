@@ -683,5 +683,20 @@ ok(getSupportGems().every((g) => g.source?.item === 'Uncut Support Gem'), 'P0-5:
 const allActive = searchSkillGems('', 5);
 ok(getSkillGems().every((g) => g.source && ['UncutSkillGem', 'UncutSpiritGem'].includes(g.source.kind)), 'P0-5: каждый активный гем имеет source (Skill/Spirit)');
 
+console.log('uniques catalog (P2-уник.): локальный каталог для прайс-чека');
+const { getUniqueByName, getUniqueCatalogEntries, searchUniqueNames, scountCategoryForUnique, resolveBaseTypeCategory } = core.core.uniques;
+const andv = getUniqueByName('Andvarius');
+ok(!!andv && andv.baseType === 'Gold Ring' && andv.category === 'rings', `uniqu: Andvarius → ${andv?.baseType} / ${andv?.category}`);
+ok(!!getUniqueByName('Headhunter'), 'uniqu: Headhunter найден');
+ok(getUniqueByName('andvarius') !== undefined, 'uniqu: регистр не важен');
+ok(getUniqueByName('No Such Unique Xyz') === undefined, 'uniqu: несуществующий → undefined');
+const entries = getUniqueCatalogEntries();
+ok(entries.length >= 400, `uniqu: каталог ${entries.length} предметов (ожидал ≥400)`);
+ok(searchUniqueNames('ring').length >= 1 && searchUniqueNames('Ring').length >= 1, 'uniqu: поиск по подстроке');
+ok(scountCategoryForUnique('Andvarius', null) === 'rings', 'uniqu: категория по имени без baseType');
+ok(scountCategoryForUnique('Headhunter', 'Heavy Belt') === 'belts', 'uniqu: категория по имени даже при отличном baseType');
+ok(resolveBaseTypeCategory('Mail Armour') === 'body', 'uniqu: resolveBaseTypeCategory body');
+ok(resolveBaseTypeCategory('Wraithwrap') === null, 'uniqu: resolveBaseTypeCategory null для неизвестного');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

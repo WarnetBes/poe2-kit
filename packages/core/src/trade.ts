@@ -14,6 +14,7 @@ import { httpJson } from './http.js';
 import { cachedJson, cachedPostJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
+import { scountCategoryForUnique } from './uniques.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -570,8 +571,11 @@ export async function priceUnique(
   let value: number | null = null;
 
   // Узкая категория из itemClass или угаданная по базовому типу (надёжность и скорость:
-  // почти всегда 1 запрос вместо перебора всех категорий).
-  const targetCat = inferUniqueCategory(baseType ?? null, itemClass);
+  // почти всегда 1 запрос вместо перебора всех категорий). Приоритет — локальный каталог
+  // уников (uniques_catalog.json, P2-ун.) по имени: точная категория poe2scout из PoB2
+  // без сети и без перебора ALL_UNIQUE_CATEGORIES.
+  const targetCat =
+    scountCategoryForUnique(name, baseType ?? null) ?? inferUniqueCategory(baseType ?? null, itemClass);
   const categories: string[] = targetCat
     ? [targetCat, ...aggregateGroups(targetCat)]
     : ALL_UNIQUE_CATEGORIES.slice(0, MAX_UNIQUE_CATEGORIES);

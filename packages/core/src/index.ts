@@ -13,6 +13,7 @@ export * from './wiki.js';
 export * from './estimate.js';
 export * from './tradeQuery.js';
 export * from './dataset.js';
+export * from './uniques.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './ladder.js';
@@ -53,6 +54,7 @@ import * as wikimod from './wiki.js';
 import * as estmod from './estimate.js';
 import * as tqmod from './tradeQuery.js';
 import * as dsmod from './dataset.js';
+import * as unqmod from './uniques.js';
 import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
 import * as ladmod from './ladder.js';
@@ -74,6 +76,7 @@ export const core = {
   estimate: estmod,
   tradeQuery: tqmod,
   dataset: dsmod,
+  uniques: unqmod,
   poe2db: p2dbmod,
   zoneNotes: znmod,
   ladder: ladmod,
