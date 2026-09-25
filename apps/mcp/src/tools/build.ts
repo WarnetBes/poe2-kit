@@ -5,7 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
-import type { BuildImport, BuildEstimate, BuildAdvice, LadderRow } from '@poe2-kit/core';
+import type { BuildImport, BuildEstimate, BuildAdvice, LadderRow, BuildGearItem } from '@poe2-kit/core';
 
 /** Человекочитаемая расширенная сводка билда (использует новые поля парсера). */
 function formatBuild(b: BuildImport): string {
@@ -107,6 +107,57 @@ function treeSection(ids: string[]): string | null {
   return out.join('\n');
 }
 
+/** Преобразовать gear-карту (slot→text) в массив BuildGearItem[]. */
+function gearAsItems(gear: Record<string, string>): BuildGearItem[] {
+  return Object.entries(gear).map(([slot, itemText]) => ({ slot, name: '', itemText }));
+}
+
+/**
+ * Разбивка «откуда цифра» (P1 #7): что даёт каждый слот снаряжения по защите,
+ * источникам «% increased» и оружию (DPS). Честно: плоские вклады по слотам;
+ * компаунд «% increased» показывается отдельно (он глобальный). Вклад узлов
+ * дерева и гемов в DPS движком PoE2 офлайн не разложить — это отмечено.
+ */
+function damageBreakdownSection(b: BuildImport): string | null {
+  if (!b.gear || Object.keys(b.gear).length === 0) return null;
+  const items = gearAsItems(b.gear);
+  const slots = core.estimate.defenseBreakdownBySlot(items).filter((s) => !s.empty);
+
+  const out: string[] = ['', '### Разбивка «откуда цифра» (по слотам, геар)'];
+  if (slots.length) {
+    out.push(
+      '| Слот | Жизнь | ES | Броня | Уклонение | Fire | Cold | Light | Chaos | Блок |',
+      '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    );
+    for (const s of slots) {
+      const nm = s.slot || s.name || '?';
+      const cell = (v: number) => (v ? String(Math.round(v)) : '—');
+      out.push(
+        `| ${nm} | ${cell(s.life)} | ${cell(s.energyShield)} | ${cell(s.armour)} | ${cell(s.evasion)} | ${cell(s.fireRes)} | ${cell(s.coldRes)} | ${cell(s.lightningRes)} | ${cell(s.chaosRes)} | ${s.blockChance ? `${s.blockChance}%` : '—'} |`,
+      );
+    }
+  }
+  // % increased источники.
+  const pct = core.estimate.percentModsBySlot(items);
+  if (pct.length) {
+    out.push('', '**Источники «% increased» (применяются к суммарному пулу):**');
+    for (const p of pct) out.push(`- ${p.slot || '?'} → +${p.value}% ${p.type}`);
+  }
+  // Оружие: единственный честный «слой» DPS, который можно разложить без движка.
+  const w = core.estimate.estimateWeaponDps(items);
+  if (w.weapon) {
+    out.push(
+      '',
+      `**DPS по слоям (оружие):** ${w.weapon} — pDPS ${w.physDps}, eDPS ${w.elementalDps} ≈ **${w.totalDps} DPS**, ${w.attacksPerSecond != null ? `${w.attacksPerSecond.toFixed(2)} aps` : 'aps —'}`,
+    );
+  }
+  out.push(
+    '',
+    '_Честно: здесь раскладывается только геар (плоские вклады + оружие). Вклад узлов дерева и гемов в DPS/ES как множители офлайн не разложить — для этого нужен движок Path of Building (см. poe2_build_estimate/summary с PlayerStat)._',
+  );
+  return out.join('\n');
+}
+
 export function registerBuildTools(server: McpServer): number {
   server.registerTool(
     'poe2_build_decode',
@@ -165,8 +216,11 @@ export function registerBuildTools(server: McpServer): number {
     async ({ xml }) => {
       try {
         const imported = await core.build.importBuild(xml);
-        const text = `${formatBuild(imported)}\n\n_Формат XML — docs/POB2_XML_REFERENCE.md._`;
-        return { content: [{ type: 'text', text }] };
+        const parts: string[] = [formatBuild(imported)];
+        const breakdown = damageBreakdownSection(imported);
+        if (breakdown) parts.push(breakdown);
+        parts.push('', '_Формат XML — docs/POB2_XML_REFERENCE.md._');
+        return { content: [{ type: 'text', text: parts.join('\n') }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };

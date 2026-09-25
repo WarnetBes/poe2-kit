@@ -125,6 +125,135 @@ function collectMods(itemText: string): string[] {
 }
 
 /**
+ * Защиты одного предмета снаряжения: плоские (+base) вклады, резисты, блок и
+ * «% increased» по категориям. Компаунд «% increased» НЕ применяется здесь —
+ * он глобальный (моды со всех слотов влияют на общий пул), поэтому его честно
+ * показывать отдельно (см. mergeGearDefenses, defenseBreakdownBySlot).
+ */
+export interface SlotDefense {
+  /** Слот (Helm, BodyArmour, …). */
+  slot: string;
+  /** Имя предмета (если известно). */
+  name: string;
+  /** Пусто: клир-текста нет/слишком короткий — статы не вошли в оценку. */
+  empty: boolean;
+  /** Плоские жизни/ES/брони/уклонения (до «% increased»). */
+  life: number;
+  energyShield: number;
+  armour: number;
+  evasion: number;
+  /** Шанс блока (base или мода, максимум по предмету). */
+  blockChance: number;
+  fireRes: number;
+  coldRes: number;
+  lightningRes: number;
+  chaosRes: number;
+  /** «% increased» к пулу (применяется к суммарному, не к этому слоту). */
+  percentMods: { life: number; energyShield: number; armour: number; evasion: number };
+}
+
+/** Посчитать защиты ОДНОГО предмета (без компаунда «% increased»). */
+export function defenseForItem(item: BuildGearItem): SlotDefense {
+  const s: SlotDefense = {
+    slot: item.slot,
+    name: item.name,
+    empty: !item.itemText || item.itemText.trim().length < 10,
+    life: 0,
+    energyShield: 0,
+    armour: 0,
+    evasion: 0,
+    blockChance: 0,
+    fireRes: 0,
+    coldRes: 0,
+    lightningRes: 0,
+    chaosRes: 0,
+    percentMods: { life: 0, energyShield: 0, armour: 0, evasion: 0 },
+  };
+  if (s.empty) return s;
+  let parsed = null;
+  try {
+    parsed = parseItemText(item.itemText);
+  } catch {
+    parsed = null;
+  }
+  const mods: string[] = parsed ? parsed.mods.map((m) => m.text) : collectMods(item.itemText);
+
+  if (parsed) {
+    s.armour += parsed.defences.armour?.value ?? 0;
+    s.evasion += parsed.defences.evasion?.value ?? 0;
+    s.energyShield += parsed.defences.energyShield?.value ?? 0;
+    s.blockChance = Math.max(s.blockChance, parsed.defences.blockChance?.value ?? 0);
+  }
+  // «% increased» — применяем к уже собранным плоским значениям ниже.
+  s.percentMods.life += sumModValues(mods, new RegExp(`${PCT}% increased maximum Life`));
+  s.percentMods.energyShield += sumModValues(mods, new RegExp(`${PCT}% increased(?: maximum)? Energy Shield`));
+  s.percentMods.armour += sumModValues(mods, new RegExp(`${PCT}% increased Armour`));
+  s.percentMods.evasion += sumModValues(
+    mods,
+    new RegExp(`${PCT}% increased (?:Evasion Rating|Evasion and Armour|Armour and Evasion)`),
+  );
+  // Учитываем моды «increased Evasion and Armour» в обоих полях (дубль выше по классу),
+  // поэтому отдельно evasion-and-armour не добавляем второй раз к evasion.
+  const flatLife = sumModValues(mods, /(?:\+(\d+) to (?:maximum )?Life|\+(\d+) Life)/);
+  s.life += flatLife;
+  s.energyShield += sumModValues(mods, new RegExp(`\\+${PCT} to maximum Energy Shield`));
+  s.armour += sumModValues(mods, new RegExp(`\\+${PCT} (?:to )?Armour($|[^A-Za-z])`));
+  s.evasion += sumModValues(mods, new RegExp(`\\+${PCT} (?:to )?Evasion Rating`));
+  s.blockChance = Math.max(
+    s.blockChance,
+    sumModValues(mods, new RegExp(`${PCT}% (?:additional )?chance to Block`)),
+  );
+
+  const eleAll = sumModValues(mods, new RegExp(`\\+${SIGNED}% to all Elemental Resistances`), true);
+  s.fireRes += eleAll;
+  s.coldRes += eleAll;
+  s.lightningRes += eleAll;
+  for (const mm of mods) {
+    const r = new RegExp(`\\+${SIGNED}%\\s+to\\s+(Fire|Cold|Lightning|Chaos)\\s+Resistance`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = r.exec(mm))) {
+      const v = parseFloat(m[1]);
+      if (Number.isNaN(v)) continue;
+      switch (m[2]) {
+        case 'Fire': s.fireRes += v; break;
+        case 'Cold': s.coldRes += v; break;
+        case 'Lightning': s.lightningRes += v; break;
+        case 'Chaos': s.chaosRes += v; break;
+        default: break;
+      }
+    }
+    // формат «Fire Resistance +12%»
+    const alt = new RegExp(`(Fire|Cold|Lightning|Chaos) Resistance +${SIGNED}%`);
+    const am = alt.exec(mm);
+    if (am) {
+      const v = parseFloat(am[2]);
+      if (!Number.isNaN(v)) {
+        if (am[1] === 'Fire') s.fireRes += v;
+        else if (am[1] === 'Cold') s.coldRes += v;
+        else if (am[1] === 'Lightning') s.lightningRes += v;
+        else s.chaosRes += v;
+      }
+    }
+  }
+  return s;
+}
+
+/**
+ * По-слотная разбивка защиты (P1 #7): что даёт каждый слот снаряжения.
+ * Возвращает плоские вклады по каждому предмету (до «% increased») — честный
+ * ответ на «откуда цифра?». Компаунд «% increased» показывается отдельно и
+ * применяется к суммарному пулу, а не к отдельному слоту.
+ */
+export function defenseBreakdownBySlot(
+  gear: Record<string, string> | BuildGearItem[],
+): SlotDefense[] {
+  const items: BuildGearItem[] = Array.isArray(gear)
+    ? gear
+    : Object.entries(gear).map(([slot, itemText]) => ({ slot, name: '', itemText }));
+  return items.map((it) => defenseForItem(it));
+}
+
+/**
  * Свести защиты из списка предметов билда.
  * Плоские значения — из блоков Defences/itemText; резисты и «increased» — по
  * регулярным выражениям из модов. Оценка ПРИБЛИЖЁННАЯ: дерево пассивок и
@@ -144,77 +273,29 @@ export function mergeGearDefenses(gear: BuildGearItem[]): EstimatedDefenses {
     emptySlots: 0,
     percentMods: { life: 0, energyShield: 0, armour: 0, evasion: 0 },
   };
+  let empty = 0;
   for (const item of gear) {
-    if (!item.itemText || item.itemText.trim().length < 10) {
-      d.emptySlots += 1;
+    const s = defenseForItem(item);
+    if (s.empty) {
+      empty += 1;
       continue;
     }
-    let parsed = null;
-    try {
-      parsed = parseItemText(item.itemText);
-    } catch {
-      parsed = null;
-    }
-    const mods: string[] = parsed ? parsed.mods.map((m) => m.text) : collectMods(item.itemText);
-
-    if (parsed) {
-      d.armour += parsed.defences.armour?.value ?? 0;
-      d.evasion += parsed.defences.evasion?.value ?? 0;
-      d.energyShield += parsed.defences.energyShield?.value ?? 0;
-      d.blockChance = Math.max(d.blockChance, parsed.defences.blockChance?.value ?? 0);
-    }
-    // «% increased» — применяем к уже собранным плоским значениям ниже.
-    d.percentMods.life += sumModValues(mods, new RegExp(`${PCT}% increased maximum Life`));
-    d.percentMods.energyShield += sumModValues(mods, new RegExp(`${PCT}% increased(?: maximum)? Energy Shield`));
-    d.percentMods.armour += sumModValues(mods, new RegExp(`${PCT}% increased Armour`));
-    d.percentMods.evasion += sumModValues(
-      mods,
-      new RegExp(`${PCT}% increased (?:Evasion Rating|Evasion and Armour|Armour and Evasion)`),
-    );
-    // Учитываем моды «increased Evasion and Armour» в обоих полях (дубль выше по классу),
-    // поэтому отдельно evasion-and-armour не добавляем второй раз к evasion.
-    const flatLife = sumModValues(mods, /(?:\+(\d+) to (?:maximum )?Life|\+(\d+) Life)/);
-    d.life += flatLife;
-    d.energyShield += sumModValues(mods, new RegExp(`\\+${PCT} to maximum Energy Shield`));
-    d.armour += sumModValues(mods, new RegExp(`\\+${PCT} (?:to )?Armour($|[^A-Za-z])`));
-    d.evasion += sumModValues(mods, new RegExp(`\\+${PCT} (?:to )?Evasion Rating`));
-    d.blockChance = Math.max(
-      d.blockChance,
-      sumModValues(mods, new RegExp(`${PCT}% (?:additional )?chance to Block`)),
-    );
-
-    const eleAll = sumModValues(mods, new RegExp(`\\+${SIGNED}% to all Elemental Resistances`), true);
-    d.fireRes += eleAll;
-    d.coldRes += eleAll;
-    d.lightningRes += eleAll;
-    for (const mm of mods) {
-      const r = new RegExp(`\\+${SIGNED}%\\s+to\\s+(Fire|Cold|Lightning|Chaos)\\s+Resistance`, 'g');
-      let m: RegExpExecArray | null;
-      while ((m = r.exec(mm))) {
-        const v = parseFloat(m[1]);
-        if (Number.isNaN(v)) continue;
-        switch (m[2]) {
-          case 'Fire': d.fireRes += v; break;
-          case 'Cold': d.coldRes += v; break;
-          case 'Lightning': d.lightningRes += v; break;
-          case 'Chaos': d.chaosRes += v; break;
-          default: break;
-        }
-      }
-      // формат «Fire Resistance +12%»
-      const alt = new RegExp(`(Fire|Cold|Lightning|Chaos) Resistance +${SIGNED}%`);
-      const am = alt.exec(mm);
-      if (am) {
-        const v = parseFloat(am[2]);
-        if (!Number.isNaN(v)) {
-          if (am[1] === 'Fire') d.fireRes += v;
-          else if (am[1] === 'Cold') d.coldRes += v;
-          else if (am[1] === 'Lightning') d.lightningRes += v;
-          else d.chaosRes += v;
-        }
-      }
-    }
+    d.life += s.life;
+    d.energyShield += s.energyShield;
+    d.armour += s.armour;
+    d.evasion += s.evasion;
+    // Блок — максимум по слотам (не суммируется).
+    d.blockChance = Math.max(d.blockChance, s.blockChance);
+    d.fireRes += s.fireRes;
+    d.coldRes += s.coldRes;
+    d.lightningRes += s.lightningRes;
+    d.chaosRes += s.chaosRes;
+    d.percentMods.life += s.percentMods.life;
+    d.percentMods.energyShield += s.percentMods.energyShield;
+    d.percentMods.armour += s.percentMods.armour;
+    d.percentMods.evasion += s.percentMods.evasion;
   }
+  d.emptySlots = empty;
   // Применяем увеличенные % к плоским значениям (компаунд-приближение).
   const apply = (flat: number, pct: number) => (pct ? flat * (1 + pct / 100) : flat);
   d.life = apply(d.life, d.percentMods.life);
@@ -225,6 +306,19 @@ export function mergeGearDefenses(gear: BuildGearItem[]): EstimatedDefenses {
   // Базовый «халявный» резерв: у персонажа есть жизнь с уровней — избегаем нуля.
   if (d.life <= 0) d.life = 100;
   return d;
+}
+
+/** Разбивка источников «% increased» по слотам (для отчёта «откуда бонус»). */
+export function percentModsBySlot(gear: Record<string, string> | BuildGearItem[]): Array<{ slot: string; type: string; value: number }> {
+  const rows: Array<{ slot: string; type: string; value: number }> = [];
+  for (const s of defenseBreakdownBySlot(gear)) {
+    const p = s.percentMods;
+    if (p.life) rows.push({ slot: s.slot || s.name, type: 'Life', value: p.life });
+    if (p.energyShield) rows.push({ slot: s.slot || s.name, type: 'Energy Shield', value: p.energyShield });
+    if (p.armour) rows.push({ slot: s.slot || s.name, type: 'Armour', value: p.armour });
+    if (p.evasion) rows.push({ slot: s.slot || s.name, type: 'Evasion', value: p.evasion });
+  }
+  return rows;
 }
 
 // ─── Многослойный EHP ────────────────────────────────────────────────────────

@@ -314,6 +314,16 @@ ok(estDef.life === 172.5, `def flat life (+100, +50) + 15% в†’ ${estDef.lif
 ok(estDef.armour === 900, 'def armour 900');
 ok(estDef.evasion === 300, 'def evasion 300');
 ok(estDef.fireRes === 30 && estDef.lightningRes === 12, 'def resists fire30/light12');
+// P1 #7: по-слотная разбивка «откуда цифра».
+const slots = core.defenseBreakdownBySlot(estGear);
+ok(slots.length === 2, `p1-7: по-слотная разбивка (${slots.length} слота)`);
+ok(slots[0].life === 100 && slots[0].armour === 900 && slots[0].fireRes === 30, `p1-7: Body жизнь100/броня900/fire30 (${slots[0].life}/${slots[0].armour}/${slots[0].fireRes})`);
+ok(slots[1].life === 50 && slots[1].evasion === 300 && slots[1].lightningRes === 12, 'p1-7: Boots жизнь50/уклонение300/light12');
+ok(slots[0].percentMods.life === 15, `p1-7: % increased Life 15 на Body (${slots[0].percentMods.life})`);
+ok(estGear.some((g) => slots[0].slot === 'Body Armour' && slots[0].name === 'Test Plate'), 'p1-7: slot/name сохранены');
+const pctRows = core.percentModsBySlot(estGear);
+ok(pctRows.length === 1 && pctRows[0].type === 'Life' && pctRows[0].value === 15, `p1-7: % increased sources (${pctRows.length} → Life 15)`);
+ok(JSON.stringify(core.defenseBreakdownBySlot({ 'Body Armour': estGear[0].itemText })[0].armour) === '900', 'p1-7: принимает Record<slot,text>');
 
 const physEhp = calculateEhp(estDef, 'physical');
 ok(physEhp.effectiveHp > estDef.life, 'physical EHP > life (armor+evasion layers)');
