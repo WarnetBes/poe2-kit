@@ -840,9 +840,11 @@ async function postTradeSearch(
   const hit = tradeSearchCache.get(key);
   if (hit && Date.now() - hit.at < TRADE_SEARCH_CACHE_TTL) return hit.listings;
   const listings = await postTradeSearchUncached(searchQuery, opts);
-  // Пустые результаты НЕ кэшируем (повторы добирают пустые слоты);
-  // кэш searchTypes-маркера — только для повторных валидаций в одном процессе.
-  if (listings.length || opts.searchTypes) {
+  // Пустые результаты НЕ кэшируем (повторы добирают пустые слоты).
+  // Валидационные sentinel-ы ([{price:0}]) тоже не кэшируем: их ключ запроса
+  // совпадает с обычным поиском searchTrade и «засорял» бы его фейковым листингом
+  // (для повторных валидаций есть отдельный кэш tradeTypeValidation).
+  if (listings.length && !opts.searchTypes) {
     tradeSearchCache.set(key, { at: Date.now(), listings });
   }
   return listings;
@@ -990,10 +992,19 @@ function debugLog(...args: unknown[]): void {
  */
 export async function priceCheck(
   itemText: string,
-  opts: { league?: string } = {},
+  opts: {
+    league?: string;
+    /** Переопределить имя предмета после парсинга (например, ru→en перевод). */
+    nameOverride?: string;
+    /** Переопределить базовый тип после парсинга (например, ru→en перевод словарём poe2db). */
+    baseTypeOverride?: string;
+  } = {},
 ): Promise<PriceCheckResult> {
   const league = opts.league ?? currentLeague ?? undefined;
   const parsed = parseItemText(itemText);
+  // Русский клиент: trade2/poe2scout понимают только английские имена/базы.
+  if (opts.nameOverride != null) parsed.name = opts.nameOverride;
+  if (opts.baseTypeOverride != null) parsed.baseType = opts.baseTypeOverride;
   debugLog(
     'parse:',
     JSON.stringify({

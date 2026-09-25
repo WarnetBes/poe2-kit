@@ -866,6 +866,7 @@ async function runBuildImport(): Promise<void> {
   buildPricing = true;
   try {
     console.log(`[overlay] build import: ${input.length} chars from clipboard`);
+    console.log(`[overlay] build import head: ${JSON.stringify(input.slice(0, 120))}`);
     sendBuildUpdate({ status: 'importing' });
 
     const imported = await withTimeout(core.build.importBuild(input), 20_000, 'importBuild');
@@ -1290,10 +1291,37 @@ async function runPriceCheck(): Promise<unknown> {
     }
     await overlayWindow?.webContents.send('price:busy', true);
 
+    // Русский клиент: trade2/poe2scout принимают только английские имена/базы.
+    // Переводим через словарь poe2db ДО priceCheck (моды остаются ru — по базу
+    // статов trade2 их не сопоставит, сработает fallback «по базовому типу»).
+    let nameOverride: string | undefined;
+    let baseTypeOverride: string | undefined;
+    if (/[а-яё]/i.test(itemText)) {
+      await withTimeout(ensureRuEnDict(), 10_000, 'ensureRuEnDict').catch(() => {});
+      try {
+        const parsed0 = core.parse.parseItemText(itemText);
+        if (parsed0.name && /[а-яё]/i.test(parsed0.name)) {
+          const en = toEn('unique', parsed0.name);
+          if (en !== parsed0.name) nameOverride = en;
+        }
+        if (parsed0.baseType && /[а-яё]/i.test(parsed0.baseType)) {
+          const en = toEn('base', parsed0.baseType);
+          if (en !== parsed0.baseType) baseTypeOverride = en;
+        }
+        if (nameOverride || baseTypeOverride) {
+          console.log(
+            `[overlay] ru→en: name=${JSON.stringify(nameOverride)} base=${JSON.stringify(baseTypeOverride)}`,
+          );
+        }
+      } catch {
+        // парсинг упал — priceCheck сам разберётся с сырым текстом
+      }
+    }
+
     let result;
     try {
       result = await withTimeout(
-        core.trade.priceCheck(itemText),
+        core.trade.priceCheck(itemText, { nameOverride, baseTypeOverride }),
         HOTKEY_TIMEOUT_MS,
         'priceCheck',
       );
@@ -1322,10 +1350,12 @@ async function runPriceCheck(): Promise<unknown> {
     }
 
     // Ctrl+F1 по ошибке нажали с PoB-кодом билда в буфере? Подскажем про Ctrl+F3.
+    // (весь буфер целиком должен состоять из base64/URL-символов; строки-разделители
+    // «--------» внутри предмета не должны давать ложных срабатываний)
     const likelyBuildCode =
       itemText.trim().length > 200 &&
-      !/^\s*Rarity:/im.test(itemText) &&
-      /^[A-Za-z0-9+/=\s_-]+$/m.test(itemText.trim());
+      !/^\s*(Rarity|Редкость)\s*:/im.test(itemText) &&
+      /^[A-Za-z0-9+/=\s_-]+$/.test(itemText.trim());
     if (likelyBuildCode) {
       (result as { buildCodeHint?: string }).buildCodeHint =
         'В буфере похоже PoB-код билда, а не предмет. Для импорта билда нажмите Ctrl+F3; для прайс-чека скопируйте предмет (Ctrl+C в игре по наведению).';

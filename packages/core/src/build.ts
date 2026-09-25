@@ -46,6 +46,7 @@ export function decodeShareCode(code: string): string {
   // скопирован вместе с «=», хотя PoB экспортирует без него до Adler-32).
   const s0 = code
     .replace(_WS, '')
+    .replace(/["'«»„“”`]/g, '')
     .replace(/=+$/, '')
     .replace(/-/g, '+')
     .replace(/_/g, '/');
@@ -55,7 +56,11 @@ export function decodeShareCode(code: string): string {
   try {
     raw = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   } catch {
-    throw new PobCodeError('невалидный base64 в import-коде');
+    // Подсказка: где именно мусор — обычно скопированный код обрезан/с примесями.
+    const bad = /[^A-Za-z0-9+/=]/.exec(s);
+    const at = bad ? bad.index : -1;
+    const ctx = at >= 0 ? ` (символ "${bad![0]}", код U+${bad![0]!.codePointAt(0)!.toString(16)}, позиция ${at}, контекст "${s.slice(Math.max(0, at - 12), at + 12)}")` : '';
+    throw new PobCodeError(`невалидный base64 в import-коде: длина ${s.length}${at === s.length - 1 ? ', мусор в конце' : ''}${ctx}`);
   }
 
   const xml = _tryInflate(raw);
