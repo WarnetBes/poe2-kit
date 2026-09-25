@@ -372,6 +372,35 @@ export function searchPassiveTree(query: string, opts: { limit?: number; keyston
   return out;
 }
 
+export interface PassiveTreeByStatsOpts {
+  limit?: number;
+  keystonesOnly?: boolean;
+  /** true — обратное: узлы, где встречается хотя бы одно слово (OR). По умолчанию AND. */
+  any?: boolean;
+}
+
+/**
+ * Поиск по дереву по НАБОРУ статов (P1 #10, AND-агрегат).
+ * Возвращает узлы, где каждое слово/фраза из `terms` встречается в имени ИЛИ
+ * статах узла (AND). Эта отладка: «узлы с "% increased Energy Shield" и
+ * "Evasion Rating"» вместо перебора по одному слову. `any: true` — хотя бы одно
+ * (OR), для комбинирования через poe2_tree_search в одиночном режиме.
+ */
+export function searchPassiveTreeByStats(terms: string[], opts: PassiveTreeByStatsOpts = {}): PassiveNode[] {
+  const limit = opts.limit ?? 10;
+  const queries = terms.map((t) => t.trim().toLowerCase()).filter(Boolean);
+  if (!queries.length) return [];
+  let nodes = getPassiveTree();
+  if (opts.keystonesOnly) nodes = nodes.filter((n) => n.isKeystone);
+  const match = (n: PassiveNode): boolean => {
+    const haystack = [n.name, ...n.stats].join('\u0001').toLowerCase();
+    return opts.any
+      ? queries.some((q) => haystack.includes(q))
+      : queries.every((q) => haystack.includes(q));
+  };
+  return nodes.filter(match).slice(0, limit);
+}
+
 // ─── Резолв узлов по ID (как в PoB <Spec nodes="…"> или URL дерева) ──────────────────
 //
 // В датасете три схемы ID:

@@ -136,6 +136,50 @@ export function registerDatasetTools(server: McpServer): number {
   );
   count++;
 
+  server.registerTool(
+    'poe2_tree_search_stats',
+    {
+      title: 'PoE2 Passive Tree AND Search by Stats',
+      description: `Поиск по дереву пассивок PoE2 по НАБОРУ статов (AND-агрегат). Находит узлы, у которых в имени ИЛИ статах встречаются ВСЕ заданные слова/фразы (не перебор по одному слову).
+
+Аргументы:
+  - stats (string[], обяз.): массив слов/фраз, которые должны встретиться (AND). Напр. ["% increased Energy Shield", "Evasion Rating"] → «узлы с X% ES и уклонением».
+  - any (boolean, опц.): если true — хотя бы одно из слов (OR).
+  - keystones_only (boolean, опц.): только keystone/notable.
+  - limit (number, опц., по умолч. 10).
+
+Примеры:
+  - "Узлы с increased ES и уклонением" → stats: ["% increased Energy Shield", "Evasion Rating"]
+  - "Крит и freeze" → stats: ["Critical", "Freeze"]
+`,
+      inputSchema: {
+        stats: z.array(z.string().min(1)).min(1).describe('Слова/фразы для AND-поиска'),
+        any: z.boolean().optional().describe('Хотя бы одно слово (OR)'),
+        keystones_only: z.boolean().optional().describe('Только keystone-узлы'),
+        limit: z.number().int().min(1).max(30).optional().describe('Сколько узлов'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ stats, any: anyMode, keystones_only, limit }) => {
+      const nodes = core.dataset.searchPassiveTreeByStats(
+        Array.isArray(stats) ? stats : [stats],
+        { limit: limit ?? 10, keystonesOnly: keystones_only, any: anyMode },
+      );
+      if (!nodes.length) {
+        return { content: [{ type: 'text', text: `Узлы по набору ${anyMode ? '(OR) ' : '(AND) '}«${stats.join('», «')}» не найдены.` }] };
+      }
+      const lines = [`## Дерево пассивок: AND «${stats.join('» ∩ «')}» — ${nodes.length}`, ''];
+      for (const n of nodes) {
+        const type = n.isKeystone ? '🔑 KEYSTONE' : n.isNotable ? '★ notable' : '· обычная';
+        const asc = n.ascendancy ? ` (${n.ascendancy})` : '';
+        lines.push(`- ${type}${asc} **${n.name}**: ${n.stats.join('; ')}`);
+      }
+      if (nodes.length >= (limit ?? 10)) lines.push('', `_Показаны первые ${nodes.length} (лимит ${limit ?? 10})._`);
+      return { content: [{ type: 'text', text: lines.join('\n') }] };
+    },
+  );
+  count++;
+
   // ── Резолв узлов дерева по ID ───────────────────────────────────────────────
   server.registerTool(
     'poe2_tree_ids',
