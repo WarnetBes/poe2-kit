@@ -9,6 +9,10 @@ echo   PoE2 Kit - Windows Overlay
 echo ============================================
 echo.
 
+REM ── Portable-сборка: Node.js и npm НЕ нужны ─────────────────────────────────
+REM (движок Electron при первом старте скачивает сам bat, дальше — офлайн)
+if exist .portable goto portable
+
 REM --- check Node.js ---
 where node >nul 2>nul
 if errorlevel 1 (
@@ -144,6 +148,73 @@ goto end
 echo.
 echo [ERROR] Build failed. See the messages above.
 pause
+
+REM ══ PORTABLE-ветка (без Node.js) ════════════════════════════════════════════
+:portable
+echo Portable build: Node.js is not required.
+if exist "node_modules\electron\dist\electron.exe" goto portstart
+echo.
+echo First run: downloading the Electron runtime (~110 MB, one time only).
+echo (After this the overlay works offline.)
+call :bootelectron
+if errorlevel 1 (
+  echo.
+  echo [ERROR] Could not download Electron.
+  echo   Check the internet connection and re-run this script.
+  echo   Manual link: https://github.com/electron/electron/releases/download/v33.4.11/
+  pause
+  exit /b 1
+)
+
+:portstart
+echo.
+echo Starting the overlay...
+echo.
+echo HOW TO USE IN GAME:
+echo   1. Launch Path of Exile 2.
+echo   2. Hover over an item and press Ctrl+C (copies item text).
+echo   3. Ctrl+F1  - price check of the item from clipboard.
+echo   4. Ctrl+F3  - import build (PoB share-code / poe.ninja profile link).
+echo   5. Ctrl+F2  - build shopping list; Ctrl+F4 - leveling hints.
+echo   6. Ctrl+F5  - move the overlay; Ctrl+F6 - settings.
+echo.
+echo Full guide: README-FIRST.txt (in this folder).
+"node_modules\electron\dist\electron.exe" "%~dp0apps\overlay"
+set OVEXIT=%ERRORLEVEL%
+if not "%OVEXIT%"=="0" (
+  echo.
+  echo [ERROR] Overlay exited with code %OVEXIT% right after start.
+  echo   - Full log: %APPDATA%\@poe2-kit\overlay\overlay.log
+  echo   - Try: %~dp0install-tools-minimal.bat ^(repair runtime^)
+)
+echo.
+pause
+exit /b %OVEXIT%
+
+REM ── Одноразовая загрузка Electron: github.com → фолбэк npmmirror.com ────────
+:bootelectron
+set "ELVER=33.4.11"
+set "ELDIR=node_modules\electron\dist"
+if not exist "%ELDIR%" mkdir "%ELDIR%"
+set "ELZIP=%TEMP%\electron-v%ELVER%-win32-x64.zip"
+if exist "%ELZIP%" del "%ELZIP%"
+echo   [1/3] downloading from github.com...
+curl.exe -L --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://github.com/electron/electron/releases/download/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
+if not errorlevel 1 goto bootunpack
+echo   [1/3] github failed - trying the npmmirror fallback...
+curl.exe -L --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://npmmirror.com/mirrors/electron/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
+if errorlevel 1 exit /b 1
+:bootunpack
+echo   [2/3] unpacking...
+tar -xf "%ELZIP%" -C "%ELDIR%"
+if errorlevel 1 exit /b 1
+if not exist "%ELDIR%\electron.exe" (
+  echo   Downloaded file is not a valid Electron archive.
+  exit /b 1
+)
+echo   [3/3] done - removing the temporary zip.
+del "%ELZIP%"
+exit /b 0
 
 :end
 echo.

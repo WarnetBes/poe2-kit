@@ -21,9 +21,10 @@ open RePoE data. No API keys required.
 
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
-1. **Download**: repository page → **Releases** → the latest release (v1.0.0):
-   - **`poe2-kit-portable-…-win64.zip`** — recommended: unzip → run
-     `start-overlay.bat` → done. No Node.js, no internet, no compiling.
+1. **Download**: repository page → **Releases** → the latest release (v1.0.1):
+   - **`poe2-kit-portable-…-win64.zip`** (17 MB) — recommended: unzip → run
+     `start-overlay.bat`. No Node.js, no npm: on first run the script
+     downloads the Electron runtime (~110 MB) once, then works offline.
    - (Or **“Source code (zip)”** — the “build it yourself” route: needs
      Node.js ≥ 20 and internet on first launch.)
 2. For the “Source code” route only: if Node.js is missing, run
