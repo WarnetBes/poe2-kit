@@ -84,23 +84,33 @@ Adds 3 to 8 Cold Damage
     'poe2_price_check',
     {
       title: 'PoE2 Price Check',
-      description: `Прайс-чек предмета PoE2 по клир-тексту. Использует бесплатные API (poe2scout, poe.ninja, официальный trade2).
+      description: `Прайс-чек предмета PoE2 по клир-тексту, либо SSF-разбор (без цены).
+Использует бесплатные API (poe2scout, poe.ninja, официальный trade2), кроме mode=ssf.
 
 Аргументы:
   - item_text (string): клир-текст предмета из игры.
   - league (string, опц.): название лиги. По умолчанию текущая/активная.
+  - mode (string, опц.): "trade" (по умолчанию — цена по листингам) | "ssf" (без сети:
+    план крафта, фрактуред-моды, ближайшая зона дропа базы по ilvl).
 
-Возвращает оценку цены (для уникальных — из poe2scout, для валют — poe.ninja,
-для прочего — из объявлений trade2) и список листингов.
+В режиме trade возвращает оценку цены (для уникальных — из poe2scout, для валют — poe.ninja,
+для прочего — из объявлений trade2) и список листингов. В режиме ssf — эвристический
+SSF-план: не тратит сеть и валюту, выдаёт рекомендации по крафту.
 `,
       inputSchema: {
         item_text: z.string().min(5).describe('Клир-текст предмета из игры'),
+        mode: z.enum(['trade', 'ssf']).optional().describe("Режим: trade (цена) | ssf (план крафта, без сети)"),
         league: z.string().optional().describe('Название лиги PoE2 (если не указана — актуальная текущая лига)'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ item_text, league }) => {
+    async ({ item_text, league, mode }) => {
       try {
+        if (mode === 'ssf') {
+          const a = core.ssf.ssfAssessmentFromText(item_text);
+          const lines = ['## SSF-разбор предмета', core.ssf.formatSsf(a)];
+          return { content: [{ type: 'text', text: lines.join('\n') }] };
+        }
         const leagueName = league ?? (await currentDefaultLeague());
         core.trade.setLeague(leagueName);
         const res = await core.trade.priceCheck(item_text, { league: leagueName });

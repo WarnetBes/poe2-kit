@@ -183,23 +183,55 @@ export function registerBuildTools(server: McpServer): number {
 Аргументы:
   - code (string): share-код билда PoB (или ссылка pobb.in/pastebin, или сырой XML).
   - league (string, опц.): лига (по умолчанию — текущая активная).
+  - mode (string, опц.): "trade" (по умолчанию — цена) | "ssf" (без сети: SSF-план
+    крафта по каждому слоту, вместо цены).
 
-Возвращает отчёт по каждому предмету снаряжения: слот, имя, редкость, медианная цена,
+В режиме trade возвращает отчёт по каждому предмету снаряжения: слот, имя, редкость, медианная цена,
 оценка min/max, источники и число найденных объявлений, а также суммарную нижнюю
 границу стоимости и число предметов с известной ценой.
+
+В режиме ssf — бесплатный эвристический SSF-разбор каждого слота (фрактуред-моды,
+план крафта, зона дропа базы; для уников — «добыча дропом, не крафтится»). Без лиги и без сети.
 
 Примеры:
   - "Сколько стоит собрать этот билд?" → вставь share-код
   - "Оцени всё снаряжение моего билда по живым ценам"
+  - "Дай SSF-план крафта для этого билда" → mode=ssf
 `,
       inputSchema: {
         code: z.string().min(5).describe('PoB share-код / ссылка / XML билда'),
         league: z.string().optional().describe('Лига (по умолчанию активная)'),
+        mode: z.enum(['trade', 'ssf']).optional().describe('Режим: trade (цена) | ssf (план крафта, без сети)'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async ({ code, league }) => {
+    async ({ code, league, mode }) => {
       try {
+        if (mode === 'ssf') {
+          const imp = await core.build.importBuild(code);
+          const rep = core.ssf.ssfBuildReport(imp.gear);
+          const lines = [
+            '## SSF-план крафта билда',
+            '> Эвристические рекомендации для SSF (не игровые данные). Без сети и лиги.',
+            `- **Слотов в отчёте:** ${rep.length}`,
+            '',
+          ];
+          for (const r of rep) {
+            lines.push(`### ${r.slot || '?'}`);
+            lines.push(r.assessment.displayName ? `*${r.assessment.displayName}*` : '*Неизвестный предмет*');
+            const plan = r.assessment.crafting.map((c) => `- **${c.step}** — ${c.detail}`).join('\n');
+            lines.push(plan);
+            if (r.assessment.fractured.length) {
+              lines.push('Фрактуред-моды:');
+              for (const f of r.assessment.fractured) {
+                lines.push(`- ${f.keep ? '✅' : '⚠️'} ${f.text}`);
+              }
+            }
+            if (r.assessment.dropZone) lines.push(`Зона дропа базы: ${r.assessment.dropZone}`);
+            lines.push('');
+          }
+          return { content: [{ type: 'text', text: lines.join('\n') }] };
+        }
         const report = await core.trade.priceBuild(code, { league });
         const lines: string[] = [
           `## Прайс-чек билда`,

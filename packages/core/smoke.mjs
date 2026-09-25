@@ -598,5 +598,31 @@ ok(Math.abs(core.default.ehp.luckyChance(50) - 75) < 1e-9, 'ehp: lucky 50% -> 75
 ok(Math.abs(core.default.ehp.luckyChance(75) - (1 - 0.25 ** 2) * 100) < 1e-9, 'ehp: lucky formula 1-(1-c)^2');
 ok(Math.abs(core.default.ehp.chanceWithExtraRolls(50, 1) - 75) < 1e-9, 'ehp: extra rolls');
 
+console.log('ssf (P0 #4): SSF-разбор предмета вместо цены (без сети)');
+const { ssfAssessment, ssfAssessmentFromText, ssfBuildReport, formatSsf } = core;
+const ssfText = [
+  'Rarity: Rare', 'Tempest Quarterstaff', 'Quarterstaff', '--------',
+  'Quality: +20%', 'Physical Damage: 100-150', '--------',
+  'Item Level: 83', '--------',
+  'Requires Level 60, 110 Dex', '--------',
+  '+45% increased Physical Damage (fractured)',
+  '+25% to Critical Damage Bonus',
+  'Adds 12 to 24 Physical Damage',
+].join('\n');
+const ssfA = ssfAssessmentFromText(ssfText);
+ok(ssfA.heuristic === true, 'ssf: heuristic flag true');
+ok(ssfA.baseType === 'Quarterstaff' && ssfA.itemLevel === 83 && ssfA.rarity === 'Rare', `ssf: base/ilvl/rarity (${ssfA.displayName})`);
+ok(ssfA.fractured.length === 1 && ssfA.fractured[0].keep === true, 'ssf: fractured phys-dmg классифицирован как важно');
+ok(ssfA.crafting.length >= 2 && ssfA.crafting[0].step.includes('Заложить фрактуред'), 'ssf: план крафта стартует с фрактуреда');
+ok(ssfA.dropZone !== null && ssfA.dropZone.includes('Акт'), `ssf: зона дропа/крафта базы ("${ssfA.dropZone}")`);
+ok(typeof formatSsf(ssfA) === 'string' && formatSsf(ssfA).includes('План крафта'), 'ssf: formatSsf содержит план крафта');
+const ssfNone = ssfAssessmentFromText(['Rarity: Magic', 'Stiff Belt', 'Belt', '--------', '+12% to Fire Resistance (fractured)'].join('\n'));
+ok(ssfNone.fractured.length === 1 && ssfNone.fractured[0].keep === true, 'ssf: fractured resist -> keep');
+const ssfUnique = ssfAssessmentFromText(['Rarity: Unique', 'Darkness Enthroned', 'Fine Belt', '--------'].join('\n'));
+ok(ssfUnique.rarity === 'Unique' && ssfUnique.dropNote.includes('не крафтится'), 'ssf: uniq note "не крафтится"');
+const ssfReport = ssfBuildReport({ 'Weapon 1': 'Rarity: UNIQUE\nTempest Claw\nClaw\nItem Level: 80', 'Boots': ssfText });
+ok(ssfReport.length === 2, `ssf: report 2 slots (${ssfReport.length})`);
+ok(ssfReport.every((r) => r.assessment.rarity === 'Unique' || r.assessment.rarity === 'Rare'), 'ssf: report Названия предметов корректны');
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
