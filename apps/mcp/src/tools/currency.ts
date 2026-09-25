@@ -131,5 +131,138 @@ export function registerCurrencyTools(server: McpServer): number {
     },
   );
 
-  return 3;
+  server.registerTool(
+    'poe2_currency_history',
+    {
+      title: 'PoE2 Currency Price History',
+      description: `История/тренд курса валют Path of Exile 2 за окно poe.ninja (≈7 дней). Для «покупай сейчас / жди» и отслеживания скачков после патча.
+
+Аргументы:
+  - name (string, опц.): валюта или её часть ("divine", "exalted", "chaos"). Если не указана — топ движений по всем валютам.
+  - league (string, опц.).
+
+Честно: poe.ninja PoE2 не отдаёт публичный history-эндпоинт с ценами по дням. Тренд строится на sparkline из текущего обзора: totalChange (% за окно) и дневной ряд изменений.
+
+Примеры:
+  - "История Divine Orb" → тренд/скачки
+  - "Какие валюты скакнули после патча?" → топ движений
+`,
+      inputSchema: { name: z.string().optional().describe('Название валюты или её часть'), league: LeagueSchema },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ name, league }) => {
+      try {
+        const L = league ?? (await currentDefaultLeague());
+        core.trade.setLeague(L);
+        const hist = await core.trade.fetchCurrencyHistory(L);
+        if (!hist.length) return { content: [{ type: 'text', text: `Нет данных истории для лиги "${L}".` }] };
+        const text = renderHistory(hist, name);
+        return { content: [{ type: 'text', text: `## История цен валют — ${L}\n\n${text}` }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+      }
+    },
+  );
+
+  server.registerTool(
+    'poe2_price_history',
+    {
+      title: 'PoE2 Price History',
+      description: `История цен по запросу. Охватывает валюты (единственная public-история трендов у poe.ninja PoE2 — sparkline из Exchange Overview). Для предметов/уников отдельной публичной истории poe.ninja не отдаёт — текущие цены смотри через poe2_price_check / poe2_build_price.
+
+Аргументы:
+  - name (string, опц.): что ищем ("Divine Orb", "Exalted"). Если совпало с валютой — тренд; иначе честная подсказка.
+  - league (string, опц.).
+
+Примеры:
+  - "История цен Divine" → тренд
+  - "Что дорожает?" → топ движений
+`,
+      inputSchema: { name: z.string().optional().describe('Что ищем (валюта)'), league: LeagueSchema },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ name, league }) => {
+      try {
+        const L = league ?? (await currentDefaultLeague());
+        core.trade.setLeague(L);
+        const hist = await core.trade.fetchCurrencyHistory(L);
+        if (!hist.length) return { content: [{ type: 'text', text: `Нет данных истории для лиги "${L}".` }] };
+        const q = name?.trim().toLowerCase();
+        const matched = q ? hist.filter((h) => h.name.toLowerCase().includes(q)) : null;
+        if (q && matched && matched.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `## История цен "${name}" — ${L}\n\nИмени "${name}" нет среди валют, для которых poe.ninja отдаёт тренд. Публичная история цен ПРЕДМЕТОВ/уников у poe.ninja PoE2 отсутствует. Текущие цены предметов — через poe2_price_check. Вот топ движений валют на окне:\n\n${topMovers(hist)}`,
+              },
+            ],
+          };
+        }
+        const text = renderHistory(hist, name);
+        return { content: [{ type: 'text', text: `## История цен — ${L}\n\n${text}` }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+      }
+    },
+  );
+
+  return 5;
+}
+
+type HistPoint = Awaited<ReturnType<typeof core.trade.fetchCurrencyHistory>>[number];
+
+function fmtPct(v: number | null): string {
+  if (v == null) return '—';
+  const s = v > 0 ? '+' : '';
+  return `${s}${v.toFixed(1)}%`;
+}
+
+/** Честная эвристика «что делать» по тренду (не обещание рынка). */
+function historyAdvice(t: number | null): string {
+  if (t == null) return 'нет данных тренда';
+  if (t > 12) return 'резко растёт — возможен перегрев';
+  if (t > 0) return 'растёт';
+  if (t < -12) return 'падает — возможен момент для покупки';
+  if (t < 0) return 'падает';
+  return 'в целом стабильна';
+}
+
+function historyRow(h: HistPoint): string {
+  const arrow = h.totalChange == null ? '' : h.totalChange > 0 ? '▲' : h.totalChange < 0 ? '▼' : '•';
+  const cat = h.category && h.category !== 'Currency' ? ` (${h.category})` : '';
+  return `- **${h.name}**${cat}: ${h.chaosValue != null ? h.chaosValue.toFixed(3) : '—'} chaos | за окно ${arrow} ${fmtPct(h.totalChange)} → ${historyAdvice(h.totalChange)}`;
+}
+
+function topMovers(hist: HistPoint[]): string {
+  const ranked = hist
+    .filter((h) => h.totalChange != null)
+    .sort((a, b) => Math.abs(b.totalChange!) - Math.abs(a.totalChange!))
+    .slice(0, 12);
+  if (!ranked.length) return 'Нет данных о движениях.';
+  return ranked.map(historyRow).join('\n');
+}
+
+function renderHistory(hist: HistPoint[], name?: string): string {
+  const q = name?.trim().toLowerCase();
+  if (q) {
+    const m = hist.filter((h) => h.name.toLowerCase().includes(q));
+    if (!m.length) {
+      return `Валюта "${name}" не найдена среди тех, кому poe.ninja отдаёт тренд. Вот топ движений на окне:\n\n${topMovers(hist)}`;
+    }
+    const lines = m.map((h) => {
+      const len = (h.days ?? []).length;
+      const series = (h.days ?? [])
+        .map((d) => (d == null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(1)}`))
+        .join(' → ');
+      return [
+        historyRow(h),
+        len ? `  Ряд (${len} дн.): ${series}` : '  Ряд: нет данных',
+      ].join('\n');
+    });
+    return lines.join('\n\n');
+  }
+  return topMovers(hist);
 }

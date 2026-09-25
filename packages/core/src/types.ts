@@ -34,6 +34,27 @@ export interface CurrencyRate {
   updatedAt: number;
 }
 
+/**
+ * Одна точка тренда валюты (P1 #8, история цен).
+ *
+ * ВАЖНО (честно): poe.ninja PoE2 не отдаёт публичный history-эндпоинт с
+ * абсолютными ценами по дням. Единственная «история», доступная в Exchange
+ * Overview, — это sparkline: `totalChange` (изменение за окно, %) и `days` —
+ * дневной ряд значений, который poe.ninja отдаёт как изменения, а не цены.
+ * Поэтому тренд показываем именно так, с оговоркой про источник.
+ */
+export interface CurrencyHistoryPoint {
+  id: string;
+  name: string;
+  category: string;
+  /** Текущая цена в chaos-эквиваленте (по курсу exchange). */
+  chaosValue: number | null;
+  /** Изменение за окно (poe.ninja sparkline.totalChange), % или null. */
+  totalChange: number | null;
+  /** Дневной ряд, len = окно дней (poe.ninja sparkline.data). null — нет данных. */
+  days: Array<number | null>;
+}
+
 export interface PriceCheckResult {
   /** Разобранное имя предмета */
   itemName: string;

@@ -16,6 +16,7 @@ import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
 import type {
   CurrencyRate,
+  CurrencyHistoryPoint,
   League,
   PriceCheckResult,
   PriceEstimate,
@@ -287,7 +288,12 @@ interface NinjaExchangeResponse {
     primary?: string;
     secondary?: string;
   };
-  lines?: Array<{ id: string; primaryValue: number; sparkline?: { totalChange: number } }>;
+  lines?: Array<{
+    id: string;
+    primaryValue: number;
+    category?: string;
+    sparkline?: { totalChange: number; data?: Array<number | null> };
+  }>;
 }
 
 /** Курсы валют (тип Currency) из poe.ninja PoE2 Economy API — цена каждой в Chaos. */
@@ -327,6 +333,42 @@ export async function fetchBestCurrencyRates(league?: string): Promise<CurrencyR
   const usable = s.filter((r) => r.chaosValue != null || r.divineValue != null);
   if (usable.length > 0) return usable;
   return fetchCurrencyRates(league);
+}
+
+// ────────────────────────────────────────────────
+// История цен (P1 #8): тренд валют из poe.ninja Exchange Overview
+// ────────────────────────────────────────────────
+const ninjaHistoryCache = new Map<string, { at: number; list: CurrencyHistoryPoint[] }>();
+
+/**
+ * История (тренд) валют из poe.ninja PoE2 Exchange Overview.
+ *
+ * Честно: отдельного публичного history-эндпоинта у poe.ninja PoE2 нет —
+ * источником служит sparkline из текущего обзора: `totalChange` (изменение за
+ * окно, %) и дневной ряд `days` (что poe.ninja отдаёт как изменения, не цены).
+ */
+export async function fetchCurrencyHistory(league?: string): Promise<CurrencyHistoryPoint[]> {
+  const l = league ?? currentLeague ?? 'Runes of Aldur';
+  const hit = ninjaHistoryCache.get(l);
+  if (hit && Date.now() - hit.at < NINJA_TTL) return hit.list;
+
+  const url = `${NINJA_EXCHANGE}?league=${encodeURIComponent(l)}&type=${encodeURIComponent('Currency')}`;
+  const data = await httpJson<NinjaExchangeResponse>(url);
+  const c = data.core;
+  if (!c?.items || !c.rates) return [];
+
+  const chaosRate = c.rates[c.secondary ?? ''] ?? 1;
+  const idToName = new Map(c.items.map((it) => [it.id, it.name]));
+  const list: CurrencyHistoryPoint[] = (data.lines ?? []).map((line) => ({
+    id: line.id,
+    name: idToName.get(line.id) ?? line.id,
+    category: line.category ?? 'Currency',
+    chaosValue: line.primaryValue * chaosRate,
+    totalChange: line.sparkline?.totalChange ?? null,
+    days: line.sparkline?.data ?? [],
+  }));
+  ninjaHistoryCache.set(l, { at: Date.now(), list });
+  return list;
 }
 
 export function clearRatesCache(): void {
