@@ -632,7 +632,9 @@ export async function resolveTradeBaseType(
     const ok = listings.length > 0;
     tradeTypeValidation.set(t, { at: Date.now(), ok });
     return ok ? t : null;
-  } catch {
+  } catch (e) {
+    // 429/500 — временные сбои, не кэшируем «невалиден» (см. isTransientTradeError)
+    if (isTransientTradeError(e)) return null;
     // 400 «Unknown item base type» или сетевая ошибка — пробуем маппинг
     const mapped = await mapBaseTypeViaRePoe(t);
     if (mapped && mapped !== t) {
@@ -891,8 +893,21 @@ async function postTradeSearchUncached(
     if (e instanceof Error && /HTTP 429/.test(e.message)) {
       tradeBanUntil = Date.now() + 60_000;
     }
+    // 429/500 trade2 — прокидываем дальше (не «пустой результат»):
+    // resolveTradeBaseType использует это, чтобы НЕ кэшировать ложное
+    // «тип невалиден» (postTradeSearch глотает ошибку → []).
+    if (isTransientTradeError(e)) throw e;
+    // Остальные ошибки (400 «Invalid query», «Unknown item base type», сеть)
+    // остаются пустым результатом для обычных поисков.
     return [];
   }
+}
+
+/** 429 (rate limit) / 500 (внутренняя ошибка trade2) — временные сбои,
+ *  которые НЕ доказывают невалидность запроса/типа. */
+function isTransientTradeError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  return /HTTP 429|HTTP 500|Rate limit|Internal error/i.test(e.message);
 }
 
 /** Листинги в разных валютах → цены в Chaos Orb (по курсам лиги). */
