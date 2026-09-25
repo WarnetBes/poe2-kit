@@ -429,6 +429,18 @@ ok(report.requested === 4 && report.resolved.length === 2
   && report.missingNumeric.length === 1 && report.missingSymbolic.length === 1
   && report.resolved.some((n) => n.id === 'attributes1') && report.resolved.some((n) => n.id === '12876'),
   `tree ids: report dedupe+missing split (resolved ${report.resolved.length}/${report.requested})`);
+// P0 #1b: числовая карта обычного дерева (резолв числовых game ID из PoB <Spec nodes>)
+const numMap = core.getNumericTreeMap();
+ok(numMap.size >= 4000, `tree ids: numeric map size ${numMap.size} (ожидал >= 4000)`);
+const echo = getPassiveNodeById('5703');
+ok(!!echo && echo.source === 'tree' && echo.isNotable && echo.name === 'Echoing Thunder' && echo.stats.some((s) => s.includes('Shocked an Enemy')), 'tree ids: numeric 5703 → "Echoing Thunder" (notable, обычное дерево)');
+const attr = getPassiveNodeById('11672');
+ok(!!attr && attr.source === 'tree' && attr.name === 'Attribute' && attr.stats.includes('+5 to Strength'), 'tree ids: numeric 11672 → "Attribute" (+5 Strength)');
+const reportFull = resolvePassiveNodes(['5703', '11672', '12876', '314159']);
+ok(reportFull.resolved.length === 3 && reportFull.missing.length === 1 && reportFull.missing[0] === '314159'
+  && reportFull.resolved.some((n) => n.id === '12876' && n.source === 'ascendancy'),
+  `tree ids: numeric обычное+asc (resolved ${reportFull.resolved.length}/4)`);
+
 const ring = searchBaseItems('Ruby Ring');
 ok(ring.length >= 1 && ring.some((b) => b.name === 'Ruby Ring'), 'base_items: Ruby Ring found');
 ok(getStatIds().length > 20000, `stats: ${getStatIds().length} stat ids`);

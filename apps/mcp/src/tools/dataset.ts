@@ -143,10 +143,10 @@ export function registerDatasetTools(server: McpServer): number {
       title: 'PoE2 Passive Tree Nodes By ID',
       description: `Резолв узлов дерева пассивок PoE2 по их ID. Понимает обе схемы ID:
   - символьные (как их возвращает poe2_tree_search: "attributes1", …) — обычное дерево,
-  - числовые (как в PoB: <Spec nodes="…"> или URL дерева, например 12876) — узлы асценданси.
+  - числовые (как в PoB: <Spec nodes="…"> или URL дерева, например 12876) — и обычное дерево, и асценданси.
 Возвращает имя, тип (keystone/notable/обычная), асценданси и статы.
-⚠ Числовые ID обычного дерева (не асценданси) в офлайн-датасете пока не резолвятся
-(нужна числовая карта дерева) — тул честно сообщит, какие не найдены.
+Числовые ID обычного дерева резолвятся по числовой карте (passive_tree/numeric_ids.json, P0 #1b).
+Ненайденные (например из другой версии дерева) — тул честно сообщит.
 
 Аргументы:
   - ids (string[], обяз.): массив ID узлов (символьные или числовые строки).
@@ -188,7 +188,7 @@ export function registerDatasetTools(server: McpServer): number {
         lines.push('');
         lines.push(`⚠ Не найдено в датасете (${report.missing.length}): ${report.missing.slice(0, 40).join(', ')}${report.missing.length > 40 ? '…' : ''}`);
         if (report.missingNumeric.length === report.missing.length) {
-          lines.push('_Все ненайденные — числовые ID обычного (не асценданси) дерева: датасет хранит обычное дерево по символьным ключам PoB, а числовая карта «ID игры → узел» пока недоступна офлайн._');
+          lines.push('_Все ненайденные — числовые ID, которых нет в числовой карте дерева (возможно, из другой версии treeVersion, чем 0_3). Проверьте в Path of Building._');
         } else {
           lines.push('_Возможно, узлы из другой версии дерева (PoB treeVersion ≠ актуальному патчу) — сверить в Path of Building._');
         }

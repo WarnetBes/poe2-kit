@@ -124,6 +124,7 @@ const build = core.build.decodeShareCode(code);
 | Приоритет | Задача |
 |-----------|--------|
 | **P0** | ✅ `poe2_tree_ids` — ресолвер узлов дерева по ID; дерево в `poe2_build_decode` сразу с именами |
+| **P0** | ✅ Числовая карта обычного дерева (P0-1b): числовые ID из PoB `<Spec nodes>` резолвятся по `numeric_ids.json` (128/128 в тест-билде) |
 | **P0** | ✅ Авто-детект рассинхрона версий PoB vs датасет (treeVersion, XML) |
 | **P0** | ✅ «Следующий апгрейд» на основе оценки билда (`poe2_build_advice`) |
 | **P0** | ✅ SSF-режим в `poe2_build_price` / `poe2_price_check` (`mode: "ssf"`) |
