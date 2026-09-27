@@ -282,6 +282,26 @@ const build = core.build.decodeShareCode(code);
   вручную, глядя дифф. Так никто не может внедрить в kit вредоносный код
   (см. `SECURITY.md`). `CONTRIBUTING.md` — подробно как помочь.
 
+## Вход в GGG (OAuth) — персонажи PoE2 без копипасты
+
+Официальный API GGG умеет отдавать **персонажей PoE2** (экипировка, инвентарь,
+пассивки) — Kit ходит туда по OAuth 2.1 (PKCE), легальный путь из
+[developer docs](https://www.pathofexile.com/developer/docs). Стэш-API для
+PoE2 у GGG нет (PoE1 only) — когда появится, довесим.
+
+1. **Одноразовая подготовка мейнтейнера:** зарегистрировать OAuth-приложение
+   GGG (pathofexile.com/developer → `oauth@grindinggear.com`), redirect URI
+   `http://127.0.0.1:8080/callback`; затем задать client_id:
+   `setx POE2K_GGG_CLIENT_ID <id>`.
+2. **Вход:** MCP-тул `poe2_oauth_login` — откройте выданный URL в браузере,
+   подтвердите доступ. Токены лежат локально в `~/.poe2-kit/ggg-oauth.json`
+   (режим 0600), access — 10 часов, refresh — 7 дней, обновляются сами.
+3. **Использование:** `poe2_characters` (список), `poe2_character_get`
+   (полный снапшот персонажа), `poe2_oauth_logout` (забыть токены).
+
+Без `POE2K_GGG_CLIENT_ID` вход честно откажется — все остальные функции
+Kit работают как раньше.
+
 ## Журнал обучения и библиотека предметов (opt-in)
 
 Соответствие «текст мода ↔ stat-id trade2» ломается почти каждый патч GGG.

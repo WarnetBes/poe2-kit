@@ -3,6 +3,24 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [Unreleased]
+
+### Added
+- **OAuth 2.1 (PKCE) вход в GGG** (`core.oauth`): доступ к официальному
+  аккаунтному API `api.pathofexile.com` realm poe2 — список персонажей
+  и полный снапшот выбранного (экипировка, инвентарь, пассивки) без
+  копипасты из игры. Токены локально (`~/.poe2-kit/ggg-oauth.json`, 0600),
+  автопродление по refresh, вход через локальный callback
+  `http://127.0.0.1:8080/callback`. Требует `POE2K_GGG_CLIENT_ID`
+  (регистрация приложения GGG; без него — честный отказ, остальной Kit
+  не затронут). Стэш-API PoE2 у GGG не существует (PoE1 only) — стэш-тулов
+  нет и не делаем.
+- MCP-инструменты: `poe2_oauth_login`, `poe2_oauth_status`,
+  `poe2_oauth_logout`, `poe2_characters`, `poe2_character_get`
+  (42 → 47 тулов).
+- Офлайн-смоук OAuth: PKCE/state/URL, хранилище токенов, 401 → refresh →
+  повтор (мок fetch), валидация имени персонажа на границе (path-injection).
+
 ## [1.0.3] — 2026-09-28
 
 ### Added

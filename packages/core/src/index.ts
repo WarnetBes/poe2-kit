@@ -15,6 +15,7 @@ export * from './tradeQuery.js';
 export * from './dataset.js';
 export * from './statdesc.js';
 export * from './tradeSnapshot.js';
+export * from './oauth.js';
 export * from './uniques.js';
 export * from './learnlog.js';
 export * from './learnedStats.js';
@@ -60,6 +61,7 @@ import * as tqmod from './tradeQuery.js';
 import * as dsmod from './dataset.js';
 import * as statdescmod from './statdesc.js';
 import * as tradeSnapshotMod from './tradeSnapshot.js';
+import * as oauthmod from './oauth.js';
 import * as unqmod from './uniques.js';
 import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
@@ -86,6 +88,7 @@ export const core = {
   dataset: dsmod,
   statdesc: statdescmod,
   tradeSnapshot: tradeSnapshotMod,
+  oauth: oauthmod,
   uniques: unqmod,
   poe2db: p2dbmod,
   zoneNotes: znmod,

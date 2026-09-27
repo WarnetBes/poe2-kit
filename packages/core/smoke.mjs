@@ -785,5 +785,116 @@ console.log('http: GGG rate-limit backoff (trade2)');
   globalThis.fetch = realFetch;
 }
 
+
+// oauth.ts: GGG OAuth 2.1 PKCE + account API (offline mocks, no network)
+console.log('oauth: GGG OAuth 2.1 PKCE (offline)');
+{
+  process.env['POE2K_GGG_CLIENT_ID'] = 'smoke-client-abc';
+  const oa = core; // star-export: функции oauth на верхнем уровне namespace
+  const crypto = await import('node:crypto');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const fsx = await import('node:fs');
+
+  const pk = oa.generatePkce();
+  const expected = crypto.createHash('sha256').update(pk.verifier).digest('base64url');
+  ok(pk.verifier.length >= 40 && pk.challenge === expected, 'oauth: PKCE S256 challenge == SHA256(verifier)');
+  ok(/^[A-Za-z0-9_-]+$/.test(pk.verifier) && /^[A-Za-z0-9_-]+$/.test(pk.challenge), 'oauth: base64url alphabet');
+  const state = oa.generateState();
+  ok(state.length === 32 && /^[0-9a-f]+$/.test(state), 'oauth: state is 32 hex chars');
+
+  const url = oa.buildAuthorizeUrl({ clientId: 'cid', codeChallenge: pk.challenge, state: 'st' });
+  const u = new URL(url);
+  ok(
+    u.searchParams.get('client_id') === 'cid' &&
+      u.searchParams.get('code_challenge_method') === 'S256' &&
+      u.searchParams.get('code_challenge') === pk.challenge &&
+      u.searchParams.get('response_type') === 'code' &&
+      u.searchParams.get('state') === 'st' &&
+      u.searchParams.get('redirect_uri') === 'http://127.0.0.1:8080/callback' &&
+      u.searchParams.get('scope') === 'account:profile account:characters',
+    'oauth: authorize URL well-formed (PKCE + scopes + 127.0.0.1 redirect)',
+  );
+
+  const cb = oa.parseCallbackQuery('?code=abc123&state=st');
+  ok(cb.code === 'abc123' && cb.state === 'st' && cb.error === null, 'oauth: callback query parsed');
+  ok(oa.parseCallbackQuery('?error=access_denied').error === 'access_denied', 'oauth: callback error parsed');
+
+  // token store roundtrip in temp file
+  const tmp = path.join(os.tmpdir(), `poe2k-oauth-smoke-${Date.now()}.json`);
+  fsx.mkdirSync(path.dirname(tmp), { recursive: true });
+  process.env['POE2K_OAUTH_FILE'] = tmp;
+  const tok = {
+    access_token: 'A1', refresh_token: 'R1', expires_at: Date.now() + 3600_000,
+    token_type: 'bearer', scope: 'account:profile account:characters',
+    username: 'smoker', obtainedAt: new Date().toISOString(),
+  };
+  oa.saveOAuthToken(tok);
+  const loaded = oa.loadOAuthToken();
+  ok(!!loaded && loaded.access_token === 'A1' && loaded.refresh_token === 'R1', 'oauth: token file save/load roundtrip');
+  ok(fsx.readFileSync(tmp, 'utf8').includes('A1'), 'oauth: token file written to POE2K_OAUTH_FILE');
+  const st1 = oa.oauthStatus();
+  ok(st1.clientIdConfigured && st1.authorized && st1.accessTokenValid && st1.refreshable && st1.username === 'smoker', 'oauth: oauthStatus aggregates token state');
+  ok((await oa.requireAccessToken()).access_token === 'A1', 'oauth: valid token returned without refresh');
+  oa.clearOAuthToken();
+  ok(oa.loadOAuthToken() === null, 'oauth: clear removes token file');
+
+  // apiGetJson: 401 -> refresh -> retry (mocked fetch, no network)
+  const realFetch = globalThis.fetch;
+  const authSeen = [];
+  let refreshCalls = 0;
+  let refreshFormOk = false;
+  globalThis.fetch = async (url, init) => {
+    const s = String(url);
+    if (s.includes('/oauth/token')) {
+      refreshCalls++;
+      const form = String(init?.body ?? '');
+      refreshFormOk = form.includes('grant_type=refresh_token') && form.includes('R1') && form.includes('client_id=smoke-client-abc');
+      return {
+        ok: true, status: 200, headers: new Headers(),
+        json: async () => ({ access_token: 'A2', refresh_token: 'R2', expires_in: 36000, token_type: 'bearer', scope: 'account:profile account:characters', username: 'smoker' }),
+        text: async () => '',
+      };
+    }
+    if (s.includes('api.pathofexile.com/')) {
+      const authz = String(init?.headers?.Authorization ?? '');
+      authSeen.push(authz);
+      if (authz.endsWith('A1')) {
+        return { ok: false, status: 401, headers: new Headers(), text: async () => 'unauthorized' };
+      }
+      return {
+        ok: true, status: 200, headers: new Headers(),
+        text: async () => JSON.stringify({ characters: [{ name: 'PandarenDeepRover', class: 'Monk', level: 30 }] }),
+        json: async () => ({ characters: [{ name: 'PandarenDeepRover', class: 'Monk', level: 30 }] }),
+      };
+    }
+    throw new Error('unexpected fetch in oauth smoke: ' + s);
+  };
+  oa.saveOAuthToken(tok);
+  const chars = await oa.listPoe2Characters();
+  ok(chars.length === 1 && chars[0].name === 'PandarenDeepRover' && chars[0].level === 30, 'oauth: listPoe2Characters via 401->refresh->200');
+  ok(refreshCalls === 1 && refreshFormOk, 'oauth: exactly one refresh with correct form (grant_type=refresh_token, old R1, client_id)');
+  ok(authSeen.length === 2 && authSeen[0].endsWith('A1') && authSeen[1].endsWith('A2'), 'oauth: call1 bore OLD token, call2 bore refreshed token');
+  const savedAfter = oa.loadOAuthToken();
+  ok(!!savedAfter && savedAfter.access_token === 'A2' && savedAfter.refresh_token === 'R2', 'oauth: refreshed token persisted (old refresh is dead)');
+
+  // name validation happens before any network
+  let badName = false;
+  try { await oa.getPoe2Character('bad/name'); } catch { badName = true; }
+  ok(badName, 'oauth: path injection in character name rejected');
+  let badName2 = false;
+  try { await oa.getPoe2Character('x'.repeat(80)); } catch { badName2 = true; }
+  ok(badName2, 'oauth: overlong character name rejected');
+  globalThis.fetch = realFetch;
+
+  // beginOAuthLogin fails fast without client_id
+  delete process.env['POE2K_GGG_CLIENT_ID'];
+  let noCid = false;
+  try { oa.beginOAuthLogin(); } catch (e) { noCid = String(e.message).includes('POE2K_GGG_CLIENT_ID'); }
+  ok(noCid, 'oauth: beginOAuthLogin fails fast without client_id');
+
+  delete process.env['POE2K_OAUTH_FILE'];
+}
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
