@@ -121,6 +121,10 @@ interface OverlaySettings {
   /** Opt-in журнал обучения: запоминать структуру проверенных предметов
    *  (локально; вклад — только по кнопке «Поделиться». См. PRIVACY/README). */
   learn?: boolean;
+  /** Привязка к окну игры через Win32 (read-only user32-вызовы). false =
+   *  «осторожный режим»: позиция по углу рабочей области экрана, оверлей
+   *  всегда видим, ни одного вызова user32.dll. */
+  bindWindow?: boolean;
 }
 
 type HotkeyAction =
@@ -137,6 +141,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   scale: 1,
   width: 420,
   hotkeys: {},
+  bindWindow: true,
 };
 
 /** Стандартные хоткеи для действия (если пользователь не переопределил). */
@@ -592,7 +597,12 @@ function settingsFile(): string {
 function loadSettings(): OverlaySettings {
   const base: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
   try {
-    const raw = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    // BOM-толерантность: файл иногда правят PowerShell-ом (Set-Content -Encoding utf8
+    // в Windows PowerShell = UTF-8 с BOM) — JSON.parse с '\uFEFF' падает, и overlay
+    // молча уходил в дефолты. BOM срезаем перед парсингом.
+    let text = fs.readFileSync(settingsFile(), 'utf8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const raw = JSON.parse(text);
     if (raw && typeof raw === 'object') {
       const corners: OverlayCorner[] = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
       if (corners.includes(raw.corner)) base.corner = raw.corner;
@@ -601,6 +611,7 @@ function loadSettings(): OverlaySettings {
       if (typeof raw.width === 'number') base.width = clamp(Math.round(raw.width), 280, 640);
       if (raw.hotkeys && typeof raw.hotkeys === 'object') base.hotkeys = { ...raw.hotkeys };
       if (typeof raw.learn === 'boolean') base.learn = raw.learn;
+      if (typeof raw.bindWindow === 'boolean') base.bindWindow = raw.bindWindow;
     }
   } catch {
     /* нет файла или он битый — берём настройки по умолчанию */
@@ -701,15 +712,26 @@ function toggleMoveMode(): void {
     win.show();
     win.focus();
   } else {
-    // Считаем смещение от «закреплённой» позиции относительно текущего окна игры.
-    const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
-    if (found) {
-      const pinned = pinnedPosition(physicalRectToDip(found.rect));
+    // Считаем смещение от «закреплённой» позиции относительно текущего окна игры
+    // (в «осторожном режиме» — относительно угла рабочей области экрана, без FFI).
+    if (settings.bindWindow === false) {
+      const area = screen.getPrimaryDisplay().workArea;
+      const pinned = pinnedPosition(area);
       const [wx, wy] = win.getPosition();
       userOffset = { x: wx - pinned.x, y: wy - pinned.y };
       saveUserOffset(userOffset);
-      console.log(`[overlay] позиция закреплена: offset=${JSON.stringify(userOffset)}`);
+      console.log(`[overlay] позиция закреплена (free mode): offset=${JSON.stringify(userOffset)}`);
       lastRectKey = ''; // форсируем следующий setBounds трекера
+    } else {
+      const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
+      if (found) {
+        const pinned = pinnedPosition(physicalRectToDip(found.rect));
+        const [wx, wy] = win.getPosition();
+        userOffset = { x: wx - pinned.x, y: wy - pinned.y };
+        saveUserOffset(userOffset);
+        console.log(`[overlay] позиция закреплена: offset=${JSON.stringify(userOffset)}`);
+        lastRectKey = ''; // форсируем следующий setBounds трекера
+      }
     }
     win.setFocusable(false);
     win.setIgnoreMouseEvents(true, { forward: true });
@@ -786,6 +808,7 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.scale === 'number') next.scale = clamp(raw.scale, 0.7, 1.4);
   if (typeof raw.width === 'number') next.width = clamp(Math.round(raw.width), 280, 640);
   if (typeof raw.learn === 'boolean') next.learn = raw.learn;
+  if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
     for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
@@ -1443,6 +1466,27 @@ function trackGameWindow(): void {
   const win = overlayWindow;
   if (!win || win.isDestroyed()) return;
 
+  // «Осторожный режим» (привязка к окну выключена): ни одного вызова user32 —
+  // позиция = угол рабочей области основного монитора + смещение Ctrl+F5,
+  // оверлей всегда видим (не прячется при alt-tab и свёрнутой игре).
+  if (settings.bindWindow === false) {
+    if (moveUnlocked) return; // пользователь тащит окно — не мешаем
+    const area = screen.getPrimaryDisplay().workArea;
+    const pinned = pinnedPosition(area);
+    let x = pinned.x + (userOffset?.x ?? 0);
+    let y = pinned.y + (userOffset?.y ?? 0);
+    x = Math.min(Math.max(x, area.x), area.x + area.width - overlayWidth);
+    y = Math.min(Math.max(y, area.y), area.y + Math.max(area.height - overlayHeight, 100));
+    const key = `free:${x},${y},${overlayHeight}`;
+    if (lastRectKey !== key) {
+      lastRectKey = key;
+      win.setBounds({ x, y, width: overlayWidth, height: overlayHeight });
+      console.log(`[overlay] free mode: setBounds (${x},${y}) — привязка к окну игры выключена`);
+    }
+    if (!win.isVisible()) win.show();
+    return;
+  }
+
   const found = findGameWindow({ titleKeyword: GAME_TITLE_KEYWORD });
 
   if (!found) {
@@ -1865,6 +1909,7 @@ function collectDiagnostics(): string {
   L.push('');
   L.push('-- Настройки оверлея --');
   L.push('corner: ' + settings.corner);
+  L.push('bindWindow: ' + (settings.bindWindow ?? true));
   L.push('opacity: ' + settings.opacity);
   L.push('scale: ' + settings.scale);
   L.push('width: ' + settings.width);
@@ -1934,6 +1979,7 @@ function setupIPC(): void {
     scale: settings.scale,
     width: settings.width,
     learn: settings.learn ?? false,
+    bindWindow: settings.bindWindow ?? true,
     hotkeys: { ...settings.hotkeys },
     defaultHotkeys: { ...DEFAULT_HOTKEYS },
   }));
