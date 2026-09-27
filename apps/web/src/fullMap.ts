@@ -167,6 +167,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         }).join('')}
       </select>
       <button type="button" class="btn-fit" title="Вписать карту">⟳ Вписать</button>
+      <a class="btn-fit" href="https://poe2db.tw/us/passive-skill-tree/" target="_blank" rel="noopener noreferrer" title="Внешний планировщик с игровым видом карты (poe2db)">🗺 poe2db-планировщик ↗</a>
     </div>
     <details class="tree-legend" open>
       <summary>Легенда асценданси</summary>
