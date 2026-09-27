@@ -6,6 +6,19 @@
 ## [Unreleased]
 
 ### Added
+- **Сессии игры + реальные имена зон в лог-парсере** (`core.log`): PLAY-сессии по
+  границам `***** LOG FILE OPENING *****` (`ClientGameState.sessions`);
+  событие `[SCENE] Set Source` — настоящее имя зоны из лога перезаписывает
+  табличное `ZONE_NAMES` (дописывает зоны, которых нет в таблице).
+  Паритет с sergeyklay services-logfile.ts закрыт полностью.
+- **Базовые пулы PoE2 — канон PoB2** (`core.resources` + тул `poe2_base_pools`):
+  life = 12·lvl+16, mana = 4·lvl+30, реген маны 4%/с, ES без базы от уровня.
+  ⚠️ Сверка с Hivemind resource_calculator.py показала его PoE1-legacy
+  (life/str, mana/int, сдвиг на 12/4) — отвергнуто, канон выверен по исходникам
+  PathOfBuilding-PoE2 (CalcSetup.lua:954-956, ModStore.lua:442). MCP 47→48.
+- **ТЗ на optimize-тулы** (`docs/SPEC_OPTIMIZE_TOOLS.md`): перенос приёмов
+  MaxWilk poe2-build-mcp (инвариант «число — только computed/estimated»,
+  verify-before-present, ограничение перебора); этапы 1-3.
 - **Автопрайс-чек из буфера (overlay, opt-in):** слежение 500мс с дедупом
   (приём ExileOracle clipboard-monitor) — новые предметы проверяются без
   Ctrl+F1. Выключено по умолчанию (приватность); тумблер в Ctrl+F6,

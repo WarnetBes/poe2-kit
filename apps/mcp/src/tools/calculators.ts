@@ -404,5 +404,73 @@ Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / поро
   );
   count++;
 
+  // ── Базовые пулы (life/mana/ES/реген маны) — канон PoB2 ─────────────────────
+  server.registerTool(
+    'poe2_base_pools',
+    {
+      title: 'PoE2 Base Resource Pools',
+      description: `Базовые пулы персонажа PoE2 по канону PoB2 (БЕЗ Hivemind-legacy):
+
+- Life = 12*level + 16 (атрибуты life НЕ дают — смена PoE2)
+- Mana = 4*level + 30
+- Реген маны = 4%/с от макс. маны (240%/мин)
+- ES: базового ES от уровня НЕТ — только gear/tree (flat+increased+more)
+
+Итог: (база + flat) * (1 + increased%) * (1+more_1)*(1+more_2)... , floor.
+
+Аргументы:
+  - level (нужен): уровень персонажа 1-100.
+  - lifeFlat, lifeIncreasedPercent (опц.): моды жизни.
+  - manaFlat, manaIncreasedPercent (опц.): моды маны.
+  - esFlat, esIncreasedPercent, esMoreMultipliers (опц.): моды ES.
+
+Возвращает базу и итог каждого пула + реген маны/с.`,
+      inputSchema: {
+        level: z.number().int().min(1).max(100).describe('Уровень персонажа'),
+        lifeFlat: z.number().optional().describe('Плоский +life (gear/tree)'),
+        lifeIncreasedPercent: z.number().optional().describe('Increased maximum life, %'),
+        manaFlat: z.number().optional().describe('Плоский +mana'),
+        manaIncreasedPercent: z.number().optional().describe('Increased maximum mana, %'),
+        esFlat: z.number().optional().describe('Плоский +ES от gear'),
+        esIncreasedPercent: z.number().optional().describe('Increased ES, %'),
+        esMoreMultipliers: z.array(z.number()).optional().describe('ES more-множители (0.1 = +10%)'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async (args) => {
+      try {
+        const res = core.resources;
+        const lifeMods = {
+          ...(args.lifeFlat != null ? { flat: args.lifeFlat } : {}),
+          ...(args.lifeIncreasedPercent != null ? { increasedPercent: args.lifeIncreasedPercent } : {}),
+        };
+        const manaMods = {
+          ...(args.manaFlat != null ? { flat: args.manaFlat } : {}),
+          ...(args.manaIncreasedPercent != null ? { increasedPercent: args.manaIncreasedPercent } : {}),
+        };
+        const esMods = {
+          ...(args.esFlat != null ? { flat: args.esFlat } : {}),
+          ...(args.esIncreasedPercent != null ? { increasedPercent: args.esIncreasedPercent } : {}),
+          ...(args.esMoreMultipliers != null ? { moreMultipliers: args.esMoreMultipliers } : {}),
+        };
+        const life = res.maxLife(args.level, lifeMods);
+        const mana = res.maxMana(args.level, manaMods);
+        const es = res.maxEnergyShield(esMods);
+        const base = (per: number, lv: number, off: number) => per * lv + off;
+        const lines: string[] = [];
+        lines.push(`## Базовые пулы PoE2 (уровень ${args.level})`, '');
+        lines.push(`- Life: **${life}** (база ${base(res.RESOURCE_CONSTANTS.LIFE_PER_LEVEL, args.level, res.RESOURCE_CONSTANTS.LIFE_LEVEL_BASE)})`);
+        lines.push(`- Mana: **${mana}** (база ${base(res.RESOURCE_CONSTANTS.MANA_PER_LEVEL, args.level, res.RESOURCE_CONSTANTS.MANA_LEVEL_BASE)})`);
+        lines.push(`- ES: **${es}** (базового ES от уровня нет — только моды)`);
+        lines.push(`- Реген маны: **${res.manaRegenPerSec(mana).toFixed(2)}/с** (4% от макс. маны)`);
+        lines.push('', '_Канон: PathOfBuilding-PoE2 CalcSetup.lua:954-956 (Multiplier base=16/30), ModStore.lua:442 (value*mult+base), Data/Misc.lua:156-157,147._');
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        return { isError: true, content: [{ type: 'text', text: `Ошибка base_pools: ${error instanceof Error ? error.message : String(error)}` }] };
+      }
+    },
+  );
+  count++;
+
   return count;
 }

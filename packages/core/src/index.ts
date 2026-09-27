@@ -32,6 +32,7 @@ export * from './gameConfig.js';
 import * as ehpmod from './ehp.js';
 import * as spiritmod from './spirit.js';
 import * as stunmod from './stun.js';
+import * as resmod from './resources.js';
 import * as enemymod from './enemy.js';
 import * as ailmentsmod from './ailments.js';
 
@@ -102,6 +103,7 @@ export const core = {
   ehp: ehpmod,
   spirit: spiritmod,
   stun: stunmod,
+  resources: resmod,
   enemy: enemymod,
   ailments: ailmentsmod,
 };

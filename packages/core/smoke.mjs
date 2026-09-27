@@ -949,5 +949,35 @@ console.log('stun: immune hit does not mutate meter (Hivemind parity)');
   ok(ri.meter.percent === r2.meter.percent, 'stun: immune hit leaves meter percent untouched');
 }
 
+
+// --- log sessions + SCENE (P1: sergeyklay parity) ---
+{
+  const { parseLogLine } = core;
+  const evOpen = parseLogLine('2026/09/28 12:00:00 1 0 ***** LOG FILE OPENING *****');
+  ok(evOpen?.kind === 'log_opening' && evOpen?.timestamp === '2026/09/28 12:00:00', 'parseLogLine log_opening (no prefix)');
+  const evOpen2 = parseLogLine('2026/09/28 12:00:00 1 0 [INFO Client 123] ***** LOG FILE OPENING *****');
+  ok(evOpen2?.kind === 'log_opening', 'parseLogLine log_opening (with prefix)');
+  const evScene = parseLogLine('2026/09/28 12:00:05 2 0 [INFO Client 123] [SCENE] Set Source [Tower_of_the_Gods]');
+  ok(evScene?.kind === 'scene_source' && evScene?.sceneName === 'Tower_of_the_Gods', 'parseLogLine scene_source');
+  const evSceneNull = parseLogLine('2026/09/28 12:00:06 2 0 [INFO Client 123] [SCENE] Set Source [(null)]');
+  ok(evSceneNull?.kind === 'scene_source' && evSceneNull?.sceneName === '(null)', 'parseLogLine scene_source placeholder kept raw');
+}
+
+
+// --- resources: PoB2-canon base pools (P1: Hivemind parity + divergence fix) ---
+{
+  const res = core.core.resources;
+  ok(res.maxLife(1) === 28, 'resources: maxLife level 1 = 12+16 = 28 (PoB2 canon)');
+  ok(res.maxLife(27) === 340, 'resources: maxLife level 27 = 340 (Hivemind would say 352+24str)');
+  ok(res.maxMana(1) === 34, 'resources: maxMana level 1 = 34');
+  ok(res.maxMana(27) === 138, 'resources: maxMana level 27 = 138');
+  ok(res.maxLife(30, { flat: 100, increasedPercent: 20, moreMultipliers: [0.1] }) === Math.floor((12*30+16+100)*1.2*1.1), 'resources: maxLife flat+inc+more composition');
+  ok(res.maxLife(0) === 28 && res.maxLife(999) === res.maxLife(100), 'resources: level clamped to 1..100');
+  const regen = res.manaRegenPerSec(100);
+  ok(Math.abs(regen - 4) < 1e-9, 'resources: mana regen 4%/s (100 mana -> 4/s)');
+  ok(Math.abs(res.manaRegenPerSec(100, 50, 1) - 7) < 1e-9, 'resources: mana regen inc% + flat');
+  ok(res.maxEnergyShield({ flat: 150, increasedPercent: 30 }) === 195, 'resources: ES no level base, gear mods only');
+}
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

@@ -126,7 +126,9 @@ export type LogEventKind =
   | 'afk'
   | 'whisper'
   | 'items_identified'
-  | 'instance_connect';
+  | 'instance_connect'
+  | 'scene_source'
+  | 'log_opening';
 
 /** Типизированное событие из строки Client.txt. */
 export interface ClientLogEvent {
@@ -145,8 +147,19 @@ export interface ClientLogEvent {
   afkState?: 'ON' | 'OFF';
   whisperDirection?: 'From' | 'To';
   count?: number;
+  /** Реальное имя сцены из [SCENE] Set Source (для события scene_source). */
+  sceneName?: string;
   /** Сырое тело сообщения. */
   raw: string;
+}
+
+/**
+ * Границы игровой сессии: `***** LOG FILE OPENING *****` → следующий opening/EOF.
+ * (ср. sergeyklay PlaySession; у нас строки-время как в остальном состоянии).
+ */
+export interface LogSession {
+  startTimestamp: string;
+  endTimestamp: string | null;
 }
 
 // Общий префикс строки: дата, uptime-счётчик, hex-хэш, [LEVEL Client PID].
@@ -161,10 +174,21 @@ const EVENT_PATTERNS: Array<[LogEventKind, RegExp]> = [
   ['afk', /^: AFK mode is now (ON|OFF)/],
   ['whisper', /^@(From|To) ([^:]+): (.*)$/],
   ['items_identified', /^: (\d+) Items? identified/],
+  // SCENE: реальное имя зоны — допуск к зонам, которых нет в ZONE_NAMES (серgeyklay SCENE_RE).
+  ['scene_source', /^\[SCENE\] Set Source \[(.+)\]$/],
 ];
+
+// Граница сессии. В реальном логе идёт без полного префикса: `дата **** LOG FILE OPENING ****`.
+// Поэтому обрабатывается до PREFIX_RE в parseLogLine.
+const LOG_OPENING_LINE_RE =
+  /^(\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}).*\*{5} LOG FILE OPENING \*{5}$/;
 
 /** Разобрать одну строку лога в типизированное событие (или null). */
 export function parseLogLine(line: string): ClientLogEvent | null {
+  const opening = LOG_OPENING_LINE_RE.exec(line);
+  if (opening) {
+    return { kind: 'log_opening', timestamp: opening[1]!, raw: 'LOG FILE OPENING' };
+  }
   const m = PREFIX_RE.exec(line);
   if (!m) return null;
   const ts = m[1]!;
@@ -198,6 +222,9 @@ export function parseLogLine(line: string): ClientLogEvent | null {
         break;
       case 'items_identified':
         ev.count = parseInt(e[1]!, 10);
+        break;
+      case 'scene_source':
+        ev.sceneName = e[1];
         break;
     }
     return ev;
@@ -367,6 +394,8 @@ export interface ClientGameState {
   /** Все события из окна, распознанные парсером. */
   events: ClientLogEvent[];
   zoneVisits: ZoneVisit[];
+  /** Игровые сессии в окне (LOG FILE OPENING → следующий opening/конец окна). */
+  sessions: LogSession[];
 }
 
 /** Параметры чтения состояния. */
@@ -404,6 +433,7 @@ export function getClientState(opts: GetStateOptions = {}): ClientGameState {
     lastEventTime: null,
     events: [],
     zoneVisits: [],
+    sessions: [],
   };
   if (!logPath || !IS_NODE || !fsMod!.existsSync(logPath)) {
     return {
@@ -415,11 +445,20 @@ export function getClientState(opts: GetStateOptions = {}): ClientGameState {
   }
   const lines = readLogTailBytes(logPath, opts.tailBytes);
 
+  // SCENE-плейсхолдеры не являются именами зон (серgeyklay: '(null)'/'(unknown)'/'null').
+  const SCENE_PLACEHOLDER = new Set(['(null)', '(unknown)', 'null', '(none)']);
   for (const line of lines) {
     const ev = parseLogLine(line);
     if (!ev) continue;
     base.events.push(ev);
     switch (ev.kind) {
+      case 'log_opening':
+        // Закрыть предыдущую сессию временем последнего события до opening.
+        if (base.sessions.length > 0) {
+          base.sessions[base.sessions.length - 1]!.endTimestamp = base.lastEventTime;
+        }
+        base.sessions.push({ startTimestamp: ev.timestamp, endTimestamp: null });
+        break;
       case 'level_up':
         base.character = ev.character ?? base.character;
         base.klass = ev.klass ?? base.klass;
@@ -436,6 +475,17 @@ export function getClientState(opts: GetStateOptions = {}): ClientGameState {
         base.zoneVisits.push(visit);
         base.zone = visit;
         base.act = visit.decoded?.act ?? null;
+        break;
+      }
+      case 'scene_source': {
+        // Реальное имя зоны из лога — точнее таблицы ZONE_NAMES; обновляем последний визит.
+        const name = ev.sceneName ?? '';
+        if (SCENE_PLACEHOLDER.has(name)) break;
+        const last = base.zoneVisits[base.zoneVisits.length - 1];
+        if (last) {
+          last.zoneName = name;
+          if (base.zone === last) base.zone = { ...last };
+        }
         break;
       }
       case 'instance_connect':

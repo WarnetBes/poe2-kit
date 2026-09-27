@@ -66,6 +66,14 @@ export function registerLogTools(server: McpServer): number {
         if (st.afk != null) lines.push(`- AFK: ${st.afk ? 'включён' : 'выключен'}`);
         if (st.instanceServer) lines.push(`- Сервер инстанса: ${st.instanceServer}`);
         if (st.lastEventTime) lines.push(`- Последнее событие: ${st.lastEventTime}`);
+        if (st.sessions.length > 0) {
+          const cur = st.sessions[st.sessions.length - 1]!;
+          const total = st.sessions.length;
+          const first = st.sessions[0]!;
+          lines.push(`- Игровых сессий в окне: **${total}** (текущая началась ${cur.startTimestamp}`);
+          if (total > 1 && first !== cur) lines.push(`; окно лога — с ${first.startTimestamp}`);
+          lines.push(')');
+        }
         if (st.zoneVisits.length > 1) {
           lines.push('', '### Последние посещения зон');
           for (const v of st.zoneVisits.slice(-10).reverse()) {
