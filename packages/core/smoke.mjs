@@ -740,5 +740,50 @@ ok(snapInfo.groups === 10, `snapshot: ${snapInfo.groups} групп катало
 const lifeFilter = matchStatFilter('40 to maximum Life', snap);
 ok(!!lifeFilter && lifeFilter.id === 'explicit.stat_3299347043' && lifeFilter.min === 36, `snapshot: matchStatFilter(life) -> ${lifeFilter && lifeFilter.id} min=${lifeFilter && lifeFilter.min}`);
 
+
+// http.ts: GGG rate-limit бэкоф (X-Rate-Limit*, Retry-After) — офлайн-мок fetch.
+console.log('http: GGG rate-limit backoff (trade2)');
+{
+  const realFetch = globalThis.fetch;
+  let plan = [];
+  const fakeFetch = async (url) => {
+    const step = plan.shift() ?? { status: 200, body: '{"ok":true}' };
+    const headers = new Map(Object.entries(step.headers ?? {}));
+    return {
+      ok: step.status >= 200 && step.status < 300,
+      status: step.status,
+      headers: { get: (h) => headers.get(h.toLowerCase()) ?? null },
+      text: async () => step.body ?? '',
+    };
+  };
+  globalThis.fetch = fakeFetch;
+  const httpJson = core.httpJson ?? (await import('./dist/http.js')).httpJson;
+
+  plan = [{ status: 200, headers: { 'x-rate-limit-ip': '5:60', 'x-rate-limit-ip-state': '0:60:0' }, body: '{"a":1}' }];
+  const r1 = await httpJson('https://www.pathofexile.com/api/trade2/data/smoke-aaa');
+  ok(r1.a === 1, 'ggg: 200 с квотными заголовками распарсен');
+
+  plan = [
+    { status: 429, headers: { 'retry-after': '1', 'x-rate-limit-ip': '5:60', 'x-rate-limit-ip-state': '5:60:2' }, body: '{}' },
+    { status: 200, headers: { 'x-rate-limit-ip': '5:60', 'x-rate-limit-ip-state': '1:60:0' }, body: '{"b":2}' },
+  ];
+  const t0 = Date.now();
+  const r2 = await httpJson('https://www.pathofexile.com/api/trade2/data/smoke-bbb');
+  const waited = Date.now() - t0;
+  ok(r2.b === 2 && waited >= 1500 && waited < 15000, `ggg: 429 -> Retry-After -> 200 (ждали ${waited}мс)`);
+
+  plan = [
+    { status: 429, headers: { 'retry-after': '1' }, body: '{}' },
+    { status: 429, headers: { 'retry-after': '1' }, body: '{}' },
+    { status: 429, headers: { 'retry-after': '1' }, body: '{}' },
+  ];
+  let threw = false;
+  try { await httpJson('https://www.pathofexile.com/api/trade2/data/smoke-ccc'); }
+  catch { threw = true; }
+  ok(threw, 'ggg: после лимита ретраев 429 пробрасывается (нет вечного цикла)');
+
+  globalThis.fetch = realFetch;
+}
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

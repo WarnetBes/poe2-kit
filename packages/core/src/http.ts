@@ -137,6 +137,136 @@ function toProxyUrl(url: string): string {
   return url;
 }
 
+// ===== Динамический rate-limit GGG (trade2): уважение заголовков X-Rate-Limit* =====
+//
+// Механика заголовков GGG (polished по образцу ExileOracle/api-client.ts, но
+// исправлены его дефекты: учёт ВСЕХ правил ip+account, лимит ретраев, бан-окно):
+//
+//   X-Rate-Limit-Ip:        5:10,10:60,15:300      — правила "hits:period"
+//   X-Rate-Limit-Ip-State:  2:10:0,4:60:0,3:300:0  — "current:period:banCounter"
+//   X-Rate-Limit-Account / -Account-State          — то же для квоты аккаунта
+//   X-Rate-Limit-Rules:     Ip                     — при 429: какие правила пробиты
+//   Retry-After:            60                     — при 429: сколько секунд ждать
+//
+// Правила перечисляются через запятую; правило из limit и state спаривается
+// по полю period (порядок в живых ответах совпадает, но полагаемся на period —
+// надёжнее). Третье поле state — счётчик текущего бана (секунды действующего
+// бана правила); при 429 берём cap бана из Retry-After, иначе из счётчика.
+//
+// Слой работает ПОВЕРХ статического лимитера HOST_LIMITS: статики — защита от
+// пиков на неизвестных лимитах, динамика — реальная квота trade2 без слепых
+// 60-секундных пауз там, где хватает 2 секунд.
+
+interface GggRuleState {
+  /** Остаток квоты правила (hits), может быть отрицательным при пробитии. */
+  remaining: number;
+  /** Epoch-ms, когда окно правила сбрасывается. */
+  resetAt: number;
+  /** Epoch-ms, до которого правило заблокировано баном (0 — бана нет).
+   * По семантике GGG бан ЗАМЕНЯЕТ ожидание окна: ждать надо до blockedUntil,
+   * а не до resetAt (иначе исчерпанное правило глухо висит всё окно). */
+  blockedUntil: number;
+}
+
+// key: `${host}#${ruleName}` → состояния правил (по индексу = порядку в ответе).
+const gggStates = new Map<string, GggRuleState[]>();
+
+const GGG_RULE_NAMES = ['Ip', 'Account'] as const;
+
+/** "5:10,10:60" → [[5,10],[10,60]] (fail-safe: мусорные строки отбрасываются). */
+function parseGggFields(header: string): number[][] {
+  return header
+    .split(',')
+    .map((part) => part.split(':').map((n) => Number(n)))
+    .filter((nums) => nums.every((n) => Number.isFinite(n)) && nums.length >= 2);
+}
+
+/** Обновляет состояния правил хоста из заголовков ответа. */
+function updateGggStates(host: string, headers: Headers): void {
+  for (const rule of GGG_RULE_NAMES) {
+    const limit = headers.get(`x-rate-limit-${rule.toLowerCase()}`);
+    const state = headers.get(`x-rate-limit-${rule.toLowerCase()}-state`);
+    // -State может прийти без -Limit (уже пробитое правило) — состояние всё равно ценно.
+    if (!limit && !state) continue;
+    const limits = limit ? parseGggFields(limit) : [];
+    const states = state ? parseGggFields(state) : [];
+    const now = Date.now();
+    const key = `${host}#${rule}`;
+    const merged: GggRuleState[] = [];
+    const periods = new Set<number>([
+      ...limits.map((l) => l[1]!),
+      ...states.map((s) => s[1]!),
+    ]);
+    for (const period of periods) {
+      const lr = limits.find((l) => l[1] === period);
+      const sr = states.find((s) => s[1] === period);
+      const maxHits = lr?.[0];
+      const current = sr?.[0];
+      const banCounter = sr?.[2] ?? 0;
+      // Если квота неизвестна — считаем исчерпанной при current>0 (better safe).
+      const remaining =
+        maxHits != null && current != null ? maxHits - current : current == null ? Infinity : 0;
+      merged.push({
+        remaining,
+        resetAt: now + period * 1000,
+        blockedUntil: banCounter > 0 ? now + banCounter * 1000 : 0,
+      });
+    }
+    if (merged.length) gggStates.set(key, merged);
+    else gggStates.delete(key);
+  }
+}
+
+/** Ждёт (async), пока у хоста есть исчерпанное/забаненное правило. */
+async function waitGggQuota(host: string): Promise<void> {
+  const waitMs = gggWaitMs(host);
+  if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+}
+
+/** Сколько мс ждать до освобождения квоты хоста (по заголовкам GGG). */
+function gggWaitMs(host: string): number {
+  let max = 0;
+  for (const [key, rules] of gggStates) {
+    if (!key.startsWith(`${host}#`)) continue;
+    for (const r of rules) {
+      if (r.remaining > 0) continue;
+      // Действующий бан заменяет ожидание окна: до blockedUntil, иначе до resetAt.
+      const target = r.blockedUntil > Date.now() ? r.blockedUntil : r.resetAt;
+      const wait = target - Date.now();
+      max = Math.max(max, wait);
+    }
+  }
+  return max;
+}
+
+/** fetch с динамическим GGG-бекофом: ждёт квоту до запроса, на 429 — ждёт и ретраит (≤MAX). */
+const GGG_MAX_429_RETRIES = 2;
+
+async function gggFetch(host: string, url: string, init: RequestInit): Promise<Response> {
+    let attempt = 0;
+  for (;;) {
+    await waitGggQuota(host);
+    const res = await fetch(url, init);
+    updateGggStates(host, res.headers);
+    if (res.status !== 429 || attempt >= GGG_MAX_429_RETRIES) return res;
+    // 429: уважаем Retry-After (секунды), иначе — максимальный ban-счётчик правил, иначе 60с.
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const rulesBan = gggWaitMs(host);
+    let waitMs = Math.max(Number.isFinite(retryAfter) ? retryAfter * 1000 : 0, rulesBan);
+    if (!waitMs) waitMs = 60_000;
+    // Блокируем пробитые правила на вычисленное окно (ban заменяет reset):
+    // следующая итерация дождётся истечения и повторит запрос.
+    const blockedUntil = Date.now() + waitMs;
+    for (const [key, rules] of gggStates) {
+      if (!key.startsWith(`${host}#`)) continue;
+      for (const r of rules) {
+        if (r.remaining <= 0) r.blockedUntil = Math.max(r.blockedUntil, blockedUntil);
+      }
+    }
+    attempt++;
+  }
+}
+
 export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {}): Promise<T> {
   const timeoutMs = opts.timeoutMs ?? 10000;
   const host = new URL(url).host;
@@ -149,7 +279,7 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(finalUrl, {
+      const res = await gggFetch(host, finalUrl, {
         method: opts.method ?? 'GET',
         cache: 'no-store',
         headers: {
@@ -193,7 +323,7 @@ export async function httpText(url: string, opts: HttpOptions = {}): Promise<str
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(finalUrl, {
+      const res = await gggFetch(host, finalUrl, {
         method: 'GET',
         cache: 'no-store',
         headers: {
@@ -227,7 +357,7 @@ export async function httpBytes(url: string, opts: HttpOptions = {}): Promise<Ui
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(finalUrl, {
+      const res = await gggFetch(host, finalUrl, {
         method: 'GET',
         cache: 'no-store',
         headers: {
