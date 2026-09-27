@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "MCP-сервер PoE2 Kit: инструменты poe2_* поверх единого ядра для ИИ-ассистентов (OpenCode и др.)",

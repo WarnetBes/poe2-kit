@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "Единое ядро PoE2 Kit: цены, торговля, билды, прокачка, AI-слой",
   "main": "dist/index.js",

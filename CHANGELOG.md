@@ -3,7 +3,7 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
-## [Unreleased]
+## [1.0.3] — 2026-09-28
 
 ### Added
 - **statdesc-рендерер** (`@poe2-kit/core` `core.statdesc`): текст игрового
