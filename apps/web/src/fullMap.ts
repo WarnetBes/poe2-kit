@@ -2,30 +2,41 @@
  * Полная карта дерева пассивок PoE2 «как в игре» (P2, web).
  *
  * В отличие от вкладки «Дерево» (#15), которая показывает только «взятые узлы»
- * конкретного билда, здесь рисуется ВСЯ карта: 4118 узлов (3780 обычного общего
- * дерева + 338 узлов асценданси по 17 асцендансам), у каждого есть имя и статы.
+ * конкретного билда, здесь рисуется ВСЯ карта: узлы общего дерева + деревья
+ * асценданси, со связями между узлами и позициями точно как в игре.
  *
  * Возможности:
  *  - панорамирование (перетаскивание) + масштаб (колесо вокруг курсора / двойной клик);
+ *  - связи между узлами (линии) с раскраской асценданси;
  *  - раскраска: обычные узлы нейтрально, узлы асценданси — цветом своей асценданси;
- *  - селектор класса: подсветить узлы асценданси выбранного класса (+ стартовая точка),
- *    остальные приглушить; «Все классы» — показать всё;
+ *  - селектор класса: подсветить узлы асценданси выбранного класса, остальные приглушить;
  *  - клик по узлу → карточка с именем, типом, асценданси и статами;
  *  - легенда асценданси с их стартовыми точками.
  *
- * Данные — канонические файлы пакета core (без дублей), Vite отдаёт их отдельными
- * ассетами (?url); грузим лениво через fetch — только когда пользователь открыл вкладку.
+ * Данные — `packages/core/data/game/passive_tree/layout.json` (канонические
+ * координаты + рёбра, экстракт из PathOfBuilding-PoE2 TreeData — та же разметка,
+ * из которой PoB и игра рисуют дерево). Vite отдаёт ассетом (?url); лениво.
  */
 
-import numericUrl from '../../../packages/core/data/game/passive_tree/numeric_ids.json?url';
-import positionsUrl from '../../../packages/core/data/game/passive_tree/positions.json?url';
+import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
 
-interface NumericEntry {
+interface LayoutNode {
   name: string;
   stats: string[];
-  ascendancy: string;
-  is_keystone?: boolean;
-  is_notable?: boolean;
+  asc: string;
+  ks: boolean;
+  not: boolean;
+  x: number;
+  y: number;
+}
+
+interface Layout {
+  metadata?: Record<string, unknown>;
+  nodes: Record<string, LayoutNode>;
+  edges: [string, string][];
+  classStarts: Record<string, string>;
+  ascStarts: Record<string, string>;
+  ascClasses: Record<string, string>;
 }
 
 interface Node {
@@ -39,77 +50,48 @@ interface Node {
   y: number;
 }
 
-/** Асценданси, у которых есть узлы с координатами в positions.json (17). */
-const POSITIONED_ASCENDANCIES = [
-  'Titan', 'Warbringer', 'Smith of Kitava',
-  'Deadeye', 'Pathfinder',
-  'Amazon', 'Ritualist',
-  'Infernalist', 'Blood Mage', 'Lich',
-  'Stormweaver', 'Chronomancer',
-  'Tactician', 'Witchhunter', 'Gemling Legionnaire',
-  'Invoker', 'Acolyte of Chayula',
-] as const;
-
-/** Маппинг асценданси → базовый класс (по ascendancies.json; только те, что есть на карте). */
-const ASC_BASE_CLASS: Record<string, string> = {
-  Titan: 'Warrior', Warbringer: 'Warrior', 'Smith of Kitava': 'Warrior',
-  Deadeye: 'Ranger', Pathfinder: 'Ranger',
-  Amazon: 'Huntress', Ritualist: 'Huntress',
-  Infernalist: 'Witch', 'Blood Mage': 'Witch', Lich: 'Witch',
-  Stormweaver: 'Sorceress', Chronomancer: 'Sorceress',
-  Tactician: 'Mercenary', Witchhunter: 'Mercenary', 'Gemling Legionnaire': 'Mercenary',
-  Invoker: 'Monk', 'Acolyte of Chayula': 'Monk',
+type Db = {
+  nodes: Map<string, Node>;
+  edges: [Node, Node][];
+  ascClasses: Record<string, string>;
+  ascStarts: Record<string, string>;
+  classStarts: Record<string, string>;
 };
-
-/** Порядок классов в селекторе. */
-const BASE_CLASSES = [
-  'Warrior', 'Ranger', 'Huntress', 'Witch',
-  'Sorceress', 'Mercenary', 'Monk',
-] as const;
-
-/** Стартовые точки асценданси: номер узла → асценданси (найдены в positions.json). */
-const ASC_START_NODE: Record<number, string> = {
-  74: 'Acolyte of Chayula', 1583: 'Pathfinder', 5852: 'Smith of Kitava', 7120: 'Witchhunter',
-  9994: 'Invoker', 22147: 'Chronomancer', 23710: 'Lich', 32534: 'Titan', 32699: 'Infernalist',
-  33812: 'Warbringer', 36252: 'Tactician', 36365: 'Ritualist', 41736: 'Amazon', 46990: 'Deadeye',
-  59822: 'Blood Mage',
-};
-
-/** Детерминированная палитра цветов асценданси (индекс по реестру). */
-const ASC_COLORS: string[] = [
-  '#e05656', '#e09156', '#e0c956', '#9ed056', '#56d08e', '#56d0d0', '#568ed0',
-  '#6a56d0', '#b056d0', '#d056a8', '#d0566e', '#8fbf5f', '#5fb7bf', '#bf8f5f',
-  '#bf5fc0', '#5f90e0', '#c06080',
-];
-const ASC_ORDER: string[] = [...POSITIONED_ASCENDANCIES];
-const ascColor = (asc: string): string => {
-  const i = ASC_ORDER.indexOf(asc);
-  return i >= 0 ? ASC_COLORS[i % ASC_COLORS.length]! : '#99aabb';
-};
-
-type Db = { nodes: Map<string, NumericEntry>; pos: Map<string, [number, number]> };
 let dbPromise: Promise<Db> | null = null;
 
 async function loadDb(): Promise<Db> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const [nodesRaw, posRaw] = await Promise.all([
-        fetch(numericUrl).then((r) => {
-          if (!r.ok) throw new Error(`numeric_ids HTTP ${r.status}`);
-          return r.json() as Promise<{ nodes?: Record<string, NumericEntry> }>;
-        }),
-        fetch(positionsUrl).then((r) => {
-          if (!r.ok) throw new Error(`positions HTTP ${r.status}`);
-          return r.json() as Promise<{ positions?: Record<string, [number, number]> }>;
-        }),
-      ]);
-      const nodes = new Map<string, NumericEntry>();
-      for (const [id, n] of Object.entries(nodesRaw.nodes ?? {})) if (n?.name) nodes.set(id, n);
-      const pos = new Map<string, [number, number]>();
-      for (const [id, p] of Object.entries(posRaw.positions ?? {})) {
-        if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) pos.set(id, [p[0], p[1]]);
+      const r = await fetch(layoutUrl);
+      if (!r.ok) throw new Error(`layout HTTP ${r.status}`);
+      const raw = (await r.json()) as Layout;
+      const nodes = new Map<string, Node>();
+      for (const [id, n] of Object.entries(raw.nodes ?? {})) {
+        if (!n?.name) continue;
+        nodes.set(id, {
+          id,
+          name: n.name,
+          stats: n.stats ?? [],
+          ascendancy: n.asc ?? '',
+          isKeystone: !!n.ks,
+          isNotable: !!n.not,
+          x: n.x,
+          y: n.y,
+        });
       }
-      return { nodes, pos };
+      const edges: [Node, Node][] = [];
+      for (const [a, b] of raw.edges ?? []) {
+        const na = nodes.get(String(a));
+        const nb = nodes.get(String(b));
+        if (na && nb) edges.push([na, nb]);
+      }
+      return {
+        nodes,
+        edges,
+        ascClasses: raw.ascClasses ?? {},
+        ascStarts: raw.ascStarts ?? {},
+        classStarts: raw.classStarts ?? {},
+      };
     })();
   }
   return dbPromise;
@@ -120,30 +102,17 @@ const escAttr = (s: string): string =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
   );
 
-/** Получить все узлы карты (с координатами). */
-async function allNodes(): Promise<Node[]> {
-  const db = await loadDb();
-  const out: Node[] = [];
-  for (const [id, n] of db.nodes) {
-    const p = db.pos.get(id);
-    if (!p) continue;
-    out.push({
-      id,
-      name: n.name,
-      stats: n.stats ?? [],
-      ascendancy: n.ascendancy ?? '',
-      isKeystone: !!n.is_keystone,
-      isNotable: !!n.is_notable,
-      x: p[0],
-      y: p[1],
-    });
-  }
-  out.sort((a, b) => a.y - b.y || a.x - b.x);
-  return out;
-}
+/** Детерминированная палитра цветов асценданси (индекс по отсортированному реестру). */
+const ASC_COLORS: string[] = [
+  '#e05656', '#e09156', '#e0c956', '#9ed056', '#56d08e', '#56d0d0', '#568ed0',
+  '#6a56d0', '#b056d0', '#d056a8', '#d0566e', '#8fbf5f', '#5fb7bf', '#bf8f5f',
+  '#bf5fc0', '#5f90e0', '#c06080', '#a0d080', '#80a0d0', '#d0a050', '#50b0a0',
+  '#c05090', '#60c0a0',
+];
 
-// Светлая читаемая палитра и увеличенные размеры (под светлый фон канваса).
+// Светлая читаемая палитра и размеры (под светлый фон канваса).
 const NORMAL_COLOR = '#7e8fb3';
+const EDGE_COLOR = '#8d9cbb';
 const NORMAL_R = 3.6;
 const ASC_R = 5.2;
 const NOTABLE_R = 6.6;
@@ -157,37 +126,44 @@ function nodeRadius(n: Node): number {
   return NORMAL_R;
 }
 
-function nodeColor(n: Node): string {
-  if (n.ascendancy) return ascColor(n.ascendancy);
-  if (n.isKeystone) return '#e8b84a';
-  if (n.isNotable) return '#7cc7ff';
-  return NORMAL_COLOR;
-}
-
 /**
  * Отрисовать полную карту дерева в host (вкладка «Карта»).
  */
 export async function renderFullMap(host: HTMLElement): Promise<void> {
-  let nodes: Node[];
+  let db: Db;
   try {
-    nodes = await allNodes();
+    db = await loadDb();
   } catch (e) {
     host.innerHTML = `<p class="err">Не удалось загрузить данные дерева: ${escAttr(e instanceof Error ? e.message : String(e))}</p>`;
     return;
   }
+  const nodes = [...db.nodes.values()];
+  if (!nodes.length) {
+    host.innerHTML = '<p class="err">Данные дерева пусты.</p>';
+    return;
+  }
+
+  // Реестры из данных (не хардкод — дерево обновляется экстрактором).
+  const ascNames = [...new Set(nodes.map((n) => n.ascendancy).filter(Boolean))].sort();
+  const ascColor = (asc: string): string => {
+    const i = ascNames.indexOf(asc);
+    return i >= 0 ? ASC_COLORS[i % ASC_COLORS.length]! : '#99aabb';
+  };
+  const baseClasses = [...new Set(Object.values(db.ascClasses))].sort();
+  const baseOf = (asc: string): string => db.ascClasses[asc] ?? '';
 
   host.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.className = 'tree-wrap';
   wrap.innerHTML = `
     <div class="tree-top">
-      <span class="badge">Узлов на карте: <b>${nodes.length}</b></span>
+      <span class="badge">Узлов: <b>${nodes.length}</b> · связей: <b>${db.edges.length}</b></span>
       <label class="tree-class-lbl" for="map-class" title="Подсветить узлы асценданси выбранного класса">Класс:</label>
       <select id="map-class" class="tree-class-select">
         <option value="">— Все классы —</option>
-        ${BASE_CLASSES.map((c) => {
-          const list = Object.entries(ASC_BASE_CLASS).filter(([, b]) => b === c).map(([a]) => a);
-          return `<option value="${escAttr(c)}">${escAttr(c)} (${list.join(', ')})</option>`;
+        ${baseClasses.map((c) => {
+          const list = ascNames.filter((a) => baseOf(a) === c).join(', ');
+          return `<option value="${escAttr(c)}">${escAttr(c)} (${escAttr(list)})</option>`;
         }).join('')}
       </select>
       <button type="button" class="btn-fit" title="Вписать карту">⟳ Вписать</button>
@@ -198,7 +174,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         <li><i style="background:${NORMAL_COLOR}"></i> обычное дерево</li>
         <li><i style="background:#7cc7ff"></i> notable</li>
         <li><i style="background:#e8b84a"></i> keystone</li>
-        ${POSITIONED_ASCENDANCIES.map((a) => `<li><i style="background:${ascColor(a)}"></i> ${escAttr(a)}</li>`).join('')}
+        ${ascNames.map((a) => `<li><i style="background:${ascColor(a)}"></i> ${escAttr(a)}</li>`).join('')}
       </ul>
     </details>
     <div class="tree-body">
@@ -233,7 +209,26 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   svg.appendChild(g);
   canvas.appendChild(svg);
 
-  // Все узлы — один проход (готовим кружки и кольца стартов).
+  // ── Связи (под узлами): линия между узлами; цвет — асценданси, если совпадает ──
+  const edgeEls: SVGLineElement[] = [];
+  for (const [a, b] of db.edges) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('class', 'medge');
+    line.setAttribute('x1', String(a.x));
+    line.setAttribute('y1', String(a.y));
+    line.setAttribute('x2', String(b.x));
+    line.setAttribute('y2', String(b.y));
+    if (a.ascendancy && a.ascendancy === b.ascendancy) {
+      line.setAttribute('stroke', ascColor(a.ascendancy));
+      line.setAttribute('data-asc', a.ascendancy);
+    } else {
+      line.setAttribute('stroke', EDGE_COLOR);
+    }
+    edgeEls.push(line);
+    g.appendChild(line);
+  }
+
+  // ── Узлы ───────────────────────────────────────────────────────────────────
   const circles: Record<string, SVGCircleElement> = {};
   for (const n of nodes) {
     const r = nodeRadius(n);
@@ -244,7 +239,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     c.setAttribute('cx', String(n.x));
     c.setAttribute('cy', String(n.y));
     c.setAttribute('r', String(r));
-    c.setAttribute('fill', nodeColor(n));
+    c.setAttribute('fill', n.ascendancy
+      ? ascColor(n.ascendancy)
+      : n.isKeystone ? '#e8b84a' : n.isNotable ? '#7cc7ff' : NORMAL_COLOR);
     c.setAttribute('stroke', '#00000077');
     c.setAttribute('stroke-width', '1.1');
     circles[n.id] = c;
@@ -258,18 +255,22 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       g.appendChild(t);
     }
   }
-  // Отметить стартовые точки асценданси кольцом.
-  for (const [id, asc] of Object.entries(ASC_START_NODE)) {
+  // Стартовые точки асценданси — кольца.
+  const startRingAsc: Record<string, string> = {};
+  for (const [asc, id] of Object.entries(db.ascStarts)) {
     const c = circles[id];
-    if (c) {
-      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      ring.setAttribute('class', 'mstart');
-      ring.setAttribute('data-asc', asc);
-      ring.setAttribute('cx', c.getAttribute('cx')!);
-      ring.setAttribute('cy', c.getAttribute('cy')!);
-      ring.setAttribute('r', String(START_R));
-      g.appendChild(ring);
-    }
+    const ringColor = circles[id]?.getAttribute('fill') ?? ascColor(asc);
+    startRingAsc[id] = asc;
+    if (!c) continue;
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('class', 'mstart');
+    ring.setAttribute('data-asc', asc);
+    ring.setAttribute('cx', c.getAttribute('cx')!);
+    ring.setAttribute('cy', c.getAttribute('cy')!);
+    ring.setAttribute('r', String(START_R));
+    ring.setAttribute('stroke', ringColor);
+    ring.setAttribute('fill', 'none');
+    g.appendChild(ring);
   }
 
   // ── Трансформация: вписать bbox + pan (tx,ty) + zoom (k) ────────────────────
@@ -293,36 +294,34 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     g.setAttribute('transform', tr);
   }
 
-  // ── Фильтр по классу: подсветить узлы асценданси выбранного класса ─────────
+  // ── Фильтр по классу ────────────────────────────────────────────────────────
   function applyClassFilter(selected: string): void {
     const active = new Set<string>();
     if (selected) {
-      for (const [asc, base] of Object.entries(ASC_BASE_CLASS)) {
-        if (base === selected) active.add(asc);
-      }
+      for (const asc of ascNames) if (baseOf(asc) === selected) active.add(asc);
+    }
+    for (const line of edgeEls) {
+      const asc = line.getAttribute('data-asc');
+      line.setAttribute('opacity', !selected || (asc && active.has(asc)) ? '0.55' : '0.08');
     }
     for (const n of nodes) {
       const c = circles[n.id];
       if (!c) continue;
       if (!selected) {
         c.setAttribute('opacity', '1');
-        c.setAttribute('fill', nodeColor(n));
       } else if (n.ascendancy && active.has(n.ascendancy)) {
         c.setAttribute('opacity', '1');
-        c.setAttribute('fill', ascColor(n.ascendancy));
       } else if (!n.ascendancy) {
         c.setAttribute('opacity', '0.22');
-        c.setAttribute('fill', nodeColor(n));
       } else {
         c.setAttribute('opacity', '0.12');
-        c.setAttribute('fill', nodeColor(n));
       }
     }
   }
   classSel.addEventListener('change', () => applyClassFilter(classSel.value));
   applyClassFilter('');
 
-  // ── Pan перетаскиванием ─────────────────────────────────────────────────────
+  // ── Pan перетаскиванием ────────────────────────────────────────────────────
   let dragging = false, lastX = 0, lastY = 0;
   svg.addEventListener('pointerdown', (e) => {
     dragging = true;
@@ -391,7 +390,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       <div class="tbadges">
         <span class="pill">${typeBadge}</span>
         ${n.ascendancy ? `<span class="pill" style="color:${ascColor(n.ascendancy)}">${escAttr(n.ascendancy)}</span>` : ''}
-        ${n.ascendancy ? `<span class="pill">${escAttr(ASC_BASE_CLASS[n.ascendancy] ?? '')}</span>` : ''}
+        ${n.ascendancy ? `<span class="pill">${escAttr(baseOf(n.ascendancy))}</span>` : ''}
+        ${startRingAsc[n.id] ? '<span class="pill">стартовая точка</span>' : '' }
         <span class="pill mono">#${n.id}</span>
       </div>
       ${stats}`;
@@ -399,7 +399,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   svg.addEventListener('click', (e) => {
     const el = (e.target as Element).closest<SVGElement>('.mnode');
     if (!el) return;
-    const n = nodes.find((x) => x.id === el.getAttribute('data-id'));
+    const n = db.nodes.get(el.getAttribute('data-id') ?? '');
     if (n) showDetail(n);
   });
 

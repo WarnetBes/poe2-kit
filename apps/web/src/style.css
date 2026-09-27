@@ -569,6 +569,13 @@ a { color: var(--gold); }
 .tree-svg .tnode { cursor: pointer; }
 .tree-svg .tnode:hover { filter: brightness(1.25); }
 .tree-svg .mnode { stroke-width: 1.2px; }
+.tree-svg .medge {
+  stroke-width: 2.2px;
+  stroke-linecap: round;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.12s linear;
+}
 .tnode-label {
   fill: #dbe6f5;
   font-size: 13px;

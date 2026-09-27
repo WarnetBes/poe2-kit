@@ -12,6 +12,7 @@
  * и колесо (zoom вокруг курсора).
  */
 
+import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
 import numericUrl from '../../../packages/core/data/game/passive_tree/numeric_ids.json?url';
 import positionsUrl from '../../../packages/core/data/game/passive_tree/positions.json?url';
 
@@ -42,7 +43,15 @@ let dbPromise: Promise<Db> | null = null;
 async function loadDb(): Promise<Db> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const [nodesRaw, posRaw] = await Promise.all([
+      const [layRaw, nodesRaw, posRaw] = await Promise.all([
+        // Основной источник (актуальный layout 0_5 из PoB2 — координаты «как в игре»).
+        fetch(layoutUrl).then((r) => {
+          if (!r.ok) throw new Error(`layout HTTP ${r.status}`);
+          return r.json() as Promise<{
+            nodes?: Record<string, { name: string; stats?: string[]; asc?: string; ks?: boolean; not?: boolean; x: number; y: number }>;
+          }>;
+        }),
+        // Фолбэк (старый экстракт 0_3): узел может отсутствовать в новом layout.
         fetch(numericUrl).then((r) => {
           if (!r.ok) throw new Error(`numeric_ids HTTP ${r.status}`);
           return r.json() as Promise<{ nodes?: Record<string, NumericEntry> }>;
@@ -53,10 +62,25 @@ async function loadDb(): Promise<Db> {
         }),
       ]);
       const nodes = new Map<string, NumericEntry>();
-      for (const [id, n] of Object.entries(nodesRaw.nodes ?? {})) if (n?.name) nodes.set(id, n);
+      for (const [id, n] of Object.entries(layRaw.nodes ?? {})) {
+        if (n?.name) {
+          nodes.set(id, {
+            name: n.name,
+            stats: n.stats ?? [],
+            ascendancy: n.asc ?? '',
+            is_keystone: !!n.ks,
+            is_notable: !!n.not,
+          });
+        }
+      }
+      for (const [id, n] of Object.entries(nodesRaw.nodes ?? {})) if (n?.name && !nodes.has(id)) nodes.set(id, n);
       const pos = new Map<string, [number, number]>();
       for (const [id, p] of Object.entries(posRaw.positions ?? {})) {
         if (p && Number.isFinite(p[0]) && Number.isFinite(p[1])) pos.set(id, [p[0], p[1]]);
+      }
+      // Координаты из layout имеют приоритет (актуальнее и совпадают с игрой).
+      for (const [id, n] of Object.entries(layRaw.nodes ?? {})) {
+        if (n && Number.isFinite(n.x) && Number.isFinite(n.y)) pos.set(id, [n.x, n.y]);
       }
       return { nodes, pos };
     })();
