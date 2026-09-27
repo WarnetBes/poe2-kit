@@ -39,16 +39,17 @@ workflows:
   # настоящий движок PoB2 без GUI (HeadlessWrapper), 5 сценариев,
   # сравнение с golden (tolerance 1e-4). Дрейф данных PoB2 / формул кита
   # красит джобу — golden обновляется только осознанно (oracle/README.md).
+  # Образ — тот же, что в CI самого PoB2 (luajit+окружение гарантированы
+  # апстримом); curl/unzip/nodejs доснаряжаем apk-ом на месте.
   pob-oracle:
     tasks:
       - name: oracle-run
         cubes:
           - name: run-oracle
-            devcontainer:
-              # alpine + luajit + luautf8 + node (сборка из oracle/Dockerfile)
-              workspace_folder: "./oracle"
+            image: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
             script:
               - cd "$SOURCECRAFT_WORKSPACE"
+              - apk add --no-cache curl unzip nodejs
               # стейджинг zip'ом: git-клон тяжёлых репо нестабилен (early EOF)
               - curl -fsSL -o pob2.zip https://codeload.github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/zip/refs/tags/v0.23.1
               - unzip -q pob2.zip
