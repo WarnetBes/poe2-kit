@@ -65,7 +65,9 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
   calls exactly three **read-only** Win32 functions via FFI (`koffi`,
   `user32.dll`): `EnumWindows` (find window), `GetWindowRect` (position),
   `GetForegroundWindow` (is it active). Nothing is written to the game
-  process; no hooks; no input.
+  process; no hooks; no input. Prefer zero user32 calls at all? Overlay →
+  **Ctrl+F6** → untick “Bind to game window”: the overlay pins to a screen
+  corner and learns nothing about the game window (“cautious mode”).
 - **Disclaimer.** Use of third-party tools is **at your own risk**.
   Grinding Gear Games does not guarantee the safety of third-party tools and
   has not officially endorsed this project. The kit follows the same pattern
