@@ -978,6 +978,44 @@ console.log('stun: immune hit does not mutate meter (Hivemind parity)');
   ok(Math.abs(res.manaRegenPerSec(100, 50, 1) - 7) < 1e-9, 'resources: mana regen inc% + flat');
   ok(res.maxEnergyShield({ flat: 150, increasedPercent: 30 }) === 195, 'resources: ES no level base, gear mods only');
 }
+// --- optimize stage 1 (read-only audit: goals / levers / pinnacle) ---
+{
+  const opt = core.core.optimize;
+  ok(typeof opt.evaluateBuildAgainstGoals === 'function' && typeof opt.rankLevers === 'function' && typeof opt.pinnacleChecklist === 'function', 'optimize: stage-1 exports present');
+  const est = await core.core.estimate.estimateBuild(estPobXml);
+
+  // goals
+  const checks = opt.evaluateBuildAgainstGoals(est, { dps: 1e12, fireRes: 30 });
+  const fire = checks.find((c) => c.metric === 'fireRes');
+  ok(fire?.verdict === 'pass' && fire?.gap === 10 && fire?.kind === 'estimated', `optimize: fireRes goal pass (cur 40, gap 10) — got ${JSON.stringify(fire)}`);
+  const dps = checks.find((c) => c.metric === 'dps');
+  ok(dps?.verdict === 'fail' && dps?.gap != null && dps.gap < 0, 'optimize: unreachable dps goal -> fail with negative gap');
+  const chaosCI = opt.evaluateBuildAgainstGoals(await core.core.estimate.estimateBuild(ciXml), { chaosRes: 0 });
+  const ciChaos = chaosCI.find((c) => c.metric === 'chaosRes');
+  ok(ciChaos?.verdict === 'pass' && ciChaos?.current === null, 'optimize: CI chaos goal auto-pass (immunity)');
+
+  // levers (fixed set: 4 computed-EHP + 2 estimated-weapon)
+  const levers = opt.rankLevers(est);
+  ok(levers.length === 6, `optimize: fixed lever set (${levers.length})`);
+  const flatLife = levers.find((l) => l.lever.includes('flat life'));
+  ok(flatLife && (flatLife.deltaEhp.chaos ?? 0) > 0, 'optimize: +life raises chaos EHP');
+  const armour = levers.find((l) => l.lever.includes('брони'));
+  ok(armour && (armour.deltaEhp.physical ?? 0) > 0 && (armour.deltaEhp.fire ?? -1) === 0, 'optimize: +armour affects physical only');
+  const sorted = levers.filter((l) => l.avgPercentGain > 0).every((l, i, arr) => i === 0 || arr[i - 1].avgPercentGain >= l.avgPercentGain);
+  ok(sorted, 'optimize: levers sorted by avgPercentGain desc');
+  const wlevers = levers.filter((l) => l.deltaDpsEstimated);
+  ok(wlevers.length === 2 && wlevers.every((l) => l.note.startsWith('estimated')), 'optimize: weapon levers are estimated and flagged');
+
+  // pinnacle checklist
+  const pin = opt.pinnacleChecklist(est, { enemyLevel: 84, boss: 'pinnacle' });
+  ok(pin.enemy.level === 84 && pin.checks.length === 6, `optimize: pinnacle checklist 6 items vs lvl ${pin.enemy.level}`);
+  const resists = pin.checks.filter((c) => c.item.startsWith('fire') || c.item.startsWith('cold') || c.item.startsWith('lightning'));
+  ok(resists.every((c) => c.verdict === 'fail'), 'optimize: uncapped resists (40/…<75) fail vs pinnacle');
+  const stunItem = pin.checks.find((c) => c.item.includes('Heavy Stun'));
+  ok(stunItem?.kind === 'computed' && (stunItem.verdict === 'pass' || stunItem.verdict === 'fail'), 'optimize: stun resilience computed');
+  const pinCI = opt.pinnacleChecklist(await core.core.estimate.estimateBuild(ciXml), {});
+  ok(pinCI.checks.find((c) => c.item.includes('chaos'))?.verdict === 'pass', 'optimize: CI chaos pass in checklist');
+}
 
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

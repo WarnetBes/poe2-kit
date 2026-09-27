@@ -35,6 +35,7 @@ import * as stunmod from './stun.js';
 import * as resmod from './resources.js';
 import * as enemymod from './enemy.js';
 import * as ailmentsmod from './ailments.js';
+import * as optimizemod from './optimize.js';
 
 // Типы калькуляторов (значения — через namespace core.ehp/core.spirit/core.stun,
 // чтобы не конфликтовать с estimate-слоем).
@@ -47,6 +48,7 @@ export type {
   SpiritSourceType, SpiritReservationType, SpiritSupportGem, SpiritReservation, SpiritOptimization,
 } from './spirit.js';
 export type { StunDamageType, StunAttackType, StunModifiers } from './stun.js';
+export type { BuildGoals, GoalCheck, GoalVerdict, NumberKind, RankLever, PinnacleCheck } from './optimize.js';
 
 import * as trade from './trade.js';
 import * as build from './build.js';
@@ -106,6 +108,7 @@ export const core = {
   resources: resmod,
   enemy: enemymod,
   ailments: ailmentsmod,
+  optimize: optimizemod,
 };
 
 export default core;

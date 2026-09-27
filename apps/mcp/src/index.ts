@@ -26,6 +26,7 @@ import { registerZoneNotesTools } from './tools/zoneNotes.js';
 import { registerLadderTools } from './tools/ladder.js';
 import { registerCalculatorTools } from './tools/calculators.js';
 import { registerOauthTools } from './tools/oauth.js';
+import { registerOptimizeTools } from './tools/optimize.js';
 export function buildServer(): number {
   const server = new McpServer({
     name: 'poe2-kit-mcp',
@@ -61,6 +62,7 @@ export function buildServer(): number {
   count += registerLadderTools(server);
   count += registerCalculatorTools(server);
   count += registerOauthTools(server);
+  count += registerOptimizeTools(server);
 
   // Р—Р°РїРѕРјРЅРёРј СЃРµСЂРІРµСЂ РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ
   (globalThis as any).__poe2Server = server;

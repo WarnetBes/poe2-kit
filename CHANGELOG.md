@@ -6,6 +6,16 @@
 ## [Unreleased]
 
 ### Added
+- **Optimize-этап 1: read-only аудит билда** (ТЗ `docs/SPEC_OPTIMIZE_TOOLS.md`): новый
+  `core.optimize` + 3 MCP-тула (48→51):
+  `poe2_evaluate_build` — билд против числовых целей (DPS/EHP/резисты/Spirit), verdict
+  pass/fail/unknown + разрыв; `poe2_rank_levers` — рычаги апгрейда по ΔEHP (computed:
+  пересчёт канонических слоёв ehp.ts) и ΔDPS-оценке (estimated: оружие, линейная
+  арифметика); `poe2_pinnacle_check` — чек-лист готовности к эндгейму против табличных
+  статов босса (резисты ≥ 75, chaos ≥ 0 или CI-иммунитет, EHP-порог ×N ударов,
+  устойчивость к Heavy Stun через stun.ts). Инвариант ТЗ: каждое число помечено
+  `computed:`/`estimated:`, фиксированный набор рычагов (без комбинаторного перебора),
+  support-множители и passives-роутер осознанно НЕ ранжируются (нет данных — этап 3).
 - **Сессии игры + реальные имена зон в лог-парсере** (`core.log`): PLAY-сессии по
   границам `***** LOG FILE OPENING *****` (`ClientGameState.sessions`);
   событие `[SCENE] Set Source` — настоящее имя зоны из лога перезаписывает
