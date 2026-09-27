@@ -125,6 +125,10 @@ interface OverlaySettings {
    *  «осторожный режим»: позиция по углу рабочей области экрана, оверлей
    *  всегда видим, ни одного вызова user32.dll. */
   bindWindow?: boolean;
+  /** Opt-in автопрайс-чек: опрос буфера обмена 500мс с дедупом; срабатывает
+   *  только на клир-текст предметов (якорь «Rarity:»). Выключено по умолчанию
+   *  — приватность: иначе непрерывно читается буфер (см. PRIVACY). */
+  autoClipboard?: boolean;
 }
 
 type HotkeyAction =
@@ -612,6 +616,7 @@ function loadSettings(): OverlaySettings {
       if (raw.hotkeys && typeof raw.hotkeys === 'object') base.hotkeys = { ...raw.hotkeys };
       if (typeof raw.learn === 'boolean') base.learn = raw.learn;
       if (typeof raw.bindWindow === 'boolean') base.bindWindow = raw.bindWindow;
+      if (typeof raw.autoClipboard === 'boolean') base.autoClipboard = raw.autoClipboard;
     }
   } catch {
     /* нет файла или он битый — берём настройки по умолчанию */
@@ -641,6 +646,53 @@ function syncLearnEnv(): void {
   if (settings.learn) process.env['POE2K_LEARN'] = '1';
   else delete process.env['POE2K_LEARN'];
   console.log(`[overlay] learn log: ${settings.learn ? 'ON (opt-in)' : 'off'}`);
+}
+
+// ─── Автопрайс-чек из буфера (opt-in): слежение 500мс + дедуп ───────────────
+// Приём из ExileOracle clipboard-monitor.ts: опрос буфера каждые 500мс,
+// дедуп по последнему тексту, реакция только на клир-текст предметов.
+// Приватность: выключено по умолчанию; когда включено — читает буфер постоянно,
+// но реагирует лишь на текст с заголовком «Rarity:/Редкость:».
+
+const CLIPBOARD_POLL_MS = 500;
+let clipboardLastText = '';
+let clipboardWatcher: ReturnType<typeof setInterval> | null = null;
+
+/** Один тик слежения: дедуп → фильтр «похоже на предмет» → прайс-чек. */
+async function autoClipboardTick(): Promise<void> {
+  try {
+    const text = clipboard.readText();
+    if (!text || text === clipboardLastText) return; // дедуп: новое ≠ прошлое
+    clipboardLastText = text;
+    // Только клир-текст предметов (тот же якорь, что splitClipboardItems):
+    // обычные копипасты (ссылки, код, PoB) игнорируются.
+    if (!/^\s*(Rarity|Редкость)\s*:/im.test(text)) return;
+    if (busy) {
+      console.warn('[overlay] clipboard watch: busy — новый предмет пропущен');
+      return;
+    }
+    console.log('[overlay] clipboard watch: новый предмет -> автопрайс-чек');
+    await runPriceCheck();
+  } catch {
+    /* чтение буфера не удалось — тихо пропускаем тик */
+  }
+}
+
+/** Включить/выключить слежение по settings.autoClipboard (idempotent). */
+function syncClipboardWatcher(): void {
+  const want = settings.autoClipboard === true;
+  if (want && !clipboardWatcher) {
+    // базой дедупа берём текущий буфер: первое включение НЕ триггерит проверку
+    clipboardLastText = clipboard.readText();
+    clipboardWatcher = setInterval(() => {
+      void autoClipboardTick();
+    }, CLIPBOARD_POLL_MS);
+    console.log('[overlay] clipboard watch: ON (500ms, opt-in)');
+  } else if (!want && clipboardWatcher) {
+    clearInterval(clipboardWatcher);
+    clipboardWatcher = null;
+    console.log('[overlay] clipboard watch: off');
+  }
 }
 
 /** Ограничить число диапазоном [min, max]. */
@@ -787,6 +839,7 @@ function toggleSettingsPanel(): void {
 function applySettings(next: OverlaySettings): void {
   settings = { ...next, hotkeys: { ...next.hotkeys } };
   syncLearnEnv();
+  syncClipboardWatcher();
   saveSettings(settings);
   overlayWidth = settings.width;
   // Перерегистрируем хоткеи (убрать старые закрепления, зарегистрировать новые).
@@ -809,6 +862,7 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.width === 'number') next.width = clamp(Math.round(raw.width), 280, 640);
   if (typeof raw.learn === 'boolean') next.learn = raw.learn;
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
+  if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
     for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
@@ -1980,6 +2034,7 @@ function setupIPC(): void {
     width: settings.width,
     learn: settings.learn ?? false,
     bindWindow: settings.bindWindow ?? true,
+    autoClipboard: settings.autoClipboard ?? false,
     hotkeys: { ...settings.hotkeys },
     defaultHotkeys: { ...DEFAULT_HOTKEYS },
   }));
@@ -2134,6 +2189,7 @@ app.whenReady().then(async () => {
   settings = loadSettings();
   overlayWidth = settings.width;
   syncLearnEnv();
+  syncClipboardWatcher(); // если сохранён autoClipboard=on — стартуем слежение сразу
   console.log(
     `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width}`,
   );

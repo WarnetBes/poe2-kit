@@ -896,5 +896,58 @@ console.log('oauth: GGG OAuth 2.1 PKCE (offline)');
   delete process.env['POE2K_OAUTH_FILE'];
 }
 
+
+// parse.ts: item flags (Corrupted/Mirrored/Unidentified) - ExileOracle edge-cases
+console.log('parse: item flags (corrupted/mirrored/unidentified)');
+{
+  const { parseItemText } = core;
+  const flagItem = [
+    'Item Class: Body Armours',
+    'Rarity: Rare',
+    'Doom Crown',
+    'Siege Helmet',
+    '--------',
+    '+25 to maximum Life',
+    '--------',
+    'Corrupted',
+  ].join('\n');
+  const p1 = parseItemText(flagItem);
+  ok(p1.corrupted === true, 'parse: Corrupted flag detected');
+  ok(!p1.mirrored && !p1.unidentified, 'parse: mirrored/unidentified default false');
+  ok(!p1.mods.some((m) => /corrupted/i.test(m.text)), 'parse: "Corrupted" not counted as mod');
+
+  const mirrorItem = ['Rarity: Gem', 'Ice Strike', '--------', 'Mirrored'].join('\n');
+  const p2 = parseItemText(mirrorItem);
+  ok(p2.mirrored === true && !p2.corrupted, 'parse: Mirrored flag detected');
+
+  const unidItem = ['Rarity: Rare', 'Voltaic Antimony', 'Iron Amulet', '--------', 'Unidentified', '--------', 'Corrupted'].join('\n');
+  const p3 = parseItemText(unidItem);
+  ok(p3.unidentified === true && p3.corrupted === true, 'parse: Unidentified + Corrupted together');
+
+  const clean = parseItemText(['Rarity: Rare', 'Plain Ring', '--------', '+10 to maximum Life'].join('\n'));
+  ok(clean.corrupted === false && clean.mirrored === false && clean.unidentified === false, 'parse: no false flags on clean item');
+}
+
+// stun.ts: parity with Hivemind stun_calculator.py (immune = no meter mutation)
+console.log('stun: immune hit does not mutate meter (Hivemind parity)');
+{
+  const stun = core.core.stun;
+  const tr = new stun.HeavyStunTracker();
+  // normal hit first: 30 dmg phys melee vs 100 life -> buildup 67.5, primed
+  const r1 = tr.applyHit(30, 100, 'physical', 'melee', 'e1');
+  ok(r1.meter.primed === true && r1.buildupAdded > 67 && r1.buildupAdded < 68, 'stun: hit 30px-melee vs 100hp -> 67.5 buildup, primed');
+  const r2 = tr.applyHit(30, 100, 'physical', 'melee', 'e1');
+  ok(r2.triggeredHeavyStun === true, 'stun: second hit crosses 100% -> heavy stun triggered');
+  // hitsToStun: 40 phys-melee в 100hp -> chance 40%*1.5*1.5=90%, buildup 90/hit -> 2 удара
+  const h = stun.hitsToStun(40, 100, 'physical', 'melee');
+  ok(h.hitsToLightStun === 1 && h.hitsToHeavyStun === 2 && h.lightChance > 89 && h.lightChance < 91, 'stun: hitsToStun light=1 heavy=2 (40px-melee vs 100hp)');
+  // immune: meter must not change
+  const hitsBefore = r2.meter.hitsReceived;
+  const ri = tr.applyHit(999, 100, 'physical', 'melee', 'e1', { immuneToStun: true });
+  ok(ri.buildupAdded === 0 && ri.hitsToHeavyStun === Infinity, 'stun: immune hit -> no buildup, hits=inf');
+  ok(ri.meter.hitsReceived === hitsBefore, 'stun: immune hit does not increment hitsReceived (Hivemind parity)');
+  ok(ri.meter.percent === r2.meter.percent, 'stun: immune hit leaves meter percent untouched');
+}
+
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

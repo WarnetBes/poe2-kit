@@ -6,6 +6,20 @@
 ## [Unreleased]
 
 ### Added
+- **Автопрайс-чек из буфера (overlay, opt-in):** слежение 500мс с дедупом
+  (приём ExileOracle clipboard-monitor) — новые предметы проверяются без
+  Ctrl+F1. Выключено по умолчанию (приватность); тумблер в Ctrl+F6,
+  срабатывает только на клир-текст с «Rarity:/Редкость:», busy-защита,
+  включение не триггерит проверку старого буфера.
+- **Ярлыки состояния в парсере** (`core.parse`): `corrupted / mirrored /
+  unidentified` (edge-cases из ExileOracle parser-item-text; EN-клиент,
+  ярлыки не попадают в моды). Поля `ParsedItem.corrupted/mirrored/unidentified`.
+- **Сверка stun-калькулятора с Hivemind stun_calculator.py:** формулы
+  совпали (порядок модификаторов, пороги 15/50/100, Crushing Blow).
+  Выровнен edge: при `immuneToStun` метр больше не мутирует (паритет
+  с первоисточником — без hitsReceived++ и ложного конечного hits).
+
+### Added (previous)
 - **OAuth 2.1 (PKCE) вход в GGG** (`core.oauth`): доступ к официальному
   аккаунтному API `api.pathofexile.com` realm poe2 — список персонажей
   и полный снапшот выбранного (экипировка, инвентарь, пассивки) без

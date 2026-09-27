@@ -131,6 +131,10 @@ export interface ParsedItem {
   requirements: ItemRequirements;
   /** Все моды (Explicit + остальные) в порядке появления. */
   mods: ItemMod[];
+  /** Ярлыки состояния: Corruption / Mirrored / Unidentified (EN-клиент). */
+  corrupted: boolean;
+  mirrored: boolean;
+  unidentified: boolean;
   /** Сырые секции (полезно для прайс-чека по trade API). */
   sections: string[][];
 }
@@ -300,6 +304,16 @@ export function parseItemText(text: string): ParsedItem {
     intelligence: null,
   };
   const mods: ItemMod[] = [];
+  let corrupted = false;
+  let mirrored = false;
+  let unidentified = false;
+
+  // Ярлыки состояния предмета: одиночные строки-секции. Приём из ExileOracle
+  // parser-item-text.ts. Ловим EN-клиент (документально подтверждённые строки);
+  // для остальных локалей ярлыки просто не сработают, рецепт дополнит learn-log.
+  const FLAG_CORRUPTED = /^corrupted$/i;
+  const FLAG_MIRRORED = /^mirrored$/i;
+  const FLAG_UNIDENTIFIED = /^unidentified$/i;
 
   // Сначала пробегаем ВСЕ секции в поиске Item Level (может быть в последней).
   for (const section of sections) {
@@ -373,6 +387,19 @@ export function parseItemText(text: string): ParsedItem {
         if (intM) requirements.intelligence = parseInt(intM[1]!, 10);
       }
 
+      if (FLAG_CORRUPTED.test(line.trim())) {
+        corrupted = true;
+        continue;
+      }
+      if (FLAG_MIRRORED.test(line.trim())) {
+        mirrored = true;
+        continue;
+      }
+      if (FLAG_UNIDENTIFIED.test(line.trim())) {
+        unidentified = true;
+        continue;
+      }
+
       // Всё, что не является заголовком/явным статом и не имя/тип/класс и
       // не выглядит как ключевой лейбл — это мод.
       if (looksLikeMod(line, KEY)) {
@@ -392,6 +419,9 @@ export function parseItemText(text: string): ParsedItem {
     offense,
     requirements,
     mods,
+    corrupted,
+    mirrored,
+    unidentified,
     sections,
   };
 }

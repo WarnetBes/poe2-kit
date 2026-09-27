@@ -156,6 +156,13 @@ export class HeavyStunTracker {
       meter.percent = meter.maxBuildup > 0 ? (meter.currentBuildup / meter.maxBuildup) * 100 : 0;
     }
 
+    // Паритет с Hivemind stun_calculator.py: при immune_к_стану метр
+    // НЕ мутирует (early return: без buildup, без hits_received++). Удары
+    // по иммунной цели — не «накопление 0», а полное отсутствие эффекта.
+    if (mods.immuneToStun) {
+      return { meter, buildupAdded: 0, triggeredHeavyStun: false, triggeredCrushingBlow: false, hitsToHeavyStun: Infinity };
+    }
+
     const buildup = heavyStunBuildup(damage, damageType, attackType, mods);
     meter.currentBuildup += buildup;
     meter.hitsReceived += 1;

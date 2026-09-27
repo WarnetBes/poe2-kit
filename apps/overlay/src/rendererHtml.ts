@@ -310,6 +310,17 @@ export const rendererHtml = `<!doctype html>
         <div class="tip">Выключите, чтобы kit не обращался к user32.dll вовсе: оверлей встанет в угол экрана (двигается Ctrl+F5), не будет следовать за окном игры и прятаться при alt-tab.</div>
       </div>
 
+      <div class="set-row" id="autoClipSection">
+        <div class="lbl">
+          <span>Автопрайс-чек из буфера <small>— проверять новые предметы без Ctrl+F1</small></span>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:4px">
+            <input type="checkbox" id="setAutoClip" style="width:auto" />
+            <span style="font-size:10px;color:var(--dim)">Слежение 500мс (opt-in)</span>
+          </label>
+        </div>
+        <div class="tip">Выключено по умолчанию (приватность): пока включено — kit читает буфер обмена каждые 500мс. Реагирует только на клир-текст предметов («Rarity:»), прочие копипасты игнорируются.</div>
+      </div>
+
       <div class="set-row" id="learnSection">
         <div class="lbl">
           <span>Журнал обучения <small>— запоминать структуру предметов (локально)</small></span>
@@ -854,6 +865,7 @@ export const rendererHtml = `<!doctype html>
       width: Number($('setWidth').value),
       learn: !!$('setLearn').checked,
       bindWindow: !!$('setBindWindow').checked,
+      autoClipboard: !!$('setAutoClip').checked,
       hotkeys: {}
     };
   }
@@ -874,6 +886,7 @@ export const rendererHtml = `<!doctype html>
     $('setScale').value = Math.round((s.scale || 1) * 100);
     $('setWidth').value = Math.round(s.width || 420);
     $('setLearn').checked = !!s.learn;
+    $('setAutoClip').checked = !!s.autoClipboard;
     $('setBindWindow').checked = s.bindWindow !== false;
     setDirty.opacity = true; setDirty.scale = true; setDirty.width = true;
     window.poe2k.learnInfo().then(function (li) {
