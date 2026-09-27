@@ -1,0 +1,33 @@
+# CI/CD poe2-kit (SourceCraft).
+# ⚠️ git.sourcecraft.dev НЕ исполняет GitHub Actions (см. .github/workflows/README
+# в live-smoke.yml) — этот формат, .sourcecraft/ci.yaml, исполняется нативно.
+#
+# Шаг 1 (разведка): пинг-воркфлоу — проверка доступности cloud worker,
+# минимум ресурсов, окружение. После подтверждения сюда добавится
+# workflow pob-oracle (headless-PoB2 оракул, Docker-куб с LuaJIT;
+# blueprint — test.yml апстримного PathOfBuilding-PoE2: `cd src;
+# LUA_PATH=../runtime/lua/?.lua; luajit HeadlessWrapper.lua`).
+
+on:
+  push:
+    - workflows: [ci-ping]
+      filter:
+        branches: [main]
+  schedule:
+    - workflows: [ci-ping]
+      cron: "23 4 * * 1"
+      description: "еженедельная проверка живости CI-раннера (+1 к отчёту)"
+
+workflows:
+  ci-ping:
+    tasks:
+      - name: ping
+        cubes:
+          - name: env-check
+            script:
+              - uname -a
+              - node --version || echo "no node"
+              - luajit -v || echo "no luajit (ожидаемо вне Docker-куба)"
+              - git --version
+              - echo "SOURCECRAFT_WORKSPACE=$SOURCECRAFT_WORKSPACE"
+              - ls
