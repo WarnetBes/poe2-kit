@@ -3,15 +3,7 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
-## [Unreleased]
-
-### Data
-- base_items: baseline бандла перегенерирован до патча 0.5.5 (5382 → 5496 записей,
-  +114 новых баз; game build 4.5.5.2, снапшот repoe-fork 11.09). Остальные датасеты
-  (skill_gems, stat_descriptions, passive_tree, ascendancies) — патч 0.5 до
-  лицензионной re-extraction. `data_revision` 12 → 13.
-- `POE2K_LEARN_SOURCE`: записи журнала обучения теперь несут метку источника
-  (`overlay` / `mcp`), внешний env не перетирается.
+## [1.0.2] — 2026-09-27
 
 ### Added
 - **Оверлей: «осторожный режим»** — галка «Привязка к окну игры» в панели
@@ -24,6 +16,15 @@
 - Дисклеймер ToS GGG: разделы «Правила использования» в README (RU/EN),
   строка в панели настроек оверлея, фиксация «no automation / read-only FFI»
   в SECURITY.md.
+- CHANGELOG.md.
+
+### Data
+- base_items: baseline бандла перегенерирован до патча 0.5.5 (5382 → 5496 записей,
+  +114 новых баз; game build 4.5.5.2, снапшот repoe-fork 11.09). Остальные датасеты
+  (skill_gems, stat_descriptions, passive_tree, ascendancies) — патч 0.5 до
+  лицензионной re-extraction. `data_revision` 12 → 13.
+- `POE2K_LEARN_SOURCE`: записи журнала обучения теперь несут метку источника
+  (`overlay` / `mcp`), внешний env не перетирается.
 
 ## [1.0.1] — 2026-09-26
 
