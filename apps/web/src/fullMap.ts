@@ -33,7 +33,7 @@ interface LayoutNode {
 interface Layout {
   metadata?: Record<string, unknown>;
   nodes: Record<string, LayoutNode>;
-  edges: [string, string][];
+  edges: (readonly (string | number)[])[];
   classStarts: Record<string, string>;
   ascStarts: Record<string, string>;
   ascClasses: Record<string, string>;
@@ -52,7 +52,7 @@ interface Node {
 
 type Db = {
   nodes: Map<string, Node>;
-  edges: [Node, Node][];
+  edges: (readonly (string | number)[])[];
   ascClasses: Record<string, string>;
   ascStarts: Record<string, string>;
   classStarts: Record<string, string>;
@@ -79,11 +79,11 @@ async function loadDb(): Promise<Db> {
           y: n.y,
         });
       }
-      const edges: [Node, Node][] = [];
-      for (const [a, b] of raw.edges ?? []) {
-        const na = nodes.get(String(a));
-        const nb = nodes.get(String(b));
-        if (na && nb) edges.push([na, nb]);
+      const edges: (readonly (string | number)[])[] = [];
+      for (const pair of raw.edges ?? []) {
+        const na = nodes.get(String(pair[0]));
+        const nb = nodes.get(String(pair[1]));
+        if (na && nb) edges.push([na.id, nb.id, ...pair.slice(2)]);
       }
       return {
         nodes,
@@ -210,23 +210,36 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   svg.appendChild(g);
   canvas.appendChild(svg);
 
-  // ── Связи (под узлами): линия между узлами; цвет — асценданси, если совпадает ──
-  const edgeEls: SVGLineElement[] = [];
-  for (const [a, b] of db.edges) {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('class', 'medge');
-    line.setAttribute('x1', String(a.x));
-    line.setAttribute('y1', String(a.y));
-    line.setAttribute('x2', String(b.x));
-    line.setAttribute('y2', String(b.y));
-    if (a.ascendancy && a.ascendancy === b.ascendancy) {
-      line.setAttribute('stroke', ascColor(a.ascendancy));
-      line.setAttribute('data-asc', a.ascendancy);
+  // ── Связи (под узлами): дуга по орбите, если обе точки на одной орбите
+  //    (game-вид, как poe2db/игра), иначе прямая. Цвет — асценданси, если совпадает.
+  const edgeEls: SVGGeometryElement[] = [];
+  const arcD = (a: Node, b: Node, cxr: number, cyr: number, r: number, large: number, sweep: number): string =>
+    `M ${a.x} ${a.y} A ${r} ${r} 0 ${large} ${sweep} ${b.x} ${b.y}`;
+  for (const raw of db.edges) {
+    const a = db.nodes.get(String(raw[0]))!;
+    const b = db.nodes.get(String(raw[1]))!;
+    let el: SVGGeometryElement;
+    if (raw.length >= 7) {
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', arcD(a, b, Number(raw[2]), Number(raw[3]), Number(raw[4]), Number(raw[5]), Number(raw[6])));
+      el = p;
     } else {
-      line.setAttribute('stroke', EDGE_COLOR);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(a.x));
+      line.setAttribute('y1', String(a.y));
+      line.setAttribute('x2', String(b.x));
+      line.setAttribute('y2', String(b.y));
+      el = line;
     }
-    edgeEls.push(line);
-    g.appendChild(line);
+    el.setAttribute('class', 'medge');
+    if (a.ascendancy && a.ascendancy === b.ascendancy) {
+      el.setAttribute('stroke', ascColor(a.ascendancy));
+      el.setAttribute('data-asc', a.ascendancy);
+    } else {
+      el.setAttribute('stroke', EDGE_COLOR);
+    }
+    edgeEls.push(el);
+    g.appendChild(el);
   }
 
   // ── Узлы ───────────────────────────────────────────────────────────────────
