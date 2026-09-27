@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+(пусто)
+
+## [1.0.4] — 2026-09-28
+
 ### Added
 - **Optimize-этап 1: read-only аудит билда** (ТЗ `docs/SPEC_OPTIMIZE_TOOLS.md`): новый
   `core.optimize` + 3 MCP-тула (48→51):
