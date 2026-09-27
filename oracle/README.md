@@ -39,7 +39,22 @@ assert'ам PoB2-спеков — оракул взаимно проверяем
    формул/датасетов кита.
 3. Новые сценарии добавляются в `oracle.lua` + `-UpdateGolden` в том же PR.
 
-## GitHub Actions (вставить в репозиторий poe2-kit)
+## CI SourceCraft (актуальный)
+
+Исполняется нативно из `.sourcecraft/ci.yaml` (⚠️ git.sourcecraft.dev НЕ исполняет
+GitHub Actions — врезка ниже оставлена только как портативный шаблон переезда):
+
+- workflow `pob-oracle`, push в main + еженедельный cron (ловим дрейф данных PoB2);
+- Docker-куб на образе апстрима `ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest`
+  (тот же, что в CI самого PoB2; `apk add curl unzip nodejs` на месте);
+- исходники PoB2 стейджатся codeload-zip'ом, **пинн `v0.23.1`** — версия, на которой
+  выверен golden; смена пина ТОЛЬКО вместе с осознанным обновлением golden;
+- `run-oracle.sh pob2/src` → снимок + `node compare-golden.mjs`, расхождение красит джобу;
+- артефакт `oracle/oracle-output.jsonl` хранится 14 дней (панель CI/CD SourceCraft).
+
+Проверено 2026-09-27: run #3 — success, `PASS: 5 сценариев совпали с golden`.
+
+## GitHub Actions (портативный шаблон переезда)
 
 ```yaml
 name: PoB2 oracle
