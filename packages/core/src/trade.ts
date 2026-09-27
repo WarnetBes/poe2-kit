@@ -17,6 +17,7 @@ import { buildCodeToGear } from './build.js';
 import { scountCategoryForUnique } from './uniques.js';
 import { recordLearnedItem } from './learnlog.js';
 import { getLearnedStatTemplates } from './learnedStats.js';
+import { getTradeStatSnapshot } from './tradeSnapshot.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -738,7 +739,7 @@ export async function searchTrade(
 // trade2: каталог статов → поиск раров по целевым аффиксам
 // ────────────────────────────────────────────────
 
-interface TradeStatEntry {
+export interface TradeStatEntry {
   id: string;
   text: string;
   type?: string;
@@ -811,15 +812,19 @@ export async function matchModsToStatFilters(
   modTexts: string[],
 ): Promise<{ filters: TradeStatFilter[]; unmatched: string[] }> {
   let entries: TradeStatEntry[] = [];
+  let entriesSource = 'live';
   try {
     entries = await fetchTradeStats();
   } catch (e) {
-    // живой каталог статов недоступен (патч сменил схему / сеть) —
-    // выручает библиотека выученных статов (stale-but-known)
-    entries = getLearnedStatTemplates() as TradeStatEntry[];
+    // Живой каталог статов недоступен (сеть/лимиты trade2) — второй слой:
+    // оффлайн-снапшот каталога (полный набор stat_id ↔ шаблон, поставляется
+    // с пакетом), и только при его отсутствии — learned-библиотека.
+    entries = getTradeStatSnapshot();
+    entriesSource = entries.length ? 'snapshot' : 'learned';
+    if (!entries.length) entries = getLearnedStatTemplates() as TradeStatEntry[];
     debugLog(
-      'fetchTradeStats failed, using learned stat library:',
-      `${entries.length} learned entries`,
+      'fetchTradeStats failed, using offline fallback:',
+      `${entriesSource}: ${entries.length} entries`,
       e instanceof Error ? e.message : String(e),
     );
   }
@@ -830,15 +835,18 @@ export async function matchModsToStatFilters(
     if (f) filters.push(f);
     else unmatched.push(t);
   }
-  // Второй проход: моды, не найденные в живом каталоге, пробуем по
-  // библиотеке выученных статов (патч ещё не отразился в /data/stats или
-  // живой каталог неполон). Библиотека — только дополнение, не замена.
-  if (unmatched.length && entries.length) {
+  // Второй проход: моды, не найденные в живом каталоге, добираем по
+  // оффлайн-источникам (патч ещё не отразился в /data/stats или каталог
+  // неполон): снапшот + learned. Это дополнение, не замена живому каталогу.
+  if (unmatched.length) {
+    const extraSource = entriesSource === 'live' ? getTradeStatSnapshot() : [];
     const learned = getLearnedStatTemplates() as TradeStatEntry[];
-    if (learned.length) {
+    const seen = new Set(filters.map((f) => f.id));
+    const extra = [...extraSource, ...learned].filter((e) => !seen.has(e.id));
+    if (extra.length) {
       const stillUnmatched: string[] = [];
       for (const t of unmatched) {
-        const f = matchStatFilter(t, learned);
+        const f = matchStatFilter(t, extra);
         if (f) filters.push(f);
         else stillUnmatched.push(t);
       }

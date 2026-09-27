@@ -2,7 +2,7 @@
 import { decodeShareCode, encodeShareCode, PobCodeError, importBuild } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
 import { getMonkLevelingTips, getMonkLevelingHint, getMonkLevelingPlan, listLevelingClasses, resolveLevelingClass, getClassLevelingTips, getClassLevelingHint, getClassLevelingPlan, validateGuideGems } from './dist/leveling.js';
-import { inferUniqueCategory, mapItemClassToScoutCategory } from './dist/trade.js';
+import { inferUniqueCategory, mapItemClassToScoutCategory, matchStatFilter } from './dist/trade.js';
 import * as core from './dist/index.js';
 
 let failed = 0;
@@ -699,6 +699,46 @@ ok(scountCategoryForUnique('Andvarius', null) === 'rings', 'uniqu: катего�
 ok(scountCategoryForUnique('Headhunter', 'Heavy Belt') === 'belts', 'uniqu: категория по имени даже при отличном baseType');
 ok(resolveBaseTypeCategory('Mail Armour') === 'body', 'uniqu: resolveBaseTypeCategory body');
 ok(resolveBaseTypeCategory('Wraithwrap') === null, 'uniqu: resolveBaseTypeCategory null для неизвестного');
+
+console.log('statdesc: рендер игровых описаний статов по значению');
+const { renderStatText, findStatIdByPattern, normalizeStatPattern, statDescRenderInfo } = core.core.statdesc;
+ok(renderStatText('base_maximum_life', 40) === '+40 to maximum Life', `statdesc: base_maximum_life(40) = "${renderStatText('base_maximum_life', 40)}"`);
+ok(renderStatText('base_maximum_life', 40) === '+40 to maximum Life' && renderStatText('base_maximum_life', -10) === '-10 to maximum Life', 'statdesc: {0:+d} спек знака');
+const warcryNeg = renderStatText('warcry_damage_+%', -10);
+ok(warcryNeg !== null && warcryNeg.includes('reduced'), `statdesc: range "#|-1" + negate handler -> "${warcryNeg}"`);
+const warcryPos = renderStatText('warcry_damage_+%', 15);
+ok(warcryPos !== null && warcryPos.includes('increased') && !warcryPos.includes('reduced'), `statdesc: range "1|#" positive branch -> "${warcryPos}"`);
+ok(renderStatText('no_such_stat_id', 5) === null, 'statdesc: неизвестный stat_id -> null');
+const statInfo = statDescRenderInfo();
+ok(statInfo.statIds > 9000, `statdesc: индекс покрывает ${statInfo.statIds} stat_id (>9000)`);
+ok(
+  (() => {
+    const hit = findStatIdByPattern('#% to fire resistance');
+    return hit !== null && !!hit.statId && normalizeStatPattern(hit.template).includes('fire resistance');
+  })(),
+  'statdesc: findStatIdByPattern("#% to fire resistance") находит шаблон',
+);
+ok(
+  (() => {
+    // проверки тегов: [Tag|Display] должен разрешаться в display-текст
+    const id = findStatIdByPattern('#% to fire resistance');
+    if (!id) return false;
+    const rendered = renderStatText(id.statId, 12);
+    return rendered !== null && /^[+-]?\d/.test(rendered) && !rendered.includes('[');
+  })(),
+  'statdesc: отрендеренный текст без сырых [тегов]',
+);
+
+console.log('tradeSnapshot: оффлайн-снапшот каталога trade2');
+const { getTradeStatSnapshot, tradeSnapshotInfo } = core.core.tradeSnapshot;
+const snap = getTradeStatSnapshot();
+ok(snap.length > 8000, `snapshot: ${snap.length} записей (>8000)`);
+ok(snap.some((e) => e.id === 'explicit.stat_3299347043' && e.text === '# to maximum Life'), 'snapshot: known explicit life entry присутствует');
+const snapInfo = tradeSnapshotInfo();
+ok(snapInfo.groups === 10, `snapshot: ${snapInfo.groups} групп каталога (=10)`);
+// матчинг мода против снапшота тем же matchStatFilter, что идёт в поиск
+const lifeFilter = matchStatFilter('40 to maximum Life', snap);
+ok(!!lifeFilter && lifeFilter.id === 'explicit.stat_3299347043' && lifeFilter.min === 36, `snapshot: matchStatFilter(life) -> ${lifeFilter && lifeFilter.id} min=${lifeFilter && lifeFilter.min}`);
 
 console.log(failed === 0 ? '\nALL OK' : `\n${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
