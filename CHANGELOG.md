@@ -3,6 +3,30 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [Unreleased]
+
+### Added
+- **statdesc-рендерер** (`@poe2-kit/core` `core.statdesc`): текст игрового
+  стата по stat_id + значению — диапазоны `#`/`N`/`a|b`/`!N`, 31+ handler-
+  конверсий (negate, per_minute_to_per_second и др.), теги `[A|B]`,
+  fail-safe null на неизвестном stat_id. `normalizeStatPattern` /
+  `findStatIdByPattern` — поиск по нормализованному тексту.
+- **Оффлайн-снапшот каталога trade2** (`core.tradeSnapshot` +
+  `data/game/trade/stats_snapshot.json`, 8299 статов): матчинг модов
+  предмета → stat-id работает и без сети / при смене схемы после патча.
+  Цепочка фолбэков: живой каталог → снапшот → learned.
+- **Динамический rate-limit-клиент GGG** (http.ts): уважение заголовкам
+  `X-Rate-Limit-Ip/Account` + `-State` (все правила), ожидание до
+  освобождения квоты, при 429 — пауза по `Retry-After`/бан-счётчикам и
+  повтор ≤2 раз. Действует на все запросы trade2/прайс-чек пачек.
+- **Валидация community-вкладов** (`merge-contributions.mjs`): каждый
+  предложенный stat_id↔шаблон сверяется с датамайном и снапшотом trade2;
+  жёсткий конфликт «id есть с другим текстом» ловится в отчёте.
+- **Headless-PoB2 оракул в CI SourceCraft** (`.sourcecraft/ci.yaml` +
+  `oracle/`): настоящий движок PoB2 без GUI, 5 сценариев против golden
+  (tolerance 1e-4), еженедельный cron + при изменениях `oracle/**`.
+  Ловит дрейф формул/данных PoB2 до релиза.
+
 ## [1.0.2] — 2026-09-27
 
 ### Added

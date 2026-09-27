@@ -10,7 +10,13 @@
 
 on:
   push:
-    - workflows: [ci-ping, pob-oracle]
+    # pob-oracle на push дорогой (~70 МБ PoB2 zip): гоняем только при
+    # изменениях oracle/. Прочие push — только быстрый ci-ping.
+    - workflows: [pob-oracle]
+      filter:
+        branches: [main]
+        paths: [oracle/**]
+    - workflows: [ci-ping]
       filter:
         branches: [main]
   schedule:
