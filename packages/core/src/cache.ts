@@ -54,6 +54,25 @@ function cachePath(url: string): string {
   return pathMod!.join(cacheDir(), hash + '.json');
 }
 
+/**
+ * Ключ для кэша POST-запросов. В Node — sha1; в браузере cryptoMod === null,
+ * поэтому fallback — cyrb53 (pure JS). Ключ живёт только в памяти одного вызова:
+ * при HAS_DISK=false диск всё равно не используется, коллизии не критичны.
+ */
+function postKeyHash(s: string): string {
+  if (cryptoMod) return cryptoMod.createHash('sha1').update(s).digest('hex');
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+}
+
 export interface CachedResult<T> {
   data: T;
   /** Время получения из сети (ms epoch). */
@@ -110,10 +129,7 @@ export async function cachedPostJson<T = unknown>(
   opts: HttpOptions & { ttlMs?: number; skipCache?: (data: T) => boolean } = {},
 ): Promise<CachedResult<T>> {
   const ttl = opts.ttlMs ?? DEFAULT_TTLS.repoe;
-  const key =
-    url +
-    '#post-' +
-    cryptoMod!.createHash('sha1').update(JSON.stringify(body)).digest('hex').slice(0, 20);
+  const key = url + '#post-' + postKeyHash(JSON.stringify(body)).slice(0, 20);
   const cached = loadEnvelope(key);
   if (cached && Date.now() - cached.fetchedAt < ttl) {
     return { data: cached.data as T, fetchedAt: cached.fetchedAt, stale: false };

@@ -952,7 +952,13 @@ async function postTradeSearchUncached(
     const { data: search } = await cachedPostJson<{ id?: string; result?: string[] }>(
       `${TRADE_API}/search/poe2/${encodeURIComponent(league)}`,
       searchQuery,
-      { ttlMs: TRADE_CACHE_TTL, skipCache: (d) => !d?.id || !d.result?.length },
+      {
+        ttlMs: TRADE_CACHE_TTL,
+        skipCache: (d) => !d?.id || !d.result?.length,
+        // POST /search выполняется на стороне trade2 до ~15 с (дефолт httpJson 10 с режет
+        // живые ответы) + 429-окна бана. 30 с покрывает и слабые прокси-каналы web-приложения.
+        timeoutMs: 30000,
+      },
     );
     if (!search?.id || !search.result?.length) return [];
     // Валидация типа (searchTypes) не требует цен — пропускаем fetch (экономит
@@ -964,7 +970,7 @@ async function postTradeSearchUncached(
       result?: Array<{
         listing?: { price?: { amount?: number; currency?: string; type?: string } };
       } | null>;
-    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000 });
+    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000, timeoutMs: 30000 });
     const listings: TradeListing[] = [];
     for (const entry of fetchRes?.result ?? []) {
       if (!entry) continue;

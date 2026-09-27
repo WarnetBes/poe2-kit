@@ -25,9 +25,52 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
+// Реверс-прокси для обхода CORS — как в vite.config.ts (dev/preview).
+// Без этого в portable-режиме все живые запросы падают в SPA-фолбэк.
+const PROXY = {
+  '/proxy/poeninja': 'https://poe.ninja',
+  '/proxy/scout': 'https://api.poe2scout.com',
+  '/proxy/trade': 'https://www.pathofexile.com',
+  '/proxy/repower': 'https://repoe-fork.github.io',
+};
+
+async function handleProxy(req, res, urlPath) {
+  const prefix = Object.keys(PROXY).find((p) => urlPath === p || urlPath.startsWith(p + '/'));
+  if (!prefix) return false;
+  const query = (req.url ?? '').split('?')[1] ?? '';
+  const target = PROXY[prefix] + urlPath.slice(prefix.length) + (query ? '?' + query : '');
+  let body;
+  if (req.method !== 'GET' && req.method !== 'HEAD') body = Buffer.concat(await toArray(req));
+  const r = await fetch(target, {
+    method: req.method,
+    headers: {
+      accept: req.headers['accept'],
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent'],
+      ...(body ? { 'content-length': String(body.length) } : {}),
+    },
+    body,
+  });
+  const buffer = Buffer.from(await r.arrayBuffer());
+  const headers = { 'Content-Type': r.headers.get('content-type') ?? 'application/json; charset=utf-8' };
+  res.writeHead(r.status, headers);
+  res.end(buffer);
+  return true;
+}
+
+function toArray(iter) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    iter.on('data', (c) => chunks.push(c));
+    iter.on('end', () => resolve(chunks));
+    iter.on('error', reject);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
+    if (await handleProxy(req, res, urlPath)) return;
     let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
     // защита от выхода за пределы dist (path traversal)
     if (!file.startsWith(ROOT)) {
