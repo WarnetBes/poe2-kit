@@ -20,6 +20,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+// Эталоны для проверки предложенных stat-шаблонов (сборка dist обязательна
+// перед запуском: npm run build). Нет dist — проверка пропускается, merge
+// продолжает работать как раньше (мягкая деградация).
+let statdesc = null;
+try {
+  statdesc = await import('./dist/statdesc.js');
+} catch {
+  console.warn('⚠ dist/statdesc.js не собран — эталонная проверка датамайна пропущена');
+}
+let tradeSnapshot = null;
+try {
+  tradeSnapshot = await import('./dist/tradeSnapshot.js');
+} catch {
+  console.warn('⚠ dist/tradeSnapshot.js не собран — проверка по снапшоту каталога пропущена');
+}
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HERE, 'data', 'game', 'learned');
 const MAX_ENTRIES_PER_CONTRIB = 5000;
@@ -107,6 +123,8 @@ const statMap = loadJson(join(DATA, 'stat_text_map.json'), { version: 1, entries
 
 let shapes = 0, statLearned = 0, statUpdated = 0;
 const leagues = new Set(itemsSeen.leagues ?? []);
+// Предложения этого запуска: trade stat_id -> шаблон (для эталонной сверки).
+const proposed = new Map();
 
 for (const f of files) {
   console.log(`\nВклад: ${f}`);
@@ -135,6 +153,7 @@ for (const f of files) {
         if (!tpl.includes('#') || !STAT_ID_RE.test(id)) return;
         if (tpl.length > 160) return;
         const prev = statMap.entries[id];
+        proposed.set(id, tpl);
         if (prev == null) { statMap.entries[id] = tpl; statLearned++; }
         else if (tpl.length > prev.length) { statMap.entries[id] = tpl; statUpdated++; }
       });
@@ -142,7 +161,56 @@ for (const f of files) {
   }
 }
 
-// кап items_seen: держим самые частые
+// ── 3) эталонная сверка предложенных stat-шаблонов ──────────────────────────
+// Нормализация шаблона к сопоставимому виду: normalizeStatPattern (плейсхолдеры
+// и числа → '#', теги → display) + срез голого знака перед '#' (learned-шаблон
+// "+# to maximum Life" и каталог "# to maximum Life" — один паттерн).
+const normPattern = (t) =>
+  statdesc
+    ? statdesc.normalizeStatPattern(t).replace(/[+-]\s*#/g, '#')
+    : t.replace(/\s+/g, ' ').trim().toLowerCase();
+
+const snapTexts = new Set();
+const snapById = new Map();
+if (tradeSnapshot) {
+  for (const e of tradeSnapshot.getTradeStatSnapshot()) {
+    const n = normPattern(e.text);
+    snapTexts.add(n);
+    if (!snapById.has(e.id)) snapById.set(e.id, n);
+  }
+}
+
+const verify = { datamine: 0, snapshot: 0, unknown: [], conflicts: [] };
+for (const [id, tpl] of proposed) {
+  const n = normPattern(tpl);
+  const inDatamine = statdesc ? statdesc.findStatIdByPattern(n) !== null : false;
+  const inSnapshot = snapTexts.has(n);
+  if (inDatamine) verify.datamine++;
+  else if (inSnapshot) verify.snapshot++;
+  else verify.unknown.push(`${id} :: ${tpl}`);
+  // жёсткий сигнал: в снапшоте этот trade id есть, но текст ДРУГОЙ —
+  // вероятно, неверная пара id↔мод в исходном вкладе
+  const snapPair = snapById.get(id);
+  if (snapPair !== undefined && snapPair !== n) {
+    verify.conflicts.push(`${id}: вклад "${tpl}" ≠ каталог "${snapPair}"`);
+  }
+}
+
+console.log(`\nЭталонная сверка предложенных шаблонов (${proposed.size}):`);
+console.log(`  ✓ подтверждены датамайном (stat_descriptions): ${verify.datamine}`);
+console.log(`  ✓ подтверждены снапшотом каталога trade2:       ${verify.snapshot}`);
+if (verify.unknown.length) {
+  console.log(`  ⚠ не найдены ни в одном эталоне: ${verify.unknown.length}`);
+  for (const u of verify.unknown.slice(0, 20)) console.log(`      ${u}`);
+  if (verify.unknown.length > 20) console.log(`      ... и ещё ${verify.unknown.length - 20}`);
+  console.log('    (может быть новый патч — текст ещё не в датамайне; решение за мейнтейнером по git diff)');
+}
+if (verify.conflicts.length) {
+  console.log(`  ✗ КОНФЛИКТ id↔текст (скорее всего ошибка вклада): ${verify.conflicts.length}`);
+  for (const c of verify.conflicts.slice(0, 20)) console.log(`      ${c}`);
+}
+
+// ── кап items_seen: держим самые частые ──
 const keys = Object.keys(itemsSeen.entries);
 if (keys.length > MAX_ITEMS_SEEN) {
   keys.sort((a, b) => (itemsSeen.entries[b].count ?? 0) - (itemsSeen.entries[a].count ?? 0));
