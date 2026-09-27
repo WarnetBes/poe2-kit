@@ -38,6 +38,7 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
 
 Feedback, bugs and ideas → issues on
 [SourceCraft](https://sourcecraft.dev/volkovpartilaholin/poe2-kit/issues).
+Version history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Privacy & community learning (opt-in)
 
@@ -51,6 +52,25 @@ Feedback, bugs and ideas → issues on
   Only the maintainer merges contributions, via a strict validator
   (`merge-contributions.mjs`): user contributions are data, never code —
   see [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Rules & disclaimer
+
+- **No automation.** The kit only reads and shows: hotkey → read clipboard →
+  public API request. It never presses anything in the game — one keystroke
+  by the user = one action. No auto-flasks, no macros, no input simulation.
+- **No game-client access.** The kit never reads game memory or files,
+  injects code or hooks its output. The only “contact” with the game is you
+  copying item text (Ctrl+C), same as any trade tool.
+- **Overlay window tracking.** To sit on top of the game, the Windows overlay
+  calls exactly three **read-only** Win32 functions via FFI (`koffi`,
+  `user32.dll`): `EnumWindows` (find window), `GetWindowRect` (position),
+  `GetForegroundWindow` (is it active). Nothing is written to the game
+  process; no hooks; no input.
+- **Disclaimer.** Use of third-party tools is **at your own risk**.
+  Grinding Gear Games does not guarantee the safety of third-party tools and
+  has not officially endorsed this project. The kit follows the same pattern
+  as common trade tools (Awakened PoE Trade etc.): read-only, no automation,
+  no hidden information — but the decision to use it is yours.
 
 ## For developers
 

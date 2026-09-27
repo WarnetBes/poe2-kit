@@ -323,6 +323,10 @@ export const rendererHtml = `<!doctype html>
         <div class="tip">Соберёт хвост <b>overlay.log</b> + конфиг машины, скопирует всё в буфер обмена и сохранит файл в userData — готово для вставки в отчёт/issue, файлы искать вручную не нужно.</div>
       </div>
 
+      <div class="set-row">
+        <div class="tip">⚠ Сторонний инструмент. GGG не гарантирует безопасность сторонних тулов. Kit ничего не делает за вас в игре: читает буфер и публичные API цен — каждое действие в игре делаете сами вы. Использование — на ваш риск.</div>
+      </div>
+
       <div class="set-actions">
         <button id="settingsResetHK">Сбросить клавиши</button>
         <button id="settingsSave">Сохранить</button>
