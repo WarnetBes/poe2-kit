@@ -1,0 +1,4 @@
+{
+  "name": "PoB2 oracle",
+  "build": { "dockerfile": "Dockerfile" }
+}

@@ -86,3 +86,5 @@ apps/web/deploy/*.zip
 deploy/*
 !deploy/poe2k-overlay-transfer-src/
 !deploy/poe2k-overlay-transfer.zip
+
+oracle/oracle-output.jsonl

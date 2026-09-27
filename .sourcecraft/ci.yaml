@@ -10,13 +10,16 @@
 
 on:
   push:
-    - workflows: [ci-ping]
+    - workflows: [ci-ping, pob-oracle]
       filter:
         branches: [main]
   schedule:
     - workflows: [ci-ping]
       cron: "23 4 * * 1"
       description: "еженедельная проверка живости CI-раннера (+1 к отчёту)"
+    - workflows: [pob-oracle]
+      cron: "41 5 * * 1"
+      description: "еженедельный headless-PoB2 оракул: ловим дрейф данных/формул PoB2"
 
 workflows:
   ci-ping:
@@ -31,3 +34,27 @@ workflows:
               - git --version
               - echo "SOURCECRAFT_WORKSPACE=$SOURCECRAFT_WORKSPACE"
               - ls
+
+  # Headless-PoB2 оракул — эталон чисел для poe2_build_estimate:
+  # настоящий движок PoB2 без GUI (HeadlessWrapper), 5 сценариев,
+  # сравнение с golden (tolerance 1e-4). Дрейф данных PoB2 / формул кита
+  # красит джобу — golden обновляется только осознанно (oracle/README.md).
+  pob-oracle:
+    tasks:
+      - name: oracle-run
+        cubes:
+          - name: run-oracle
+            devcontainer:
+              # alpine + luajit + luautf8 + node (сборка из oracle/Dockerfile)
+              workspace_folder: "./oracle"
+            script:
+              - cd "$SOURCECRAFT_WORKSPACE"
+              # стейджинг zip'ом: git-клон тяжёлых репо нестабилен (early EOF)
+              - curl -fsSL -o pob2.zip https://codeload.github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/zip/refs/tags/v0.23.1
+              - unzip -q pob2.zip
+              - mv PathOfBuilding-PoE2-0.23.1 pob2
+              # снимок оракула + сверка с golden (exit 1 при расхождении)
+              - sh oracle/run-oracle.sh pob2/src
+            artifacts:
+              paths:
+                - oracle/oracle-output.jsonl
