@@ -19,6 +19,8 @@
  */
 
 import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
+import skillsUrl from '../../../packages/core/data/game/passive_tree/assets/skills.webp?url';
+import groupBgUrl from '../../../packages/core/data/game/passive_tree/assets/group-background.webp?url';
 
 interface LayoutNode {
   name: string;
@@ -28,10 +30,15 @@ interface LayoutNode {
   not: boolean;
   x: number;
   y: number;
+  /** Кадр в спрайт-листе skills.webp (официальный экспорт GGG). */
+  ic?: [number, number, number, number];
 }
 
 interface Layout {
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> & {
+    skills?: { image: string; size: { w: number; h: number }; scale: number };
+    ring?: { image: string; scale: number; size: { w: number; h: number }; frame: [number, number, number, number] };
+  };
   nodes: Record<string, LayoutNode>;
   edges: (readonly (string | number)[])[];
   classStarts: Record<string, string>;
@@ -48,6 +55,7 @@ interface Node {
   isNotable: boolean;
   x: number;
   y: number;
+  ic?: [number, number, number, number];
 }
 
 type Db = {
@@ -56,6 +64,8 @@ type Db = {
   ascClasses: Record<string, string>;
   ascStarts: Record<string, string>;
   classStarts: Record<string, string>;
+  skills?: NonNullable<Layout['metadata']>['skills'];
+  ring?: NonNullable<Layout['metadata']>['ring'];
 };
 let dbPromise: Promise<Db> | null = null;
 
@@ -77,6 +87,7 @@ async function loadDb(): Promise<Db> {
           isNotable: !!n.not,
           x: n.x,
           y: n.y,
+          ic: n.ic ? [n.ic[0], n.ic[1], n.ic[2], n.ic[3]] : undefined,
         });
       }
       const edges: (readonly (string | number)[])[] = [];
@@ -91,6 +102,8 @@ async function loadDb(): Promise<Db> {
         ascClasses: raw.ascClasses ?? {},
         ascStarts: raw.ascStarts ?? {},
         classStarts: raw.classStarts ?? {},
+        skills: raw.metadata?.skills,
+        ring: raw.metadata?.ring,
       };
     })();
   }
@@ -210,6 +223,75 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   svg.appendChild(g);
   canvas.appendChild(svg);
 
+  // ── Спрайты (официальный экспорт GGG). Отличить unique-кадр — чтобы не плодить defs.
+  const skillsScale = db.skills?.scale && db.skills.scale > 0 ? db.skills.scale : 1;
+  const atlasW = db.skills?.size?.w ?? 0;
+  const atlasH = db.skills?.size?.h ?? 0;
+  const frameKey = (f: number[]): string => f.join(',');
+  const symbolOfFrame = new Map<string, string>();
+  if (atlasW && atlasH && [...nodes.values()].some((n) => n.ic)) {
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    let i = 0;
+    for (const n of nodes.values()) {
+      if (!n.ic) continue;
+      const key = frameKey(n.ic);
+      if (symbolOfFrame.has(key)) continue;
+      const id = `m-ic-${i++}`;
+      const sym = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+      sym.setAttribute('id', id);
+      sym.setAttribute('viewBox', `${n.ic[0]} ${n.ic[1]} ${n.ic[2]} ${n.ic[3]}`);
+      const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      img.setAttribute('x', '0');
+      img.setAttribute('y', '0');
+      img.setAttribute('width', String(atlasW));
+      img.setAttribute('height', String(atlasH));
+      img.setAttribute('href', skillsUrl);
+      sym.appendChild(img);
+      defs.appendChild(sym);
+      symbolOfFrame.set(key, id);
+    }
+    svg.insertBefore(defs, g);
+  }
+  const canIcons = symbolOfFrame.size > 0;
+  /** Размер иконки в координатах дерева: кадр / масштаб атласа. */
+  const iconSize = (f: number[]): number => Math.max(f[2], f[3]) / skillsScale;
+
+  // ── Стартовые кольца классов (group-background.webp, официальный экспорт) ───
+  if (db.ring && db.ring.frame && groupBgUrl) {
+    const rf = db.ring.frame;
+    const ringId = 'm-ring';
+    const defs = svg.querySelector('defs') ?? (() => {
+      const d = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      svg.insertBefore(d, g);
+      return d;
+    })();
+    const sym = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+    sym.setAttribute('id', ringId);
+    sym.setAttribute('viewBox', `${rf[0]} ${rf[1]} ${rf[2]} ${rf[3]}`);
+    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    img.setAttribute('x', '0');
+    img.setAttribute('y', '0');
+    img.setAttribute('width', String(db.ring.size?.w ?? rf[0] + rf[2]));
+    img.setAttribute('height', String(db.ring.size?.h ?? rf[1] + rf[3]));
+    img.setAttribute('href', groupBgUrl);
+    sym.appendChild(img);
+    defs.appendChild(sym);
+    const ringScale = db.ring.scale && db.ring.scale > 0 ? db.ring.scale : 1;
+    const size = rf[2] / ringScale;
+    for (const id of Object.values(db.classStarts)) {
+      const n = db.nodes.get(id);
+      if (!n) continue;
+      const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      u.setAttribute('href', `#${ringId}`);
+      u.setAttribute('class', 'mring');
+      u.setAttribute('x', String(n.x - size / 2));
+      u.setAttribute('y', String(n.y - size / 2));
+      u.setAttribute('width', String(size));
+      u.setAttribute('height', String(size));
+      g.appendChild(u);
+    }
+  }
+
   // ── Связи (под узлами): дуга по орбите, если обе точки на одной орбите
   //    (game-вид, как poe2db/игра), иначе прямая. Цвет — асценданси, если совпадает.
   const edgeEls: SVGGeometryElement[] = [];
@@ -244,8 +326,50 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
 
   // ── Узлы ───────────────────────────────────────────────────────────────────
   const circles: Record<string, SVGCircleElement> = {};
+  const nodeEls: Record<string, SVGElement> = {};
+  const underEls: Record<string, SVGCircleElement> = {};
   for (const n of nodes) {
     const r = nodeRadius(n);
+    const symId = n.ic && canIcons ? symbolOfFrame.get(frameKey(n.ic)) : undefined;
+    if (symId) {
+      const s = iconSize(n.ic!);
+      const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      u.setAttribute('href', `#${symId}`);
+      u.setAttribute('class', 'tnode mnode mnode-icon');
+      u.setAttribute('data-id', n.id);
+      u.setAttribute('data-asc', n.ascendancy || '');
+      u.setAttribute('x', String(n.x - s / 2));
+      u.setAttribute('y', String(n.y - s / 2));
+      u.setAttribute('width', String(s));
+      u.setAttribute('height', String(s));
+      nodeEls[n.id] = u;
+      g.appendChild(u);
+      // Невидимый hit-круг поверх иконки: hit-testing <use> идёт только по
+      // закрашенным пикселям спрайта (паддинги иконок «проваливают» клик),
+      // плюс стартовые кольца перекрывают область. Круг ловит клики надёжно.
+      const h = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      h.setAttribute('class', 'tnode mnode mhit');
+      h.setAttribute('data-id', n.id);
+      h.setAttribute('data-asc', n.ascendancy || '');
+      h.setAttribute('cx', String(n.x));
+      h.setAttribute('cy', String(n.y));
+      h.setAttribute('r', String(s * 0.3));
+      h.setAttribute('fill', 'none');
+      g.appendChild(h);
+      // Тонкая подложка-контур под иконкой: цвет preserved для фильтра/лёгенды.
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('class', 'mnode-under');
+      c.setAttribute('data-id', n.id);
+      c.setAttribute('cx', String(n.x));
+      c.setAttribute('cy', String(n.y));
+      c.setAttribute('r', String(s / 2));
+      c.setAttribute('fill', 'none');
+      c.setAttribute('stroke', n.ascendancy ? ascColor(n.ascendancy) : '#00000033');
+      c.setAttribute('stroke-width', String(s / 14));
+      underEls[n.id] = c;
+      g.insertBefore(c, u);
+      continue;
+    }
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('class', 'tnode mnode');
     c.setAttribute('data-id', n.id);
@@ -259,6 +383,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     c.setAttribute('stroke', '#00000077');
     c.setAttribute('stroke-width', '1.1');
     circles[n.id] = c;
+    nodeEls[n.id] = c;
     g.appendChild(c);
     if (n.isNotable && !n.ascendancy) {
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -272,15 +397,15 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   // Стартовые точки асценданси — кольца.
   const startRingAsc: Record<string, string> = {};
   for (const [asc, id] of Object.entries(db.ascStarts)) {
-    const c = circles[id];
-    const ringColor = circles[id]?.getAttribute('fill') ?? ascColor(asc);
+    const n = db.nodes.get(id);
+    const ringColor = n?.ascendancy ? ascColor(n.ascendancy) : ascColor(asc);
     startRingAsc[id] = asc;
-    if (!c) continue;
+    if (!n) continue;
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     ring.setAttribute('class', 'mstart');
     ring.setAttribute('data-asc', asc);
-    ring.setAttribute('cx', c.getAttribute('cx')!);
-    ring.setAttribute('cy', c.getAttribute('cy')!);
+    ring.setAttribute('cx', String(n.x));
+    ring.setAttribute('cy', String(n.y));
     ring.setAttribute('r', String(START_R));
     ring.setAttribute('stroke', ringColor);
     ring.setAttribute('fill', 'none');
@@ -319,17 +444,17 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       line.setAttribute('opacity', !selected || (asc && active.has(asc)) ? '0.55' : '0.08');
     }
     for (const n of nodes) {
-      const c = circles[n.id];
-      if (!c) continue;
-      if (!selected) {
-        c.setAttribute('opacity', '1');
-      } else if (n.ascendancy && active.has(n.ascendancy)) {
-        c.setAttribute('opacity', '1');
-      } else if (!n.ascendancy) {
-        c.setAttribute('opacity', '0.22');
-      } else {
-        c.setAttribute('opacity', '0.12');
-      }
+      const el = nodeEls[n.id];
+      const under = underEls[n.id];
+      const op = !selected
+        ? '1'
+        : n.ascendancy && active.has(n.ascendancy)
+          ? '1'
+          : !n.ascendancy
+            ? '0.22'
+            : '0.12';
+      el?.setAttribute('opacity', op);
+      under?.setAttribute('opacity', op);
     }
   }
   classSel.addEventListener('change', () => applyClassFilter(classSel.value));

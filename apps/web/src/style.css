@@ -569,6 +569,9 @@ a { color: var(--gold); }
 .tree-svg .tnode { cursor: pointer; }
 .tree-svg .tnode:hover { filter: brightness(1.25); }
 .tree-svg .mnode { stroke-width: 1.2px; }
+.tree-svg .mnode-under { pointer-events: none; }
+.tree-svg .mhit { pointer-events: all; stroke: none; }
+.tree-svg .mring { pointer-events: none; }
 .tree-svg .medge {
   stroke-width: 2.2px;
   stroke-linecap: round;
