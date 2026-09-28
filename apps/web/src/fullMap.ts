@@ -328,6 +328,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   const circles: Record<string, SVGCircleElement> = {};
   const nodeEls: Record<string, SVGElement> = {};
   const underEls: Record<string, SVGCircleElement> = {};
+  // hit-круги: [el, мировой радиус] — apply() держит экранный радиус >= MIN_HIT_PX.
+  const hitCircles: [SVGCircleElement, number][] = [];
+  const MIN_HIT_PX = 6;
   for (const n of nodes) {
     const r = nodeRadius(n);
     const symId = n.ic && canIcons ? symbolOfFrame.get(frameKey(n.ic)) : undefined;
@@ -353,6 +356,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       h.setAttribute('data-asc', n.ascendancy || '');
       h.setAttribute('cx', String(n.x));
       h.setAttribute('cy', String(n.y));
+      hitCircles.push([h, s * 0.3]);
       h.setAttribute('r', String(s * 0.3));
       h.setAttribute('fill', 'none');
       g.appendChild(h);
@@ -431,6 +435,10 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   function apply(): void {
     const tr = `translate(${tx} ${ty}) scale(${baseScale * k}) translate(${-cx} ${-cy})`;
     g.setAttribute('transform', tr);
+    // Гарантированный минимальный экранный размер hit-круга (кликабельность
+    // на дальнем зуме, когда иконка < 1 px).
+    const minR = MIN_HIT_PX / (baseScale * k);
+    for (const [el, r] of hitCircles) el.setAttribute('r', String(Math.max(r, minR)));
   }
 
   // ── Фильтр по классу ────────────────────────────────────────────────────────
