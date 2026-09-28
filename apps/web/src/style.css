@@ -572,6 +572,7 @@ a { color: var(--gold); }
 .tree-svg .mnode-under { pointer-events: none; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
 .tree-svg .mhit { pointer-events: all; stroke: none; }
 .tree-svg .mring { pointer-events: none; }
+.tree-svg .mclassbg { pointer-events: none; opacity: 0.5; }
 .tree-svg .medge {
   /* Экранный, не мировой размер: на дальнем зуме мировая толщина 2.2
      превращается в субпиксельную кашу; не-скейлинг штрих держит 1px. */

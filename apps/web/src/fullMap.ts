@@ -21,6 +21,7 @@
 import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
 import skillsUrl from '../../../packages/core/data/game/passive_tree/assets/skills.webp?url';
 import groupBgUrl from '../../../packages/core/data/game/passive_tree/assets/group-background.webp?url';
+import { classBgUrls } from './classBgAssets';
 
 interface LayoutNode {
   name: string;
@@ -38,6 +39,13 @@ interface Layout {
   metadata?: Record<string, unknown> & {
     skills?: { image: string; size: { w: number; h: number }; scale: number };
     ring?: { image: string; scale: number; size: { w: number; h: number }; frame: [number, number, number, number] };
+    classBgs?: Record<string, {
+      image: string;
+      scale: number;
+      size: { w: number; h: number };
+      frames: Record<string, [number, number, number, number]>;
+      positions: { asc: string; x: number; y: number; idx: number }[];
+    }>;
   };
   nodes: Record<string, LayoutNode>;
   edges: (readonly (string | number)[])[];
@@ -66,6 +74,7 @@ type Db = {
   classStarts: Record<string, string>;
   skills?: NonNullable<Layout['metadata']>['skills'];
   ring?: NonNullable<Layout['metadata']>['ring'];
+  classBgs?: NonNullable<Layout['metadata']>['classBgs'];
 };
 let dbPromise: Promise<Db> | null = null;
 
@@ -104,6 +113,7 @@ async function loadDb(): Promise<Db> {
         classStarts: raw.classStarts ?? {},
         skills: raw.metadata?.skills,
         ring: raw.metadata?.ring,
+        classBgs: raw.metadata?.classBgs,
       };
     })();
   }
@@ -220,6 +230,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   svg.style.width = '100%';
   svg.style.height = '100%';
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+  // Пер-класс фоны (заполняется блоком ниже; гасятся фильтром классов).
+  let classBgUnder: SVGUseElement[] = [];
   svg.appendChild(g);
   canvas.appendChild(svg);
 
@@ -290,6 +303,69 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       u.setAttribute('height', String(size));
       g.appendChild(u);
     }
+  }
+
+  // ── Пер-класс фоны (официальные webp GGG): Class1..N — асценданси-кластеры
+  //    на абсолютных координатах; Class0 — база класса (в экспорте x/y=0,
+  //    рисуем на стартовом узле класса). Слой — под рёбрами и узлами.
+  if (db.classBgs) {
+    const defs = svg.querySelector('defs') ?? (() => {
+      const d = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      svg.insertBefore(d, g);
+      return d;
+    })();
+    const bgEls: SVGUseElement[] = [];
+    for (const [cls, sheet] of Object.entries(db.classBgs)) {
+      const url = classBgUrls(cls);
+      if (!url) continue;
+      const symId = 'm-clsbg-' + cls.toLowerCase();
+      // один symbol на кадр; атлас у каждого класса свой
+      const frameIds = new Map<string, string>();
+      for (const p of sheet.positions) {
+        const frameKey = 'Class' + p.idx;
+        const frame = sheet.frames?.[frameKey];
+        if (!frame) continue;
+        let fid = frameIds.get(frameKey);
+        if (!fid) {
+          fid = `${symId}-${frameKey}`;
+          const sym = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+          sym.setAttribute('id', fid);
+          sym.setAttribute('viewBox', `${frame[0]} ${frame[1]} ${frame[2]} ${frame[3]}`);
+          const im = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+          im.setAttribute('x', '0');
+          im.setAttribute('y', '0');
+          im.setAttribute('width', String(sheet.size?.w ?? frame[0] + frame[2]));
+          im.setAttribute('height', String(sheet.size?.h ?? frame[1] + frame[3]));
+          im.setAttribute('href', url);
+          sym.appendChild(im);
+          defs.appendChild(sym);
+          frameIds.set(frameKey, fid);
+        }
+        const scale = sheet.scale && sheet.scale > 0 ? sheet.scale : 1;
+        const size = frame[2] / scale;
+        // центр: абсолютные координаты (асценданси), для базы — старт-узел
+        let cx = p.x, cy = p.y;
+        if (!p.asc) {
+          const startId = db.classStarts[cls];
+          const sn = startId ? db.nodes.get(startId) : undefined;
+          if (!sn) continue;
+          cx = sn.x; cy = sn.y;
+        }
+        const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        u.setAttribute('href', `#${fid}`);
+        u.setAttribute('class', 'mclassbg');
+        u.setAttribute('data-asc', p.asc);
+        u.setAttribute('data-cls', cls);
+        u.setAttribute('x', String(cx - size / 2));
+        u.setAttribute('y', String(cy - size / 2));
+        u.setAttribute('width', String(size));
+        u.setAttribute('height', String(size));
+        bgEls.push(u);
+        g.appendChild(u);
+      }
+    }
+    // класс-фильтр также гасит/подсвечивает фоны (см. applyClassFilter)
+    classBgUnder = bgEls;
   }
 
   // ── Связи (под узлами): дуга по орбите, если обе точки на одной орбите
@@ -492,6 +568,11 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       // inline style, не атрибут: CSS-правило .medge{opacity:.42} перебивает
       // presentation-атрибут, и фильтр визуально не работал.
       line.style.opacity = !selected || (asc && active.has(asc)) ? '' : '0.15';
+    }
+    for (const bg of classBgUnder) {
+      const asc = bg.getAttribute('data-asc');
+      const on = !selected || (asc ? active.has(asc) : bg.getAttribute('data-cls') === selected);
+      bg.style.opacity = on ? '' : '0.10';
     }
     for (const n of nodes) {
       const el = nodeEls[n.id];
