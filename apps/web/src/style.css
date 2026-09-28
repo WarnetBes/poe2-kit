@@ -569,17 +569,21 @@ a { color: var(--gold); }
 .tree-svg .tnode { cursor: pointer; }
 .tree-svg .tnode:hover { filter: brightness(1.25); }
 .tree-svg .mnode { stroke-width: 1.2px; }
-.tree-svg .mnode-under { pointer-events: none; }
+.tree-svg .mnode-under { pointer-events: none; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
 .tree-svg .mhit { pointer-events: all; stroke: none; }
 .tree-svg .mring { pointer-events: none; }
 .tree-svg .medge {
-  stroke-width: 2.2px;
+  /* Экранный, не мировой размер: на дальнем зуме мировая толщина 2.2
+     превращается в субпиксельную кашу; не-скейлинг штрих держит 1px. */
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
   stroke-linecap: round;
   fill: none;
-  opacity: 0.55;
+  opacity: 0.42;
   pointer-events: none;
   transition: opacity 0.12s linear;
 }
+.tree-svg .medge[data-asc] { opacity: 0.62; }
 .tnode-label {
   fill: #dbe6f5;
   font-size: 13px;
@@ -590,7 +594,11 @@ a { color: var(--gold); }
   paint-order: stroke;
   stroke: #06090e;
   stroke-width: 4px;
+  vector-effect: non-scaling-stroke;
+  /* Видимость управляется из fullMap.apply() (по зуму): display по умолчанию */
+  display: none;
 }
+.tree-svg.map-svg .tnode-label.label-on { display: block; }
 .tree-detail {
   flex: 0 0 260px;
   padding: 12px 14px;

@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/web",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "type": "module",
   "description": "Веб-приложение PoE2 Kit: прайс-чек, курсы валют, гид по прокачке, AI-чат, импорт билда",

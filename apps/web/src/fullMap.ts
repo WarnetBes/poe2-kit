@@ -328,19 +328,28 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   const circles: Record<string, SVGCircleElement> = {};
   const nodeEls: Record<string, SVGElement> = {};
   const underEls: Record<string, SVGCircleElement> = {};
+  // Иконки: [use, подложка, мировой размер, мин. экранный px] — apply()
+  // держит size = max(world, minPx/(baseScale*k)): на дальнем зуме иконка
+  // мирового размера перекрывает соседей (промежутки 32-42 юнитов), поэтому
+  // там она клампится к точке ~4-7 px, как у poe2db.
+  const iconEls: [SVGUseElement, SVGCircleElement, number, number, Node][] = [];
   // hit-круги: [el, мировой радиус] — apply() держит экранный радиус >= MIN_HIT_PX.
   const hitCircles: [SVGCircleElement, number][] = [];
   const MIN_HIT_PX = 6;
+  // Подписи notable-узлов: показывать только на близком зуме (на дальнем — каша).
+  const labelEls: SVGTextElement[] = [];
   for (const n of nodes) {
     const r = nodeRadius(n);
     const symId = n.ic && canIcons ? symbolOfFrame.get(frameKey(n.ic)) : undefined;
     if (symId) {
       const s = iconSize(n.ic!);
+      const minPx = n.isKeystone ? 7 : n.isNotable ? 5 : 4;
       const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
       u.setAttribute('href', `#${symId}`);
       u.setAttribute('class', 'tnode mnode mnode-icon');
       u.setAttribute('data-id', n.id);
       u.setAttribute('data-asc', n.ascendancy || '');
+      iconEls.push([u, null!, s, minPx, n]);
       u.setAttribute('x', String(n.x - s / 2));
       u.setAttribute('y', String(n.y - s / 2));
       u.setAttribute('width', String(s));
@@ -371,7 +380,17 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       c.setAttribute('stroke', n.ascendancy ? ascColor(n.ascendancy) : '#00000033');
       c.setAttribute('stroke-width', String(s / 14));
       underEls[n.id] = c;
+      iconEls[iconEls.length - 1]![1] = c;
       g.insertBefore(c, u);
+      if (n.isNotable && !n.ascendancy) {
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', String(n.x));
+        t.setAttribute('y', String(n.y - s / 2 - 4));
+        t.setAttribute('class', 'tnode-label');
+        t.textContent = n.name;
+        labelEls.push(t);
+        g.appendChild(t);
+      }
       continue;
     }
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -395,6 +414,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       t.setAttribute('y', String(n.y - r - 3));
       t.setAttribute('class', 'tnode-label');
       t.textContent = n.name;
+      labelEls.push(t);
       g.appendChild(t);
     }
   }
@@ -435,10 +455,30 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   function apply(): void {
     const tr = `translate(${tx} ${ty}) scale(${baseScale * k}) translate(${-cx} ${-cy})`;
     g.setAttribute('transform', tr);
+    const sk = baseScale * k;
+    // Иконки: экранный размер = max(мировой, мин. px) — на дальнем зуме
+    // кламп к точке 4-7 px (иначе иконки перекрывают соседей: промежутки 32-42).
+    for (const [u, c, s, minPx, n] of iconEls) {
+      const eff = Math.max(s, minPx / sk);
+      u.setAttribute('x', String(n.x - eff / 2));
+      u.setAttribute('y', String(n.y - eff / 2));
+      u.setAttribute('width', String(eff));
+      u.setAttribute('height', String(eff));
+      if (c) c.setAttribute('r', String(eff / 2));
+    }
     // Гарантированный минимальный экранный размер hit-круга (кликабельность
     // на дальнем зуме, когда иконка < 1 px).
-    const minR = MIN_HIT_PX / (baseScale * k);
+    const minR = MIN_HIT_PX / sk;
     for (const [el, r] of hitCircles) el.setAttribute('r', String(Math.max(r, minR)));
+    // Подписи notable — только когда иконка ≥ ~12 px экрана (иначе каша);
+    // шрифт держим экранным (обратный мировому масштаб), толщину — non-scaling.
+    const labelsOn = sk * 68 >= 12;
+    const cls = labelsOn ? 'tnode-label label-on' : 'tnode-label';
+    const fs = String(13 / sk);
+    for (const t of labelEls) {
+      t.setAttribute('class', cls);
+      t.setAttribute('font-size', fs);
+    }
   }
 
   // ── Фильтр по классу ────────────────────────────────────────────────────────
@@ -449,7 +489,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     }
     for (const line of edgeEls) {
       const asc = line.getAttribute('data-asc');
-      line.setAttribute('opacity', !selected || (asc && active.has(asc)) ? '0.55' : '0.08');
+      // inline style, не атрибут: CSS-правило .medge{opacity:.42} перебивает
+      // presentation-атрибут, и фильтр визуально не работал.
+      line.style.opacity = !selected || (asc && active.has(asc)) ? '' : '0.15';
     }
     for (const n of nodes) {
       const el = nodeEls[n.id];
