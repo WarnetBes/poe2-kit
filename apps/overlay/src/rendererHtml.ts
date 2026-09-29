@@ -618,18 +618,32 @@ export const rendererHtml = `<!doctype html>
       }
       return row;
     }).join('');
-    // Сетапы камней: какие камни и куда вставлять.
+    // Сетапы камней: какие камни и куда вставлять + чек-лист (Ctrl+C по камню в игре).
     var gemRows = '';
     if (b.gemSetups && b.gemSetups.length) {
+      var seen = b.gemSeen || {};
+      function gemKey(n) {
+        return String(n || '').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
+      }
+      function gemMark(en, expLvl) {
+        var sv = seen[gemKey(en)];
+        if (!sv) return '⬜';
+        var lvlTxt = sv.level != null ? (' ур.' + sv.level) : '';
+        return '<span title="Скопирован ' + (sv.level != null ? 'ур.' + sv.level : '') +
+          (expLvl != null ? ' · в билде ур.' + expLvl : '') + '">✅' + lvlTxt + '</span>';
+      }
       gemRows = '<tr><td colspan="4" style="padding-top:5px;border-top:1px solid #2a3344">' +
-        '<span class="sub">💎 Камни билда — куда вставлять</span></td></tr>';
+        '<span class="sub">💎 Камни билда — куда вставлять (Ctrl+C по камню в окне умений отметит ✅)</span></td></tr>';
       gemRows += b.gemSetups.map(function (g) {
         var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
-        var html = '<tr><td>💎</td>' +
+        var html = '<tr><td>' + gemMark(g.active, g.activeLevel) + '</td>' +
           '<td class="slot" colspan="3"><b>' + esc(g.active) + '</b>' + lvl +
           ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
         if (g.supports && g.supports.length) {
-          html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + esc(g.supports.join(', ')) + '</td></tr>';
+          var sup = g.supports.map(function (s) {
+            return '<span>' + gemMark(s, null) + ' ' + esc(s) + '</span>';
+          }).join(' · ');
+          html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + sup + '</td></tr>';
         }
         return html;
       }).join('');

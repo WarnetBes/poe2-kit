@@ -88,3 +88,6 @@ deploy/*
 !deploy/poe2k-overlay-transfer.zip
 
 oracle/oracle-output.jsonl
+
+attach_resp.json
+portable_out.txt

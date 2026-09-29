@@ -455,6 +455,8 @@ interface BuildState {
   }> | null;
   /** Показана ли панель билда в виджете. */
   panelVisible: boolean;
+  /** Чек-лист камней: ключ — normName(EN-имя), значение из Ctrl+C гема в игре. */
+  gemSeen: Record<string, { level: number | null; native: number | null; ru: string; at: number }> | null;
 }
 
 let buildState: BuildState | null = null;
@@ -908,6 +910,7 @@ function loadBuildState(): void {
         summary: raw.summary ?? null,
         metaSkills: raw.metaSkills ?? null,
         gemSetups: raw.gemSetups ?? null,
+        gemSeen: raw.gemSeen ?? null,
         panelVisible: false,
       };
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
@@ -975,6 +978,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       summary: buildState.summary,
       metaSkills: buildState.metaSkills,
       gemSetups: buildState.gemSetups,
+      gemSeen: buildState.gemSeen ?? null,
     },
   };
 }
@@ -1086,6 +1090,162 @@ function toEn(kind: 'base' | 'unique', s: string): string {
   if (!/[а-яё]/i.test(s)) return s; // уже не русское — нечего переводить
   const dict = kind === 'base' ? ruEnBases : ruEnUniques;
   return dict.get(normName(s)) ?? s;
+}
+
+// ─── Чек-лист камней: RU-имена гема из билда ← poe2db ────────────────────────
+// RU-клиент: Ctrl+C на камне в окне умений даёт кириллическое имя («Ледяной
+// удар»), PoB-билд — английское (Ice Strike). Словарь строим ТОЛЬКО для камней
+// текущего билда: по EN-имени берём страницу poe2db.tw/ru/<Slug> и читаем
+// <title> («Ледяной удар - PoE2DB…»). Это единственный проверенный формат.
+const GEM_DICT_FILE_VERSION = 1;
+const gemRuEn = new Map<string, string>(); // normName(RU-имя гема) -> EN-имя
+const gemDictFetching = new Set<string>(); // EN-имена «в полёте» (анти-спам)
+
+function gemRuEnFile(): string {
+  return path.join(app.getPath('userData'), 'gem-ru-en-dict.json');
+}
+
+function loadGemRuEnDict(): void {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(gemRuEnFile(), 'utf8'));
+    const data = raw as { version?: number; map?: Record<string, string> };
+    if (data.version !== GEM_DICT_FILE_VERSION || typeof data.map !== 'object') return;
+    for (const [k, v] of Object.entries(data.map)) gemRuEn.set(normName(k), v);
+    console.log(`[overlay] gem ru→en dict loaded: ${gemRuEn.size}`);
+  } catch {
+    /* нет файла — ок */
+  }
+}
+
+function saveGemRuEnDict(): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(
+      gemRuEnFile(),
+      JSON.stringify({ version: GEM_DICT_FILE_VERSION, map: Object.fromEntries(gemRuEn) }),
+      'utf8',
+    );
+  } catch {
+    /* некритично */
+  }
+}
+
+/**
+ * Достроить словарь RU-имён для перечисленных EN-камней билда poe2db-титулами.
+ * Ошибки молча пропускаем (страниц нет для тировых имён саппортов — увидим в логе).
+ */
+async function ensureGemRuEnDict(namesEn: string[]): Promise<void> {
+  if (!gemRuEn.size) loadGemRuEnDict();
+  for (const en of namesEn) {
+    const key = normName(en);
+    if (!key || gemRuEn.has(key) || gemRuEn.has(normName(String(en))) || gemDictFetching.has(en)) continue;
+    // уже есть обратная запись?
+    if ([...gemRuEn.values()].some((v) => normName(v) === key)) continue;
+    gemDictFetching.add(en);
+    try {
+      const slug = encodeURIComponent(en.trim().replace(/\s+/g, '_'));
+      const res = await fetch(`https://poe2db.tw/ru/${slug}`, {
+        headers: { 'User-Agent': 'poe2-kit-overlay/1.0 (gem names)' },
+      });
+      if (!res.ok) {
+        if (res.status === 404) console.warn(`[overlay] gem dict: нет страницы poe2db для "${en}"`);
+        continue;
+      }
+      const html = await res.text();
+      const title = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? '';
+      // Формат (проверено 2026-09-29): «Ледяной удар - PoE2DB, Path of Exile Wiki ru»
+      const m = title.match(/^(.+?)\s+-\s+PoE2DB/);
+      if (!m || !m[1]!.trim() || /^[a-z0-9_/]+$/i.test(m[1]!)) continue;
+      const ru = m[1]!
+        .replace(/&amp;/g, '&')
+        .replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .trim();
+      if (normName(ru) === key) continue; // страница редиректнула на EN-имя
+      gemRuEn.set(normName(ru), en);
+      console.log(`[overlay] gem dict: «${ru}» → ${en}`);
+      saveGemRuEnDict();
+    } catch {
+      /* сеть —best effort */
+    } finally {
+      gemDictFetching.delete(en);
+    }
+  }
+}
+
+/** Гем из клир-текста буфера (окно умений, Ctrl+C по камню). */
+interface ParsedGem {
+  name: string;
+  total: number | null;
+  native: number | null;
+  isSupport: boolean;
+}
+
+/** Распознать текст гема. Формат RU-клиента подтверждён живыми копиями 2026-09-29. */
+function parseGemText(itemText: string): ParsedGem | null {
+  const cls = itemText.match(/^\s*Класс предмета:\s*(.+)$/m)?.[1]?.trim() ?? '';
+  if (!/камни/i.test(cls)) return null;
+  const isSupport = /поддержки/i.test(cls);
+  const name = itemText
+    .match(/^\s*Редкость:\s*(?:Камень|Gem)\s*\r?\n([^\r\n]+)$/m)?.[1]
+    ?.trim();
+  if (!name) return null;
+  const total = Number(itemText.match(/^\s*Уровень:\s*(\d+)/m)?.[1] ?? NaN);
+  const native = Number(itemText.match(/^\s*(\d+)\s+Уровн[^\r\n]*от камня\s*$/m)?.[1] ?? NaN);
+  return {
+    name,
+    total: Number.isFinite(total) ? total : null,
+    native: Number.isFinite(native) ? native : null,
+    isSupport,
+  };
+}
+
+/** Сопоставить скопированный гем с сетапами билда, отметить в чек-листе. */
+async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<string, unknown>> {
+  const ruName = gem.name;
+  let en = gem.name;
+  if (/[а-яё]/i.test(ruName) && buildState?.gemSetups) {
+    const namesEn = [
+      ...new Set(buildState.gemSetups.flatMap((s) => [s.active, ...s.supports])),
+    ].filter(Boolean);
+    await withTimeout(ensureGemRuEnDict(namesEn), 15_000, 'ensureGemRuEnDict').catch(() => {});
+    en = gemRuEn.get(normName(ruName)) ?? ruName;
+  }
+  const key = normName(en);
+  let verdict = 'нет билда — просто гем';
+  if (buildState?.gemSetups) {
+    const known = [
+      ...new Set(buildState.gemSetups.flatMap((s) => [s.active, ...s.supports])),
+    ].filter(Boolean);
+    const inBuild = known.some((g) => normName(g) === key);
+    if (inBuild) {
+      buildState.gemSeen ??= {};
+      buildState.gemSeen[key] = {
+        level: gem.total,
+        native: gem.native,
+        ru: ruName,
+        at: Date.now(),
+      };
+      saveBuildState();
+      sendBuildUpdate();
+      verdict = '✓ есть в билде';
+    } else {
+      verdict = '✗ не в билде';
+    }
+  }
+  console.log(
+    `[overlay] gem check: "${ruName}" → ${en} ур.${gem.total ?? '?'} (с камня ${gem.native ?? '?'}) — ${verdict}`,
+  );
+  return {
+    itemName: `💎 ${ruName} — ур. ${gem.total ?? '?'} · ${verdict}`,
+    rarity: 'gem',
+    estimate: null,
+    listings: [],
+    sources: [],
+    updatedAt: Date.now(),
+    gemCheck: true,
+    itemText,
+  };
 }
 
 /**
@@ -1258,6 +1418,7 @@ async function runBuildImport(): Promise<void> {
       summary: null,
       metaSkills: null,
       gemSetups: null,
+      gemSeen: null,
       panelVisible: true,
     };
     saveBuildState();
@@ -1374,6 +1535,9 @@ async function refreshGemSetups(input: string): Promise<void> {
     saveBuildState();
     sendBuildUpdate();
     console.log(`[overlay] gem setups: ${setups.length} связок (${setups.map((s) => s.active).slice(0, 3).join(', ')}…)`);
+    // Фон: перечень RU-имён этих камней с poe2db (нужно для Ctrl+C-чек-листа).
+    const namesEn = [...new Set(setups.flatMap((s) => [s.active, ...s.supports]))].filter(Boolean);
+    void ensureGemRuEnDict(namesEn);
   } catch (err) {
     console.warn('[overlay] gem setups failed:', err instanceof Error ? err.message : err);
   }
@@ -1706,6 +1870,11 @@ function splitClipboardItems(text: string): string[] {
 
 /** Проверка цены одного предмета: ru→en переопределения, priceCheck, фолбэк на локальный парсинг. */
 async function checkPriceItem(itemText: string): Promise<Record<string, unknown>> {
+  // Камни умений/поддержки trade2 item-name поиском не прайсит — не ходим туда:
+  // распознаём гем, отмечаем в чек-листе билда и показываем вердикт в панели.
+  const gem = parseGemText(itemText);
+  if (gem) return handleGemCheck(gem, itemText);
+
   // Русский клиент: trade2/poe2scout принимают только английские имена/базы.
   // Моды остаются ru — их trade2 по базе статов не сопоставит, сработает fallback «по базовому типу».
   let nameOverride: string | undefined;
