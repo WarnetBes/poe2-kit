@@ -58,11 +58,22 @@ if errorlevel 1 (
 echo.
 echo ============================================
 echo  MCP server is ready. It runs over stdio -
-echo  a client (OpenCode, Claude Desktop, ...)
-echo  starts it itself. Register it like this:
+echo  a client (OpenCode, Claude Desktop, ...) starts it itself.
 echo.
+echo  Register it like this:
 echo    command: node
-echo    args:    "%~dp0apps\mcp\dist\index.js"
+echo    args:    "F:\OpenCodeProjects\poe2-kit\apps\mcp\dist\index.js"
+echo.
+echo  OpenCode - add to opencode.json (on this PC):
+echo    "mcp": { "poe2-kit": {
+echo      "command": "node",
+echo      "args": ["F:\\OpenCodeProjects\\poe2-kit\\apps\\mcp\\dist\\index.js"],
+echo      "enabled": true } }
+echo.
+echo  Claude Desktop - claude_desktop_config.json:
+echo    "mcpServers": { "poe2-kit": {
+echo      "command": "node",
+echo      "args": ["F:\\OpenCodeProjects\\poe2-kit\\apps\\mcp\\dist\\index.js"] } }
 echo.
 echo  Note: overlay and MCP work at the same time
 echo  (MCP has no ports, it is stdio).
