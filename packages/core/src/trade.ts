@@ -1231,8 +1231,7 @@ export async function priceCheck(
         debugLog('fallback skip: RU name without translation and no valid type');
       } else {
         listings = await searchTrade(
-          { name: nameUsable ? parsed.name : undefined, type: resolvedType ?? undefined },
-          { league },
+          { name: nameUsable ? (parsed.name as string) : undefined, type: resolvedType ?? undefined },          { league },
         );
         debugLog('fallback by name/type:', `${listings.length} listings`);
       }
