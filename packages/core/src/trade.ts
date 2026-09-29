@@ -1052,6 +1052,39 @@ async function listingsToChaosPrices(
   return out;
 }
 
+/** №67: проставить каждому листингу эквивалент в Chaos (l.chaos).
+ *  Курсы уже могли быть загружены для estimate — fetchBestCurrencyRates
+ *  кэширует их внутри, повторный вызов дешёвый. Не бросает ошибки:
+ *  нет курсов — поле остаётся undefined, рендерер честно не покажет ≈. */
+async function attachListingChaos(listings: TradeListing[], league?: string): Promise<void> {
+  if (!listings.length) return;
+  let rateById: Map<string, number | null> | null = null;
+  const ratesFor = async (): Promise<Map<string, number | null>> => {
+    if (rateById) return rateById;
+    const m = new Map<string, number | null>();
+    for (const r of await fetchBestCurrencyRates(league)) {
+      const key = r.name.toLowerCase();
+      m.set(key, r.chaosValue);
+      m.set(key.replace(/\s*orb$/, ''), r.chaosValue);
+    }
+    rateById = m;
+    return m;
+  };
+  for (const l of listings) {
+    const cur = (l.currency ?? '').toLowerCase();
+    if (cur === 'chaos' || cur === 'chaos orb') {
+      l.chaos = l.price;
+      continue;
+    }
+    try {
+      const cv = (await ratesFor()).get(cur);
+      if (cv != null) l.chaos = Math.round(l.price * cv * 100) / 100;
+    } catch {
+      return; // сеть недоступна — остальное не пробуем
+    }
+  }
+}
+
 /** Медианная оценка из массива цен (в Chaos). Нужно > 2 валидных цен. */
 /** Медианная оценка из массива цен (в Chaos). Нужно >= 3 валидных цен —
  *  меньше считаем недостоверным (шум единичных листингов) и помечаем low. */
@@ -1249,6 +1282,9 @@ export async function priceCheck(
   }
   // note без estimate не осмыслен (оценивать нечего) — не вешаем ложную пометку.
   if (!estimate) note = undefined;
+
+  // №67: per-listing chaos-эквивалент для сравнения в рендерере.
+  await attachListingChaos(listings, league).catch(() => {});
 
   // Журнал обучения (opt-in, PRIVACY: только структура предмета — см. learnlog.ts)
   recordLearnedItem({

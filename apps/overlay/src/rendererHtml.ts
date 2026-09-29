@@ -459,6 +459,7 @@ export const rendererHtml = `<!doctype html>
 
       <div class="set-row">
         <div class="tip">⚠ Сторонний инструмент. GGG не гарантирует безопасность сторонних тулов. Kit ничего не делает за вас в игре: читает буфер и публичные API цен — каждое действие в игре делаете сами вы. Использование — на ваш риск.</div>
+        <div class="tip" style="color:var(--dim)">This product isn't affiliated with or endorsed by Grinding Gear Games in any way.</div>
       </div>
 
       <div class="set-actions">
@@ -1036,8 +1037,17 @@ export const rendererHtml = `<!doctype html>
         var g = groups[curNames[gi]];
         var gmax = g[g.length - 1].price || 1;
         var gmid = g[Math.floor(g.length / 2)].price;
+        // №68: медиана группы в chaos — если core проставил l.chaos (курс известен).
+        var chVals = [];
+        for (var ck = 0; ck < g.length; ck++) {
+          if (g[ck].chaos != null) chVals.push(g[ck].chaos);
+        }
+        chVals.sort(function (a, b) { return a - b; });
+        var chMid = chVals.length
+          ? ' · ≈<b style="color:var(--accent)">' + Number(chVals[Math.floor(chVals.length / 2)]).toFixed(1) + '</b> chaos'
+          : '';
         rows += '<tr><td colspan="3" class="grp">' + esc(curNames[gi]) +
-          ' · предложений: ' + g.length + ' · медиана: <b>' + esc(String(gmid)) + '</b></td></tr>';
+          ' · предложений: ' + g.length + ' · медиана: <b>' + esc(String(gmid)) + '</b>' + chMid + '</td></tr>';
         for (var gj = 0; gj < g.length; gj++) {
           var l = g[gj];
           var w = Math.max(2, Math.round(((l.price || 0) / gmax) * 100));

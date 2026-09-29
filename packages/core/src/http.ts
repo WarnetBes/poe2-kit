@@ -286,7 +286,7 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
           Accept: 'application/json',
           // GGG требует описательный User-Agent с контактом (политика API).
           // Node fetch без UA получает 403 от Cloudflare.
-          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
+          'User-Agent': 'poe2-kit/1.0 (open-source toolkit; contact: https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit)',
           ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
           ...opts.headers,
         },
@@ -328,7 +328,7 @@ export async function httpText(url: string, opts: HttpOptions = {}): Promise<str
         cache: 'no-store',
         headers: {
           Accept: 'text/html,application/xhtml+xml,*/*',
-          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
+          'User-Agent': 'poe2-kit/1.0 (open-source toolkit; contact: https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit)',
           ...opts.headers,
         },
         signal: controller.signal,
@@ -362,7 +362,7 @@ export async function httpBytes(url: string, opts: HttpOptions = {}): Promise<Ui
         cache: 'no-store',
         headers: {
           Accept: 'application/octet-stream,*/*',
-          'User-Agent': 'poe2-kit/0.1 (open-source toolkit; github.com/poe2-kit)',
+          'User-Agent': 'poe2-kit/1.0 (open-source toolkit; contact: https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit)',
           ...opts.headers,
         },
         signal: controller.signal,

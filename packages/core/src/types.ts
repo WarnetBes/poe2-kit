@@ -87,6 +87,8 @@ export interface TradeListing {
   currency: string;
   /* Имя листинга (если доступно) */
   itemName?: string;
+  /** №67: эквивалент в Chaos Orbs (курс poe2scout/poe.ninja); null/нет — курс неизвестен. */
+  chaos?: number | null;
 }
 
 /**
