@@ -761,6 +761,20 @@ function toggleMoveMode(): void {
   if (moveUnlocked) {
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
+    // Окно могло жить с начальных координат создания (-w,-h — за экраном,
+    // см. createOverlayWindow): трекер позиционирует его только после
+    // нахождения окна игры. Если игра ещё не найдена, втаскиваем окно
+    // в видимую рабочую область, иначе «move mode показывает пустоту».
+    const [cx, cy] = win.getPosition();
+    const area = screen.getPrimaryDisplay().workArea;
+    const clampedX = Math.min(Math.max(cx, area.x), area.x + area.width - win.getBounds().width);
+    const clampedY = Math.min(Math.max(cy, area.y), area.y + Math.max(area.height - win.getBounds().height, 100));
+    if (clampedX !== cx || clampedY !== cy) {
+      win.setPosition(clampedX, clampedY);
+      console.log(
+        `[overlay] move-mode: окно втянуто в видимую область (${cx},${cy}) -> (${clampedX},${clampedY})`,
+      );
+    }
     win.show();
     win.focus();
   } else {
