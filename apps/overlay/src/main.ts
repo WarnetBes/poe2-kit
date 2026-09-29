@@ -933,6 +933,13 @@ function loadBuildState(): void {
         tree: (raw.tree as BuildState['tree']) ?? null,
       };
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
+      // Видимость состояния дерева в логе: без этой строки слепая зона —
+      // не понять, есть ли 🌳 в state (backfill молчит, если сырец пуст).
+      console.log(
+        buildState.tree
+          ? `[overlay] build tree in state: ${buildState.tree.resolved}/${buildState.tree.total} nodes (v=${buildState.tree.version ?? '?'})`
+          : '[overlay] build tree in state: НЕТ (в панели появится после Ctrl+F3 или бэкфилла)',
+      );
       // Старые state-файлы без gemSetups: досчитываем сетапы камней в фоне.
       if (buildState.rawInput && !buildState.gemSetups) {
         console.log('[overlay] gem setups missing in saved state, refreshing in background');
@@ -1714,6 +1721,13 @@ async function runBuildImport(): Promise<void> {
     };
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
+    // Сводка дерева: без неё нельзя по логу подтвердить, что 🌳-фича живая.
+    const t = buildState.tree;
+    console.log(
+      t
+        ? `[overlay] build tree: ${t.resolved}/${t.total} nodes, keystones=${t.keystones.length}, notables=${t.notables.length} (v=${t.version ?? '?'})`
+        : '[overlay] build tree: нод не найдено в PoB-коде (проверьте Spec.nodes)',
+    );
     console.log(
       `[overlay] build imported: ${buildState.slots.length} slots, class=${buildState.className ?? '?'} @${buildState.ascendancy ?? '?'}`,
     );

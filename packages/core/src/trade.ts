@@ -986,9 +986,16 @@ async function postTradeSearchUncached(
     // «не работал» без единого признака. Логируем причину: HTTP 400
     // «Invalid query»/«Unknown item base type», 429 и т.д.
     if (typeof console !== 'undefined' && console.warn) {
+      // Что именно отправили: без имени/типа лог бесполезен — по 400
+      // «Unknown item name/base type» нельзя пополнить RU-словарь.
+      const q = (searchQuery as { query?: { name?: { option?: string }; type?: { option?: string } } })
+        .query;
+      const ident = [q?.name?.option, q?.type?.option].filter(Boolean).join(' | ') || '(без имени/типа)';
       console.warn(
         '[poe2-kit] trade2 search failed:',
         e instanceof Error ? e.message : String(e),
+        '| запрос:',
+        ident,
       );
     }
     // 429 от trade2 → выставляем окно бана, чтобы следующие поиски не долбили
