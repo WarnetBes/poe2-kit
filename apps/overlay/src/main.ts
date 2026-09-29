@@ -2610,6 +2610,24 @@ function setupIPC(): void {
     return activeLeague;
   });
 
+  // Список действующих лиг для селекта в ⚙ (poe2scout, кэш 6 ч; isCurrent → метка актуальной).
+  ipcMain.handle('leagues:list', async () => {
+    const fallback = activeLeague ?? null;
+    try {
+      const leagues = await withTimeout(core.trade.fetchLeagues(), 15_000, 'fetchLeagues');
+      let current = activeLeague;
+      if (!current) current = await withTimeout(core.trade.currentDefaultLeague(), 10_000, 'currentDefaultLeague');
+      return {
+        current: current ?? null,
+        leagues: leagues.map((l) => ({ name: l.name, isCurrent: l.isCurrent === true })),
+      };
+    } catch {
+      // Оффлайн/нет сети: отдаём статичный датасет-список, чтобы селект не был пустым.
+      const known = core.trade.KNOWN_LEAGUES.map((l) => ({ name: l.name, isCurrent: l.isCurrent === true }));
+      return { current: fallback, leagues: known.length ? known : [{ name: 'Standard', isCurrent: false }] };
+    }
+  });
+
   // Watchlist: список / добавить / удалить / вкл-выкл / проверить сейчас / из буфера.
   ipcMain.handle('watch:list', () => ({ entries: watchlistPublic() }));
   ipcMain.handle('watch:add', (_evt, p) => addWatchEntry(p));

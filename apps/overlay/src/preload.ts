@@ -11,6 +11,8 @@ export interface OverlayAPI {
   onLevelResult(cb: (level: unknown) => void): () => void;
   getLeague(): Promise<string>;
   setLeague(league: string): Promise<string>;
+  /** Список действующих лиг для селекта настроек: { current, leagues: [{name, isCurrent}] }. */
+  leaguesList(): Promise<unknown>;
   getHotkey(): Promise<string>;
   setInteractive(interact: boolean): Promise<boolean>;
   onMoveMode(cb: (state: { unlocked: boolean; resetOffset: boolean }) => void): () => void;
@@ -81,6 +83,8 @@ const api: OverlayAPI = {
   getLeague: () => ipcRenderer.invoke('league:get'),
 
   setLeague: (league) => ipcRenderer.invoke('league:set', league),
+
+  leaguesList: () => ipcRenderer.invoke('leagues:list'),
 
   getHotkey: () => ipcRenderer.invoke('hotkey:get'),
 

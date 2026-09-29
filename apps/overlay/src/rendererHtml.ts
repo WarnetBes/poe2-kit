@@ -254,6 +254,11 @@ export const rendererHtml = `<!doctype html>
   .set-row .lbl { display: flex; justify-content: space-between; color: var(--dim); }
   .set-row .lbl var { color: var(--accent); font-style: normal; }
   .set-row input[type=range] { width: 100%; accent-color: var(--accent); }
+  /* №82: селект лиги в ⚙ — в стиле полей хоткеев панели. */
+  #setLeague { width: 100%; font-size: 11px; padding: 3px 4px; margin-top: 2px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--fg); border-radius: 5px; cursor: pointer; }
+  #setLeague option { background: #1a1208; color: var(--fg); }
   .corner-row { display: flex; gap: 6px; }
   .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
@@ -274,6 +279,7 @@ export const rendererHtml = `<!doctype html>
   /* №76: подвал действий — sticky на низу скролл-окна: кнопки всегда видны,
      контент настроек крутится под ними (scale 1.25: контент выше окна 480px). */
   .set-actions { display: flex; gap: 6px; margin-top: auto; padding: 6px 0 2px;
+
     position: sticky; bottom: -10px; margin-bottom: -10px;
     background: rgba(13,17,23,0.96); box-shadow: 0 -6px 10px -6px rgba(0,0,0,0.6); }
   .set-actions button { flex: 1; font-size: 12px; padding: 5px 8px; cursor: pointer;
@@ -384,6 +390,12 @@ export const rendererHtml = `<!doctype html>
           <button data-corner="bottom-left">Н·л</button>
           <button data-corner="bottom-right">Н·п</button>
         </div>
+      </div>
+
+      <div class="set-row">
+        <span>Лига (для цен и курсов)</span>
+        <select id="setLeague"></select>
+        <div class="tip">Список — из poe2scout (✦ = актуальная челлендж-лига). Применяется сразу и сохраняется — цены пересчитаются под выбранную лигу.</div>
       </div>
 
       <div class="set-row">
@@ -1240,9 +1252,48 @@ export const rendererHtml = `<!doctype html>
       buildSettingsPanel(s);
       refreshDraftValues();
       refreshWatchlist();
+      refreshLeagueSelect();
       requestSize();
     }).catch(function () {});
   }
+
+  // №82: селект лиги в ⚙. Список — poe2scout через IPC leagues:list (кэш 6 ч);
+  // выбор применяется сразу (league:set → league.txt + пересчёт цен под лигу).
+  function refreshLeagueSelect() {
+    var sel = $('setLeague');
+    sel.innerHTML = '<option>Загрузка списка лиг…</option>';
+    window.poe2k.leaguesList().then(function (r) {
+      var list = (r && r.leagues) || [];
+      if (!list.length) {
+        sel.innerHTML = '<option>Список недоступен (нет сети?)</option>';
+        return;
+      }
+      var cur = r.current || list[0].name;
+      var html = '';
+      // Если активная лига не из списка (устарела/кастом) — показываем её сверху, чтобы селект не врал.
+      var inList = list.some(function (l) { return l.name === cur; });
+      if (!inList) html += '<option selected value="' + esc(cur) + '">' + esc(cur) + ' (текущая)</option>';
+      list.forEach(function (l) {
+        var lbl = l.name + (l.isCurrent ? ' ✦' : '');
+        html += '<option value="' + esc(l.name) + '"' + (l.name === cur ? ' selected' : '') + '>' + esc(lbl) + '</option>';
+      });
+      sel.innerHTML = html;
+    }).catch(function () {
+      sel.innerHTML = '<option>Ошибка загрузки списка лиг</option>';
+    });
+  }
+
+  $('setLeague').addEventListener('change', function () {
+    var sel = $('setLeague');
+    var v = sel.value;
+    if (!v || v.indexOf('…') >= 0 || v.indexOf('недоступен') >= 0 || v.indexOf('Ошибка') >= 0) return;
+    window.poe2k.setLeague(v).then(function (saved) {
+      showToast('Лига: ' + (saved || v) + ' — цены пересчитаются под неё');
+      window.poe2k.watchCheck().catch(function () {}); // watchlist-цены зависят от лиги — перепроверяем.
+    }).catch(function () {
+      showToast('Не удалось применить лигу');
+    });
+  });
 
   function closeSettings() {
     $('settingsPanel').classList.add('hide');
