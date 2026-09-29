@@ -997,7 +997,27 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
 /** Имя камня для отображения: EN-имя из PoB переводим в RU, если выбран ru-язык. */
 function gemDisplayName(en: string): string {
   if ((settings.gemLang ?? 'ru') === 'en' || !gemEnRu.size) return en;
-  return gemEnRu.get(normName(en)) ?? en;
+  return gemRuByName(en) ?? en;
+}
+
+/**
+ * RU-имя саппорта по EN с фолбэками (журнал №47): poe2db хранит тиры как
+ * «Precision I», а PoB/мета пишут «Precision»; часть саппортов начинается
+ * с тира II (Greatwood II). Пробуем: точное имя → без тира → тир I → тир II,
+ * из RU-результата тир вырезаем (уровень не знаем, показываем базовое имя).
+ * Слаги poe2db бывают percent-encoded (Ois%C3%ADns_Oath) — их закрывает
+ * диакритик-сворачивание в normName.
+ */
+function gemRuByName(enName: string): string | undefined {
+  const stripTier = (ru: string): string => ru.replace(/\s+(?:II|III|IV|V)$/, '');
+  const base = enName.replace(/\s+(?:II|III|IV|V)$/, '');
+  // цепочка: точное → база (без_тира) → база тир I → база тир II.
+  // RU-результат показываем без тира: реальный тир саппорта неизвестен.
+  for (const candidate of [enName, base, `${base} I`, `${base} II`]) {
+    const ru = gemEnRu.get(normName(candidate));
+    if (ru) return candidate === enName ? ru : stripTier(ru);
+  }
+  return undefined;
 }
 
 function sendBuildUpdate(
@@ -1011,6 +1031,8 @@ function sendBuildUpdate(
 
 function normName(s: string | null | undefined): string {
   return String(s ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '') // Oisín's -> Oisins: percent-encoded слаги poe2db без диакритики
     .replace(/ё/g, 'е')
     .replace(/[''`]/g, '')
     .replace(/\s+/g, ' ')
@@ -1405,7 +1427,7 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     const metaAll = core.dataset.getMetaSupports()?.entries?.[key0];
     if (metaAll?.length) {
       const m = metaAll[0]!; // первый = Min-Max-вариант гайда
-      supports = m.supports.map((s) => toRow(s, gemEnRu.get(normName(s)), null, 'meta'));
+      supports = m.supports.map((s) => toRow(s, gemRuByName(s), null, 'meta'));
       supportsLabel = `эталон меты 0.5.5: ${m.build}${m.date ? ` (${m.date})` : ''}`;
     } else {
       const base =
