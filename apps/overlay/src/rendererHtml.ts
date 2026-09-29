@@ -19,10 +19,14 @@ export const rendererHtml = `<!doctype html>
     --warn: #d29922;
     --err: #f85149;
     --accent: #f0883e;
+    /* Игровая антиква (Fontin-стиль): сериф + капитель + разрядка.
+       Palatino Linotype есть на любой Windows — офлайн, без бинарников. */
+    --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
-    font-family: "Segoe UI", system-ui, sans-serif; color: var(--fg); }
+    font-family: "Segoe UI", system-ui, sans-serif; color: var(--fg);
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   #panel {
     position: absolute; inset: 0;
     background: var(--bg);
@@ -41,7 +45,8 @@ export const rendererHtml = `<!doctype html>
   .hide { display: none !important; }
 
   .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .item-name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
+  .item-name { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.25;
+    font-family: var(--font-display); letter-spacing: 0.4px; }
   .item-name .rarity { font-weight: 600; font-size: 11px; }
 
   .rarity-unique { color: #e6b422; }
@@ -68,15 +73,16 @@ export const rendererHtml = `<!doctype html>
   .meta { font-size: 11px; color: var(--dim); }
   .meta .src { color: var(--accent); }
 
-  table.list { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 2px; }
-  table.list td { padding: 2px 6px; border-top: 1px solid rgba(255,255,255,0.06); }
+  table.list { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 2px; }
+  table.list td { padding: 3px 6px; border-top: 1px solid rgba(255,255,255,0.06); }
   table.list .num { text-align: right; font-variant-numeric: tabular-nums; }
   #priceBatchWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
   #priceBatchHead { font-size: 12px; color: var(--dim); }
   #priceBatchList { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
   .batch-item { border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 8px;
     background: rgba(255,255,255,0.03); }
-  .batch-item .bi-name { font-size: 13px; font-weight: 700; }
+  .batch-item .bi-name { font-size: 14px; font-weight: 700;
+    font-family: var(--font-display); letter-spacing: 0.3px; }
   .batch-item .bi-est { font-size: 16px; font-weight: 800; color: var(--accent); }
   .batch-item .bi-note { font-size: 11px; color: var(--dim); }
   .batch-item .bi-note .err-inline { color: var(--err); }
@@ -123,9 +129,10 @@ export const rendererHtml = `<!doctype html>
   #diagOut { margin-top: 6px; font-size: 10px; color: var(--dim); line-height: 1.4;
     word-break: break-all; white-space: pre-line; }
 
-  .lvl-hint { font-size: 12px; line-height: 1.5; }
+  .lvl-hint { font-size: 13px; line-height: 1.55; }
   .lvl-hint b { color: var(--accent); }
-  .lvl-zone { font-size: 13px; font-weight: 700; color: #fff; }
+  .lvl-zone { font-size: 15px; font-weight: 700; color: #fff;
+    font-family: var(--font-display); letter-spacing: 0.3px; }
 
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
@@ -149,13 +156,14 @@ export const rendererHtml = `<!doctype html>
 
   /* Панель билда (Ctrl+F2). */
   #buildWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
-  #buildHead { font-size: 12px; color: #fff; font-weight: 700; }
+  #buildHead { font-size: 13px; color: #fff; font-weight: 700;
+    font-family: var(--font-display); letter-spacing: 0.3px; }
   #buildHead .sub { font-weight: 400; font-size: 11px; color: var(--dim); }
   #buildBudget { font-size: 12px; color: var(--accent); font-weight: 700; }
   #buildBudget .done { color: var(--ok); font-weight: 400; font-size: 11px; }
   #buildSlots { overflow-y: auto; flex: 1; min-height: 0; }
-  table.bld { width: 100%; font-size: 11px; border-collapse: collapse; }
-  table.bld td { padding: 1px 6px 1px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+  table.bld { width: 100%; font-size: 12px; border-collapse: collapse; }
+  table.bld td { padding: 2px 6px 2px 0; border-top: 1px solid rgba(255,255,255,0.06); }
   table.bld .slot { color: var(--dim); white-space: nowrap; max-width: 80px; overflow: hidden;
     text-overflow: ellipsis; }
   table.bld .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
