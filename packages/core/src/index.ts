@@ -21,6 +21,7 @@ export * from './learnlog.js';
 export * from './learnedStats.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
+export * from './sources.js';
 export * from './ladder.js';
 export * from './advice.js';
 export * from './ssf.js';
@@ -36,6 +37,7 @@ import * as resmod from './resources.js';
 import * as enemymod from './enemy.js';
 import * as ailmentsmod from './ailments.js';
 import * as optimizemod from './optimize.js';
+import * as sourcesmod from './sources.js';
 
 // Типы калькуляторов (значения — через namespace core.ehp/core.spirit/core.stun,
 // чтобы не конфликтовать с estimate-слоем).
@@ -109,6 +111,7 @@ export const core = {
   enemy: enemymod,
   ailments: ailmentsmod,
   optimize: optimizemod,
+  sources: sourcesmod,
 };
 
 export default core;
