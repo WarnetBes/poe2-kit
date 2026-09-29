@@ -12,13 +12,13 @@ export const rendererHtml = `<!doctype html>
 <style>
   :root {
     --bg: rgba(13, 17, 23, 0.86);
-    --border: rgba(240, 136, 62, 0.55);
-    --fg: #e6edf3;
-    --dim: #9aa4b0;
+    --border: rgba(194, 154, 78, 0.75);
+    --fg: #f0e6d2;
+    --dim: #a89a83;
     --ok: #3fb950;
     --warn: #d29922;
     --err: #f85149;
-    --accent: #f0883e;
+    --accent: #c69a52;
     /* Игровая антиква (Fontin-стиль): сериф + капитель + разрядка.
        Palatino Linotype есть на любой Windows — офлайн, без бинарников. */
     --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
@@ -29,14 +29,31 @@ export const rendererHtml = `<!doctype html>
     -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   #panel {
     position: absolute; inset: 0;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    /* HUD PoE2: тёмная сталь/пергамент с золотой окантовкой.
+       var(--bg) — управляется слайдером прозрачности, оставляем базой. */
+    background:
+      linear-gradient(180deg, rgba(255, 240, 205, 0.05) 0%, rgba(0,0,0,0) 12%),
+      var(--bg);
+    border: 1px solid rgba(194, 154, 78, 0.75);
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255, 224, 168, 0.10),
+      0 6px 24px rgba(0,0,0,.6);
+    border-radius: 4px;
     padding: 10px 12px;
     display: flex; flex-direction: column;
     gap: 6px;
-    box-shadow: 0 6px 24px rgba(0,0,0,.5);
   }
+  /* Ромбы-заклёпки по углам, как на рамках диалогов/панелей игры. */
+  #panel::before, #panel::after {
+    content: ""; position: absolute; width: 7px; height: 7px;
+    background: linear-gradient(135deg, #e8c988, #8a6a33);
+    transform: rotate(45deg);
+    box-shadow: 0 0 4px rgba(232, 201, 136, 0.5);
+    z-index: 1;
+  }
+  #panel::before { top: -4px; left: -4px; }
+  #panel::after { top: -4px; right: -4px; }
   #idle {
     color: var(--dim); font-size: 12px; margin: auto;
     text-align: center; line-height: 1.6;
@@ -44,7 +61,9 @@ export const rendererHtml = `<!doctype html>
   #idle b { color: var(--accent); font-family: Consolas, monospace; }
   .hide { display: none !important; }
 
-  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    padding-bottom: 4px; margin-bottom: 2px;
+    border-bottom: 1px solid rgba(198,154,82,0.35); }
   .item-name { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.25;
     font-family: var(--font-display); letter-spacing: 0.4px; }
   .item-name .rarity { font-weight: 600; font-size: 11px; }
@@ -61,7 +80,7 @@ export const rendererHtml = `<!doctype html>
   .est {
     display: flex; align-items: baseline; gap: 8px;
     padding: 8px 10px; border-radius: 8px;
-    background: rgba(240,136,62,0.10); border: 1px solid rgba(240,136,62,0.3);
+    background: rgba(198,154,82,0.10); border: 1px solid rgba(198,154,82,0.3);
   }
   .est .value { font-size: 20px; font-weight: 800; color: var(--accent); }
   .est .range { font-size: 12px; color: var(--dim); }
@@ -92,9 +111,9 @@ export const rendererHtml = `<!doctype html>
   .batch-ww:hover { color: var(--accent); border-color: var(--accent); }
 
   .watch-btn { display: block; width: 100%; margin-top: 6px; cursor: pointer;
-    background: rgba(240,136,62,0.14); border: 1px solid var(--accent); color: var(--accent);
+    background: rgba(198,154,82,0.14); border: 1px solid var(--accent); color: var(--accent);
     border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
-  .watch-btn:hover { background: rgba(240,136,62,0.24); }
+  .watch-btn:hover { background: rgba(198,154,82,0.24); }
 
   .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     background: rgba(20,26,34,0.96); border: 1px solid var(--warn); color: #ffe9c2;
@@ -114,17 +133,17 @@ export const rendererHtml = `<!doctype html>
     color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 7px; }
   .wl-row button:hover { color: var(--accent); border-color: var(--accent); }
   .watch-actions { display: flex; gap: 6px; margin-top: 6px; }
-  .watch-actions button { flex: 1; cursor: pointer; background: rgba(240,136,62,0.14);
+  .watch-actions button { flex: 1; cursor: pointer; background: rgba(198,154,82,0.14);
     border: 1px solid var(--accent); color: var(--accent); border-radius: 8px;
     padding: 4px 8px; font-size: 12px; }
-  .watch-actions button:hover { background: rgba(240,136,62,0.24); }
+  .watch-actions button:hover { background: rgba(198,154,82,0.24); }
 
   #diagSection, #learnSection { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
   .diag-actions { display: flex; gap: 6px; margin-top: 6px; }
-  .diag-actions button { flex: 1; cursor: pointer; background: rgba(240,136,62,0.12);
-    border: 1px solid rgba(240,136,62,0.4); color: var(--text); border-radius: 8px;
+  .diag-actions button { flex: 1; cursor: pointer; background: rgba(198,154,82,0.12);
+    border: 1px solid rgba(198,154,82,0.4); color: var(--text); border-radius: 8px;
     padding: 5px 8px; font-size: 12px; }
-  .diag-actions button:hover { background: rgba(240,136,62,0.24); }
+  .diag-actions button:hover { background: rgba(198,154,82,0.24); }
   .diag-actions button:disabled { opacity: 0.55; cursor: default; }
   #diagOut { margin-top: 6px; font-size: 10px; color: var(--dim); line-height: 1.4;
     word-break: break-all; white-space: pre-line; }
@@ -146,8 +165,8 @@ export const rendererHtml = `<!doctype html>
     padding: 6px 12px;
     font-size: 12px;
     color: var(--accent);
-    background: rgba(240,136,62,0.16);
-    border-bottom: 1px solid rgba(240,136,62,0.35);
+    background: rgba(198,154,82,0.16);
+    border-bottom: 1px solid rgba(198,154,82,0.35);
     border-radius: 10px 10px 0 0;
     text-align: center;
   }
@@ -200,7 +219,7 @@ export const rendererHtml = `<!doctype html>
   .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; }
-  .corner-row button.on { background: rgba(240,136,62,0.22); border-color: var(--accent); color: var(--accent); }
+  .corner-row button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
   .hk-grid .hk { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; }
   .hk-grid .hk input { font-size: 11px; font-family: Consolas, monospace; padding: 2px 4px;
@@ -495,7 +514,7 @@ export const rendererHtml = `<!doctype html>
   window.poe2k.onMoveMode(function (state) {
     var grab = $('grab');
     grab.classList.toggle('hide', !state.unlocked);
-    document.body.style.background = state.unlocked ? 'rgba(240,136,62,0.04)' : 'transparent';
+    document.body.style.background = state.unlocked ? 'rgba(198,154,82,0.04)' : 'transparent';
     if (state.unlocked) {
       $('idle').classList.remove('hide');
       $('body').classList.add('hide');
