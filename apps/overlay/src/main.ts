@@ -2665,6 +2665,36 @@ function setupIPC(): void {
 
   ipcMain.handle('build:get', () => buildPayload());
 
+  // №64: вкладки в рендерере открывают те же панели, что и хоткеи —
+  // «тот же способ переключения», но кликом. Единая точка: те же функции.
+  ipcMain.handle('panel:open', (_e, action: unknown) => {
+    switch (action) {
+      case 'price':
+        console.log('[overlay] tab: прайс-чек (Ctrl+F1)');
+        void runPriceCheck();
+        break;
+      case 'level':
+        console.log('[overlay] tab: прокачка (Ctrl+F4)');
+        void runLevelingContext();
+        break;
+      case 'build':
+        console.log('[overlay] tab: панель билда (Ctrl+F2)');
+        toggleBuildPanel();
+        break;
+      case 'import':
+        console.log('[overlay] tab: импорт билда (Ctrl+F3)');
+        void runBuildImport();
+        break;
+      case 'settings':
+        console.log('[overlay] tab: настройки (Ctrl+F6)');
+        toggleSettingsPanel();
+        break;
+      default:
+        return { ok: false, error: 'unknown action' };
+    }
+    return { ok: true };
+  });
+
   // Помощник по пассивному дереву: поиск нод по имени/стату (офлайн, dataset).
   ipcMain.handle('tree:search', (_e, q: unknown) => {
     const query = typeof q === 'string' ? q.trim() : '';

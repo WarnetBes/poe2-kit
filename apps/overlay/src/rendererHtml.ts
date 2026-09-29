@@ -250,6 +250,13 @@ export const rendererHtml = `<!doctype html>
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; }
   .corner-row button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  /* №64: вкладки-кнопки — открывают кликом то же, что хоткеи. */
+  .tabrow { display: flex; gap: 4px; }
+  .tabrow button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--dim); border-radius: 6px; white-space: nowrap; }
+  .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
+  .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
   .hk-grid .hk { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; }
   .hk-grid .hk input { font-size: 11px; font-family: Consolas, monospace; padding: 2px 4px;
@@ -266,6 +273,13 @@ export const rendererHtml = `<!doctype html>
 </head>
 <body>
   <div id="panel">
+    <div class="tabrow" id="tabRow">
+      <button data-tab="price" title="Прайс предмета из буфера (Ctrl+F1)">💰 Прайс</button>
+      <button data-tab="build" title="Панель билда (Ctrl+F2)">🛒 Билд</button>
+      <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
+      <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
+      <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
+    </div>
     <div id="grab" class="hide">
       ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+F5 — закрепить
     </div>
@@ -1266,6 +1280,32 @@ export const rendererHtml = `<!doctype html>
   window.poe2k.onSettingsToggle(function () {
     if ($('settingsPanel').classList.contains('hide')) openSettings();
     else closeSettings();
+  });
+
+  // №64: вкладки — кликом открывают те же панели, что и хоткеи.
+  // Подсветка активной вкладки синхронизируется и с хоткейами (события main).
+  var tabBtns = document.querySelectorAll('#tabRow button');
+  function setActiveTab(tab) {
+    for (var ti = 0; ti < tabBtns.length; ti++) {
+      tabBtns[ti].classList.toggle('on', tabBtns[ti].getAttribute('data-tab') === tab);
+    }
+  }
+  function bindTabs() {
+    for (var bi = 0; bi < tabBtns.length; bi++) {
+      tabBtns[bi].addEventListener('click', function () {
+        var tab = this.getAttribute('data-tab');
+        setActiveTab(tab);
+        window.poe2k.panelOpen(tab).catch(function () {});
+      });
+    }
+  }
+  bindTabs();
+  // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
+  window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
+  window.poe2k.onLevelResult(function () { setActiveTab('level'); });
+  window.poe2k.onBuildUpdate(function (st) { setActiveTab(st && st.visible ? 'build' : ''); });
+  window.poe2k.onSettingsToggle(function () {
+    setActiveTab($('settingsPanel').classList.contains('hide') ? '' : 'settings');
   });
 
   // Применение настроек отображения из main (прозрачность/масштаб/ширина/угол).

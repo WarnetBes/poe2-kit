@@ -48,6 +48,9 @@ export interface OverlayAPI {
   onWatchAlert(cb: (alert: unknown) => void): () => void;
   /** Диагностика оверлея: собрать хвост overlay.log + конфиг машины, вернуть текст (буфер/файл ставит main). */
   diagCollect(): Promise<unknown>;
+  /** №64: вкладки — открыть панель кликом (те же действия, что хоткеи):
+   * 'price' | 'level' | 'build' | 'import' | 'settings'. */
+  panelOpen(action: string): Promise<unknown>;
   /** Журнал обучения: сколько записей накоплено, включён ли. */
   learnInfo(): Promise<unknown>;
   /** Сформировать вклад в библиотеку предметов: текст уже в буфере обмена + файл в userData. */
@@ -145,6 +148,8 @@ const api: OverlayAPI = {
   },
 
   diagCollect: () => ipcRenderer.invoke('diag:collect'),
+
+  panelOpen: (action) => ipcRenderer.invoke('panel:open', action),
 
   learnInfo: () => ipcRenderer.invoke('learn:info'),
 
