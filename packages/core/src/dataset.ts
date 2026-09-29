@@ -850,18 +850,19 @@ export interface MetaRenamesDataset {
   map: Record<string, string>;
 }
 
-// --- Цвета камней (poe2db: gem_blue/red/green = Intellect/Strength/Dexterity) ---
+// --- Цвета камней (v2: PoB2 Gems.lua reqStr/reqDex/reqInt; гибриды — 'green,blue') ---
 
 export interface GemColorsDataset {
   version: number;
   source: string;
-  scraped_at?: string;
-  /** norm(EN-имя poe2db) -> 'gem_blue' | 'gem_red' | 'gem_green' */
+  generated_at?: string;
+  rule?: string;
+  /** norm(EN-имя) -> 'blue' | 'red' | 'green' | 'green,blue' (гибриды) */
   map: Record<string, string>;
 }
 
 let gemColorsCache: GemColorsDataset | null = null;
-let gemColorsNormCache: Map<string, string> | null = null;
+let gemColorsNormCache: Map<string, Array<'blue' | 'red' | 'green'>> | null = null;
 
 function normGemKey(s: string): string {
   return String(s)
@@ -874,24 +875,27 @@ function normGemKey(s: string): string {
     .toLowerCase();
 }
 
-/** Цвет камня по EN-имени poe2db: 'blue' (Инт) | 'red' (Сила) | 'green' (Ловк) | null.
- * Каскад тира как в gemRuByName: имя → без тира → тир I → тир II
- * (poe2db хранит «Precision I», билды пишут «Precision»). */
-export function supportGemColor(en: string): 'blue' | 'red' | 'green' | null {
+/** Цвет(а) камня по EN-имени: массив из 'blue' (Инт) | 'red' (Сила) | 'green' (Ловк)
+ *  либо null. Гибридные камни (Ice Strike: 50 dex + 50 int) дают 2 цвета.
+ *  Каскад тира: имя → без тира → тир I → тир II (poe2db хранит «Precision I»).
+ *  Алиасы переименованных камней (0.5: «Martial Tempo» → «Rapid Attacks I»)
+ *  включены в map через gameId из Gems.lua генератором _scrape_gem_colors.mjs. */
+export function supportGemColors(en: string): Array<'blue' | 'red' | 'green'> | null {
   try {
     gemColorsNormCache ??= (() => {
       gemColorsCache ??= loadJson<GemColorsDataset>('skill_gems/gem_colors.json');
-      const m = new Map<string, string>();
+      const m = new Map<string, Array<'blue' | 'red' | 'green'>>();
       for (const [k, v] of Object.entries(gemColorsCache.map)) {
-        const c = v === 'gem_blue' ? 'blue' : v === 'gem_red' ? 'red' : v === 'gem_green' ? 'green' : null;
-        if (c) m.set(normGemKey(k), c);
+        const c = v.split(',').flatMap((x) => (x === 'blue' || x === 'red' || x === 'green' ? [x] : []) as Array<'blue' | 'red' | 'green'>);
+        if (c.length) m.set(normGemKey(k), c as Array<'blue' | 'red' | 'green'>);
       }
       return m;
     })();
     const base = String(en).replace(/\s+(?:II|III|IV|V)$/, '');
+    const cache = gemColorsNormCache;
     for (const candidate of [String(en), base, `${base} I`, `${base} II`]) {
-      const c = gemColorsNormCache.get(normGemKey(candidate));
-      if (c === 'blue' || c === 'red' || c === 'green') return c;
+      const c = cache.get(normGemKey(candidate));
+      if (c?.length) return c;
     }
     return null;
   } catch {

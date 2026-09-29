@@ -716,7 +716,8 @@ export const rendererHtml = `<!doctype html>
         '<span class="sub">💎 Камни билда — куда вставлять (Ctrl+C по камню в окне умений отметит ✅)</span></td></tr>';
       function gemDot(n) {
         var c = (b.gemColors || {})[gemKey(n)];
-        return c ? '<span style="color:' + c + '">●</span> ' : '';
+        if (!c) return '';
+        return c.split(',').map(function (h) { return '<span style="color:' + h + '">●</span>'; }).join('') + ' ';
       }
       gemRows += b.gemSetups.map(function (g) {
         var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
@@ -902,7 +903,7 @@ export const rendererHtml = `<!doctype html>
       var srows = res.gemSupports.map(function (r) {
         var mark = r.inBuild ? ' <span class="done">✓ в билде</span>' : '';
         var rankCell = r.rank == null ? '—' : r.rank;
-        var dot = r.color ? '<span style="color:' + r.color + '">●</span> ' : '';
+        var dot = r.color ? r.color.split(',').map(function (h) { return '<span style="color:' + h + '">●</span>'; }).join('') + ' ' : '';
         return '<tr><td class="num">' + rankCell + '</td><td colspan="2">' + dot + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
       }).join('');
       var badge = isMeta

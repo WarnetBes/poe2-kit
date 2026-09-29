@@ -1047,17 +1047,18 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       // значение — hex. Активным и саппортам (sinих/красных/зелёных) — ● перед именем.
       gemColors: (() => {
         const colors: Record<string, string> = {};
-        const hex = (en: string): string | null => {
-          const c = core.dataset.supportGemColor(en);
-          return c === 'blue' ? '#7f8cff' : c === 'red' ? '#e0574f' : c === 'green' ? '#57d980' : null;
+        const hexList = (en: string): string[] | null => {
+          const c = core.dataset.supportGemColors(en) ?? core.dataset.supportGemColors(String(gemDisplayName(en)));
+          if (!c) return null;
+          return c.map((x) => (x === 'blue' ? '#7f8cff' : x === 'red' ? '#e0574f' : '#57d980'));
         };
         const push = (en: unknown) => {
           if (typeof en !== 'string' || !en) return;
           const disp = gemDisplayName(en);
           const key = disp.replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
           if (colors[key] != null) return;
-          const h = hex(en) ?? hex(String(disp));
-          if (h) colors[key] = h;
+          const h = hexList(en);
+          if (h) colors[key] = h.join(','); // гибриды: '#57d980,#7f8cff'
         };
         for (const s of buildState.gemSetups ?? []) {
           push(s.active);
@@ -1526,8 +1527,9 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     const key0 = normName(en);
     const setupSupports = new Set((setup?.supports ?? []).map((s) => normName(s.replace(/ \(активный!\)$/, ''))));
     const supportColorHex = (enName: string): string | null => {
-      const c = core.dataset.supportGemColor(enName);
-      return c === 'blue' ? '#7f8cff' : c === 'red' ? '#e0574f' : c === 'green' ? '#57d980' : null;
+      const c = core.dataset.supportGemColors(enName);
+      if (!c?.length) return null;
+      return c.map((x) => (x === 'blue' ? '#7f8cff' : x === 'red' ? '#e0574f' : '#57d980')).join(',');
     };
     const toRow = (enName: string, ruName: string | undefined, rank: number | null, tier: 'meta' | 'base'): GemSupportRow => ({
       rank,
