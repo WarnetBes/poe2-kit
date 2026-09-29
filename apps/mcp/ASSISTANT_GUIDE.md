@@ -115,6 +115,6 @@
 
 **Порядок добора данных (сверху вниз, не наоборот):**
 1. Локально без сети: overlay-state/gaps, dataset/build/leveling/calculators.
-2. Спец-туры по API: poe2_wiki_lookup, poe2_poe2db_lookup, poe2_currency_*, poe2_ladder_*, poe2_trade_query.
+2. Спец-туры по API: poe2_wiki_lookup, poe2_poe2db_lookup, poe2_currency_*, poe2_ladder_*, poe2_trade_search.
 3. poe2_sources_fetch — гайды/новости.
 4. Браузерный webfetch агента — только для источников, помеченных «403/JS» в реестре.

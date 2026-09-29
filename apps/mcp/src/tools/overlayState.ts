@@ -125,7 +125,7 @@ function gapsReport(dir: string): string[] {
         .slice(0, 10)
         .join(', ')}${unpriced.length > 10 ? ', …' : ''}`,
     );
-    out.push('  → чем чинить: poe2_poe2db_lookup (точное имя базы), poe2_trade_query (листинги), poe2_currency_* (курс).');
+    out.push('  → чем чинить: poe2_poe2db_lookup (точное имя базы), poe2_trade_search (листинги), poe2_currency_* (курс).');
   }
   if (!bs.tree) out.push('⚠ Дерево пассивок не в state (неразобранный импорт). → попросите Ctrl+F3 повторно с полным PoB-кодом.');
   if (!bs.gemSetups) out.push('⚠ Сетапы камней не рассчитаны. → повторный импорт билда (Ctrl+F3) их досчитает.');
@@ -141,7 +141,7 @@ function gapsReport(dir: string): string[] {
           .slice(0, 8)
           .join(', ')}${broken.length > 8 ? ', …' : ''}`,
       );
-      out.push('  → чем чинить: poe2_trade_query по имени; RU-база без перевода — poe2_db_lookup RU→EN.');
+      out.push('  → чем чинить: poe2_trade_search по имени; RU-база без перевода — poe2_poe2db_lookup RU→EN.');
     }
   }
 

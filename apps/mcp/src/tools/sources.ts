@@ -21,7 +21,7 @@ export function registerSourcesTools(server: McpServer): number {
 
 Порядок предпочтения при доборе информации:
   1. Локальные туры kit'а (dataset, build, leveling, calculators, poe2_overlay_state/gaps) — без сети.
-  2. Спец-туры по API (poe2_wiki_lookup, poe2_db_lookup, poe2_currency_*, poe2_ladder_*, poe2_trade_query).
+  2. Спец-туры по API (poe2_wiki_lookup, poe2_poe2db_lookup, poe2_currency_*, poe2_ladder_*, poe2_trade_search).
   3. poe2_sources_fetch — для fetchable-источников (новости GGG, гайды maxroll/mobalytics, fextralife).
 НЕ выдумывайте факты о механиках по памяти: сначала тул, потом ответ.`,
       inputSchema: {},
