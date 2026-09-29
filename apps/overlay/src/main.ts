@@ -1008,10 +1008,12 @@ const EQUIPMENT_CLASS_SLUGS = [
   'Sceptres', 'Spears', 'Flails', 'Bows', 'Staves', 'Two_Hand_Swords', 'Two_Hand_Axes',
   'Two_Hand_Maces', 'Quarterstaves', 'Crossbows', 'Traps', 'Talismans', 'Quivers',
   'Shields', 'Bucklers', 'Foci', 'Gloves', 'Boots', 'Body_Armours', 'Helmets',
-  'Amulets', 'Rings', 'Belts', 'Jewels',
+  'Amulets', 'Rings', 'Belts', 'Jewels', 'Flasks',
 ] as const;
 
-const RU_EN_DICT_VERSION = 1;
+// v2: +Flasks — флаконы не входили в первый список, RU-базы вроде
+// «Громадный флакон маны» не переводились → trade2 400 Unknown item base type.
+const RU_EN_DICT_VERSION = 2;
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
 let ruEnDictLoaded = false;
