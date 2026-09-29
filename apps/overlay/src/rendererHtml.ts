@@ -1050,6 +1050,13 @@ export const rendererHtml = `<!doctype html>
     cornerBtns[ci].addEventListener('click', function () {
       for (var c2 = 0; c2 < cornerBtns.length; c2++) cornerBtns[c2].classList.remove('on');
       this.classList.add('on');
+      // Угол применяется мгновенно (без «Сохранить»): это дешёвая операция,
+      // а её эффект видно только при игре в фокусе — просить ещё и «Сохранить»
+      // путает («углы не работают»). Панель не закрываем; остальной draft
+      // (слайдеры уже с live-preview) сохраняется тем же флоу, что и Save.
+      var draft = currentDraft();
+      draft.hotkeys = collectHotkeys();
+      window.poe2k.settingsApply(draft).catch(function () {});
     });
   }
 
