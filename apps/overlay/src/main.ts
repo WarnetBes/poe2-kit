@@ -1252,6 +1252,10 @@ const EQUIPMENT_CLASS_SLUGS = [
   'Two_Hand_Maces', 'Quarterstaves', 'Crossbows', 'Traps', 'Talismans', 'Quivers',
   'Shields', 'Bucklers', 'Foci', 'Gloves', 'Boots', 'Body_Armours', 'Helmets',
   'Amulets', 'Rings', 'Belts', 'Jewels', 'Flasks', 'Charms',
+  // v4: +Augment (руны/soul cores, ~600 белых: «Руна пустыни» → Desert Rune) —
+  // Ctrl+F1 в RU-клиенте прайс-чекает аугменты. Страница тяжёлая (~1.7 МБ),
+  // rate-limiter держит паузу; разметка a.whiteitem подтверждена 2026-09-30.
+  'Augment',
 ] as const;
 
 // v2: +Flasks — флаконы не входили в первый список, RU-базы вроде
@@ -1260,7 +1264,7 @@ const EQUIPMENT_CLASS_SLUGS = [
 // лог друга 29.09 09:50:38Z) + incomplete-poison guard: если при построении
 // страница класса отдала пустые мапы (Cloudflare/сбой сети), дырявый словарь
 // больше не кэшируется навсегда — при следующем старте достраиваем.
-const RU_EN_DICT_VERSION = 3;
+const RU_EN_DICT_VERSION = 4;
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
 let ruEnDictLoaded = false;

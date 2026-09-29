@@ -24,6 +24,7 @@ export * from './zoneNotes.js';
 export * from './sources.js';
 export * from './ladder.js';
 export * from './advice.js';
+export * from './runes.js';
 export * from './ssf.js';
 export * from './cache.js';
 export * from './gameConfig.js';
@@ -77,6 +78,7 @@ import * as cachemod from './cache.js';
 import * as gameConfigMod from './gameConfig.js';
 import * as learnmod from './learnlog.js';
 import * as learnedStatsMod from './learnedStats.js';
+import * as runesMod from './runes.js';
 
 export const core = {
   trade,
@@ -112,6 +114,7 @@ export const core = {
   ailments: ailmentsmod,
   optimize: optimizemod,
   sources: sourcesmod,
+  runes: runesMod,
 };
 
 export default core;
