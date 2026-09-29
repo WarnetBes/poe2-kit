@@ -28,7 +28,11 @@ export const rendererHtml = `<!doctype html>
     font-family: "Segoe UI", system-ui, sans-serif; color: var(--fg);
     -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   #panel {
-    position: absolute; inset: 0;
+    /* Fit-content: растём под контент (autosize в main.ts меряет этот rect —
+       inset:0 запинал панель на высоту окна и окно никогда не росло: лог-факт
+       setBounds 470x320 при импорте билда, всей виной №60). max-height гасит
+       перелив локальными скроллами детей (buildWrap/listWrap/lvlWrap). */
+    position: absolute; top: 0; left: 0; right: 0; max-height: 100%;
     /* HUD PoE2: тёмная сталь/пергамент с золотой окантовкой.
        var(--bg) — управляется слайдером прозрачности, оставляем базой. */
     background:
@@ -60,6 +64,10 @@ export const rendererHtml = `<!doctype html>
   }
   #idle b { color: var(--accent); font-family: Consolas, monospace; }
   .hide { display: none !important; }
+
+  /* Цепочка сжатия для локальных скроллов: #body — flex-потомок #panel,
+     иначе длинные блоки (билд/списки) выпирают мимо flex:1-наследников. */
+  #body { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; overflow: hidden; }
 
   .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
     padding-bottom: 4px; margin-bottom: 2px;
@@ -174,13 +182,16 @@ export const rendererHtml = `<!doctype html>
     text-decoration: underline; font-size: 11px; }
 
   /* Панель билда (Ctrl+F2). */
-  #buildWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow: hidden; }
+  /* Скроллит ВЕСЬ блок билда (слоты + дерево + summary): при высоте окна,
+     упёршейся в кэп экрана (main.ts overlay:autosize), низ дерева раньше
+     обрезался overflow:hidden без возможности доскроллить (доклад друга №60). */
+  #buildWrap { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; overflow-y: auto; padding-right: 4px; }
+  #buildSlots { flex: none; } /* больше не отдельный скролл — скроллит wrap */
   #buildHead { font-size: 13px; color: #fff; font-weight: 700;
     font-family: var(--font-display); letter-spacing: 0.3px; }
   #buildHead .sub { font-weight: 400; font-size: 11px; color: var(--dim); }
   #buildBudget { font-size: 12px; color: var(--accent); font-weight: 700; }
   #buildBudget .done { color: var(--ok); font-weight: 400; font-size: 11px; }
-  #buildSlots { overflow-y: auto; flex: 1; min-height: 0; }
   table.bld { width: 100%; font-size: 12px; border-collapse: collapse; }
   table.bld td { padding: 2px 6px 2px 0; border-top: 1px solid rgba(255,255,255,0.06); }
   table.bld .slot { color: var(--dim); white-space: nowrap; max-width: 80px; overflow: hidden;
@@ -199,6 +210,16 @@ export const rendererHtml = `<!doctype html>
   #buildTree .sub-h { padding-top: 3px; }
   #buildNote { font-size: 12px; color: var(--ok); }
   #buildErr { font-size: 11px; color: var(--warn); }
+
+  /* Окно прайса/прокачки: длинные списки (саппорты, листинги trade2, подсказки
+     умений/гемов) скроллятся локально, а не обрезаются кэпом высоты окна (№60). */
+  #listWrap { max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+  #lvlWrap { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+  #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
+  #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
+  #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
+  #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
+    background: rgba(198,154,82,0.45); border-radius: 3px; }
 
   /* Панель настроек (Ctrl+F6). */
   #settingsPanel {

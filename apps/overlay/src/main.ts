@@ -2324,6 +2324,13 @@ function attachBuildMatch(result: Record<string, unknown>, itemText: string): vo
   }
 }
 
+/** Убрать игровые служебные строки из копипаста окна умений/инвентаря.
+ * Лог-факт №60: Ctrl+C по камню в RU-клиенте тащит хвост
+ * «Умениями можно управлять в окне умений.» — в прайс-чек ему не место. */
+function cleanGameFlavor(text: string): string {
+  return text.replace(/^Умениями можно управлять в окне умений\.\s*\r?\n?/gm, '');
+}
+
 async function runPriceCheck(): Promise<unknown> {
   if (busy) {
     console.warn('[overlay] pricecheck skipped: busy=true (предыдущий запрос ещё не завершился)');
@@ -2331,7 +2338,7 @@ async function runPriceCheck(): Promise<unknown> {
   }
   busy = true;
   try {
-    const raw = clipboard.readText();
+    const raw = cleanGameFlavor(clipboard.readText());
     console.log(`[overlay] clipboard: ${raw.length} chars`);
     if (raw.trim()) {
       console.log(`[overlay] clipboard head: ${JSON.stringify(raw.slice(0, 80))}`);
