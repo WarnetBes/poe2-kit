@@ -9,11 +9,9 @@ export interface OverlayAPI {
   onPriceBatch(cb: (payload: unknown) => void): () => void;
   onPriceBusy(cb: (busy: boolean) => void): () => void;
   onLevelResult(cb: (level: unknown) => void): () => void;
-  getLeague(): Promise<string>;
   setLeague(league: string): Promise<string>;
   /** Список действующих лиг для селекта настроек: { current, leagues: [{name, isCurrent}] }. */
   leaguesList(): Promise<unknown>;
-  getHotkey(): Promise<string>;
   setInteractive(interact: boolean): Promise<boolean>;
   onMoveMode(cb: (state: { unlocked: boolean; resetOffset: boolean }) => void): () => void;
   resetOffset(): Promise<boolean>;
@@ -48,6 +46,8 @@ export interface OverlayAPI {
   watchCheck(): Promise<unknown>;
   /** Watchlist: слушать всплывающий алерт «цена упала с X до Y». */
   onWatchAlert(cb: (alert: unknown) => void): () => void;
+  /** №85: сообщение от MCP-агента поверх игры (тост): {title, text}. */
+  onAgentNotify(cb: (msg: { title: string; text: string }) => void): () => void;
   /** Диагностика оверлея: собрать хвост overlay.log + конфиг машины, вернуть текст (буфер/файл ставит main). */
   diagCollect(): Promise<unknown>;
   /** №64: вкладки — открыть панель кликом (те же действия, что хоткеи):
@@ -80,13 +80,9 @@ const api: OverlayAPI = {
     return () => ipcRenderer.removeListener('price:busy', listener);
   },
 
-  getLeague: () => ipcRenderer.invoke('league:get'),
-
   setLeague: (league) => ipcRenderer.invoke('league:set', league),
 
   leaguesList: () => ipcRenderer.invoke('leagues:list'),
-
-  getHotkey: () => ipcRenderer.invoke('hotkey:get'),
 
   setInteractive: (interact) => ipcRenderer.invoke('interact:set', interact),
 
@@ -149,6 +145,13 @@ const api: OverlayAPI = {
     const listener = (_evt: unknown, alert: unknown) => cb(alert);
     ipcRenderer.on('watch:alert', listener);
     return () => ipcRenderer.removeListener('watch:alert', listener);
+  },
+
+  /** №85: сообщение от MCP-агента поверх игры (тост): {title, text}. */
+  onAgentNotify: (cb) => {
+    const listener = (_evt: unknown, msg: { title: string; text: string }) => cb(msg);
+    ipcRenderer.on('agent:notify', listener);
+    return () => ipcRenderer.removeListener('agent:notify', listener);
   },
 
   diagCollect: () => ipcRenderer.invoke('diag:collect'),

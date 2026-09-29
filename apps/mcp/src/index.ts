@@ -29,6 +29,7 @@ import { registerOauthTools } from './tools/oauth.js';
 import { registerOptimizeTools } from './tools/optimize.js';
 import { registerSourcesTools } from './tools/sources.js';
 import { registerOverlayStateTools } from './tools/overlayState.js';
+import { registerOverlayBridgeTools } from './tools/overlayBridge.js';
 export function buildServer(): number {
   const server = new McpServer({
     name: 'poe2-kit-mcp',
@@ -67,6 +68,7 @@ export function buildServer(): number {
   count += registerOptimizeTools(server);
   count += registerSourcesTools(server);
   count += registerOverlayStateTools(server);
+  count += registerOverlayBridgeTools(server);
 
   // Р—Р°РїРѕРјРЅРёРј СЃРµСЂРІРµСЂ РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ
   (globalThis as any).__poe2Server = server;

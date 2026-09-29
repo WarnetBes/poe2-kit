@@ -298,6 +298,7 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="gems" title="Камни навыков билда: сетапы и чек-лист">💎 Камни</button>
       <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
       <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
+      <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
     </div>
     <div id="grab" class="hide">
@@ -335,6 +336,9 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="gemsWrap" class="hide">
         <div id="gemsContent"></div>
+      </div>
+      <div id="mapsWrap" class="hide">
+        <div id="mapsContent"></div>
       </div>
       <div id="buildWrap" class="hide">
         <div id="buildHead"></div>
@@ -546,6 +550,14 @@ export const rendererHtml = `<!doctype html>
     showToast('<b>📉 Цена упала:</b> ' + esc(l) + '<br/>' + fromTxt + ' → ' + toTxt + ' chaos');
   });
 
+  // №85: агент -> оверлей: тост-уведомление поверх игры от MCP-агента.
+  window.poe2k.onAgentNotify(function (m) {
+    if (!m) return;
+    var t = String(m.title || '🤖 Агент');
+    var x = String(m.text || '');
+    showToast('<b>' + esc(t) + '</b>' + (x ? '<br/>' + esc(x) : ''));
+  });
+
   function refreshWatchlist() {
     window.poe2k.watchList().then(function (r) {
       var entries = (r && r.entries) || [];
@@ -652,6 +664,42 @@ export const rendererHtml = `<!doctype html>
     $('lvlWrap').classList.toggle('hide', mode !== 'level');
     $('buildWrap').classList.toggle('hide', mode !== 'build');
     $('gemsWrap').classList.toggle('hide', mode !== 'gems');
+    $('mapsWrap').classList.toggle('hide', mode !== 'maps');
+  }
+
+  // ─── Вкладка «🧭 Плитки» (№85): крафт плиток смотрителя (Waystones) ────────
+  // Статический справочник — факты poe2wiki.net (page 1720, проверено 2026-09-30).
+  // Обновляется вручную при патче механик; источник даты — в подвале панели.
+  function renderMapsTab() {
+    var el = $('mapsContent');
+    el.innerHTML =
+      '<div class="lvl-hint">Плитки: тиры 1–16, моды до 6 (3 пре + 3 суф), обычная/волшебная/редкая. ' +
+      'Моды переносятся на карту при активации.</div>' +
+      '<table class="bld">' +
+      '<tr><td colspan="4"><b>Самые ценные рецепты</b></td></tr>' +
+      '<tr><td class="slot" colspan="4">1️⃣ <b>Тир 16</b> — только коррупцией Т15: 25% шанс «тир ±1» (реролл модов). ' +
+      '<span class="sub">Единственный путь к Т16.</span></td></tr>' +
+      '<tr class="wornrow"><td></td><td class="worn" colspan="3">Исходы коррупции (каждый 25%): ничего · тир ±1 · ' +
+      'лок префиксов+рефж суффиксов (или наоборот, игнор лимита) · лок обоих + 0–4 доп. мода (до 8 всего)</td></tr>' +
+      '<tr><td class="slot" colspan="4">2️⃣ <b>Верстак перековки</b>: 3 плитки одинакового тира и редкости → 1 плитка тиром выше. <span class="sub">Стабильный ап-тир без риска.</span></td></tr>' +
+      '<tr><td class="slot" colspan="4">3️⃣ <b>Omens</b>: Omen of Chaotic Rarity / Quantity / Monsters — ' +
+      'меняют редкость/количество/монстров необычным путём, недоступным базовой валюте. <span class="sub">Ключ к жирным картам.</span></td></tr>' +
+      '<tr><td colspan="4" style="padding-top:6px"><b>Возрождения (revives)</b></td></tr>' +
+      '<tr><td class="slot" colspan="4">Каждый явный мод плитки = −1 возрождение карты: 6 без модов → 0 при 6+ модах. ' +
+      '<span class="sub">Жирная карта = без права на ошибку.</span></td></tr>' +
+      '</table>' +
+      '<div class="sub" style="color:#9aa4b0;margin-top:6px">Источник: poe2wiki.net «Waystone» (проверено 30.09.2026). ' +
+      'Механики меняются патчами — панель обновляется в ките.</div>';
+  }
+  function showMapsView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '🧭 Крафт плиток смотрителя';
+    showMode('maps');
+    renderMapsTab();
+    requestSize();
   }
 
   // ─── Вкладка «💎 Камни» (№66): сетапы камней билда — отдельная панель ──────
@@ -874,6 +922,19 @@ export const rendererHtml = `<!doctype html>
       }
       (b.summary.gaps || []).forEach(function (g) {
         sum.push('<span class="gap">⚠ ' + esc(g.description) + '</span>');
+      });
+    }
+    // №85: мост core.advice — диагноз + чек-лист «что чинить/покупать следующим».
+    if (b.advice) {
+      if (b.advice.classification) sum.push('Диагноз: <b>' + esc(b.advice.classification) + '</b>' +
+        ' <span class="sub" style="color:#9aa4b0">(' + esc(b.advice.summary) + ')</span>');
+      var PRIO_MARK = { blocking: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+      (b.advice.items || []).slice(0, 3).forEach(function (it) {
+        sum.push('<span class="gap">' + (PRIO_MARK[it.priority] || '•') + ' ' + esc(it.title) +
+          ' <span class="sub" style="color:#9aa4b0">— ' + esc(it.action) + '</span></span>');
+      });
+      (b.advice.checklist || []).slice(0, 3).forEach(function (c) {
+        sum.push('✔ ' + esc(c));
       });
     }
     if (b.metaSkills && b.metaSkills.length) {
@@ -1422,6 +1483,8 @@ export const rendererHtml = `<!doctype html>
         setActiveTab(tab);
         if (tab === 'gems') {
           showGemsView(); // локальная панель, IPC не нужен
+        } else if (tab === 'maps') {
+          showMapsView(); // №85: статический справочник крафта плиток, IPC не нужен
         } else {
           window.poe2k.panelOpen(tab).catch(function () {});
         }

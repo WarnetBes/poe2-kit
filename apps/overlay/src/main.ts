@@ -335,6 +335,75 @@ function toggleWatchEntry(id: string): { ok: boolean; entries: unknown[] } {
   return { ok: true, entries: watchlistPublic() };
 }
 
+// ─── Агентский канал (№85): очередь команд MCP-агента → оверлей ──────────────
+// MCP-туры (poe2_overlay_notify / poe2_overlay_watch_add / poe2_overlay_watch_remove)
+// дописывают JSON в agent-queue.json (в userData); overlay — единственный
+// применяющий: один писатель watchlist = нет race. Поллим файл: fs.watch на
+// SMB/личных дисках капризнее таймера.
+// Формат: { notify: [{title?, text}], watchAdd: [{itemText, label?}], watchRemove: [id] }
+const AGENT_QUEUE_FILE = 'agent-queue.json';
+const AGENT_QUEUE_POLL_MS = 2000;
+
+function agentQueueFile(): string {
+  return path.join(app.getPath('userData'), AGENT_QUEUE_FILE);
+}
+
+function applyAgentQueue(raw: unknown): void {
+  if (!raw || typeof raw !== 'object') return;
+  const q = raw as { notify?: unknown[]; watchAdd?: unknown[]; watchRemove?: unknown[] };
+  if (Array.isArray(q.notify)) {
+    for (const item of (q.notify as unknown[]).slice(0, 5)) {
+      const o = (item ?? {}) as { title?: unknown; text?: unknown };
+      if (typeof o.text !== 'string' || !o.text.trim()) continue;
+      const title = typeof o.title === 'string' && o.title.trim() ? o.title : '🤖 Агент';
+      console.log(`[overlay] agent notify: ${title}: ${o.text.slice(0, 120)}`);
+      overlayWindow?.webContents.send('agent:notify', {
+        title,
+        text: o.text.slice(0, 500),
+      });
+    }
+  }
+  if (Array.isArray(q.watchAdd)) {
+    for (const item of (q.watchAdd as unknown[]).slice(0, 10)) {
+      const o = (item ?? {}) as { itemText?: unknown; label?: unknown };
+      if (typeof o.itemText !== 'string') continue;
+      const r = addWatchEntry({
+        itemText: o.itemText,
+        label: typeof o.label === 'string' ? o.label : undefined,
+      });
+      if (!r.ok) console.warn('[overlay] agent watchAdd: отклонено (не предмет/дубль)');
+    }
+  }
+  if (Array.isArray(q.watchRemove)) {
+    for (const id of (q.watchRemove as unknown[]).slice(0, 20)) {
+      if (typeof id === 'string') removeWatchEntry(id);
+    }
+  }
+}
+
+function startAgentQueuePolling(): void {
+  setInterval(() => {
+    const file = agentQueueFile();
+    try {
+      if (!fs.existsSync(file)) return;
+      const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+      fs.rmSync(file, { force: true }); // применяем ровно один раз
+      applyAgentQueue(raw);
+    } catch (err) {
+      // Битый/полузаписанный JSON — удаляем, чтобы очередь не залипала.
+      try {
+        fs.rmSync(file, { force: true });
+      } catch {
+        /* ничего */
+      }
+      if (err instanceof Error && err.message && !/ENOENT|JSON/.test(err.message)) {
+        console.warn('[overlay] agent queue:', err.message);
+      }
+    }
+  }, AGENT_QUEUE_POLL_MS);
+  console.log(`[overlay] agent queue: polling ${AGENT_QUEUE_FILE} каждые ${AGENT_QUEUE_POLL_MS} мс`);
+}
+
 function fmtChaos(v: number): string {
   return Number.isFinite(v) ? Number(v).toFixed(1) : String(v);
 }
@@ -482,6 +551,14 @@ interface BuildState {
   slots: BuildSlotState[];
   summary: BuildSummaryState | null;
   metaSkills: Array<{ name: string; count: number }> | null;
+  /** №85: советы ядра (core.advice.adviseBuild): диагноз, чек-лист, топ-приоритеты. */
+  advice: {
+    classification: string;
+    summary: string;
+    totals: { blocking: number; high: number; medium: number; low: number };
+    checklist: string[];
+    items: Array<{ priority: string; title: string; action: string }>;
+  } | null;
   /** Сетапы камней билда: активный + поддержки + подсказка «куда вставлять». */
   gemSetups: Array<{
     active: string;
@@ -972,6 +1049,7 @@ function loadBuildState(): void {
         slots: raw.slots as BuildSlotState[],
         summary: raw.summary ?? null,
         metaSkills: raw.metaSkills ?? null,
+        advice: raw.advice ?? null,
         gemSetups: raw.gemSetups ?? null,
         gemSeen: raw.gemSeen ?? null,
         panelVisible: false,
@@ -1062,6 +1140,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
       summary: buildState.summary,
       metaSkills: buildState.metaSkills,
+      advice: buildState.advice ?? null,
       gemSetups: buildState.gemSetups?.map((s) => ({
         ...s,
         active: gemDisplayName(s.active),
@@ -1808,6 +1887,7 @@ async function runBuildImport(): Promise<void> {
       }),
       summary: null,
       metaSkills: null,
+      advice: null,
       gemSetups: null,
       gemSeen: null,
       panelVisible: true,
@@ -1894,6 +1974,27 @@ async function refreshBuildEstimate(): Promise<void> {
       weaponDps: est.weapon ? Math.round(est.weapon.totalDps) : null,
       notes: est.notes.slice(0, 2),
     };
+    // №85: мост core.advice → панель билда. adviseBuild(est) берёт те же оценки,
+    // что и summary, поэтому считаем в одном месте; приоритеты сортирует ядро.
+    try {
+      const adv = core.advice.adviseBuild(est);
+      buildState.advice = {
+        classification: adv.classification,
+        summary: adv.summary,
+        totals: adv.totals,
+        checklist: adv.checklist.slice(0, 5),
+        items: adv.priorities.slice(0, 5).map((i) => ({
+          priority: i.priority,
+          title: i.title,
+          action: i.action,
+        })),
+      };
+      console.log(
+        `[overlay] build advice: ${adv.classification} — b:${adv.totals.blocking} h:${adv.totals.high} m:${adv.totals.medium} l:${adv.totals.low}`,
+      );
+    } catch (advErr) {
+      console.warn('[overlay] build advice failed:', advErr instanceof Error ? advErr.message : advErr);
+    }
     saveBuildState();
     sendBuildUpdate();
     console.log(`[overlay] build estimate: worstEhp=${buildState.summary.worstEhp} (${buildState.summary.worstEhpType})`);
@@ -2598,9 +2699,8 @@ function setupIPC(): void {
 
   ipcMain.handle('level:check', () => runLevelingContext());
 
-  ipcMain.handle('league:get', () => {
-    return activeLeague ?? null;
-  });
+  // №85: мёртвые ipc-хэндлеры league:get / hotkey:get удалены — рендерер их никогда
+  // не вызывал (текущая лига приезжает через leagues:list, хоткеи — через settings:get).
 
   ipcMain.handle('league:set', (_evt, league: string) => {
     const v = typeof league === 'string' ? league.trim() : '';
@@ -2641,8 +2741,6 @@ function setupIPC(): void {
     const text = clipboard.readText();
     return addWatchEntry({ itemText: text });
   });
-
-  ipcMain.handle('hotkey:get', () => hotkeyFor('price'));
 
   // Настройки: получить/применить всё.
   ipcMain.handle('settings:get', () => ({
@@ -2931,6 +3029,8 @@ app.whenReady().then(async () => {
   );
   // Watchlist: восстанавливаем список отслеживаемых предметов из userData.
   loadWatchlist();
+  // №85: агентский канал — MCP-туры дописывают команды в agent-queue.json, overlay применяет.
+  startAgentQueuePolling();
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
   if (!loadRuEnDict()) void ensureRuEnDict();
   setupIPC();
