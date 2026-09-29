@@ -397,6 +397,10 @@ async function runWatchPoll(force = false): Promise<void> {
     let touched = false;
     for (const e of watchlist) {
       if (!e.enabled) continue;
+      // Ручной Ctrl+F1 приоритетнее фоновой очереди: между записями отдаём
+      // глобальный троттл trade2 пользовательскому прайс-чеку (иначе hotkey
+      // ждал за всеми due-записями ватчлиста — до timeout 45 с, №58).
+      if (busy && !force) break;
       const due = force || e.updatedAt === 0 || now - e.updatedAt >= e.pollMs;
       if (!due) continue;
       try {
