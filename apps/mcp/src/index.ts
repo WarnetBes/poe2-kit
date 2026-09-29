@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   if (!process.env['POE2K_LEARN_SOURCE']) process.env['POE2K_LEARN_SOURCE'] = 'mcp';
   if (process.argv.includes('--smoke')) {
     const count = buildServer();
-    console.error(`[smoke] Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРѕ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ: ${count}`);
+    console.error(`[smoke] Registered tools: ${count}`);
     const listed: string[] = (globalThis as any).__poe2Registered ?? [];
     for (const name of listed) console.error(`  - ${name}`);
     process.exit(listed.length === count ? 0 : 1);
