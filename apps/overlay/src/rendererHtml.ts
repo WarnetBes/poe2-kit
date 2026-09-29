@@ -1300,6 +1300,22 @@ export const rendererHtml = `<!doctype html>
     }
   }
   bindTabs();
+  // №65: клики по оверлею. Окно по умолчанию click-through
+  // (setIgnoreMouseEvents(true,{forward:true}), main.ts) — ВСЕ кнопки UI
+  // (вкладки/✕/слайдеры) были некликабельны вне режима Ctrl+F5. С forward:true
+  // рендерею приходят mouseenter/mouseleave: курсор над оверлеем → включаем
+  // интерактив, ушёл → выключили и снова не мешаем игре. Move-режим (там
+  // интерактивом управляет main) не трогаем.
+  var winUnlocked = false;
+  window.poe2k.onMoveMode(function (st) { winUnlocked = !!(st && st.unlocked); });
+  document.addEventListener('mouseenter', function () {
+    if (winUnlocked) return;
+    window.poe2k.setInteractive(true).catch(function () {});
+  });
+  document.addEventListener('mouseleave', function () {
+    if (winUnlocked) return;
+    window.poe2k.setInteractive(false).catch(function () {});
+  });
   // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
   window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
   window.poe2k.onLevelResult(function () { setActiveTab('level'); });
