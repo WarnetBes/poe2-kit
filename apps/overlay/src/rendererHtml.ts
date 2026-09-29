@@ -219,9 +219,18 @@ export const rendererHtml = `<!doctype html>
      растёт (лог-факт №61). Только px-константы. */
   #listWrap { max-height: 340px; overflow-y: auto; padding-right: 4px; }
   #lvlWrap { max-height: 560px; overflow-y: auto; padding-right: 4px; }
+  #gemsWrap { max-height: 560px; overflow-y: auto; padding-right: 4px; }
+  /* №67: полоска сравнения цены с максимумом группы (внутри td, % от ширины). */
+  .cmpbar { display: inline-block; height: 8px; background: var(--accent);
+    border-radius: 2px; vertical-align: middle; min-width: 2px; }
+  .grp { color: #9aa4b0; font-size: 11px; font-weight: normal; }
+  .grp b { color: var(--accent); }
+  .grp td, td.grp { padding-top: 5px; }
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
+  #gemsWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
+  #gemsWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
     background: rgba(198,154,82,0.45); border-radius: 3px; }
 
@@ -276,6 +285,7 @@ export const rendererHtml = `<!doctype html>
     <div class="tabrow" id="tabRow">
       <button data-tab="price" title="Прайс предмета из буфера (Ctrl+F1)">💰 Прайс</button>
       <button data-tab="build" title="Панель билда (Ctrl+F2)">🛒 Билд</button>
+      <button data-tab="gems" title="Камни навыков билда: сетапы и чек-лист">💎 Камни</button>
       <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
       <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
@@ -312,6 +322,9 @@ export const rendererHtml = `<!doctype html>
       <div id="lvlWrap" class="hide">
         <div class="lvl-zone" id="lvlZone"></div>
         <div id="lvlHints"></div>
+      </div>
+      <div id="gemsWrap" class="hide">
+        <div id="gemsContent"></div>
       </div>
       <div id="buildWrap" class="hide">
         <div id="buildHead"></div>
@@ -621,6 +634,60 @@ export const rendererHtml = `<!doctype html>
     $('watchBtnWrap').classList.toggle('hide', mode !== 'price');
     $('lvlWrap').classList.toggle('hide', mode !== 'level');
     $('buildWrap').classList.toggle('hide', mode !== 'build');
+    $('gemsWrap').classList.toggle('hide', mode !== 'gems');
+  }
+
+  // ─── Вкладка «💎 Камни» (№66): сетапы камней билда — отдельная панель ──────
+  // Данные — из payload build:update (gemSetups/gemColors/gemSeen), main не менялся.
+  var lastBuildState = null;
+  function gemKeySh(n) {
+    return String(n || '').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  function gemMarkSh(b, en, expLvl) {
+    var sv = (b.gemSeen || {})[gemKeySh(en)];
+    if (!sv) return '⬜';
+    var lvlTxt = sv.level != null ? (' ур.' + sv.level) : '';
+    return '<span title="Скопирован ' + (sv.level != null ? 'ур.' + sv.level : '') +
+      (expLvl != null ? ' · в билде ур.' + expLvl : '') + '">✅' + lvlTxt + '</span>';
+  }
+  function gemDotSh(b, n) {
+    var c = (b.gemColors || {})[gemKeySh(n)];
+    if (!c) return '';
+    return c.split(',').map(function (h) { return '<span style="color:' + h + '">●</span>'; }).join('') + ' ';
+  }
+  function renderGemsTab(b) {
+    if (!$('gemsWrap').classList.contains('hide')) {
+      $('itemName').textContent = b ? '💎 Камни билда' : '💎 Камни: билд не загружен';
+    }
+    var el = $('gemsContent');
+    if (!b || !b.gemSetups || !b.gemSetups.length) {
+      el.innerHTML = '<div class="lvl-hint">Сетапы камней появятся после импорта билда — Ctrl+F3 или вкладка «📥 Импорт».<br/>' +
+        'Скопируйте камень навыка (Ctrl+C в окне умений) — он отметится ✅ здесь и в списке.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="lvl-hint">Куда вставлять. Ctrl+C по камню в игре отметит его ✅.</div>' +
+      '<table class="bld">' + b.gemSetups.map(function (g) {
+        var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
+        var html = '<tr><td>' + gemMarkSh(b, g.active, g.activeLevel) + '</td>' +
+          '<td class="slot" colspan="3">' + gemDotSh(b, g.active) + '<b>' + esc(g.active) + '</b>' + lvl +
+          ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
+        if (g.supports && g.supports.length) {
+          var sup = g.supports.map(function (s) {
+            return '<span>' + gemDotSh(b, s) + gemMarkSh(b, s, null) + ' ' + esc(s) + '</span>';
+          }).join(' · ');
+          html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + sup + '</td></tr>';
+        }
+        return html;
+      }).join('') + '</table>';
+  }
+  // Клик по вкладке «💎 Камни»: чисто рендерерская панель (без IPC) — данные
+  // приходят с build:update; повторный клик обновляет из последнего payload.
+  function showGemsView() {
+    $('idle').classList.add('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    showMode('gems');
+    renderGemsTab(lastBuildState);
   }
 
   // ─── Билд-ассистент (Ctrl+F2 / Ctrl+F3) ─────────────────────────────────────
@@ -723,6 +790,8 @@ export const rendererHtml = `<!doctype html>
       $('buildBudget').textContent = '';
       $('buildSlots').innerHTML = '';
       $('buildSum').textContent = 'Ctrl+F3 — импорт: скопируйте PoB share-код / .build JSON и нажмите.';
+      lastBuildState = null;
+      renderGemsTab(null);
       return;
     }
 
@@ -768,42 +837,10 @@ export const rendererHtml = `<!doctype html>
       }
       return row;
     }).join('');
-    // Сетапы камней: какие камни и куда вставлять + чек-лист (Ctrl+C по камню в игре).
-    var gemRows = '';
-    if (b.gemSetups && b.gemSetups.length) {
-      var seen = b.gemSeen || {};
-      function gemKey(n) {
-        return String(n || '').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
-      }
-      function gemMark(en, expLvl) {
-        var sv = seen[gemKey(en)];
-        if (!sv) return '⬜';
-        var lvlTxt = sv.level != null ? (' ур.' + sv.level) : '';
-        return '<span title="Скопирован ' + (sv.level != null ? 'ур.' + sv.level : '') +
-          (expLvl != null ? ' · в билде ур.' + expLvl : '') + '">✅' + lvlTxt + '</span>';
-      }
-      gemRows = '<tr><td colspan="4" style="padding-top:5px;border-top:1px solid #2a3344">' +
-        '<span class="sub">💎 Камни билда — куда вставлять (Ctrl+C по камню в окне умений отметит ✅)</span></td></tr>';
-      function gemDot(n) {
-        var c = (b.gemColors || {})[gemKey(n)];
-        if (!c) return '';
-        return c.split(',').map(function (h) { return '<span style="color:' + h + '">●</span>'; }).join('') + ' ';
-      }
-      gemRows += b.gemSetups.map(function (g) {
-        var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
-        var html = '<tr><td>' + gemMark(g.active, g.activeLevel) + '</td>' +
-          '<td class="slot" colspan="3">' + gemDot(g.active) + '<b>' + esc(g.active) + '</b>' + lvl +
-          ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
-        if (g.supports && g.supports.length) {
-          var sup = g.supports.map(function (s) {
-            return '<span>' + gemDot(s) + gemMark(s, null) + ' ' + esc(s) + '</span>';
-          }).join(' · ');
-          html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + sup + '</td></tr>';
-        }
-        return html;
-      }).join('');
-    }
-    $('buildSlots').innerHTML = '<table class="bld">' + rows + gemRows + '</table>';
+    $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
+    // №66: вкладка «💎 Камни» обновляется из того же payload.
+    lastBuildState = b;
+    renderGemsTab(b);
 
     // Дерево билда: кейнстоуны/нотабли PoB + поиск по всему дереву (офлайн).
     renderTreeBlock(b.tree);
@@ -983,10 +1020,33 @@ export const rendererHtml = `<!doctype html>
         '<tr><td colspan="3" style="color:#9aa4b0">Саппорты ' + badge + ' — ' + esc(label) + ':</td></tr>' + srows;
       lw.classList.remove('hide');
     } else if (res.listings && res.listings.length) {
-      var rows = res.listings.slice(0, 8).map(function (l) {
-        return '<tr><td class="num">' + esc(l.price) + '</td><td>' + esc(l.currency) + '</td><td>' + esc(l.whisper || '') + '</td></tr>';
-      }).join('');
-      list.innerHTML = '<tr><td colspan="3" style="color:#9aa4b0">Похожие (trade2):</td></tr>' + rows;
+      // №67: сравнение с рынком — листинги сгруппированы по валюте, отсортированы
+      // по возрастанию цены, полоска = доля от максимума группы, показана медиана.
+      var ls = res.listings.slice().sort(function (a, b) { return (a.price || 0) - (b.price || 0); });
+      var groups = {};
+      for (var li = 0; li < ls.length; li++) {
+        var cur = String(ls[li].currency || '?');
+        (groups[cur] = groups[cur] || []).push(ls[li]);
+      }
+      var curNames = Object.keys(groups).sort(function (a, b) {
+        return (groups[a][0].price || 0) - (groups[b][0].price || 0);
+      });
+      var rows = '';
+      for (var gi = 0; gi < curNames.length; gi++) {
+        var g = groups[curNames[gi]];
+        var gmax = g[g.length - 1].price || 1;
+        var gmid = g[Math.floor(g.length / 2)].price;
+        rows += '<tr><td colspan="3" class="grp">' + esc(curNames[gi]) +
+          ' · предложений: ' + g.length + ' · медиана: <b>' + esc(String(gmid)) + '</b></td></tr>';
+        for (var gj = 0; gj < g.length; gj++) {
+          var l = g[gj];
+          var w = Math.max(2, Math.round(((l.price || 0) / gmax) * 100));
+          rows += '<tr><td class="num">' + esc(String(l.price)) + '</td>' +
+            '<td colspan="2"><span class="cmpbar" style="display:inline-block;width:' + w + '%"></span>' +
+            (l.whisper ? ' <span class="sub">' + esc(l.whisper) + '</span>' : '') + '</td></tr>';
+        }
+      }
+      list.innerHTML = '<tr><td colspan="3" style="color:#9aa4b0">Рынок (по возрастанию цены):</td></tr>' + rows;
       lw.classList.remove('hide');
     } else {
       lw.classList.add('hide');
@@ -1295,7 +1355,11 @@ export const rendererHtml = `<!doctype html>
       tabBtns[bi].addEventListener('click', function () {
         var tab = this.getAttribute('data-tab');
         setActiveTab(tab);
-        window.poe2k.panelOpen(tab).catch(function () {});
+        if (tab === 'gems') {
+          showGemsView(); // локальная панель, IPC не нужен
+        } else {
+          window.poe2k.panelOpen(tab).catch(function () {});
+        }
       });
     }
   }
