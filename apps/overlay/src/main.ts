@@ -24,6 +24,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { core } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
+import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground } from './win32.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -129,6 +130,8 @@ interface OverlaySettings {
    *  только на клир-текст предметов (якорь «Rarity:»). Выключено по умолчанию
    *  — приватность: иначе непрерывно читается буфер (см. PRIVACY). */
   autoClipboard?: boolean;
+  /** Язык имён камней в панели билда и рекомендациях: 'ru' (кли ru-клиента) | 'en'. */
+  gemLang?: 'ru' | 'en';
 }
 
 type HotkeyAction =
@@ -146,6 +149,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   width: 420,
   hotkeys: {},
   bindWindow: true,
+  gemLang: 'ru',
 };
 
 /** Стандартные хоткеи для действия (если пользователь не переопределил). */
@@ -862,6 +866,7 @@ function applySettings(next: OverlaySettings): void {
   if (app.isReady()) {
     globalShortcut.unregisterAll();
     registerHotkeys();
+    sendBuildUpdate(); // gemLang и пр. меняют отображаемые имена сетапов
   }
   applyDisplaySettings();
 }
@@ -879,6 +884,7 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.learn === 'boolean') next.learn = raw.learn;
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
+  if (raw.gemLang === 'en' || raw.gemLang === 'ru') next.gemLang = raw.gemLang;
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
     for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
@@ -977,10 +983,21 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
       summary: buildState.summary,
       metaSkills: buildState.metaSkills,
-      gemSetups: buildState.gemSetups,
+      gemSetups: buildState.gemSetups?.map((s) => ({
+        ...s,
+        active: gemDisplayName(s.active),
+        supports: s.supports.map((g) => gemDisplayName(g)),
+      })) ?? null,
       gemSeen: buildState.gemSeen ?? null,
+      gemLang: settings.gemLang ?? 'ru',
     },
   };
+}
+
+/** Имя камня для отображения: EN-имя из PoB переводим в RU, если выбран ru-язык. */
+function gemDisplayName(en: string): string {
+  if ((settings.gemLang ?? 'ru') === 'en' || !gemEnRu.size) return en;
+  return gemEnRu.get(normName(en)) ?? en;
 }
 
 function sendBuildUpdate(
@@ -1097,9 +1114,21 @@ function toEn(kind: 'base' | 'unique', s: string): string {
 // удар»), PoB-билд — английское (Ice Strike). Словарь строим ТОЛЬКО для камней
 // текущего билда: по EN-имени берём страницу poe2db.tw/ru/<Slug> и читаем
 // <title> («Ледяной удар - PoE2DB…»). Это единственный проверенный формат.
-const GEM_DICT_FILE_VERSION = 1;
+const GEM_DICT_FILE_VERSION = 2;
 const gemRuEn = new Map<string, string>(); // normName(RU-имя гема) -> EN-имя
-const gemDictFetching = new Set<string>(); // EN-имена «в полёте» (анти-спам)
+const gemEnRu = new Map<string, string>(); // normName(EN-имя гема) -> RU-имя (отображение)
+
+/** Сеять словарь офлайн-датасетом (1020 hemов, см. gemsRuEn.ts / _scrape_gems_ru_en.mjs). */
+function seedGemDictFromDataset(): void {
+  if (gemRuEn.size) return;
+  for (const g of GEMS_RU_EN) {
+    const kr = normName(g.ru);
+    if (kr && !gemRuEn.has(kr)) gemRuEn.set(kr, g.en);
+    const ke = normName(g.en);
+    if (ke && !gemEnRu.has(ke)) gemEnRu.set(ke, g.ru);
+  }
+  console.log(`[overlay] gem ru⇄en seeded offline: ${gemRuEn.size} gems`);
+}
 
 function gemRuEnFile(): string {
   return path.join(app.getPath('userData'), 'gem-ru-en-dict.json');
@@ -1131,45 +1160,153 @@ function saveGemRuEnDict(): void {
 }
 
 /**
- * Достроить словарь RU-имён для перечисленных EN-камней билда poe2db-титулами.
- * Ошибки молча пропускаем (страниц нет для тировых имён саппортов — увидим в логе).
+ * Построить полный словарь RU→EN имён камней со списков poe2db
+ * (/ru/Skill_Gems — 427 активных, /ru/Support_Gems — 557 саппортов).
+ * Разметка подтверждена 2026-09-29: `<a class="gem_red|green|blue" href="/ru/<EN-слаг>">RU-имя</a>`.
+ * EN-имя = слаг с подчёркиваниями → пробелы; EN-слаги канонические (Ice_Strike, Tempest_Bell).
  */
-async function ensureGemRuEnDict(namesEn: string[]): Promise<void> {
-  if (!gemRuEn.size) loadGemRuEnDict();
-  for (const en of namesEn) {
-    const key = normName(en);
-    if (!key || gemRuEn.has(key) || gemRuEn.has(normName(String(en))) || gemDictFetching.has(en)) continue;
-    // уже есть обратная запись?
-    if ([...gemRuEn.values()].some((v) => normName(v) === key)) continue;
-    gemDictFetching.add(en);
+async function buildGemRuEnDict(): Promise<void> {
+  seedGemDictFromDataset();
+  loadGemRuEnDict(); // старый live-кэш поверх статики (там могли быть свежие имена)
+  // Live-обновление поверх офлайн-датасета: poe2db пополняет камни с патчами.
+  for (const page of ['Skill_Gems', 'Support_Gems']) {
     try {
-      const slug = encodeURIComponent(en.trim().replace(/\s+/g, '_'));
-      const res = await fetch(`https://poe2db.tw/ru/${slug}`, {
+      const res = await fetch(`https://poe2db.tw/ru/${page}`, {
         headers: { 'User-Agent': 'poe2-kit-overlay/1.0 (gem names)' },
       });
       if (!res.ok) {
-        if (res.status === 404) console.warn(`[overlay] gem dict: нет страницы poe2db для "${en}"`);
+        console.warn(`[overlay] gem dict: ${page} → HTTP ${res.status}`);
         continue;
       }
       const html = await res.text();
-      const title = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? '';
-      // Формат (проверено 2026-09-29): «Ледяной удар - PoE2DB, Path of Exile Wiki ru»
-      const m = title.match(/^(.+?)\s+-\s+PoE2DB/);
-      if (!m || !m[1]!.trim() || /^[a-z0-9_/]+$/i.test(m[1]!)) continue;
-      const ru = m[1]!
-        .replace(/&amp;/g, '&')
-        .replace(/&apos;/g, "'")
-        .replace(/&quot;/g, '"')
-        .trim();
-      if (normName(ru) === key) continue; // страница редиректнула на EN-имя
-      gemRuEn.set(normName(ru), en);
-      console.log(`[overlay] gem dict: «${ru}» → ${en}`);
-      saveGemRuEnDict();
+      const aRe = /<a class="(?:gem_(?:red|green|blue)|gemitem)[^"]*"[^>]*href="\/ru\/([A-Za-z0-9_%'-]+)"[^>]*>([^<]+)<\/a>/g;
+      let m: RegExpExecArray | null;
+      let added = 0;
+      while ((m = aRe.exec(html))) {
+        const en = m[1]!.replace(/_/g, ' ');
+        const ru = decodeEntities(m[2]!.trim());
+        if (!ru) continue;
+        const kr = normName(ru);
+        if (kr && !gemRuEn.has(kr)) {
+          gemRuEn.set(kr, en);
+          added++;
+        }
+        const ke = normName(en);
+        if (ke && !gemEnRu.has(ke)) gemEnRu.set(ke, ru);
+      }
+      console.log(`[overlay] gem dict: ${page} → +${added}`);
     } catch {
-      /* сеть —best effort */
-    } finally {
-      gemDictFetching.delete(en);
+      /* сеть — best effort, попробуем при следующем геме */
     }
+  }
+  console.log(`[overlay] gem ru→en dict built: ${gemRuEn.size} gems`);
+  saveGemRuEnDict();
+}
+
+let gemDictPromise: Promise<void> | null = null;
+/** Дождаться словаря камней (строится один раз, конкурентные вызовы дедупятся). */
+function ensureGemRuEnDict(): Promise<void> {
+  if (gemRuEn.size) return Promise.resolve();
+  if (!gemDictPromise) {
+    gemDictPromise = buildGemRuEnDict().finally(() => {
+      gemDictPromise = null;
+    });
+  }
+  return gemDictPromise;
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+// ─── Рекомендованные саппорты для гема (poe2db «Recommended Support Gems») ──
+// На странице каждого активного камня poe2db есть таблица «Ранг | Камни» —
+// топ саппортов по рангам (ранг 1 = доступен раньше всего). Разметка
+// подтверждена 2026-09-29 на /ru/Tempest_Bell. Кэш в userData.
+const GEM_SUPPORTS_FILE_VERSION = 1;
+const gemSupports = new Map<string, Array<{ rank: number; ru: string; en: string }>>();
+const gemSupportsFetching = new Set<string>();
+
+function gemSupportsFile(): string {
+  return path.join(app.getPath('userData'), 'gem-supports-recommend.json');
+}
+
+function loadGemSupportsCache(): void {
+  try {
+    const raw: unknown = JSON.parse(fs.readFileSync(gemSupportsFile(), 'utf8'));
+    const data = raw as { version?: number; map?: Record<string, Array<{ rank: number; ru: string; en: string }>> };
+    if (data.version !== GEM_SUPPORTS_FILE_VERSION || typeof data.map !== 'object') return;
+    for (const [k, v] of Object.entries(data.map)) gemSupports.set(k, v);
+    console.log(`[overlay] gem supports cache loaded: ${gemSupports.size} gems`);
+  } catch {
+    /* нет файла — ок */
+  }
+}
+
+function saveGemSupportsCache(): void {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(
+      gemSupportsFile(),
+      JSON.stringify({ version: GEM_SUPPORTS_FILE_VERSION, map: Object.fromEntries(gemSupports) }),
+      'utf8',
+    );
+  } catch {
+    /* некритично */
+  }
+}
+
+/** Топ саппортов гема по рангам poe2db (null = страницы нет / не распarsedась). */
+async function fetchGemSupports(en: string): Promise<Array<{ rank: number; ru: string; en: string }> | null> {
+  const key = normName(en);
+  if (!gemSupports.size) loadGemSupportsCache();
+  if (gemSupports.has(key)) return gemSupports.get(key)!;
+  if (gemSupportsFetching.has(key)) return gemSupports.get(key) ?? null; // уже качаем
+  gemSupportsFetching.add(key);
+  try {
+    const slug = encodeURIComponent(en.trim().replace(/\s+/g, '_'));
+    const res = await fetch(`https://poe2db.tw/ru/${slug}`, {
+      headers: { 'User-Agent': 'poe2-kit-overlay/1.0 (gem supports)' },
+    });
+    if (!res.ok) {
+      if (res.status === 404) console.warn(`[overlay] gem supports: нет страницы poe2db для "${en}"`);
+      return null;
+    }
+    const html = await res.text();
+    const head = html.indexOf('Recommended Support Gems');
+    if (head < 0) return null;
+    const tail = html.indexOf('</tbody>', head);
+    if (tail < 0) return null;
+    const sec = html.slice(head, tail);
+    const rows: Array<{ rank: number; ru: string; en: string }> = [];
+    const rowRe = /<tr><td>(\d+)<\/td><td>([\s\S]*?)<\/td><\/tr>/g;
+    let m: RegExpExecArray | null;
+    while ((m = rowRe.exec(sec))) {
+      const rank = Number(m[1]);
+      let a: RegExpExecArray | null;
+      const aRe = /href="\/ru\/([A-Za-z0-9_%'-]+)"[^>]*>([^<]+)<\/a>/g;
+      while ((a = aRe.exec(m[2]!))) {
+        const ru = decodeEntities(a[2]!.trim());
+        if (ru) rows.push({ rank, ru, en: a[1]!.replace(/_/g, ' ') });
+      }
+    }
+    if (!rows.length) return null;
+    rows.sort((x, y) => x.rank - y.rank);
+    gemSupports.set(key, rows);
+    saveGemSupportsCache();
+    console.log(
+      `[overlay] gem supports: ${en} → ${rows.length} саппортов, ранги ${rows[0]!.rank}–${rows[rows.length - 1]!.rank}`,
+    );
+    return rows;
+  } catch {
+    return null;
+  } finally {
+    gemSupportsFetching.delete(key);
   }
 }
 
@@ -1204,20 +1341,20 @@ function parseGemText(itemText: string): ParsedGem | null {
 async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<string, unknown>> {
   const ruName = gem.name;
   let en = gem.name;
-  if (/[а-яё]/i.test(ruName) && buildState?.gemSetups) {
-    const namesEn = [
-      ...new Set(buildState.gemSetups.flatMap((s) => [s.active, ...s.supports])),
-    ].filter(Boolean);
-    await withTimeout(ensureGemRuEnDict(namesEn), 15_000, 'ensureGemRuEnDict').catch(() => {});
+  if (/[а-яё]/i.test(ruName)) {
+    await withTimeout(ensureGemRuEnDict(), 20_000, 'ensureGemRuEnDict').catch(() => {});
     en = gemRuEn.get(normName(ruName)) ?? ruName;
   }
   const key = normName(en);
   let verdict = 'нет билда — просто гем';
+  type GemSetupLike = { active: string; activeLevel: number | null; supports: string[]; source: 'socket' | 'passive'; where: string };
+  let setup: GemSetupLike | null = null;
   if (buildState?.gemSetups) {
     const known = [
       ...new Set(buildState.gemSetups.flatMap((s) => [s.active, ...s.supports])),
     ].filter(Boolean);
     const inBuild = known.some((g) => normName(g) === key);
+    const own = buildState.gemSetups.find((s) => normName(s.active) === key) ?? null;
     if (inBuild) {
       buildState.gemSeen ??= {};
       buildState.gemSeen[key] = {
@@ -1228,6 +1365,7 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
       };
       saveBuildState();
       sendBuildUpdate();
+      setup = own;
       verdict = '✓ есть в билде';
     } else {
       verdict = '✗ не в билде';
@@ -1236,14 +1374,33 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
   console.log(
     `[overlay] gem check: "${ruName}" → ${en} ур.${gem.total ?? '?'} (с камня ${gem.native ?? '?'}) — ${verdict}`,
   );
+
+  // Активный камень: топ саппортов poe2db по рангам (ранг 1 = раньше доступен).
+  let supports: Array<{ rank: number; ru: string; en: string; inBuild: boolean }> | null = null;
+  if (!gem.isSupport) {
+    const recs = await withTimeout(fetchGemSupports(en), 20_000, 'fetchGemSupports').catch(() => null);
+    if (recs) {
+      const lang = settings.gemLang ?? 'ru';
+      const setupSupports = new Set((setup?.supports ?? []).map((s) => normName(s)));
+      supports = recs.map((r) => ({
+        rank: r.rank,
+        ru: r.ru,
+        en: r.en,
+        name: lang === 'en' ? r.en : r.ru,
+        inBuild: setupSupports.has(normName(r.en)),
+      }));
+    }
+  }
+
   return {
-    itemName: `💎 ${ruName} — ур. ${gem.total ?? '?'} · ${verdict}`,
+    itemName: `💎 ${en === ruName ? ruName : `${ruName} (${en})`} — ур. ${gem.total ?? '?'} · ${verdict}`,
     rarity: 'gem',
     estimate: null,
     listings: [],
-    sources: [],
+    sources: supports ? ['poe2db Recommended Support Gems'] : [],
     updatedAt: Date.now(),
     gemCheck: true,
+    gemSupports: supports,
     itemText,
   };
 }
@@ -1535,9 +1692,8 @@ async function refreshGemSetups(input: string): Promise<void> {
     saveBuildState();
     sendBuildUpdate();
     console.log(`[overlay] gem setups: ${setups.length} связок (${setups.map((s) => s.active).slice(0, 3).join(', ')}…)`);
-    // Фон: перечень RU-имён этих камней с poe2db (нужно для Ctrl+C-чек-листа).
-    const namesEn = [...new Set(setups.flatMap((s) => [s.active, ...s.supports]))].filter(Boolean);
-    void ensureGemRuEnDict(namesEn);
+    // Фон: полный словарь RU-имён камней с poe2db (нужно для Ctrl+C-чек-листа).
+    void ensureGemRuEnDict();
   } catch (err) {
     console.warn('[overlay] gem setups failed:', err instanceof Error ? err.message : err);
   }
@@ -2415,6 +2571,7 @@ app.whenReady().then(async () => {
   }
   // Восстанавливаем сохранённый билд (если импортировали раньше) — панель скрыта до Ctrl+F2.
   loadBuildState();
+  seedGemDictFromDataset(); // офлайн-словарь камней для чек-листа и языка отображения
   // Источник автосинхронизации с персонажем poe.ninja (если настраивали раньше).
   loadCharSync();
   console.log(

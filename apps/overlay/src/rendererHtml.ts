@@ -337,6 +337,17 @@ export const rendererHtml = `<!doctype html>
         <div class="tip">Выключите, чтобы kit не обращался к user32.dll вовсе: оверлей встанет в угол экрана (двигается Ctrl+F5), не будет следовать за окном игры и прятаться при alt-tab.</div>
       </div>
 
+      <div class="set-row" id="gemLangSection">
+        <div class="lbl">
+          <span>Язык имён камней <small>— имена в панели билда и рекомендациях саппортов</small></span>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button id="gemLangRu" style="font-size:10px">RU</button>
+            <button id="gemLangEn" style="font-size:10px">EN</button>
+          </div>
+        </div>
+        <div class="tip">RU — имена как в русском клиенте игры (перевод из офлайн-словаря poe2db). EN — как в PoB.</div>
+      </div>
+
       <div class="set-row" id="autoClipSection">
         <div class="lbl">
           <span>Автопрайс-чек из буфера <small>— проверять новые предметы без Ctrl+F1</small></span>
@@ -786,6 +797,10 @@ export const rendererHtml = `<!doctype html>
     } else if (res.parseError) {
       err.classList.remove('hide');
       err.textContent = 'Оценка: ' + res.parseError;
+    } else if (res.gemCheck) {
+      // Гем: не предмет рынка — «не найдено в источниках» не показываем.
+      err.classList.add('hide');
+      err.textContent = '';
     } else if (!res.estimate) {
       err.classList.remove('hide');
       err.textContent = 'Оценка: не найдено в бесплатных источниках.';
@@ -802,10 +817,17 @@ export const rendererHtml = `<!doctype html>
       meta.classList.add('hide');
     }
 
-    // Список похожих объявлений.
+    // Список похожих объявлений ИЛИ рекомендуемые саппорты гема.
     var lw = $('listWrap');
     var list = $('list');
-    if (res.listings && res.listings.length) {
+    if (res.gemSupports && res.gemSupports.length) {
+      var srows = res.gemSupports.map(function (r) {
+        var mark = r.inBuild ? ' <span class="done">✓ в билде</span>' : '';
+        return '<tr><td class="num">' + r.rank + '</td><td colspan="2">' + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
+      }).join('');
+      list.innerHTML = '<tr><td colspan="3" style="color:#9aa4b0">Рекомендуемые саппорты (ранг = приоритет):</td></tr>' + srows;
+      lw.classList.remove('hide');
+    } else if (res.listings && res.listings.length) {
       var rows = res.listings.slice(0, 8).map(function (l) {
         return '<tr><td class="num">' + esc(l.price) + '</td><td>' + esc(l.currency) + '</td><td>' + esc(l.whisper || '') + '</td></tr>';
       }).join('');
@@ -815,9 +837,9 @@ export const rendererHtml = `<!doctype html>
       lw.classList.add('hide');
     }
 
-    // Кнопка «Следить»: добавить предмет в watchlist (если есть сырой itemText).
+    // Кнопка «Следить»: добавить предмет в watchlist (гемы не прайсятся — прячем).
     var ww = $('watchBtnWrap');
-    if (res.itemText) {
+    if (res.itemText && !res.gemCheck) {
       watchTarget = { itemText: res.itemText, label: res.itemName || 'Предмет', rarity: res.rarity };
       ww.classList.remove('hide');
       var wb = $('watchBtn');
@@ -907,6 +929,7 @@ export const rendererHtml = `<!doctype html>
       learn: !!$('setLearn').checked,
       bindWindow: !!$('setBindWindow').checked,
       autoClipboard: !!$('setAutoClip').checked,
+      gemLang: $('gemLangEn').classList.contains('on') ? 'en' : 'ru',
       hotkeys: {}
     };
   }
@@ -929,6 +952,7 @@ export const rendererHtml = `<!doctype html>
     $('setLearn').checked = !!s.learn;
     $('setAutoClip').checked = !!s.autoClipboard;
     $('setBindWindow').checked = s.bindWindow !== false;
+    paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
     setDirty.opacity = true; setDirty.scale = true; setDirty.width = true;
     window.poe2k.learnInfo().then(function (li) {
       if (!li) return;
@@ -1072,6 +1096,24 @@ export const rendererHtml = `<!doctype html>
       draft.hotkeys = collectHotkeys();
       window.poe2k.settingsApply(draft).catch(function () {});
     });
+  }
+
+  // Язык имён камней: применяется мгновенно (как угол) — это лишь имена в панели.
+  var gemLangBtns = { ru: $('gemLangRu'), en: $('gemLangEn') };
+  ['ru', 'en'].forEach(function (lang) {
+    gemLangBtns[lang].addEventListener('click', function () {
+      if (this.classList.contains('on')) return;
+      var draft = currentDraft();
+      draft.gemLang = lang;
+      draft.hotkeys = collectHotkeys();
+      window.poe2k.settingsApply(draft).then(function () {
+        paintGemLang(lang);
+      }).catch(function () {});
+    });
+  });
+  function paintGemLang(lang) {
+    gemLangBtns.ru.classList.toggle('on', lang === 'ru');
+    gemLangBtns.en.classList.toggle('on', lang === 'en');
   }
 
   // Открытие/закрытие панели настроек (Ctrl+F6 из main).
