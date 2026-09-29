@@ -117,6 +117,14 @@ interface OverlaySettings {
   scale: number;
   /** Ширина оверлея (DIP). */
   width: number;
+  /** Высота оверлея (DIP) — ручной режим (autoHeight=false, по умолчанию):
+   *  окно фиксировано и НЕ меняет размер при переключении панелей; длинный
+   *  контент скроллится внутри (№60–61). Жалоба №62: высота «скачет»
+   *  при переключении панелей — авто-режим теперь opt-in. */
+  height: number;
+  /** Автоподбор высоты под контент (бывшее поведение): окно растёт/прыгает
+   *  при каждой смене панели. По умолчанию выключено. */
+  autoHeight?: boolean;
   /** Переопределения хоткеев (по умолчанию пусто = стандартные Ctrl+F1..F6). */
   hotkeys: Partial<Record<HotkeyAction, string>>;
   /** Opt-in журнал обучения: запоминать структуру проверенных предметов
@@ -147,6 +155,8 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   opacity: 0.86,
   scale: 1,
   width: 420,
+  height: 480,
+  autoHeight: false,
   hotkeys: {},
   bindWindow: true,
   gemLang: 'ru',
@@ -897,6 +907,16 @@ function applySettings(next: OverlaySettings): void {
   syncClipboardWatcher();
   saveSettings(settings);
   overlayWidth = settings.width;
+  // №62: ручная высота применяется сразу (как ширина), включая слайдер в настройках.
+  if (settings.autoHeight !== true) {
+    const wa = screen.getPrimaryDisplay().workArea;
+    overlayHeight = clamp(settings.height, OVERLAY_MIN_HEIGHT, wa.height - 2 * MARGIN);
+    const win = overlayWindow;
+    if (win && !win.isDestroyed()) {
+      const b = win.getBounds();
+      win.setBounds({ x: b.x, y: b.y, width: overlayWidth, height: overlayHeight });
+    }
+  }
   // Перерегистрируем хоткеи (убрать старые закрепления, зарегистрировать новые).
   if (app.isReady()) {
     globalShortcut.unregisterAll();
@@ -916,6 +936,8 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.opacity === 'number') next.opacity = clamp(raw.opacity, 0.25, 1);
   if (typeof raw.scale === 'number') next.scale = clamp(raw.scale, 0.7, 1.4);
   if (typeof raw.width === 'number') next.width = clamp(Math.round(raw.width), 280, 640);
+  if (typeof raw.height === 'number') next.height = clamp(Math.round(raw.height), OVERLAY_MIN_HEIGHT, 1000);
+  if (typeof raw.autoHeight === 'boolean') next.autoHeight = raw.autoHeight;
   if (typeof raw.learn === 'boolean') next.learn = raw.learn;
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
@@ -2531,6 +2553,7 @@ function collectDiagnostics(): string {
   L.push('opacity: ' + settings.opacity);
   L.push('scale: ' + settings.scale);
   L.push('width: ' + settings.width);
+  L.push('height: ' + overlayHeight + ' (autoHeight=' + (settings.autoHeight === true) + ')');
   L.push('hotkeys: ' + JSON.stringify(settings.hotkeys));
   L.push('');
   L.push('-- Состояние --');
@@ -2685,7 +2708,12 @@ function setupIPC(): void {
   ipcMain.handle('overlay:autosize', (_evt, px: number) => {
     const win = overlayWindow;
     if (!win || win.isDestroyed()) return overlayHeight;
-    let h = Math.round(Number(px));
+    // №62: по умолчанию (autoHeight=false) высота ФИКСИРОВАНА настройкой —
+    // окно не прыгает при переключении панелей (прайс → билд → прокачка),
+    // длинный контент скроллится внутри (renderer клэмпит панель этой высотой).
+    // px (естественная высота контента) используется только в авто-режиме.
+    const manual = settings.autoHeight !== true;
+    let h = manual ? settings.height : Math.round(Number(px));
     if (!Number.isFinite(h) || h <= 0) return overlayHeight;
     const wa = screen.getDisplayMatching(win.getBounds()).workArea;
     h = Math.min(h, wa.height - 2 * MARGIN);
@@ -2786,10 +2814,16 @@ app.whenReady().then(async () => {
   // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
   settings = loadSettings();
   overlayWidth = settings.width;
+  // №62: стартовая геометрия — ручная высота (в авто-режиме её поправит
+  // первый autosize-тик рендерера после загрузки).
+  if (settings.autoHeight !== true) {
+    const wa = screen.getPrimaryDisplay().workArea;
+    overlayHeight = clamp(settings.height, OVERLAY_MIN_HEIGHT, wa.height - 2 * MARGIN);
+  }
   syncLearnEnv();
   syncClipboardWatcher(); // если сохранён autoClipboard=on — стартуем слежение сразу
   console.log(
-    `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width}`,
+    `[overlay] settings: corner=${settings.corner} opacity=${settings.opacity} scale=${settings.scale} width=${settings.width} height=${overlayHeight} autoHeight=${settings.autoHeight === true}`,
   );
 
   // HiDPI-диагностика: что Electron видит как масштаб каждого дисплея (100/125/150%).

@@ -30,9 +30,11 @@ export const rendererHtml = `<!doctype html>
   #panel {
     /* Fit-content: растём под контент (autosize в main.ts меряет этот rect —
        inset:0 запинал панель на высоту окна и окно никогда не росло: лог-факт
-       setBounds 470x320 при импорте билда, всей виной №60). max-height гасит
-       перелив локальными скроллами детей (buildWrap/listWrap/lvlWrap). */
-    position: absolute; top: 0; left: 0; right: 0; max-height: 100%;
+       setBounds 470x320 при импорте билда, №60). Клэмпа в CSS consciously НЕТ:
+       max-height:100%/vh — это проценты от ТЕКУЩЕГО окна = прежний замкнутый
+       круг (лог-факт №61: autosize height=140 и дальше тишина). Панель клэмпит
+       JS в requestSize по высоте, которую вернул main (кэп workArea). */
+    position: absolute; top: 0; left: 0; right: 0;
     /* HUD PoE2: тёмная сталь/пергамент с золотой окантовкой.
        var(--bg) — управляется слайдером прозрачности, оставляем базой. */
     background:
@@ -212,9 +214,11 @@ export const rendererHtml = `<!doctype html>
   #buildErr { font-size: 11px; color: var(--warn); }
 
   /* Окно прайса/прокачки: длинные списки (саппорты, листинги trade2, подсказки
-     умений/гемов) скроллятся локально, а не обрезаются кэпом высоты окна (№60). */
-  #listWrap { max-height: 60vh; overflow-y: auto; padding-right: 4px; }
-  #lvlWrap { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+     умений/гемов) скроллятся локально, а не обрезаются кэпом высоты окна (№60).
+     НЕ vh: vh = ТЕКУЩЕЕ окно — при росте панели клэмпит контент и окно не
+     растёт (лог-факт №61). Только px-константы. */
+  #listWrap { max-height: 340px; overflow-y: auto; padding-right: 4px; }
+  #lvlWrap { max-height: 560px; overflow-y: auto; padding-right: 4px; }
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
@@ -323,6 +327,22 @@ export const rendererHtml = `<!doctype html>
       <div class="set-row">
         <div class="lbl"><span>Ширина оверлея</span><var id="setWidthVal">—</var></div>
         <input type="range" id="setWidth" min="280" max="640" step="10" value="420" />
+      </div>
+
+      <div class="set-row">
+        <div class="lbl"><span>Высота оверлея</span><var id="setHeightVal">—</var></div>
+        <input type="range" id="setHeight" min="140" max="1000" step="10" value="480" />
+      </div>
+
+      <div class="set-row" id="autoHeightSection">
+        <div class="lbl">
+          <span>Автоподбор высоты <small>— окно само растёт под контент и меняет размер при переключении панелей</small></span>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:4px">
+            <input type="checkbox" id="setAutoHeight" style="width:auto" />
+            <span style="font-size:10px;color:var(--dim)">Включить (окно будет «прыгать»)</span>
+          </label>
+        </div>
+        <div class="tip">Выключено (по умолчанию): высота — по слайдеру выше, длинный билд/списки прокручиваются внутри окна. Включите, если хотите, чтобы окно всегда вмещало весь контент целиком (в пределах экрана).</div>
       </div>
 
       <div class="set-row">
@@ -529,13 +549,27 @@ export const rendererHtml = `<!doctype html>
   });
 
   // Авторазмер окна: контент панели изменился — просим main подогнать высоту.
+  // Панель не имеет CSS-клэмпа (иначе autosize зацикливается на размере окна,
+  // лог-факты №60–61): меряем ЧЕСТНУЮ высоту контента без клэмпа, main возвращает
+  // фактическую высоту окна (с учётом кэпа workArea) — ею клэмпим панель, чтобы
+  // при кэпе включились локальные скроллы (#buildWrap/#listWrap/#lvlWrap).
   var _sizeTimer = null;
   function requestSize() {
     if (_sizeTimer) clearTimeout(_sizeTimer);
     _sizeTimer = setTimeout(function () {
-      var h = Math.ceil(document.getElementById('panel').getBoundingClientRect().height);
+      var p = document.getElementById('panel');
+      var clamped = p.style.maxHeight;
+      p.style.maxHeight = 'none';
+      var h = Math.ceil(p.getBoundingClientRect().height);
       if (h > 40 && window.poe2k.autosize) {
-        window.poe2k.autosize(h).catch(function () {});
+        window.poe2k.autosize(h).then(function (actual) {
+          var a = Math.max(0, Math.round(Number(actual) || 0));
+          if (a > 0) p.style.maxHeight = a + 'px';
+        }).catch(function () {
+          p.style.maxHeight = clamped; // отказ IPC — вернуть прежний клэмп
+        });
+      } else {
+        p.style.maxHeight = clamped;
       }
     }, 60);
   }
@@ -1032,6 +1066,8 @@ export const rendererHtml = `<!doctype html>
       opacity: Number($('setOpacity').value) / 100,
       scale: Number($('setScale').value) / 100,
       width: Number($('setWidth').value),
+      height: Number($('setHeight').value),
+      autoHeight: !!$('setAutoHeight').checked,
       learn: !!$('setLearn').checked,
       bindWindow: !!$('setBindWindow').checked,
       autoClipboard: !!$('setAutoClip').checked,
@@ -1055,11 +1091,13 @@ export const rendererHtml = `<!doctype html>
     $('setOpacity').value = Math.round((s.opacity || 0.86) * 100);
     $('setScale').value = Math.round((s.scale || 1) * 100);
     $('setWidth').value = Math.round(s.width || 420);
+    $('setHeight').value = Math.round(s.height || 480);
+    $('setAutoHeight').checked = s.autoHeight === true;
     $('setLearn').checked = !!s.learn;
     $('setAutoClip').checked = !!s.autoClipboard;
     $('setBindWindow').checked = s.bindWindow !== false;
     paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
-    setDirty.opacity = true; setDirty.scale = true; setDirty.width = true;
+    setDirty.opacity = true; setDirty.scale = true; setDirty.width = true; setDirty.height = true;
     window.poe2k.learnInfo().then(function (li) {
       if (!li) return;
       $('learnRecords').textContent = li.enabled
@@ -1100,6 +1138,7 @@ export const rendererHtml = `<!doctype html>
     $('setOpacityVal').textContent = Math.round(Number($('setOpacity').value)) + '%';
     $('setScaleVal').textContent = Math.round(Number($('setScale').value)) + '%';
     $('setWidthVal').textContent = Math.round(Number($('setWidth').value)) + ' px';
+    $('setHeightVal').textContent = Math.round(Number($('setHeight').value)) + ' px';
   }
 
   function openSettings() {
@@ -1183,7 +1222,7 @@ export const rendererHtml = `<!doctype html>
       requestSize();
     });
   });
-  ['setOpacity', 'setScale', 'setWidth'].forEach(function (id) {
+  ['setOpacity', 'setScale', 'setWidth', 'setHeight'].forEach(function (id) {
     $(id).addEventListener('input', function () {
       setDirty[id] = true;
       refreshDraftValues();
