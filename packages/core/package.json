@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/core",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "type": "module",
   "description": "Р•РґРёРЅРѕРµ СЏРґСЂРѕ PoE2 Kit: С†РµРЅС‹, С‚РѕСЂРіРѕРІР»СЏ, Р±РёР»РґС‹, РїСЂРѕРєР°С‡РєР°, AI-СЃР»РѕР№",
   "main": "dist/index.js",

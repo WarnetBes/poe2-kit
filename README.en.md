@@ -10,8 +10,8 @@ One core (**`@poe2-kit/core`**) powers three frontends:
 | Frontend | Package | What it is |
 |---|---|---|
 | 🌐 Web app | `apps/web` | Dashboard: currency rates, price check, leveling guide, build import |
-| 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: price check on a hotkey |
-| 🧠 MCP server for AI | `apps/mcp` | 42 `poe2_*` tools for AI assistants (OpenCode, Claude Desktop, …) |
+| 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: price check on a hotkey, panel tabs (build, 💎 gems, leveling, settings), clipboard auto-pricing, watchlist alerts |
+| 🧠 MCP server for AI | `apps/mcp` | 55 `poe2_*` tools for AI assistants (OpenCode, Claude Desktop, …) |
 
 Prices and trade data come **only from free public APIs**: [poe.ninja](https://poe.ninja),
 [poe2scout](https://poe2scout.com), the official Path of Exile 2 `trade2` API and
@@ -21,7 +21,7 @@ open RePoE data. No API keys required.
 
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
-1. **Download**: repository page → **Releases** → the latest release (v1.0.12):
+1. **Download**: repository page → **Releases** → the latest release (v1.0.14):
    - **`poe2-kit-portable-…-win64.zip`** (36 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
