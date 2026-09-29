@@ -1,9 +1,9 @@
-{
+﻿{
   "name": "@poe2-kit/web",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "type": "module",
-  "description": "Веб-приложение PoE2 Kit: прайс-чек, курсы валют, гид по прокачке, AI-чат, импорт билда",
+  "description": "Р’РµР±-РїСЂРёР»РѕР¶РµРЅРёРµ PoE2 Kit: РїСЂР°Р№СЃ-С‡РµРє, РєСѓСЂСЃС‹ РІР°Р»СЋС‚, РіРёРґ РїРѕ РїСЂРѕРєР°С‡РєРµ, AI-С‡Р°С‚, РёРјРїРѕСЂС‚ Р±РёР»РґР°",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
