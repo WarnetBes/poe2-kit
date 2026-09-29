@@ -459,6 +459,15 @@ interface BuildState {
   }> | null;
   /** Показана ли панель билда в виджете. */
   panelVisible: boolean;
+  /** Дерево билда из PoB-импорта: кейнстоуны/нотабли и счётчики. */
+  tree: {
+    version: string | null;
+    total: number;
+    resolved: number;
+    missing: number;
+    keystones: Array<{ name: string; stats: string[] }>;
+    notables: Array<{ name: string; stats: string[] }>;
+  } | null;
   /** Чек-лист камней: ключ — normName(EN-имя), значение из Ctrl+C гема в игре. */
   gemSeen: Record<string, { level: number | null; native: number | null; ru: string; at: number }> | null;
 }
@@ -918,12 +927,27 @@ function loadBuildState(): void {
         gemSetups: raw.gemSetups ?? null,
         gemSeen: raw.gemSeen ?? null,
         panelVisible: false,
+        tree: (raw.tree as BuildState['tree']) ?? null,
       };
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
       // Старые state-файлы без gemSetups: досчитываем сетапы камней в фоне.
       if (buildState.rawInput && !buildState.gemSetups) {
         console.log('[overlay] gem setups missing in saved state, refreshing in background');
         void refreshGemSetups(buildState.rawInput);
+      }
+      // Старые state-файлы без дерева (v1.0.10 и старее): досчитываем пассивки в фоне.
+      if (buildState.rawInput && !buildState.tree) {
+        console.log('[overlay] build tree missing in saved state, refreshing in background');
+        void core.build
+          .importBuild(buildState.rawInput)
+          .then((imp) => {
+            if (buildState) {
+              buildState.tree = buildTreeSummary(imp);
+              saveBuildState();
+              sendBuildUpdate({ status: 'ready' });
+            }
+          })
+          .catch(() => {});
       }
     }
   } catch {
@@ -990,6 +1014,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       })) ?? null,
       gemSeen: buildState.gemSeen ?? null,
       gemLang: settings.gemLang ?? 'ru',
+      tree: buildState.tree ?? null,
     },
   };
 }
@@ -1581,6 +1606,34 @@ async function syncCharacterGear(force = false): Promise<void> {
  */
 let pricingToken = 0;
 
+/**
+ * Дерево билда: разбор пассивок PoB-импорта в кейнстоуны/нотабли.
+ * Живое дерево персонажа PoE2 не экспортирует (сквозное знание, куб-4),
+ * источник = Spec.nodes PoB-XML; имена/статы — core.dataset.resolvePassiveNodes.
+ */
+function buildTreeSummary(imported: {
+  passiveNodes?: string[];
+  treeVersion?: string;
+}): BuildState['tree'] {
+  const ids = imported.passiveNodes ?? [];
+  if (!ids.length) return null;
+  try {
+    const rep = core.dataset.resolvePassiveNodes(ids);
+    const pick = (n: { name: string; stats: string[] }) => ({ name: n.name, stats: n.stats });
+    return {
+      version: imported.treeVersion ?? null,
+      total: rep.requested,
+      resolved: rep.resolved.length,
+      missing: rep.missing.length,
+      keystones: rep.resolved.filter((n) => n.isKeystone).map(pick),
+      notables: rep.resolved.filter((n) => n.isNotable && !n.isKeystone).map(pick),
+    };
+  } catch (err) {
+    console.warn('[overlay] build tree: разбор не удался', err);
+    return null;
+  }
+}
+
 async function runBuildImport(): Promise<void> {
   const input = clipboard.readText().trim();
   if (!input) {
@@ -1654,6 +1707,7 @@ async function runBuildImport(): Promise<void> {
       gemSetups: null,
       gemSeen: null,
       panelVisible: true,
+      tree: buildTreeSummary(imported),
     };
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
@@ -2504,6 +2558,38 @@ function setupIPC(): void {
   });
 
   ipcMain.handle('build:get', () => buildPayload());
+
+  // Помощник по пассивному дереву: поиск нод по имени/стату (офлайн, dataset).
+  ipcMain.handle('tree:search', (_e, q: unknown) => {
+    const query = typeof q === 'string' ? q.trim() : '';
+    if (query.length < 2) return [];
+    try {
+      const hits = core.dataset.searchPassiveTree(query, { limit: 40 });
+      // Приоритет: кейнстоуны > нотабли > мелкие; дубликаты имён схлопываем.
+      const rank = (n: { isKeystone: boolean; isNotable: boolean }) =>
+        n.isKeystone ? 0 : n.isNotable ? 1 : 2;
+      const seen = new Set<string>();
+      const rows = hits
+        .sort((a, b) => rank(a) - rank(b))
+        .filter((n) => {
+          const key = `${n.name}#${rank(n)}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 14)
+        .map((n) => ({
+          name: n.name,
+          isKeystone: n.isKeystone,
+          isNotable: n.isNotable,
+          ascendancy: n.ascendancy,
+          stats: n.stats.slice(0, 4),
+        }));
+      return rows;
+    } catch {
+      return [];
+    }
+  });
 
   // Переключатель «кликабельности» оверлея из рендерера.
   ipcMain.handle('interact:set', (_evt, interact: boolean) => {

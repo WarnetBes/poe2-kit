@@ -20,6 +20,8 @@ export interface OverlayAPI {
   buildToggle(): Promise<boolean>;
   buildReset(): Promise<boolean>;
   buildGet(): Promise<unknown>;
+  /** Поиск узлов пассивного дерева по имени/стату (dataset.searchPassiveTree). */
+  treeSearch(query: string): Promise<unknown[]>;
   /** Подогнать высоту окна под контент ( авторазмер, px в DIP). */
   autosize(px: number): Promise<number>;
   /** Получить текущие настройки (угол, прозрачность, масштаб, ширина, хоткеи). */
@@ -103,6 +105,8 @@ const api: OverlayAPI = {
   buildReset: () => ipcRenderer.invoke('build:reset'),
 
   buildGet: () => ipcRenderer.invoke('build:get'),
+
+  treeSearch: (query) => ipcRenderer.invoke('tree:search', query),
 
   autosize: (px) => ipcRenderer.invoke('overlay:autosize', px),
 

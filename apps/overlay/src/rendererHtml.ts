@@ -192,6 +192,11 @@ export const rendererHtml = `<!doctype html>
   #buildSum { font-size: 11px; color: var(--dim); line-height: 1.45; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 3px; }
   #buildSum b { color: var(--fg); }
   #buildSum .gap { color: var(--warn); }
+  #buildTree { font-size: 11px; color: var(--dim); line-height: 1.45; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; }
+  #buildTree .tnode b { color: var(--fg); }
+  #buildTree .tstats { color: #8b95a3; font-size: 10px; }
+  #buildTree input { width: 100%; box-sizing: border-box; margin: 4px 0 3px 0; padding: 3px 6px; border: 1px solid #2a3344; border-radius: 4px; background: rgba(0,0,0,0.35); color: var(--fg); font-size: 11px; }
+  #buildTree .sub-h { padding-top: 3px; }
   #buildNote { font-size: 12px; color: var(--ok); }
   #buildErr { font-size: 11px; color: var(--warn); }
 
@@ -273,6 +278,7 @@ export const rendererHtml = `<!doctype html>
         <div id="buildHead"></div>
         <div id="buildBudget"></div>
         <div id="buildSlots"></div>
+        <div id="buildTree"></div>
         <div id="buildSum"></div>
         <div id="buildErr" class="hide"></div>
       </div>
@@ -568,6 +574,69 @@ export const rendererHtml = `<!doctype html>
       : Number(v).toFixed(1) + ' chaos';
   }
 
+  // ── Помощник по пассивному дереву: кейнстоуны/нотабли PoB-билда + поиск нод ──
+  var treeSearchTimer = null;
+  function treeNodeRow(n) {
+    var stats = (n.stats || []).slice(0, 2).map(esc).join(' / ');
+    var asc = n.ascendancy ? ' <span class="tstats">[' + esc(n.ascendancy) + ']</span>' : '';
+    var mark = n.isKeystone ? '⚡ ' : (n.isNotable ? '★ ' : '· ');
+    return '<div class="tnode">' + mark + '<b>' + esc(n.name) + '</b>' + asc +
+      (stats ? ' <span class="tstats">' + stats + '</span>' : '') + '</div>';
+  }
+  function renderTreeBlock(t) {
+    var host = $('buildTree');
+    if (!t || ((!t.keystones || !t.keystones.length) && (!t.notables || !t.notables.length))) {
+      host.innerHTML = '';
+      return;
+    }
+    var html = '<div class="sub-h sub">🌳 Дерево билда: ' + t.resolved + '/' + t.total + ' нод' +
+      (t.version ? ' (v' + esc(t.version) + ')' : '') +
+      (t.missing ? ' <span class="tstats">нераспознанных: ' + t.missing + '</span>' : '') + '</div>';
+    if (t.keystones && t.keystones.length) {
+      html += '<div class="sub">Кейнстоуны:</div>' + t.keystones.map(treeNodeRow).join('');
+    }
+    var notables = t.notables || [];
+    html += '<div class="sub">Нотабли (' + notables.length + '):</div>';
+    if (notables.length > 8) {
+      html += '<div id="treeNotList" class="hide">' + notables.map(treeNodeRow).join('') + '</div>' +
+        '<div class="tstats"><a href="#" id="treeNotToggle">показать все ' + notables.length + '</a></div>';
+    } else if (notables.length) {
+      html += notables.map(treeNodeRow).join('');
+    }
+    html += '<input id="treeSearch" placeholder="Поиск нод: имя или стат (напр. cold damage)">' +
+      '<div id="treeResults"></div>';
+    host.innerHTML = html;
+    var tg = $('treeNotToggle');
+    if (tg) {
+      tg.onclick = function (ev) {
+        ev.preventDefault();
+        var list = $('treeNotList');
+        list.classList.toggle('hide');
+        tg.textContent = list.classList.contains('hide')
+          ? 'показать все ' + notables.length
+          : 'свернуть';
+      };
+    }
+    var inp = $('treeSearch');
+    var res = $('treeResults');
+    inp.oninput = function () {
+      clearTimeout(treeSearchTimer);
+      var q = inp.value.trim();
+      if (q.length < 2) {
+        res.innerHTML = '';
+        return;
+      }
+      treeSearchTimer = setTimeout(function () {
+        window.poe2k.treeSearch(q).then(function (nodes) {
+          res.innerHTML = (nodes || []).length
+            ? nodes.map(treeNodeRow).join('')
+            : '<div class="tstats">ничего не найдено</div>';
+        }).catch(function () {});
+      }, 250);
+    };
+    inp.onkeydown = function (ev) { ev.stopPropagation(); };
+  }
+
   function renderBuild(state) {
     var wrap = $('buildWrap');
     var err = $('buildErr');
@@ -660,6 +729,9 @@ export const rendererHtml = `<!doctype html>
       }).join('');
     }
     $('buildSlots').innerHTML = '<table class="bld">' + rows + gemRows + '</table>';
+
+    // Дерево билда: кейнстоуны/нотабли PoB + поиск по всему дереву (офлайн).
+    renderTreeBlock(b.tree);
 
     var sum = [];
     if (b.summary) {
