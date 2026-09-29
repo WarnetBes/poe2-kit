@@ -337,15 +337,22 @@ function toggleWatchEntry(id: string): { ok: boolean; entries: unknown[] } {
 
 // ─── Агентский канал (№85): очередь команд MCP-агента → оверлей ──────────────
 // MCP-туры (poe2_overlay_notify / poe2_overlay_watch_add / poe2_overlay_watch_remove)
-// дописывают JSON в agent-queue.json (в userData); overlay — единственный
-// применяющий: один писатель watchlist = нет race. Поллим файл: fs.watch на
-// SMB/личных дисках капризнее таймера.
+// дописывают JSON в agent-queue.json; overlay — единственный применяющий:
+// один писатель watchlist = нет race. Поллим файл: fs.watch на SMB/личных
+// дисках капризнее таймера. Две точки очереди (№85-бис):
+//  1) userData/agent-queue.json — локальный агент на том же ПК;
+//  2) agent-queue.json рядом с dist (__dirname/../) — удалённый агент: зеркало
+//     userData на шаре друга read-only, а деплой-каталог (F:\...\apps\overlay)
+//     доступен агенту на запись по UNC и оверлею на чтение локально.
 // Формат: { notify: [{title?, text}], watchAdd: [{itemText, label?}], watchRemove: [id] }
 const AGENT_QUEUE_FILE = 'agent-queue.json';
 const AGENT_QUEUE_POLL_MS = 2000;
 
-function agentQueueFile(): string {
-  return path.join(app.getPath('userData'), AGENT_QUEUE_FILE);
+function agentQueueFiles(): string[] {
+  return [
+    path.join(app.getPath('userData'), AGENT_QUEUE_FILE),
+    path.resolve(__dirname, '..', AGENT_QUEUE_FILE),
+  ];
 }
 
 function applyAgentQueue(raw: unknown): void {
@@ -383,25 +390,26 @@ function applyAgentQueue(raw: unknown): void {
 
 function startAgentQueuePolling(): void {
   setInterval(() => {
-    const file = agentQueueFile();
-    try {
-      if (!fs.existsSync(file)) return;
-      const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-      fs.rmSync(file, { force: true }); // применяем ровно один раз
-      applyAgentQueue(raw);
-    } catch (err) {
-      // Битый/полузаписанный JSON — удаляем, чтобы очередь не залипала.
+    for (const file of agentQueueFiles()) {
       try {
-        fs.rmSync(file, { force: true });
-      } catch {
-        /* ничего */
-      }
-      if (err instanceof Error && err.message && !/ENOENT|JSON/.test(err.message)) {
-        console.warn('[overlay] agent queue:', err.message);
+        if (!fs.existsSync(file)) continue;
+        const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+        fs.rmSync(file, { force: true }); // применяем ровно один раз
+        applyAgentQueue(raw);
+      } catch (err) {
+        // Битый/полузаписанный JSON — удаляем, чтобы очередь не залипала.
+        try {
+          fs.rmSync(file, { force: true });
+        } catch {
+          /* ничего */
+        }
+        if (err instanceof Error && err.message && !/ENOENT|JSON/.test(err.message)) {
+          console.warn('[overlay] agent queue:', err.message);
+        }
       }
     }
   }, AGENT_QUEUE_POLL_MS);
-  console.log(`[overlay] agent queue: polling ${AGENT_QUEUE_FILE} каждые ${AGENT_QUEUE_POLL_MS} мс`);
+  console.log(`[overlay] agent queue: polling ${AGENT_QUEUE_FILE} (userData + рядом с dist) каждые ${AGENT_QUEUE_POLL_MS} мс`);
 }
 
 function fmtChaos(v: number): string {

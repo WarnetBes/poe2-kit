@@ -91,3 +91,6 @@ oracle/oracle-output.jsonl
 
 attach_resp.json
 portable_out.txt
+
+# Очередь команд MCP-агента (№85): overlay применяет и удаляет (рядом с dist)
+agent-queue.json
