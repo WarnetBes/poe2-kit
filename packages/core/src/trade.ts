@@ -1223,11 +1223,19 @@ export async function priceCheck(
       const resolvedType = parsed.baseType
         ? await resolveTradeBaseType(parsed.baseType, { league })
         : null;
-      listings = await searchTrade(
-        { name: parsed.name ?? undefined, type: resolvedType ?? undefined },
-        { league },
-      );
-      debugLog('fallback by name/type:', `${listings.length} listings`);
+      // Кириллицу trade2 не знает: непереведённое RU-имя в name-поиске —
+      // гарантированный 400 «Unknown item name» + сожжённый интервал поиска.
+      // Нет ни валидного типа, ни латинского имени — не ищем вовсе.
+      const nameUsable = parsed.name && !/[а-яё]/i.test(parsed.name);
+      if (!nameUsable && !resolvedType) {
+        debugLog('fallback skip: RU name without translation and no valid type');
+      } else {
+        listings = await searchTrade(
+          { name: nameUsable ? parsed.name : undefined, type: resolvedType ?? undefined },
+          { league },
+        );
+        debugLog('fallback by name/type:', `${listings.length} listings`);
+      }
     }
   }
   if (!estimate && listings.length) {

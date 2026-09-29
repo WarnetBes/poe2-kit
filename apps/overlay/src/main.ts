@@ -227,6 +227,18 @@ function loadWatchlist(): void {
           updatedAt: typeof e.updatedAt === 'number' ? e.updatedAt : 0,
           pollMs: typeof e.pollMs === 'number' ? e.pollMs : WATCH_POLL_DEFAULT_MS,
         }));
+      // Prune: записи, не прошедшие новую валидацию (PoB-код, огрызки буфера),
+      // иначе они так и прайсились бы вечно (живой кейс 29.09: 3 из 13 позиций).
+      const valid = watchlist.filter((e) =>
+        /^\s*(Rarity|Редкость|Item Class|Класс предмета)\s*:/im.test(String(e.itemText ?? '')),
+      );
+      if (valid.length !== watchlist.length) {
+        console.warn(
+          `[overlay] watchlist: удалено ${watchlist.length - valid.length} мусорных записей (не предмет)`,
+        );
+        watchlist = valid;
+        saveWatchlist();
+      }
       console.log(`[overlay] watchlist: загружено ${watchlist.length} позиций`);
     }
   } catch {
@@ -267,6 +279,13 @@ function addWatchEntry(p: { itemText?: string; label?: string; rarity?: string }
 } {
   const text = typeof p?.itemText === 'string' ? p.itemText.trim() : '';
   if (!text) return { ok: false, entries: watchlistPublic() };
+  // Валидация: в ватчлист — только текст предмета (строка Rarity/Редкость).
+  // Живой кейс 29.09: буфером могли быть PoB-код, огрызок подсказки или текст
+  // вклада — они попадали в список и прайсились (400) каждые poll-минуты.
+  if (!/^\s*(Rarity|Редкость|Item Class|Класс предмета)\s*:/im.test(text)) {
+    console.warn('[overlay] watchlist: отклонено — текст не похож на предмет (нет строки Rarity)');
+    return { ok: false, entries: watchlistPublic() };
+  }
   // Дедупликация: тот же предмет уже в списке — ничего не меняем.
   if (watchlist.some((e) => e.itemText === text)) {
     return { ok: true, entries: watchlistPublic() };
@@ -1402,11 +1421,17 @@ interface ParsedGem {
   isSupport: boolean;
 }
 
-/** Распознать текст гема. Формат RU-клиента подтверждён живыми копиями 2026-09-29. */
+/** Распознать текст гема. Формат RU-клиента подтверждён живыми копиями 2026-09-29.
+ * Живой дефект (ватчлист 29.09): список умений/окно игры копирует гем БЕЗ строки
+ * «Класс предмета: Камни…», с одной лишь «Редкость: Камень» — такие тексты
+ * проваливались в item-прайс и RU-имя уходило в trade2 (400 «Unknown item name»).
+ * Дополнительно: самопрайсинг https://poe2db по имени гема — только если есть
+ * камень-маркер (класс ИЛИ редкость), одних строк «Уровень» недостаточно. */
 function parseGemText(itemText: string): ParsedGem | null {
   const cls = itemText.match(/^\s*Класс предмета:\s*(.+)$/m)?.[1]?.trim() ?? '';
-  if (!/камни/i.test(cls)) return null;
-  const isSupport = /поддержки/i.test(cls);
+  const hasGemRarity = /^\s*Редкость:\s*(?:Камень|Gem)\s*$/m.test(itemText);
+  if (!/камни/i.test(cls) && !hasGemRarity) return null;
+  const isSupport = /поддержки/i.test(cls) || /камень поддержки/i.test(itemText);
   const name = itemText
     .match(/^\s*Редкость:\s*(?:Камень|Gem)\s*\r?\n([^\r\n]+)$/m)?.[1]
     ?.trim();
