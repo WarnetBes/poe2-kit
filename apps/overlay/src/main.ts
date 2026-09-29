@@ -1043,6 +1043,28 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       })) ?? null,
       gemSeen: buildState.gemSeen ?? null,
       gemLang: settings.gemLang ?? 'ru',
+      // Цвета камней (№56): ключ — gemKey(display-имя), тот же, что в рендерере;
+      // значение — hex. Активным и саппортам (sinих/красных/зелёных) — ● перед именем.
+      gemColors: (() => {
+        const colors: Record<string, string> = {};
+        const hex = (en: string): string | null => {
+          const c = core.dataset.supportGemColor(en);
+          return c === 'blue' ? '#7f8cff' : c === 'red' ? '#e0574f' : c === 'green' ? '#57d980' : null;
+        };
+        const push = (en: unknown) => {
+          if (typeof en !== 'string' || !en) return;
+          const disp = gemDisplayName(en);
+          const key = disp.replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (colors[key] != null) return;
+          const h = hex(en) ?? hex(String(disp));
+          if (h) colors[key] = h;
+        };
+        for (const s of buildState.gemSetups ?? []) {
+          push(s.active);
+          for (const g of s.supports) push(g);
+        }
+        return colors;
+      })(),
       tree: buildState.tree ?? null,
     },
   };
@@ -1495,6 +1517,7 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     name: string;
     inBuild: boolean;
     tier: 'meta' | 'base';
+    color: string | null; // hex (№56): синий=Инт / красный=Сила / зелёный=Ловк, null = неизвестен
   };
   let supports: GemSupportRow[] | null = null;
   let supportsLabel = '';
@@ -1502,6 +1525,10 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     const lang = settings.gemLang ?? 'ru';
     const key0 = normName(en);
     const setupSupports = new Set((setup?.supports ?? []).map((s) => normName(s.replace(/ \(активный!\)$/, ''))));
+    const supportColorHex = (enName: string): string | null => {
+      const c = core.dataset.supportGemColor(enName);
+      return c === 'blue' ? '#7f8cff' : c === 'red' ? '#e0574f' : c === 'green' ? '#57d980' : null;
+    };
     const toRow = (enName: string, ruName: string | undefined, rank: number | null, tier: 'meta' | 'base'): GemSupportRow => ({
       rank,
       ru: ruName ?? enName,
@@ -1509,6 +1536,7 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
       name: lang === 'en' ? enName : ruName ?? enName,
       inBuild: setupSupports.has(normName(enName)),
       tier,
+      color: supportColorHex(enName),
     });
     seedGemDictFromDataset(); // gemEnRu — перевод мета-саппортов в RU
     const metaAll = core.dataset.getMetaSupports()?.entries?.[key0];

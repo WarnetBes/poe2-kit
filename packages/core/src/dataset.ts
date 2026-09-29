@@ -850,6 +850,55 @@ export interface MetaRenamesDataset {
   map: Record<string, string>;
 }
 
+// --- Цвета камней (poe2db: gem_blue/red/green = Intellect/Strength/Dexterity) ---
+
+export interface GemColorsDataset {
+  version: number;
+  source: string;
+  scraped_at?: string;
+  /** norm(EN-имя poe2db) -> 'gem_blue' | 'gem_red' | 'gem_green' */
+  map: Record<string, string>;
+}
+
+let gemColorsCache: GemColorsDataset | null = null;
+let gemColorsNormCache: Map<string, string> | null = null;
+
+function normGemKey(s: string): string {
+  return String(s)
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/ё/g, 'е')
+    .replace(/[''`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/** Цвет камня по EN-имени poe2db: 'blue' (Инт) | 'red' (Сила) | 'green' (Ловк) | null.
+ * Каскад тира как в gemRuByName: имя → без тира → тир I → тир II
+ * (poe2db хранит «Precision I», билды пишут «Precision»). */
+export function supportGemColor(en: string): 'blue' | 'red' | 'green' | null {
+  try {
+    gemColorsNormCache ??= (() => {
+      gemColorsCache ??= loadJson<GemColorsDataset>('skill_gems/gem_colors.json');
+      const m = new Map<string, string>();
+      for (const [k, v] of Object.entries(gemColorsCache.map)) {
+        const c = v === 'gem_blue' ? 'blue' : v === 'gem_red' ? 'red' : v === 'gem_green' ? 'green' : null;
+        if (c) m.set(normGemKey(k), c);
+      }
+      return m;
+    })();
+    const base = String(en).replace(/\s+(?:II|III|IV|V)$/, '');
+    for (const candidate of [String(en), base, `${base} I`, `${base} II`]) {
+      const c = gemColorsNormCache.get(normGemKey(candidate));
+      if (c === 'blue' || c === 'red' || c === 'green') return c;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Карта переименований саппортов 0.5: старое имя PoB-меты -> имя poe2db (офлайн). */
 export function getMetaRenames(): MetaRenamesDataset | null {
   try {

@@ -714,14 +714,18 @@ export const rendererHtml = `<!doctype html>
       }
       gemRows = '<tr><td colspan="4" style="padding-top:5px;border-top:1px solid #2a3344">' +
         '<span class="sub">💎 Камни билда — куда вставлять (Ctrl+C по камню в окне умений отметит ✅)</span></td></tr>';
+      function gemDot(n) {
+        var c = (b.gemColors || {})[gemKey(n)];
+        return c ? '<span style="color:' + c + '">●</span> ' : '';
+      }
       gemRows += b.gemSetups.map(function (g) {
         var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
         var html = '<tr><td>' + gemMark(g.active, g.activeLevel) + '</td>' +
-          '<td class="slot" colspan="3"><b>' + esc(g.active) + '</b>' + lvl +
+          '<td class="slot" colspan="3">' + gemDot(g.active) + '<b>' + esc(g.active) + '</b>' + lvl +
           ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
         if (g.supports && g.supports.length) {
           var sup = g.supports.map(function (s) {
-            return '<span>' + gemMark(s, null) + ' ' + esc(s) + '</span>';
+            return '<span>' + gemDot(s) + gemMark(s, null) + ' ' + esc(s) + '</span>';
           }).join(' · ');
           html += '<tr class="wornrow"><td></td><td class="worn" colspan="3">+ ' + sup + '</td></tr>';
         }
@@ -898,7 +902,8 @@ export const rendererHtml = `<!doctype html>
       var srows = res.gemSupports.map(function (r) {
         var mark = r.inBuild ? ' <span class="done">✓ в билде</span>' : '';
         var rankCell = r.rank == null ? '—' : r.rank;
-        return '<tr><td class="num">' + rankCell + '</td><td colspan="2">' + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
+        var dot = r.color ? '<span style="color:' + r.color + '">●</span> ' : '';
+        return '<tr><td class="num">' + rankCell + '</td><td colspan="2">' + dot + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
       }).join('');
       var badge = isMeta
         ? '<span class="src" style="color:#7fd18c">⚡ эталон</span>'
