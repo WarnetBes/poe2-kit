@@ -1146,6 +1146,7 @@ function normName(s: string | null | undefined): string {
     .normalize('NFD')
     .replace(/\p{M}/gu, '') // Oisín's -> Oisins: percent-encoded слаги poe2db без диакритики
     .replace(/ё/g, 'е')
+    .replace(/й/g, 'и') // poe2db RU-имена пишут «и» вместо «й» (малыи/великии/затеиливые) — сворачиваем обе стороны одинаково
     .replace(/[''`]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -1258,7 +1259,19 @@ function ensureRuEnDict(): Promise<void> {
 function toEn(kind: 'base' | 'unique', s: string): string {
   if (!/[а-яё]/i.test(s)) return s; // уже не русское — нечего переводить
   const dict = kind === 'base' ? ruEnBases : ruEnUniques;
-  return dict.get(normName(s)) ?? s;
+  const exact = dict.get(normName(s));
+  if (exact) return exact;
+  if (kind === 'base') {
+    // Магические предметы: строка имени = аффикс-префикс + чистая база
+    // («Крепкая Жертвенная мантия», «Неразбавленный Великий флакон жизни»).
+    // Точный ключ промазал — срезаем ведущие слова (≤3), пока не найдём базу.
+    const words = normName(s).split(' ');
+    for (let drop = 1; drop <= 3 && words.length - drop >= 2; drop++) {
+      const hit = dict.get(words.slice(drop).join(' '));
+      if (hit) return hit;
+    }
+  }
+  return s;
 }
 
 // ─── Чек-лист камней: RU-имена гема из билда ← poe2db ────────────────────────
