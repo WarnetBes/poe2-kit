@@ -821,11 +821,18 @@ export const rendererHtml = `<!doctype html>
     var lw = $('listWrap');
     var list = $('list');
     if (res.gemSupports && res.gemSupports.length) {
+      var label = res.sources && res.sources[0] ? res.sources[0] : 'Рекомендуемые саппорты';
+      var isMeta = res.gemSupports[0] && res.gemSupports[0].tier === 'meta';
       var srows = res.gemSupports.map(function (r) {
         var mark = r.inBuild ? ' <span class="done">✓ в билде</span>' : '';
-        return '<tr><td class="num">' + r.rank + '</td><td colspan="2">' + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
+        var rankCell = r.rank == null ? '—' : r.rank;
+        return '<tr><td class="num">' + rankCell + '</td><td colspan="2">' + esc(r.name || r.ru || r.en) + mark + '</td></tr>';
       }).join('');
-      list.innerHTML = '<tr><td colspan="3" style="color:#9aa4b0">Рекомендуемые саппорты (ранг = приоритет):</td></tr>' + srows;
+      var badge = isMeta
+        ? '<span class="src" style="color:#7fd18c">⚡ эталон</span>'
+        : '<span class="src" style="color:#9aa4b0">базово</span>';
+      list.innerHTML =
+        '<tr><td colspan="3" style="color:#9aa4b0">Саппорты ' + badge + ' — ' + esc(label) + ':</td></tr>' + srows;
       lw.classList.remove('hide');
     } else if (res.listings && res.listings.length) {
       var rows = res.listings.slice(0, 8).map(function (l) {

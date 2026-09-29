@@ -803,7 +803,9 @@ export interface GemSetup {
  * атаки → оружейный слот, гаральды/резервации → крупный предмет, прочее — куда угодно.
  */
 export async function buildGemSetups(input: string): Promise<GemSetup[]> {
-  const xml = await toXml(input);
+  // Сырой XML принимаем напрямую (как importBuild), иначе — код/ссылка PoB.
+  const t = input.trim();
+  const xml = t.includes('<PathOfBuilding') || t.startsWith('<') ? t : await toXml(input);
   const setups: GemSetup[] = [];
   const groups = xml.match(/<Skill\b[\s\S]*?<\/Skill>/g) ?? [];
   for (const g of groups) {

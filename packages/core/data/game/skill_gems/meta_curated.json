@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "game_version": "0.5.5",
+  "note": "Кураторский сид мета-слоя: planner-эмбеды Maxroll (gemId без nameSpec — имена восстановлены по Metadata-путям, журнал №39). Сверять с тултипами в игре. Источники — top5_by_class.md (машина, 29.09.2026).",
+  "entries": [
+    {
+      "skill_en": "Ice Strike", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Crescendo III", "Martial Tempo II", "Elemental Armament II", "Rakiata's Flow", "Garukhan's Resolve"]
+    },
+    {
+      "skill_en": "Shattering Palm", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Magnified Effect II", "Oisin's Oath", "Bhatair's Vengeance", "Elemental Armament II", "Tul's Stillness"]
+    },
+    {
+      "skill_en": "Hand of Chayula", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Martial Tempo III", "Culmination II", "Ailith Lineage", "Profusion II"]
+    },
+    {
+      "skill_en": "Tempest Bell", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Overabundance", "Heavy Swing", "Rage II", "Concentrated Effect"]
+    },
+    {
+      "skill_en": "Herald of Ice", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Uul-Netol's Embrace", "Armour Explosion", "Chaos Infusion", "Uruk's Smelting", "Magnified Effect II"]
+    },
+    {
+      "skill_en": "Herald of Thunder", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Embitter", "Living Lightning II", "Elemental Focus", "Elemental Armament II", "Esh's Radiance"]
+    },
+    {
+      "skill_en": "Wind Dancer", "build": "Ice Strike Invoker (milkybk, lvl100 endgame)", "class": "Monk", "ascendancy": "Invoker",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/ice-strike-invoker-build-guide", "pob": "e8mux0gb", "date": "2026-09-04",
+      "supports": ["Blind II", "Maim", "Close Combat II", "Magnified Effect II", "Elemental Armament II"]
+    },
+    {
+      "skill_en": "Poisonburst Arrow", "build": "Poisonburst Arrow Pathfinder (Crouching_Tuna, Variant 1 lvl97 «Maps»)", "class": "Ranger", "ascendancy": "Pathfinder",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-pathfinder", "pob": "v12ch0yh", "date": "2026-09-08",
+      "supports": ["Deadly Poison II", "Bursting Plague", "Scattershot II", "Ambush"]
+    },
+    {
+      "skill_en": "Toxic Growth", "build": "Poisonburst Arrow Pathfinder (Crouching_Tuna, Variant 1 lvl97 «Maps»)", "class": "Ranger", "ascendancy": "Pathfinder",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-pathfinder", "pob": "v12ch0yh", "date": "2026-09-08",
+      "supports": ["Arakaali's Lust", "Long Fuse II", "Deadly Poison II", "Concentrated Effect"]
+    },
+    {
+      "skill_en": "Vine Arrow", "build": "Poisonburst Arrow Pathfinder (Crouching_Tuna, Variant 1 lvl97 «Maps»)", "class": "Ranger", "ascendancy": "Pathfinder",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-pathfinder", "pob": "v12ch0yh", "date": "2026-09-08",
+      "supports": ["Persistence II", "Overabundance II", "Magnified Effect II", "Swift Affliction II"]
+    },
+    {
+      "skill_en": "Gas Arrow", "build": "Poisonburst Arrow Pathfinder (Crouching_Tuna, Variant 1 lvl97 «Maps»)", "class": "Ranger", "ascendancy": "Pathfinder",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-pathfinder", "pob": "v12ch0yh", "date": "2026-09-08",
+      "supports": ["Domain III", "Suffuse", "Deadly Poison II", "Persistence II"]
+    },
+    {
+      "skill_en": "Poisonburst Arrow", "build": "Poisonburst Acolyte of Chayula (Goratha, Min-Max lvl92)", "class": "Ranger", "ascendancy": "Acolyte of Chayula",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-acolyte-of-chayula-build-guide", "pob": "w675g80h", "date": "2026-09-15",
+      "supports": ["Lacerate III", "Bursting Plague", "Comorbidity", "Deadly Poison II", "Fork"]
+    },
+    {
+      "skill_en": "Plague Bearer", "build": "Poisonburst Acolyte of Chayula (Goratha, Min-Max lvl92)", "class": "Ranger", "ascendancy": "Acolyte of Chayula",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/poisonburst-arrow-acolyte-of-chayula-build-guide", "pob": "w675g80h", "date": "2026-09-15",
+      "supports": ["Astral Projection", "Tacati's Ire", "Vorana's Siege", "Deadly Poison II", "Exploit Weakness"]
+    },
+    {
+      "skill_en": "Skeletal Warriors", "build": "Minion Army Lich (helmbreaker, Min-Max lvl100)", "class": "Witch", "ascendancy": "Lich",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/minion-army-lich-build-guide", "pob": "56dw80q4", "date": "2026-09-27",
+      "supports": ["Last Gasp", "Amanamu's Tithe", "Sacrificial Lamb", "Deathmarch"]
+    },
+    {
+      "skill_en": "Pain Offering", "build": "Minion Army Lich (helmbreaker, Min-Max lvl100)", "class": "Witch", "ascendancy": "Lich",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/minion-army-lich-build-guide", "pob": "56dw80q4", "date": "2026-09-27",
+      "supports": ["Danse Macabre", "Ablation", "Persistence II", "Brutus' Brain", "Magnified Effect II"]
+    },
+    {
+      "skill_en": "Skeletal Cleric", "build": "Minion Army Lich (helmbreaker, Min-Max lvl100)", "class": "Witch", "ascendancy": "Lich",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/minion-army-lich-build-guide", "pob": "56dw80q4", "date": "2026-09-27",
+      "supports": ["Arcane Tempo II", "Deathmarch", "Meat Shield II", "Last Gasp", "Persistence II"]
+    },
+    {
+      "skill_en": "Skeletal Storm Mage", "build": "Minion Army Lich (helmbreaker, Min-Max lvl100)", "class": "Witch", "ascendancy": "Lich",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/minion-army-lich-build-guide", "pob": "56dw80q4", "date": "2026-09-27",
+      "supports": ["Conduction", "Overcharge", "Muster", "Feeding Frenzy II", "Lightning Infusion"]
+    },
+    {
+      "skill_en": "Summon Spectre", "build": "Minion Army Lich (helmbreaker, Min-Max lvl100)", "class": "Witch", "ascendancy": "Lich",
+      "source": "maxroll-planner-embed", "url": "maxroll.gg/poe2/build-guides/minion-army-lich-build-guide", "pob": "56dw80q4", "date": "2026-09-27",
+      "supports": ["Muster", "Feeding Frenzy II", "Rage III", "Martial Tempo II"]
+    }
+  ]
+}

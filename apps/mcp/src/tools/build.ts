@@ -30,9 +30,12 @@ function formatBuild(b: BuildImport): string {
     }
     const others = b.skillGroups.filter((g) => g !== main && g.enabled);
     if (others.length) {
-      lines.push(
-        `- **Прочие группы (${others.length}):** ${others.map((g) => `${g.label || g.gems[0]?.name || '?'} (${g.gems.length} гем.)`).join('; ')}`,
-      );
+      lines.push(`- **Прочие группы (${others.length}):** ${others
+        .map((g) => {
+          const names = g.gems.map((x) => `${x.name}${x.level != null ? ` L${x.level}` : ''}`).join(' · ');
+          return `${g.label || g.gems[0]?.name || '?'}: ${names}`;
+        })
+        .join(';\n  ')}`);
     }
   } else if (b.skills.length) {
     lines.push(`- **Скиллы:** ${b.skills.join(', ')}`);

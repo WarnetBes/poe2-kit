@@ -797,3 +797,63 @@ export function searchStatDescriptions(query: string, limit = 5): StatDescriptio
   }
   return out;
 }
+
+// --- База эталонных саппорт-связок (слои «эталон» и «базово») ------------------
+// Формат и происхождение: _research/builds_etalon/README.md (журнал №40).
+// meta_supports.json — мета-связки 0.5.5 (PoB-XML Maxroll + кураторские planner-эмбеды);
+// recommended_supports.json — poe2db «Recommended Support Gems» по всем активным камням.
+
+export interface GemSupportReco {
+  rank: number;
+  en: string;
+  ru: string;
+}
+
+export interface RecommendedSupportsDataset {
+  version: number;
+  source: 'poe2db';
+  game_version?: string;
+  scraped_at?: string;
+  map: Record<string, GemSupportReco[]>;
+}
+
+export interface MetaSupportEntry {
+  build: string;
+  class: string;
+  ascendancy: string | null;
+  source: string;
+  url: string;
+  pob: string | null;
+  date?: string;
+  supports: string[];
+}
+
+export interface MetaSupportsDataset {
+  version: number;
+  game_version?: string;
+  generated_at?: string;
+  entries: Record<string, MetaSupportEntry[]>;
+}
+
+let recoCache: RecommendedSupportsDataset | null = null;
+let metaCache: MetaSupportsDataset | null = null;
+
+/** Базовый слой: рекомендации poe2db по всем активным камням (офлайн). */
+export function getRecommendedSupports(): RecommendedSupportsDataset | null {
+  try {
+    recoCache ??= loadJson<RecommendedSupportsDataset>('skill_gems/recommended_supports.json');
+    return recoCache;
+  } catch {
+    return null; // файла нет (скрап не прогнан) — оверлей живёт без него
+  }
+}
+
+/** Мета-слой «эталон»: связки меты 0.5.5 из PoB-потоков (офлайн). */
+export function getMetaSupports(): MetaSupportsDataset | null {
+  try {
+    metaCache ??= loadJson<MetaSupportsDataset>('skill_gems/meta_supports.json');
+    return metaCache;
+  } catch {
+    return null;
+  }
+}

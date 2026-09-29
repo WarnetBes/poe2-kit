@@ -1375,20 +1375,48 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     `[overlay] gem check: "${ruName}" → ${en} ур.${gem.total ?? '?'} (с камня ${gem.native ?? '?'}) — ${verdict}`,
   );
 
-  // Активный камень: топ саппортов poe2db по рангам (ранг 1 = раньше доступен).
-  let supports: Array<{ rank: number; ru: string; en: string; inBuild: boolean }> | null = null;
+  // Активный камень: трёхслойная схема базы эталонов (журнал №40):
+  // 1) мета-эталон 0.5.5 (meta_supports.json — PoB-потоки, «эталон»);
+  // 2) poe2db-рекомендации (recommended_supports.json офлайн — «базово», ранги);
+  // 3) live-fetch poe2db (если офлайн-датасета нет).
+  type GemSupportRow = {
+    rank: number | null;
+    ru: string;
+    en: string;
+    name: string;
+    inBuild: boolean;
+    tier: 'meta' | 'base';
+  };
+  let supports: GemSupportRow[] | null = null;
+  let supportsLabel = '';
   if (!gem.isSupport) {
-    const recs = await withTimeout(fetchGemSupports(en), 20_000, 'fetchGemSupports').catch(() => null);
-    if (recs) {
-      const lang = settings.gemLang ?? 'ru';
-      const setupSupports = new Set((setup?.supports ?? []).map((s) => normName(s)));
-      supports = recs.map((r) => ({
-        rank: r.rank,
-        ru: r.ru,
-        en: r.en,
-        name: lang === 'en' ? r.en : r.ru,
-        inBuild: setupSupports.has(normName(r.en)),
-      }));
+    const lang = settings.gemLang ?? 'ru';
+    const key0 = normName(en);
+    const setupSupports = new Set((setup?.supports ?? []).map((s) => normName(s.replace(/ \(активный!\)$/, ''))));
+    const toRow = (enName: string, ruName: string | undefined, rank: number | null, tier: 'meta' | 'base'): GemSupportRow => ({
+      rank,
+      ru: ruName ?? enName,
+      en: enName,
+      name: lang === 'en' ? enName : ruName ?? enName,
+      inBuild: setupSupports.has(normName(enName)),
+      tier,
+    });
+    seedGemDictFromDataset(); // gemEnRu — перевод мета-саппортов в RU
+    const metaAll = core.dataset.getMetaSupports()?.entries?.[key0];
+    if (metaAll?.length) {
+      const m = metaAll[0]!; // первый = Min-Max-вариант гайда
+      supports = m.supports.map((s) => toRow(s, gemEnRu.get(normName(s)), null, 'meta'));
+      supportsLabel = `эталон меты 0.5.5: ${m.build}${m.date ? ` (${m.date})` : ''}`;
+    } else {
+      const base =
+        core.dataset.getRecommendedSupports()?.map?.[key0] ??
+        (await (withTimeout(fetchGemSupports(en), 20_000, 'fetchGemSupports').catch(() => null) as Promise<
+          Array<{ rank: number; ru: string; en: string }> | null
+        >));
+      if (base) {
+        supports = base.map((r) => toRow(r.en, r.ru, r.rank, 'base'));
+        supportsLabel = 'базово: poe2db Recommended Support Gems (ранг = приоритет)';
+      }
     }
   }
 
@@ -1397,7 +1425,7 @@ async function handleGemCheck(gem: ParsedGem, itemText: string): Promise<Record<
     rarity: 'gem',
     estimate: null,
     listings: [],
-    sources: supports ? ['poe2db Recommended Support Gems'] : [],
+    sources: supports ? [supportsLabel] : [],
     updatedAt: Date.now(),
     gemCheck: true,
     gemSupports: supports,
