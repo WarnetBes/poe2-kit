@@ -106,7 +106,11 @@ export function getLevelingContext(
   const act = state?.act ?? opts.actFallback ?? 1;
   const areaCode = state?.zone?.areaCode ?? null;
   const zoneName = state?.zone?.zoneName ?? null;
-  const level = state?.level ?? null;
+  // PoE2 не пишет level_up в Client.txt (проверено на живом клиенте 29.09,
+  // см. журнал КУБ-2 №20): state.level почти всегда null. Прокси — уровень
+  // текущей зоны areaLevel (обычно ±2-3 от уровня персонажа при нормальном
+  //progression), чтобы levelDelta для next-зон всё же считался.
+  const level = state?.level ?? state?.zone?.areaLevel ?? null;
 
   const zoneNotes = areaCode ? getZoneNote(areaCode) : zoneName ? getZoneNoteByName(zoneName) : null;
   const actNotes = getActNote(act);
@@ -147,7 +151,15 @@ export function getLevelingContext(
   return {
     available: !!state?.available,
     summary: state
-      ? [state.character, state.klass, state.level ? `ур. ${state.level}` : null].filter(Boolean).join(' · ') || 'персонаж неизвестен'
+      ? // Персонаж из лога PoE2 недоступен (level_up не пишется): показываем
+        // фактический контекст — зону и её уровень вместо «персонаж неизвестен».
+        [
+          state.character ? [state.character, state.klass, state.level ? `ур. ${state.level}` : null].filter(Boolean).join(' · ') : null,
+          state.character ? null : zoneName,
+          state.character || !state.zone ? null : state.zone.areaLevel ? `зона ур. ${state.zone.areaLevel}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || 'персонаж неизвестен'
       : 'клиент недоступен',
     zone: areaCode ? { areaCode, zoneName } : null,
     zoneNotes,
