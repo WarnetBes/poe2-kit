@@ -2032,15 +2032,24 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 
 /** Разбивает буфер на блоки-предметы. Якорь — строка «Rarity:/Редкость:»:
  *  каждый новый предмет начинается с неё. Разделители (пустые строки, «--------»)
- *  внутри одного предмета игнорируются — счёт идёт по заголовкам Rarity. */
+ *  внутри одного предмета игнорируются — счёт идёт по заголовкам Rarity.
+ *  Строка «Класс предмета:/Item Class:» стоит ПЕРЕД Rarity и попадала в мусор —
+ *  терялась, из-за чего parseGemText не видел гемов (main.ts:1324). Сохраняем её
+ *  и приставляем к следующей группе. */
 function splitClipboardItems(text: string): string[] {
   const lines = text.split(/\r?\n/);
   const groups: string[][] = [];
   let cur: string[] | null = null;
+  let pendingCls: string | null = null;
   for (const ln of lines) {
+    if (/^\s*(?:Item Class|Класс предмета)\s*:/i.test(ln)) {
+      pendingCls = ln;
+      continue;
+    }
     if (/^\s*(?:Rarity|Редкость)\s*:/i.test(ln)) {
       if (cur) groups.push(cur);
-      cur = [ln];
+      cur = pendingCls ? [pendingCls, ln] : [ln];
+      pendingCls = null;
     } else if (cur) {
       cur.push(ln);
     }
