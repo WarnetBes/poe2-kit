@@ -271,7 +271,11 @@ export const rendererHtml = `<!doctype html>
   .hk-grid .hk input { font-size: 11px; font-family: Consolas, monospace; padding: 2px 4px;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--fg); border-radius: 5px; width: 130px; }
-  .set-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+  /* №76: подвал действий — sticky на низу скролл-окна: кнопки всегда видны,
+     контент настроек крутится под ними (scale 1.25: контент выше окна 480px). */
+  .set-actions { display: flex; gap: 6px; margin-top: auto; padding: 6px 0 2px;
+    position: sticky; bottom: -10px; margin-bottom: -10px;
+    background: rgba(13,17,23,0.96); box-shadow: 0 -6px 10px -6px rgba(0,0,0,0.6); }
   .set-actions button { flex: 1; font-size: 12px; padding: 5px 8px; cursor: pointer;
     border-radius: 6px; border: 1px solid transparent; }
   #settingsSave { background: var(--accent); color: #1a1208; font-weight: 700; }
