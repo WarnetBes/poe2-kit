@@ -749,6 +749,7 @@ export const rendererHtml = `<!doctype html>
   // приходят с build:update; повторный клик обновляет из последнего payload.
   function showGemsView() {
     $('idle').classList.add('hide');
+    $('body').classList.remove('hide'); // №66-fix: с idle-экрана body был скрыт — вкладка показывала пустоту
     var h = $('priceHead');
     if (h) h.classList.remove('hide');
     showMode('gems');
