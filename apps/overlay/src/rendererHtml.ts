@@ -559,17 +559,18 @@ export const rendererHtml = `<!doctype html>
     _sizeTimer = setTimeout(function () {
       var p = document.getElementById('panel');
       var clamped = p.style.maxHeight;
+      // Снимаем клэмп ТОЛЬКО на sync-измерение и возвращаем его В ТОЙ ЖЕ
+      // задаче JS, ДО отрисовки кадра: асинхронный возврат (№61) держал панель
+      // развёрнутой на естественную высоту (билд ~2000px) пару кадров —
+      // визуально контент «скачет» (жалоба №63), ResizeObserver зацикливался.
       p.style.maxHeight = 'none';
       var h = Math.ceil(p.getBoundingClientRect().height);
+      p.style.maxHeight = clamped || 'none';
       if (h > 40 && window.poe2k.autosize) {
         window.poe2k.autosize(h).then(function (actual) {
           var a = Math.max(0, Math.round(Number(actual) || 0));
           if (a > 0) p.style.maxHeight = a + 'px';
-        }).catch(function () {
-          p.style.maxHeight = clamped; // отказ IPC — вернуть прежний клэмп
-        });
-      } else {
-        p.style.maxHeight = clamped;
+        }).catch(function () {});
       }
     }, 60);
   }
