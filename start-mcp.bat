@@ -1,40 +1,60 @@
 @echo off
-setlocal
-REM Консоль в UTF-8.
-chcp 65001 >nul
-cd /d "%~dp0"
+REM PoE2 Kit - MCP server launcher (build + check + SELF-LOGGING)
+REM Log is written next to this file: start-mcp-log.txt
+setlocal EnableExtensions
+set "LOG=%~dp0start-mcp-log.txt"
 
+call :main > "%LOG%" 2>&1
+set "EC=%ERRORLEVEL%"
+
+type "%LOG%"
+echo.
 echo ============================================
-echo   PoE2 Kit - MCP server (build + check)
+if "%EC%"=="0" (echo  DONE. See config snippets above.) else (echo  EXIT CODE %EC% - see log: "%LOG%")
 echo ============================================
+pause
+endlocal & exit /b %EC%
+
+:main
+chcp 65001 >nul
+echo PoE2 Kit - MCP server check
+echo Started: %DATE% %TIME%
+echo Bat dir: "%~dp0"
 echo.
 
-REM --- check Node.js ---
+REM UNC guard: cmd cannot cd to UNC; pushd maps it to a temp drive.
+pushd "%~dp0" 2>nul
+if errorlevel 1 (
+  echo [ERROR] pushd failed - cannot map "%~dp0"
+  exit /b 1
+)
+echo Pushd OK, cwd: "%CD%"
+echo.
+
+echo --- Node.js check ---
 where node >nul 2>nul
 if errorlevel 1 (
   echo [ERROR] Node.js not found. Install the LTS version from https://nodejs.org
-  pause
-  exit /b 1
+  popd
+  exit /b 2
 )
-for /f "tokens=* delims=" %%v in ('node -v') do set NODEVER=%%v
+for /f "tokens=* delims=" %%v in ('node -v') do set "NODEVER=%%v"
 echo Node.js: %NODEVER%
 echo.
 
-REM --- install dependencies (first run only) ---
 if not exist node_modules (
   echo Installing dependencies, first run only...
   call npm ci
   if errorlevel 1 (
-    echo [ERROR] npm ci failed - see the messages above.
-    pause
-    exit /b 1
+    echo [ERROR] npm ci failed - see above.
+    popd
+    exit /b 3
   )
 )
 
-REM --- build core + mcp (portable: dist уже собран, пропускаем) ---
 if exist .portable (
   if exist "packages\core\dist\index.js" if exist "apps\mcp\dist\index.js" (
-    echo Portable build: skipping compile (dist is already built).
+    echo Portable build: skipping compile - dist is already built.
     goto smoke
   )
 )
@@ -45,16 +65,14 @@ call npm run build -w @poe2-kit/mcp
 if errorlevel 1 goto err
 
 :smoke
-REM --- smoke test ---
 echo.
 echo Smoke test...
 node apps\mcp\dist\index.js --smoke
 if errorlevel 1 (
-  echo [ERROR] MCP smoke test failed.
-  pause
-  exit /b 1
+  echo [ERROR] MCP smoke test failed - see above.
+  popd
+  exit /b 4
 )
-
 echo.
 echo ============================================
 echo  MCP server is ready. It runs over stdio -
@@ -75,19 +93,17 @@ echo    "mcpServers": { "poe2-kit": {
 echo      "command": "node",
 echo      "args": ["F:\\OpenCodeProjects\\poe2-kit\\apps\\mcp\\dist\\index.js"] } }
 echo.
-echo  Note: overlay and MCP work at the same time
-echo  (MCP has no ports, it is stdio).
+echo  Note: overlay and MCP work at the same time (MCP is stdio, no ports).
 echo ============================================
 echo.
-echo MCP tools: price check, build decode/price,
-echo leveling plan, currency prices, items DB.
+echo MCP tools: price check, build decode/price, leveling plan,
+echo currency prices, items DB, sources library, overlay state/gaps.
 echo Prompt for the AI: apps\mcp\ASSISTANT_GUIDE.md
-echo.
-pause
+popd
 exit /b 0
 
 :err
 echo.
-echo [ERROR] Build failed. See the messages above.
-pause
-exit /b 1
+echo [ERROR] Build failed - see above.
+popd
+exit /b 5
