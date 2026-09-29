@@ -1017,6 +1017,15 @@ function gemRuByName(enName: string): string | undefined {
     const ru = gemEnRu.get(normName(candidate));
     if (ru) return candidate === enName ? ru : stripTier(ru);
   }
+  // ступень rename-map: старое имя 0.3-меты -> новое имя 0.5 (meta_renames.json),
+  // затем та же цепочка по новому имени (тир сохраняем: Ironwood III -> Reinforced Totems III)
+  const renamed = core.dataset.getMetaRenames()?.map?.[base];
+  if (renamed) {
+    for (const candidate of [renamed, `${renamed} I`, `${renamed} II`]) {
+      const ru = gemEnRu.get(normName(candidate));
+      if (ru) return ru.replace(/\s+(?:I|II|III|IV|V)$/, '');
+    }
+  }
   return undefined;
 }
 
@@ -1051,12 +1060,16 @@ const EQUIPMENT_CLASS_SLUGS = [
   'Sceptres', 'Spears', 'Flails', 'Bows', 'Staves', 'Two_Hand_Swords', 'Two_Hand_Axes',
   'Two_Hand_Maces', 'Quarterstaves', 'Crossbows', 'Traps', 'Talismans', 'Quivers',
   'Shields', 'Bucklers', 'Foci', 'Gloves', 'Boots', 'Body_Armours', 'Helmets',
-  'Amulets', 'Rings', 'Belts', 'Jewels', 'Flasks',
+  'Amulets', 'Rings', 'Belts', 'Jewels', 'Flasks', 'Charms',
 ] as const;
 
 // v2: +Flasks — флаконы не входили в первый список, RU-базы вроде
 // «Громадный флакон маны» не переводились → trade2 400 Unknown item base type.
-const RU_EN_DICT_VERSION = 2;
+// v3: +Charms (обереги: «Оберег с рубином» → 400 Unknown item base type,
+// лог друга 29.09 09:50:38Z) + incomplete-poison guard: если при построении
+// страница класса отдала пустые мапы (Cloudflare/сбой сети), дырявый словарь
+// больше не кэшируется навсегда — при следующем старте достраиваем.
+const RU_EN_DICT_VERSION = 3;
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
 let ruEnDictLoaded = false;
@@ -1066,12 +1079,13 @@ function ruEnDictFile(): string {
   return path.join(app.getPath('userData'), 'ru-en-dict.json');
 }
 
-function saveRuEnDict(): void {
+function saveRuEnDict(incomplete = false): void {
   try {
     const data = {
       version: RU_EN_DICT_VERSION,
       bases: Object.fromEntries(ruEnBases),
       uniques: Object.fromEntries(ruEnUniques),
+      incomplete, // true = часть страниц classes не скачалась — при старте достроить
     };
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
     fs.writeFileSync(ruEnDictFile(), JSON.stringify(data), 'utf8');
@@ -1080,17 +1094,22 @@ function saveRuEnDict(): void {
   }
 }
 
-/** Загрузить кэш словаря с диска, если он есть. */
+/** Загрузить кэш словаря с диска, если он есть. false = кэш неполный, стороим заново. */
 function loadRuEnDict(): boolean {
   try {
     const raw: unknown = JSON.parse(fs.readFileSync(ruEnDictFile(), 'utf8'));
-    const data = raw as { version?: number; bases?: Record<string, string>; uniques?: Record<string, string> };
+    const data = raw as { version?: number; bases?: Record<string, string>; uniques?: Record<string, string>; incomplete?: boolean };
     if (data.version !== RU_EN_DICT_VERSION) return false;
+    // Частичный словарь подгружаем как промежуточный (матчинг работает по мере
+    // достройки), но rebuild запускаем: дыры из-за сбойных страниц poison-кэша
+    // repeating 400-ки по RU-базам (лог друга: «Затейливые перчатки» при живом
+    // poe2db-переводе Intricate Gloves).
+    const complete = data.incomplete !== true;
     for (const [k, v] of Object.entries(data.bases ?? {})) ruEnBases.set(normName(k), v);
     for (const [k, v] of Object.entries(data.uniques ?? {})) ruEnUniques.set(normName(k), v);
     if (!ruEnBases.size && !ruEnUniques.size) return false;
-    console.log(`[overlay] ru-en dict loaded: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques`);
-    return true;
+    console.log(`[overlay] ru-en dict loaded: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques${complete ? '' : ' (неполный, достраиваем)'}`);
+    return complete;
   } catch {
     return false;
   }
@@ -1105,18 +1124,26 @@ function ensureRuEnDict(): Promise<void> {
   if (ruEnDictLoaded || ruEnDictPromise) return ruEnDictPromise ?? Promise.resolve();
   ruEnDictPromise = (async () => {
     try {
+      const failed: string[] = [];
       for (const slug of EQUIPMENT_CLASS_SLUGS) {
-        try {
-          const tr = await core.poe2db.fetchClassTranslations(slug, 'ru');
-          for (const [k, v] of tr.bases) ruEnBases.set(normName(k), v);
-          for (const [k, v] of tr.uniques) ruEnUniques.set(normName(k), v);
-          saveRuEnDict(); // прогресс сохраняем по ходу
-        } catch (err) {
-          console.warn(`[overlay] ru-en dict: ${slug} failed: ${err instanceof Error ? err.message : err}`);
+        // пустые мапы = страница не скачалась (fetchClassTranslations глотает
+        // ошибки) — retry, чтобы разовый сбой сети не оставил дыру в кэше
+        let tr = { bases: new Map(), uniques: new Map() };
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          tr = await core.poe2db.fetchClassTranslations(slug, 'ru');
+          if (tr.bases.size || tr.uniques.size) break;
+          if (attempt === 1) await new Promise((r) => setTimeout(r, 1500));
         }
+        if (!tr.bases.size && !tr.uniques.size) failed.push(slug);
+        for (const [k, v] of tr.bases) ruEnBases.set(normName(k), v);
+        for (const [k, v] of tr.uniques) ruEnUniques.set(normName(k), v);
+        saveRuEnDict(failed.length > 0); // прогресс сохраняем по ходу
       }
       ruEnDictLoaded = true;
-      console.log(`[overlay] ru-en dict built: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques`);
+      console.log(
+        `[overlay] ru-en dict built: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques` +
+          (failed.length ? `; НЕДОСТРОЕНЫ (ретраи не помогли): ${failed.join(', ')}` : ' — полный'),
+      );
     } finally {
       ruEnDictPromise = null;
     }
@@ -2510,7 +2537,8 @@ function setupIPC(): void {
       const text = collectDiagnostics();
       const file = path.join(
         app.getPath('userData'),
-        'overlay-diagnostics-' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt',
+        // один файл на перезапись (было: overlay-diagnostics-<timestamp>.txt — копии плодили мусор)
+        'overlay-diagnostics.txt',
       );
       fs.writeFileSync(file, text, 'utf8');
       clipboard.writeText(text);
@@ -2540,7 +2568,8 @@ function setupIPC(): void {
       const json = JSON.stringify(contrib, null, 2);
       const file = path.join(
         app.getPath('userData'),
-        'poe2-items-contribution-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json',
+        // ⚡ один файл на перезапись: таймстамп-версии плодили мусор в userData
+        'poe2-items-contribution.txt',
       );
       // Памятка для не-техника: что делать с этим текстом (вставить в issue).
       const text =

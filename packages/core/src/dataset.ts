@@ -798,10 +798,10 @@ export function searchStatDescriptions(query: string, limit = 5): StatDescriptio
   return out;
 }
 
-// --- База эталонных саппорт-связок (слои «эталон» и «базово») ------------------
-// Формат и происхождение: _research/builds_etalon/README.md (журнал №40).
-// meta_supports.json — мета-связки 0.5.5 (PoB-XML Maxroll + кураторские planner-эмбеды);
-// recommended_supports.json — poe2db «Recommended Support Gems» по всем активным камням.
+// --- пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) ------------------
+// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: _research/builds_etalon/README.md (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ40).
+// meta_supports.json пїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ 0.5.5 (PoB-XML Maxroll + пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ planner-пїЅпїЅпїЅпїЅпїЅпїЅ);
+// recommended_supports.json пїЅ poe2db пїЅRecommended Support GemsпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.
 
 export interface GemSupportReco {
   rank: number;
@@ -837,18 +837,40 @@ export interface MetaSupportsDataset {
 
 let recoCache: RecommendedSupportsDataset | null = null;
 let metaCache: MetaSupportsDataset | null = null;
+let renamesCache: MetaRenamesDataset | null = null;
 
-/** Базовый слой: рекомендации poe2db по всем активным камням (офлайн). */
+export interface MetaRenamesDataset {
+  version: number;
+  game_version?: string;
+  generated_at?: string;
+  source: string;
+  provenance: string;
+  note: string;
+  /** РЎС‚Р°СЂРѕРµ РёРјСЏ (PoB-РјРµС‚Р° РґРѕ РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёР№ 0.5) -> С‚РµРєСѓС‰РµРµ РёРјСЏ poe2db. */
+  map: Record<string, string>;
+}
+
+/** РљР°СЂС‚Р° РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёР№ СЃР°РїРїРѕСЂС‚РѕРІ 0.5: СЃС‚Р°СЂРѕРµ РёРјСЏ PoB-РјРµС‚С‹ -> РёРјСЏ poe2db (РѕС„Р»Р°Р№РЅ). */
+export function getMetaRenames(): MetaRenamesDataset | null {
+  try {
+    renamesCache ??= loadJson<MetaRenamesDataset>('skill_gems/meta_renames.json');
+    return renamesCache;
+  } catch {
+    return null;
+  }
+}
+
+/** пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ poe2db пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ). */
 export function getRecommendedSupports(): RecommendedSupportsDataset | null {
   try {
     recoCache ??= loadJson<RecommendedSupportsDataset>('skill_gems/recommended_supports.json');
     return recoCache;
   } catch {
-    return null; // файла нет (скрап не прогнан) — оверлей живёт без него
+    return null; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
   }
 }
 
-/** Мета-слой «эталон»: связки меты 0.5.5 из PoB-потоков (офлайн). */
+/** пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 0.5.5 пїЅпїЅ PoB-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ). */
 export function getMetaSupports(): MetaSupportsDataset | null {
   try {
     metaCache ??= loadJson<MetaSupportsDataset>('skill_gems/meta_supports.json');

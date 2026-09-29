@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "game_version": "0.5.5",
+  "generated_at": "2026-09-29T13:10:00.000Z",
+  "source": "poe2db.tw /ru/Support_Gems, атрибут alt иконки (внутреннее имя гема) в одном сегменте <tr> с текущим слагом",
+  "provenance": "Живой фетч 2026-09-29: alt=\"IronwoodSupport\" стоит на странице /ru/Reinforced_Totems_I и т.д.; все 9 пар верифицированы по ближайшему href ПЕРЕД alt внутри одного <tr data-filters=...>. Остальные ~24 старых имени (Martial Tempo, Lacerate, Scattershot, Magnified Effect, Infusion-тройка, Persistence, Bludgeon...) в 0.5.5 на poe2db ОТСУТСТВУЮТ — cartesian evidence нет, не включены.",
+  "note": "Старое имя (PoB-мета, гайды до волн переименований 0.5) -> новое имя poe2db. Только для отображения RU; матчинг InBuild и PoB-сетапы работают по старым именам консистентно.",
+  "map": {
+    "Ablation": "Sacrificial Offering",
+    "Concentrated Effect": "Concentrated Area",
+    "Conduction": "Shock",
+    "Domain": "Persistent Ground",
+    "Expedite": "Short Fuse",
+    "Ignition": "Ignite",
+    "Inspiration": "Efficiency",
+    "Ironwood": "Reinforced Totems",
+    "Splinter": "Splinter Totem"
+  }
+}
