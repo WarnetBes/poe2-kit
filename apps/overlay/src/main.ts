@@ -1273,6 +1273,17 @@ const EQUIPMENT_CLASS_SLUGS = [
   // Ctrl+F1 в RU-клиенте прайс-чекает аугменты. Страница тяжёлая (~1.7 МБ),
   // rate-limiter держит паузу; разметка a.whiteitem подтверждена 2026-09-30.
   'Augment',
+  // v5 (ТЗ-A1): валюты/стакаблы — a.item_currency (разметка живая 30.09.2026):
+  // Stackable_Currency (сферы: «Сфера алхимии»→Orb of Alchemy), Essence, Omens,
+  // Catalysts, Rune (пересекается с Augment — дубль безвреден), Liquid_Emotions,
+  // Splinter. Слаг 'Currency' — хаб без таблиц (мусор), НЕ использовать.
+  'Stackable_Currency',
+  'Essence',
+  'Omens',
+  'Catalysts',
+  'Rune',
+  'Liquid_Emotions',
+  'Splinter',
 ] as const;
 
 // v2: +Flasks — флаконы не входили в первый список, RU-базы вроде
@@ -1281,7 +1292,9 @@ const EQUIPMENT_CLASS_SLUGS = [
 // лог друга 29.09 09:50:38Z) + incomplete-poison guard: если при построении
 // страница класса отдала пустые мапы (Cloudflare/сбой сети), дырявый словарь
 // больше не кэшируется навсегда — при следующем старте достраиваем.
-const RU_EN_DICT_VERSION = 4;
+// v5 (ТЗ-A1): +валюты (Stackable_Currency/Essence/Omens/Catalysts/Rune/
+// Liquid_Emotions/Splinter через a.item_currency) — RU-валюты прайс-чекаются.
+const RU_EN_DICT_VERSION = 5;
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
 let ruEnDictLoaded = false;

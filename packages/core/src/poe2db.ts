@@ -383,7 +383,12 @@ export interface Poe2dbClassTranslations {
 
 /**
  * Загрузить словари «локализация → английский» со страницы класса предметов
- * poe2db (структура: уники — `a.UniqueItem` c `.uniqueName`, базы — `a.whiteitem`).
+ * poe2db (структура: уники — `a.UniqueItem` c `.uniqueName`, базы — `a.whiteitem`,
+ * валюты №93 — `a.item_currency`).
+ * При lang != 'us' страница подгружается ПАРА: локализованная + us — канон
+ * EN-значения = ТЕКСТ us-страницы, НЕ слаг (слаги теряют апострофы:
+ * href=Hinekoras_Lock → "Hinekoras Lock", а настоящее имя "Hinekora's Lock";
+ * живая проверка 30.09.2026: 36/504 несоответствий на Stackable_Currency).
  * При ошибке сети возвращает пустые мапы (тихо, без throw).
  */
 export async function fetchClassTranslations(
@@ -392,26 +397,41 @@ export async function fetchClassTranslations(
 ): Promise<Poe2dbClassTranslations> {
   const bases = new Map<string, string>();
   const uniques = new Map<string, string>();
-  const put = (map: Map<string, string>, text: string, slug: string): void => {
-    const en = slug.replace(/_/g, ' ').trim();
-    const key = text.replace(/\s+/g, ' ').trim().toLowerCase();
-    if (key && en && key.length < 120) map.set(key, en);
-  };
-  try {
-    const html = await getPoe2dbPage(itemClassSlug, lang);
+  /** Парсинг страницы: «slug\u0001kind» → локализованный текст (anchors с текстом). */
+  const parse = (html: string): Map<string, { text: string; unique: boolean }> => {
     const $ = cheerio.load(html);
-    // Уники: <a class="UniqueItem" href="/ru/Doedres_Damning"><span class="uniqueName">…</span> …
+    const out = new Map<string, { text: string; unique: boolean }>();
+    const add = (slug: string | null, text: string, unique: boolean): void => {
+      if (!slug || !text) return;
+      out.set(`${slug}\u0001${unique ? 'u' : 'b'}`, { text, unique });
+    };
     $('a.UniqueItem').each((_, el) => {
       const m = ($(el).attr('href') ?? '').match(/([A-Za-z][A-Za-z0-9_]+)$/);
-      const name = m ? $(el).find('.uniqueName').first().text().trim() : '';
-      if (name) put(uniques, name, m![1]!);
+      add(m ? m[1]! : null, $(el).find('.uniqueName').first().text().trim(), true);
     });
-    // Базовые типы: <a class="whiteitem Ring" href="Iron_Ring">Железное кольцо</a>
-    $('a.whiteitem').each((_, el) => {
+    $('a.item_currency, a.whiteitem').each((_, el) => {
       const m = ($(el).attr('href') ?? '').match(/([A-Za-z][A-Za-z0-9_]+)$/);
-      const text = m ? $(el).text().replace(/\s+/g, ' ').trim() : '';
-      if (text) put(bases, text, m![1]!);
+      add(m ? m[1]! : null, $(el).text().replace(/\s+/g, ' ').trim(), false);
     });
+    return out;
+  };
+  try {
+    const local = parse(await getPoe2dbPage(itemClassSlug, lang));
+    let en: Map<string, { text: string; unique: boolean }> | null = null;
+    if (lang !== 'us') {
+      try {
+        en = parse(await getPoe2dbPage(itemClassSlug, 'us'));
+      } catch {
+        en = null; // us-страница не далась — фолбэк на слаг-имена
+      }
+    }
+    for (const [key, entry] of local) {
+      const slug = key.split('\u0001')[0]!;
+      const enText = en?.get(key)?.text ?? slug.replace(/_/g, ' ').trim();
+      const lk = entry.text.replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!lk || !enText || lk.length >= 120) continue;
+      (entry.unique ? uniques : bases).set(lk, enText);
+    }
   } catch {
     // Тихо: словарь просто останется пустым, сопоставление уйдёт в точный матч.
   }
