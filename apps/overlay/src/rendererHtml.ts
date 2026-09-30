@@ -784,7 +784,8 @@ export const rendererHtml = `<!doctype html>
       + '<div class="sub-h sub">🏆 Асценданси (кейстоуны — из датасета дерева):</div><div class="starter-row">';
     st.ascendancies.forEach(function (a) {
       var on = st.ascPicked === a.name;
-      html += '<button class="starter-btn' + (on ? ' on' : '') + '" data-asc="' + esc(a.name) + '">' + esc(a.name) + '</button>';
+      var t = a.name + (a.hint ? '\n⚡ ' + a.hint : '');
+      html += '<button class="starter-btn' + (on ? ' on' : '') + '" data-asc="' + esc(a.name) + '" title="' + esc(t) + '">' + esc(a.name) + '</button>';
     });
     html += '</div>';
     if (st.ascKeystones && st.ascKeystones.length) {
@@ -962,6 +963,13 @@ export const rendererHtml = `<!doctype html>
         '<td class="nm" title="' + esc(s.name) + (s.note ? ' — искать: ' + esc(s.note) : '') + '">' + esc(s.name) + '</td>' +
         '<td class="num">' + esc(price) + '</td>' +
         '</tr>';
+      // №92-бис: подсказка «что искать» видима строкой (тултип никто не найдёт),
+      // не только в title.
+      if (s.note && s.status !== 'bought') {
+        row += '<tr class="wornrow"><td></td><td></td>' +
+          '<td class="worn" title="' + esc(s.note) + '">🔍 иск: ' + esc(s.note) + '</td>' +
+          '<td></td></tr>';
+      }
       // Что сейчас надето в этом слоте на персонаже (poe.ninja), если не совпадает.
       if (s.worn && s.status !== 'bought') {
         row += '<tr class="wornrow"><td></td><td></td>' +
@@ -983,6 +991,12 @@ export const rendererHtml = `<!doctype html>
         btn.title = c.tagline;
         btn.textContent = c.className;
         btn.addEventListener('click', function () {
+          // №92-бис: случайный клик не должен стереть импортированный PoB-билд.
+          if (lastBuildState && !lastBuildState.isStarter &&
+              !window.confirm('Заменить текущий билд стартовым (' + c.className + ')?\n' +
+                'Импортированный билд будет удалён из панели (слоты/цены/чек-лист).')) {
+            return;
+          }
           window.poe2k.starterImport(c.className).catch(function () {});
         });
         stWrap.appendChild(btn);

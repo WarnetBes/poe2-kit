@@ -54,8 +54,9 @@ export interface StarterBuild {
   slots: StarterSlot[];
   /** Группы камней по диапазонам уровней (из гайда класса). */
   gemRanges: Array<{ range: string; gems: string[] }>;
-  /** №92: асценданси класса (ascendancies.json, id = префикс нод дерева). */
-  ascendancies: Array<{ id: string; name: string }>;
+  /** №92: асценданси класса (ascendancies.json, id = префикс нод дерева);
+   * hint — превью первых ключевых нот (для тултипа кнопки). */
+  ascendancies: Array<{ id: string; name: string; hint: string }>;
   /** №92: приоритеты дерева — RU-строка гайда → EN-стат → реальные нотабли дерева. */
   treePriorities: Array<{ priority: string; term: string; notables: string[] }>;
 }
@@ -175,7 +176,13 @@ export function makeStarterBuild(classQuery: string): StarterBuild | null {
       range: t.toLevel == null ? `${t.fromLevel}+` : `${t.fromLevel}–${t.toLevel}`,
       gems: t.gems ?? [],
     })),
-    ascendancies: getAscendanciesByClass(guide.baseClass).map((a) => ({ id: a.id, name: a.displayName })),
+    ascendancies: getAscendanciesByClass(guide.baseClass).map((a) => ({
+      id: a.id,
+      name: a.displayName,
+      hint: ascendancyKeystones(a.id)
+        .slice(0, 3)
+        .join(' · '),
+    })),
     treePriorities: buildTreePriorities(guide),
   };
 }

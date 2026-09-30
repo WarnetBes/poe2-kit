@@ -1158,6 +1158,8 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       totalSlots: slots.length,
       boughtCount: bought.length,
       starter: buildState.starter,
+      /** №92-бис: true — текущий билд стартовый (повторный выбор класса заменяет свободно). */
+      isStarter: buildState.rawInput.startsWith('starter:'),
       /** Оценка бюджета: сумма цен ещё не купленных предметов. */
       budgetLeft: remaining.reduce((sum, s) => sum + (s.median ?? 0), 0),
       budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
