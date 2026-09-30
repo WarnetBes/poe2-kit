@@ -784,7 +784,7 @@ export const rendererHtml = `<!doctype html>
       + '<div class="sub-h sub">🏆 Асценданси (кейстоуны — из датасета дерева):</div><div class="starter-row">';
     st.ascendancies.forEach(function (a) {
       var on = st.ascPicked === a.name;
-      var t = a.name + (a.hint ? '\n⚡ ' + a.hint : '');
+      var t = a.name + (a.hint ? '\\n⚡ ' + a.hint : '');
       html += '<button class="starter-btn' + (on ? ' on' : '') + '" data-asc="' + esc(a.name) + '" title="' + esc(t) + '">' + esc(a.name) + '</button>';
     });
     html += '</div>';
@@ -993,7 +993,7 @@ export const rendererHtml = `<!doctype html>
         btn.addEventListener('click', function () {
           // №92-бис: случайный клик не должен стереть импортированный PoB-билд.
           if (lastBuildState && !lastBuildState.isStarter &&
-              !window.confirm('Заменить текущий билд стартовым (' + c.className + ')?\n' +
+              !window.confirm('Заменить текущий билд стартовым (' + c.className + ')?\\n' +
                 'Импортированный билд будет удалён из панели (слоты/цены/чек-лист).')) {
             return;
           }
