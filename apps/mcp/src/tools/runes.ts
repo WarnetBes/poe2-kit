@@ -88,6 +88,31 @@ export function registerRuneTools(server: McpServer): number {
           };
         }
         const rows: RunePriceRow[] = [];
+        // №94: медиана без приведения — смешанные валюты («3 exalted» и «1 chaos»
+        // складывались как числа). Приводим каждый листинг к chaos курсом
+        // poe2scout/poe.ninja (кэш core, один fetch на вызов), медиану считаем
+        // в chaos; курс неизвестен → листинг в chaos-медиану не входит.
+        // Ключи курса = те же, что в attachListingChaos (№67): полное имя
+        // lower + без хвоста « orb» ('Exalted Orb'→'exalted') + короткие
+        // id trade2 ('alch', 'regal'...).
+        const TRADE2_ALIAS: Record<string, string> = {
+          alch: 'orb of alchemy',
+          regal: 'regal orb',
+          exalt: 'exalted orb',
+          aug: 'orb of augmentation',
+          trans: 'orb of transmutation',
+        };
+        const rateById = new Map<string, number>();
+        for (const r of await core.trade.fetchBestCurrencyRates(L)) {
+          if (r.chaosValue == null || !Number.isFinite(r.chaosValue)) continue;
+          const k = r.name.toLowerCase();
+          rateById.set(k, r.chaosValue);
+          rateById.set(k.replace(/\s*orb$/, ''), r.chaosValue);
+        }
+        const chaosValue = (currency: string): number | null => {
+          const c = currency.toLowerCase();
+          return rateById.get(c) ?? rateById.get(TRADE2_ALIAS[c] ?? '') ?? null;
+        };
         for (const a of augments) {
           const res = await core.tradeQuery.searchTradeQuery(
             {
@@ -100,14 +125,28 @@ export function registerRuneTools(server: McpServer): number {
             .map((l) => l.price)
             .filter((p): p is { amount: number; currency: string } => !!p && typeof p.amount === 'number')
             .sort((x, y) => x.amount - y.amount);
-          const median = prices.length
-            ? priceString(
-                prices.length % 2
-                  ? prices[(prices.length - 1) / 2]!.amount
-                  : (prices[prices.length / 2 - 1]!.amount + prices[prices.length / 2]!.amount) / 2,
-                prices[0]!.currency,
-              )
+          const inChaos = prices
+            .map((p) => {
+              const cv = chaosValue(p.currency);
+              return cv != null ? p.amount * cv : null;
+            })
+            .filter((c): c is number => c != null);
+          inChaos.sort((x, y) => x - y);
+          const medianChaos = inChaos.length
+            ? inChaos.length % 2
+              ? inChaos[(inChaos.length - 1) / 2]!
+              : (inChaos[inChaos.length / 2 - 1]! + inChaos[inChaos.length / 2]!) / 2
             : null;
+          const median = medianChaos != null && inChaos.length === prices.length
+            ? priceString(+medianChaos.toFixed(2), 'chaos (приведено)')
+            : prices.length
+              ? priceString(
+                  prices.length % 2
+                    ? prices[(prices.length - 1) / 2]!.amount
+                    : (prices[prices.length / 2 - 1]!.amount + prices[prices.length / 2]!.amount) / 2,
+                  prices[0]!.currency,
+                )
+              : null;
           rows.push({
             name: a.name,
             total: res.total,
