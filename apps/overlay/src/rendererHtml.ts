@@ -265,6 +265,8 @@ export const rendererHtml = `<!doctype html>
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     border-radius: 5px; }
   .starter-btn:hover { background: rgba(255,255,255,0.14); }
+  .starter-btn.on { background: rgba(200,150,60,0.35); border-color: var(--accent); }
+  .starter-info { margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.12); }
   .corner-row { display: flex; gap: 6px; }
   .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
@@ -772,6 +774,39 @@ export const rendererHtml = `<!doctype html>
     'Flask 3': 'Флакон 3', 'Flask 4': 'Флакон 4', 'Flask 5': 'Флакон 5'
   };
 
+  // №92: блок стартового билда — выбор асценданси (кейстоуны из датасета)
+  // и приоритеты дерева (реальные нотабли по статам гайда).
+  function renderStarterInfo(b) {
+    var st = b.starter;
+    var host = $('buildSlots');
+    if (!host || !st) return;
+    var html = '<div class="starter-info">'
+      + '<div class="sub-h sub">🏆 Асценданси (кейстоуны — из датасета дерева):</div><div class="starter-row">';
+    st.ascendancies.forEach(function (a) {
+      var on = st.ascPicked === a.name;
+      html += '<button class="starter-btn' + (on ? ' on' : '') + '" data-asc="' + esc(a.name) + '">' + esc(a.name) + '</button>';
+    });
+    html += '</div>';
+    if (st.ascKeystones && st.ascKeystones.length) {
+      html += '<div class="sub" style="margin:2px 0 6px">⚡ ' + st.ascKeystones.map(esc).join(' · ') + '</div>';
+    }
+    if (st.treePriorities && st.treePriorities.length) {
+      html += '<div class="sub-h sub">🌳 Приоритеты дерева (нотабли — поиск по датасету):</div><div class="sub">';
+      st.treePriorities.slice(0, 8).forEach(function (p) {
+        html += '• ' + esc(p.priority) + ' → <b>' + p.notables.map(esc).join(', ') + '</b><br/>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    host.insertAdjacentHTML('beforeend', html);
+    var btns = host.querySelectorAll('[data-asc]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function () {
+        window.poe2k.starterPickAsc(this.getAttribute('data-asc')).catch(function () {});
+      });
+    }
+  }
+
   function slotRu(s) {
     return SLOT_RU[s] || s || '—';
   }
@@ -924,7 +959,7 @@ export const rendererHtml = `<!doctype html>
       var row = '<tr class="' + (s.status === 'bought' ? 'bought' : '') + '">' +
         '<td>' + icon + '</td>' +
         '<td class="slot">' + esc(slotRu(s.slot)) + '</td>' +
-        '<td class="nm" title="' + esc(s.name) + '">' + esc(s.name) + '</td>' +
+        '<td class="nm" title="' + esc(s.name) + (s.note ? ' — искать: ' + esc(s.note) : '') + '">' + esc(s.name) + '</td>' +
         '<td class="num">' + esc(price) + '</td>' +
         '</tr>';
       // Что сейчас надето в этом слоте на персонаже (poe.ninja), если не совпадает.
@@ -936,7 +971,7 @@ export const rendererHtml = `<!doctype html>
       return row;
     }).join('');
     $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
-    // №91: стартовые билды доступны и с загруженным билдом — полоска внизу таблицы.
+    // №91+92: стартовые билды доступны и с загруженным билдом — полоска внизу таблицы.
     var stWrap = document.createElement('div');
     stWrap.className = 'starter-row';
     stWrap.innerHTML = '<span class="sub-h sub">🌱 Стартовый билд новичка:</span>';
@@ -953,6 +988,7 @@ export const rendererHtml = `<!doctype html>
         stWrap.appendChild(btn);
       });
       $('buildSlots').appendChild(stWrap);
+      if (b.starter) renderStarterInfo(b);
     }).catch(function () {});
     // №66: вкладка «💎 Камни» обновляется из того же payload.
     lastBuildState = b;

@@ -9,7 +9,7 @@
  * слоте и какие камни качать по диапазонам уровней.
  */
 
-import { getBaseItems } from './dataset.js';
+import { getBaseItems, getAscendanciesByClass, getPassiveTree } from './dataset.js';
 import { CLASS_LEVELING_GUIDES, resolveLevelingClass } from './leveling.js';
 import type { ClassLevelingGuide } from './leveling.js';
 
@@ -54,6 +54,81 @@ export interface StarterBuild {
   slots: StarterSlot[];
   /** Группы камней по диапазонам уровней (из гайда класса). */
   gemRanges: Array<{ range: string; gems: string[] }>;
+  /** №92: асценданси класса (ascendancies.json, id = префикс нод дерева). */
+  ascendancies: Array<{ id: string; name: string }>;
+  /** №92: приоритеты дерева — RU-строка гайда → EN-стат → реальные нотабли дерева. */
+  treePriorities: Array<{ priority: string; term: string; notables: string[] }>;
+}
+
+/**
+ * №92: приоритеты дерева — честная эвристика-перевод. RU-фразы приоритетов
+ * гайда маппятся на EN-статы дерева, затем по датасету ищутся РЕАЛЬНЫЕ
+ * нотабли (is_notable, не асценданси-ноды). Ноды не выдумываются —
+ * только имена из passive_tree/tree.json.
+ */
+const PRIORITY_TERMS: Array<[RegExp, string]> = [
+  [/крит|Critical/i, 'Critical Hit Chance'],
+  [/Critical Damage/i, 'Critical Damage Bonus'],
+  [/холод|Cold/i, 'Cold Damage'],
+  [/молни|Lightning/i, 'Lightning Damage'],
+  [/огн|Fire/i, 'Fire Damage'],
+  [/Физическ|Physical/i, 'Physical Damage'],
+  [/Energy Shield/i, 'Energy Shield'],
+  [/уклон|Evasion/i, 'Evasion Rating'],
+  [/жизн|Life/i, 'Maximum Life'],
+  [/резист|Resist/i, ' Elemental Resistance'],
+  [/Spirit/i, 'Spirit'],
+  [/брон|Armour/i, 'Armour'],
+  [/скорост атаки|Attack Speed/i, 'Attack Speed'],
+  [/скорост каст|Cast Speed/i, 'Cast Speed'],
+  [/мобильн|движ/i, 'Movement Speed'],
+];
+
+function buildTreePriorities(guide: ClassLevelingGuide): StarterBuild['treePriorities'] {
+  const out: StarterBuild['treePriorities'] = [];
+  const seenTerm = new Set<string>();
+  const seenNotable = new Set<string>();
+  for (const priority of [...guide.damage, ...guide.defense]) {
+    for (const [re, term] of PRIORITY_TERMS) {
+      if (seenTerm.has(term) || !re.test(priority)) continue;
+      seenTerm.add(term);
+      const notables = getPassiveTree()
+        .filter(
+          (n) =>
+            n.isNotable &&
+            !n.id.startsWith('Ascendancy') &&
+            !/\[DNT-UNUSED\]/.test(n.name) &&
+            [n.name, ...n.stats].join('\u0001').toLowerCase().includes(term.trim().toLowerCase()),
+        )
+        .slice(0, 3)
+        .map((n) => n.name);
+      // Дубли между приоритетами убираем: нота показывается один раз.
+      const fresh = notables.filter((nm) => !seenNotable.has(nm));
+      fresh.forEach((nm) => seenNotable.add(nm));
+      if (fresh.length) out.push({ priority, term: term.trim(), notables: fresh });
+    }
+  }
+  return out;
+}
+
+/**
+ * №92: ключевые ноды асценданси по его id из ascendancies.json
+ * (нод дерева: id начинается с 'Ascendancy{ Monk2 | Warrior1 | ... }',
+ * значимые ноды — Notable/Keystone, отсечены Small/Start — проверено живьём:
+ * Invoker = AscendancyMonk2Notable1..8 «I am the Thunder...» и т.п.).
+ */
+/** Расхождения id между ascendancies.json и tree.json (проверено живьём по именам нот):
+ *  Abyssal Lich: id 'Witch3b', в дерев экспорте — префикс 'AltWitch1'
+ *  (ноты «Umbral Well», «Steward of Kulemak» — абиссальная тема). */
+const ASC_ID_FALLBACK: Record<string, string> = {
+  Witch3b: 'AltWitch1',
+};
+
+export function ascendancyKeystones(ascendancyId: string): string[] {
+  const prefix = `Ascendancy${ASC_ID_FALLBACK[ascendancyId] ?? ascendancyId}`;
+  return getPassiveTree()
+    .filter((n) => (n.isKeystone || n.isNotable) && n.id.startsWith(prefix) && !/Small|Start/.test(n.id))
+    .map((n) => n.name);
 }
 
 /** Слоты шопинг-листа: (slot, itemClassName, note) — note из гайда класса по смыслу. */
@@ -100,6 +175,8 @@ export function makeStarterBuild(classQuery: string): StarterBuild | null {
       range: t.toLevel == null ? `${t.fromLevel}+` : `${t.fromLevel}–${t.toLevel}`,
       gems: t.gems ?? [],
     })),
+    ascendancies: getAscendanciesByClass(guide.baseClass).map((a) => ({ id: a.id, name: a.displayName })),
+    treePriorities: buildTreePriorities(guide),
   };
 }
 

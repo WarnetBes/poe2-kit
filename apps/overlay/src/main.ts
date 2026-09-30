@@ -538,6 +538,8 @@ interface BuildSlotState {
   itemText: string;
   /** Что сейчас надето в этом слоте на персонаже (синхронизация с poe.ninja), null — нет данных. */
   worn?: string | null;
+  /** №92: подсказка «что искать» (стартовые билды — из гайда класса). */
+  note?: string;
 }
 
 interface BuildSummaryState {
@@ -577,6 +579,13 @@ interface BuildState {
   }> | null;
   /** Показана ли панель билда в виджете. */
   panelVisible: boolean;
+  /** №92: доп-данные стартового билда (если rawInput = starter:Class). */
+  starter: {
+    ascendancies: Array<{ id: string; name: string }>;
+    treePriorities: Array<{ priority: string; term: string; notables: string[] }>;
+    ascPicked?: string;
+    ascKeystones?: string[];
+  } | null;
   /** Дерево билда из PoB-импорта: кейнстоуны/нотабли и счётчики. */
   tree: {
     version: string | null;
@@ -1062,7 +1071,11 @@ function loadBuildState(): void {
         gemSeen: raw.gemSeen ?? null,
         panelVisible: false,
         tree: (raw.tree as BuildState['tree']) ?? null,
+        starter: raw.starter ?? null,
       };
+      buildState.slots.forEach((s) => {
+        if (!('note' in s)) s.note = undefined;
+      });
       console.log(`[overlay] build restored: slots=${buildState.slots.length} (${buildState.className ?? '?'})`);
       // Видимость состояния дерева в логе: без этой строки слепая зона —
       // не понять, есть ли 🌳 в state (backfill молчит, если сырец пуст).
@@ -1131,6 +1144,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
         confidence: s.confidence,
         status: s.status,
         worn: s.worn ?? null,
+        note: s.note ?? null,
       })),
       charSync: charSync
         ? {
@@ -1143,6 +1157,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       pricedCount: priced.length,
       totalSlots: slots.length,
       boughtCount: bought.length,
+      starter: buildState.starter,
       /** Оценка бюджета: сумма цен ещё не купленных предметов. */
       budgetLeft: remaining.reduce((sum, s) => sum + (s.median ?? 0), 0),
       budgetTotal: priced.reduce((sum, s) => sum + (s.median ?? 0), 0),
@@ -1904,6 +1919,7 @@ async function runBuildImport(): Promise<void> {
       gemSeen: null,
       panelVisible: true,
       tree: buildTreeSummary(imported),
+      starter: null,
     };
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
@@ -2007,6 +2023,7 @@ async function importStarterBuild(classQuery: string): Promise<void> {
           confidence: null,
           status: 'todo' as const,
           itemText: s.itemText,
+          note: s.note,
         };
       }),
       summary: null,
@@ -2022,6 +2039,10 @@ async function importStarterBuild(classQuery: string): Promise<void> {
       gemSeen: null,
       panelVisible: true,
       tree: null,
+      starter: {
+        ascendancies: starter.ascendancies,
+        treePriorities: starter.treePriorities,
+      },
     };
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
@@ -2904,6 +2925,22 @@ function setupIPC(): void {
     if (!q) return { ok: false, error: 'не указан класс' };
     console.log(`[overlay] tab: стартовый билд (${q})`);
     void importStarterBuild(q);
+    return { ok: true };
+  });
+  // №92: выбор асценданси стартового билда — кейстоуны из датасета.
+  ipcMain.handle('starter:pick_asc', (_e, name: unknown) => {
+    const picked = typeof name === 'string' ? name : '';
+    if (!buildState?.starter || !picked) return { ok: false };
+    const asc = buildState.starter.ascendancies.find((a) => a.name === picked);
+    if (!asc) return { ok: false };
+    buildState.ascendancy = asc.name;
+    buildState.starter.ascPicked = asc.name;
+    buildState.starter.ascKeystones = core.starterBuilds.ascendancyKeystones(asc.id);
+    console.log(
+      `[overlay] starter ascendancy: ${asc.name} (${asc.id}) — keystones: ${(buildState.starter.ascKeystones ?? []).join(', ') || 'нет'}`,
+    );
+    saveBuildState();
+    sendBuildUpdate({ status: 'ready' });
     return { ok: true };
   });
 
