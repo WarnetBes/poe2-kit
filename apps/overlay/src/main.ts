@@ -2066,28 +2066,12 @@ async function importStarterBuild(classQuery: string): Promise<void> {
     );
     void refreshBuildEstimate();
 
-    // Прайсинг слотов — тот же последовательный цикл, что у PoB-импорта.
-    for (const slot of buildState.slots) {
-      if (pricingToken !== token) {
-        console.log('[overlay] starter pricing aborted: новый импорт');
-        return;
-      }
-      if (slot.median != null) continue;
-      if (/^(charm|flask)/i.test(slot.slot)) continue;
-      try {
-        const res = await withTimeout(core.trade.priceCheck(slot.itemText), HOTKEY_TIMEOUT_MS, 'priceCheck');
-        slot.median = res.estimate?.median ?? null;
-        slot.confidence = res.estimate?.confidence ?? null;
-      } catch (err) {
-        console.warn(
-          `[overlay] starter price failed: slot=${slot.slot} item="${slot.name}": ${err instanceof Error ? err.message : err}`,
-        );
-      }
-      sendBuildUpdate({ status: 'ready' });
-    }
-    saveBuildState();
-    sendBuildUpdate({ status: 'ready' });
-    console.log('[overlay] starter build pricing done');
+    // №98: прайсинг синтетических white-баз стартера отключён. Медиана белой базы
+    // не несёт ценности для SSF, а каждый priceCheck стоил до 45с таймаута
+    // (лог-факт 30.09: «starter price failed ... timeout after 45000ms» ×20+,
+    // каждый клик класса перезапускал цикл с нуля).
+    // Слоты остаются status='todo' — цену реального предмета покажет Ctrl+F1.
+    console.log('[overlay] starter build pricing: пропущен (white-базы, №98)');
   } finally {
     if (pricingToken === token) {
       buildPricing = false;
@@ -2614,6 +2598,13 @@ async function runPriceCheck(): Promise<unknown> {
   busy = true;
   try {
     const raw = cleanGameFlavor(clipboard.readText());
+    // №98: в буфере ссылка poe.ninja-профиля, а не предмет (лог-факт 30.09:
+    // «price done: item="Неизвестный предмет"» ×4 по profile-линку). Роутим
+    // в импорт билда — именно этого пользователь и ожидает от ссылки.
+    if (/^https?:\/\/(www\.)?poe\.ninja\/poe2\/profile\//i.test(raw.trim())) {
+      console.log('[overlay] pricecheck → ссылка poe.ninja-профиля: роутим в импорт билда (№98)');
+      return runBuildImport();
+    }
     console.log(`[overlay] clipboard: ${raw.length} chars`);
     if (raw.trim()) {
       console.log(`[overlay] clipboard head: ${JSON.stringify(raw.slice(0, 80))}`);

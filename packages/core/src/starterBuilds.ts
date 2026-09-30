@@ -98,7 +98,7 @@ function buildTreePriorities(guide: ClassLevelingGuide): StarterBuild['treePrior
           (n) =>
             n.isNotable &&
             !n.id.startsWith('Ascendancy') &&
-            !/\[DNT-UNUSED\]/.test(n.name) &&
+            !/\[DNT/i.test(n.name) &&
             [n.name, ...n.stats].join('\u0001').toLowerCase().includes(term.trim().toLowerCase()),
         )
         .slice(0, 3)
@@ -125,11 +125,19 @@ const ASC_ID_FALLBACK: Record<string, string> = {
   Witch3b: 'AltWitch1',
 };
 
+/** №98: тех-мусор из имён нод дерева — «[DNT-UNUSED]», «[DNT - UNUSED]», «[DNT]»
+ * (лог-факт 30.09: Warbringer выводил «[DNT - UNUSED] Greatwolf's Howl», а
+ * прежний фильтр `\[DNT-UNUSED\]` вариант с пробелами не ловил). */
+export function stripDnt(name: string): string {
+  return name.replace(/\s*\[DNT[^\]]*\]/gi, '').trim();
+}
+
 export function ascendancyKeystones(ascendancyId: string): string[] {
   const prefix = `Ascendancy${ASC_ID_FALLBACK[ascendancyId] ?? ascendancyId}`;
   return getPassiveTree()
     .filter((n) => (n.isKeystone || n.isNotable) && n.id.startsWith(prefix) && !/Small|Start/.test(n.id))
-    .map((n) => n.name);
+    .map((n) => stripDnt(n.name))
+    .filter((name): name is string => name.length > 0);
 }
 
 /** Слоты шопинг-листа: (slot, itemClassName, note) — note из гайда класса по смыслу. */
