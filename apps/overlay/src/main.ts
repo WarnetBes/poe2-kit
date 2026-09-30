@@ -1969,6 +1969,97 @@ async function runBuildImport(): Promise<void> {
   }
 }
 
+/**
+ * №91: стартовый билд новичка (сюжет, Акты 1–4) по классу — без PoB-кода.
+ * Слоты — white-базы из датасета (прайсятся trade2), камни — из проверенного
+ * гайда прокачки класса (CLASS_LEVELING_GUIDES). Прайсинг — тот же цикл.
+ */
+async function importStarterBuild(classQuery: string): Promise<void> {
+  const starter = core.starterBuilds.makeStarterBuild(classQuery);
+  if (!starter) {
+    sendBuildUpdate({ error: `Стартовый билд для «${classQuery}» не найден. Классы: см. список 8 базовых.` });
+    return;
+  }
+  const token = ++pricingToken;
+  buildPricing = true;
+  try {
+    console.log(`[overlay] starter build: class=${starter.className}`);
+    sendBuildUpdate({ status: 'importing' });
+    buildState = {
+      rawInput: `starter:${starter.className}`,
+      className: starter.className,
+      level: 1,
+      skills: starter.gemRanges.at(-1)?.gems.slice(0, 3) ?? [],
+      importedAt: Date.now(),
+      slots: starter.slots.map((s) => {
+        let baseType = '';
+        try {
+          baseType = core.parse.parseItemText(s.itemText).baseType;
+        } catch {
+          /* синтетический текст — имя уже есть */
+        }
+        return {
+          slot: s.slot,
+          name: s.base,
+          baseType: baseType || s.base,
+          rarity: 'normal',
+          median: null,
+          confidence: null,
+          status: 'todo' as const,
+          itemText: s.itemText,
+        };
+      }),
+      summary: null,
+      metaSkills: null,
+      advice: null,
+      gemSetups: starter.gemRanges.map((r) => ({
+        active: r.gems[0] ?? '',
+        activeLevel: null,
+        supports: [],
+        source: 'socket' as const,
+        where: `уровни ${r.range}`,
+      })),
+      gemSeen: null,
+      panelVisible: true,
+      tree: null,
+    };
+    saveBuildState();
+    sendBuildUpdate({ status: 'ready' });
+    console.log(
+      `[overlay] starter build imported: ${starter.className}, ${buildState.slots.length} slots, tagline="${starter.tagline}"`,
+    );
+    void refreshBuildEstimate();
+
+    // Прайсинг слотов — тот же последовательный цикл, что у PoB-импорта.
+    for (const slot of buildState.slots) {
+      if (pricingToken !== token) {
+        console.log('[overlay] starter pricing aborted: новый импорт');
+        return;
+      }
+      if (slot.median != null) continue;
+      if (/^(charm|flask)/i.test(slot.slot)) continue;
+      try {
+        const res = await withTimeout(core.trade.priceCheck(slot.itemText), HOTKEY_TIMEOUT_MS, 'priceCheck');
+        slot.median = res.estimate?.median ?? null;
+        slot.confidence = res.estimate?.confidence ?? null;
+      } catch (err) {
+        console.warn(
+          `[overlay] starter price failed: slot=${slot.slot} item="${slot.name}": ${err instanceof Error ? err.message : err}`,
+        );
+      }
+      sendBuildUpdate({ status: 'ready' });
+    }
+    saveBuildState();
+    sendBuildUpdate({ status: 'ready' });
+    console.log('[overlay] starter build pricing done');
+  } finally {
+    if (pricingToken === token) {
+      buildPricing = false;
+      sendBuildUpdate({ status: 'ready' });
+    }
+  }
+}
+
 /** Оценка собранного комплекта (EHP/дыры) — фон, best-effort. */
 async function refreshBuildEstimate(): Promise<void> {
   if (!buildState) return;
@@ -2805,6 +2896,16 @@ function setupIPC(): void {
   });
 
   ipcMain.handle('build:get', () => buildPayload());
+
+  // №91: стартовые билды новичка (сюжет) — список классов + импорт без PoB-кода.
+  ipcMain.handle('starter:list', () => core.starterBuilds.listStarterBuilds());
+  ipcMain.handle('starter:import', (_e, klass: unknown) => {
+    const q = typeof klass === 'string' ? klass : '';
+    if (!q) return { ok: false, error: 'не указан класс' };
+    console.log(`[overlay] tab: стартовый билд (${q})`);
+    void importStarterBuild(q);
+    return { ok: true };
+  });
 
   // №64: вкладки в рендерере открывают те же панели, что и хоткеи —
   // «тот же способ переключения», но кликом. Единая точка: те же функции.

@@ -20,6 +20,9 @@ export interface OverlayAPI {
   buildToggle(): Promise<boolean>;
   buildReset(): Promise<boolean>;
   buildGet(): Promise<unknown>;
+  /** №91: стартовые билды новичка (сюжет): список классов и импорт. */
+  starterList(): Promise<unknown>;
+  starterImport(klass: string): Promise<unknown>;
   /** Поиск узлов пассивного дерева по имени/стату (dataset.searchPassiveTree). */
   treeSearch(query: string): Promise<unknown[]>;
   /** Подогнать высоту окна под контент ( авторазмер, px в DIP). */
@@ -108,6 +111,10 @@ const api: OverlayAPI = {
   buildReset: () => ipcRenderer.invoke('build:reset'),
 
   buildGet: () => ipcRenderer.invoke('build:get'),
+
+  // №91: стартовые билды новичка (сюжет)
+  starterList: () => ipcRenderer.invoke('starter:list'),
+  starterImport: (klass) => ipcRenderer.invoke('starter:import', klass),
 
   treeSearch: (query) => ipcRenderer.invoke('tree:search', query),
 

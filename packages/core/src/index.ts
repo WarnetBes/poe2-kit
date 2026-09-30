@@ -25,6 +25,7 @@ export * from './sources.js';
 export * from './ladder.js';
 export * from './advice.js';
 export * from './runes.js';
+export * from './starterBuilds.js';
 export * from './ssf.js';
 export * from './cache.js';
 export * from './gameConfig.js';
@@ -79,6 +80,7 @@ import * as gameConfigMod from './gameConfig.js';
 import * as learnmod from './learnlog.js';
 import * as learnedStatsMod from './learnedStats.js';
 import * as runesMod from './runes.js';
+import * as starterBuildsMod from './starterBuilds.js';
 
 export const core = {
   trade,
@@ -115,6 +117,7 @@ export const core = {
   optimize: optimizemod,
   sources: sourcesmod,
   runes: runesMod,
+  starterBuilds: starterBuildsMod,
 };
 
 export default core;

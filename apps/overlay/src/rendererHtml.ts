@@ -259,6 +259,12 @@ export const rendererHtml = `<!doctype html>
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--fg); border-radius: 5px; cursor: pointer; }
   #setLeague option { background: #1a1208; color: var(--fg); }
+  /* №91: кнопки стартовых билдов новичка (на пустой панели билда). */
+  .starter-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+  .starter-btn { font-size: 10px; padding: 4px 7px; cursor: pointer; color: var(--fg);
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 5px; }
+  .starter-btn:hover { background: rgba(255,255,255,0.14); }
   .corner-row { display: flex; gap: 6px; }
   .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
@@ -770,6 +776,31 @@ export const rendererHtml = `<!doctype html>
     return SLOT_RU[s] || s || '—';
   }
 
+  // №91: стартовые билды новичка (сюжет) — кнопки 8 классов на пустой панели билда.
+  function renderStarterBuilds() {
+    var host = $('buildSlots');
+    if (!host) return;
+    host.innerHTML = '<div class="sub-h sub">🌱 Стартовый билд новичка (проход сюжета)</div>' +
+      '<div class="starter-row" id="starterRow"><span class="sub">Загрузка классов…</span></div>' +
+      '<div class="sub-h sub">…или импорт готового билда</div>';
+    window.poe2k.starterList().then(function (list) {
+      var row = $('starterRow');
+      if (!row || !list || !list.length) return;
+      var html = '';
+      list.forEach(function (c) {
+        html += '<button class="starter-btn" data-class="' + esc(c.className) + '" title="' + esc(c.tagline) + '">' +
+          esc(c.className) + '</button>';
+      });
+      row.innerHTML = html;
+      var btns = row.querySelectorAll('.starter-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function () {
+          window.poe2k.starterImport(this.getAttribute('data-class')).catch(function () {});
+        });
+      }
+    }).catch(function () {});
+  }
+
   function fmtPrice(v) {
     if (v == null) return '…';
     return Number(v) >= 1000
@@ -856,6 +887,7 @@ export const rendererHtml = `<!doctype html>
       $('buildBudget').textContent = '';
       $('buildSlots').innerHTML = '';
       $('buildSum').textContent = 'Ctrl+F3 — импорт: скопируйте PoB share-код / .build JSON и нажмите.';
+      renderStarterBuilds();
       lastBuildState = null;
       renderGemsTab(null);
       return;
@@ -904,6 +936,24 @@ export const rendererHtml = `<!doctype html>
       return row;
     }).join('');
     $('buildSlots').innerHTML = '<table class="bld">' + rows + '</table>';
+    // №91: стартовые билды доступны и с загруженным билдом — полоска внизу таблицы.
+    var stWrap = document.createElement('div');
+    stWrap.className = 'starter-row';
+    stWrap.innerHTML = '<span class="sub-h sub">🌱 Стартовый билд новичка:</span>';
+    window.poe2k.starterList().then(function (list) {
+      if (!list) return;
+      list.forEach(function (c) {
+        var btn = document.createElement('button');
+        btn.className = 'starter-btn';
+        btn.title = c.tagline;
+        btn.textContent = c.className;
+        btn.addEventListener('click', function () {
+          window.poe2k.starterImport(c.className).catch(function () {});
+        });
+        stWrap.appendChild(btn);
+      });
+      $('buildSlots').appendChild(stWrap);
+    }).catch(function () {});
     // №66: вкладка «💎 Камни» обновляется из того же payload.
     lastBuildState = b;
     renderGemsTab(b);
