@@ -2715,7 +2715,23 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
   // Моды остаются ru — их trade2 по базе статов не сопоставит, сработает fallback «по базовому типу».
   let nameOverride: string | undefined;
   let baseTypeOverride: string | undefined;
-  if (/[а-яё]/i.test(itemText) && parsedAugment) {
+  // №138-quad (живой лог 01.10 06:37, noPrice ×9): «Неогранённый камень духа
+  // (уровень 14)» не прайсился, потому что: (а) суффикс «(уровень N)» ломал
+  // lookup статик-словаря (ключ без суффикса) → RU-база уходила в trade2 без
+  // перевода; (б) trade2 ищет uncut-камни ТОЛЬКО типом с уровнем —
+  // «Uncut Spirit Gem (Level N)» (проверено: /api/trade2/data/items, категория
+  // gem; тип без «(Level N)» и name-поиск = 400 Unknown item). RU→ENkind
+  // (духа/умения/поддержки) ✅ poe2db.tw/ru/<Slug>, см. RU_EN_STATIC_BASES.
+  const uncutRu = parsedAugment?.baseType?.match(
+    /^неогран[её]нный\s+камень\s+(духа|умения|поддержки)\s*\(уровень\s*(\d+)\)\s*$/i,
+  );
+  if (uncutRu) {
+    const kindRu = uncutRu[1]!.toLowerCase();
+    const kind = kindRu === 'духа' ? 'Spirit' : kindRu === 'умения' ? 'Skill' : 'Support';
+    baseTypeOverride = `Uncut ${kind} Gem (Level ${uncutRu[2]})`;
+    nameOverride = undefined;
+    console.log(`[overlay] ru→en: uncut → ${baseTypeOverride}`);
+  } else if (/[а-яё]/i.test(itemText) && parsedAugment) {
     try {
       const parsed0 = parsedAugment;
       if (parsed0.name && /[а-яё]/i.test(parsed0.name)) {
@@ -3682,6 +3698,43 @@ function setupIPC(): void {
     } catch (err) {
       console.warn('[overlay] buildgen:meta failed:', (err as Error).message);
       return { ok: false, error: `Генератор недоступен: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №139: «🔗 Конструктор связок» — данные гемов из ЛОКАЛЬНЫХ датасетов ────
+  // Никакой сети и выдумок: активные (getSkillGums: skillTypes, unlock) и
+  // саппорты (getSupportGems: compatible_with) — офлайн-датасет PoE2.
+  // RU-имена — верифицированный gemsRuEn (гем ⇄ RU-страница poe2db).
+  let gemdataCache: unknown = null;
+  ipcMain.handle('buildgen:gemdata', async () => {
+    try {
+      seedGemDictFromDataset(); // гарантия: gemEnRu засеян офлайн-датасетом
+      if (gemdataCache) return { ok: true, ...(gemdataCache as object) };
+      const activesAll = core.dataset.getSkillGems();
+      const supportsAll = core.dataset.getSupportGems();
+      const actives = activesAll
+        .filter((g) => g.name && g.source?.kind === 'UncutSkillGem')
+        .map((g) => ({
+          en: g.name,
+          ru: gemEnRu.get(normName(g.name)) ?? null,
+          types: (g.skillTypes ?? []).filter((t: string) => t !== 'Invokable'),
+          unlock: g.source?.unlockLevel ?? 0,
+          cost: g.firstLevelCost ?? null,
+        }));
+      const supports = supportsAll
+        .filter((s) => s.name && Array.isArray(s.compatible_with))
+        .map((s) => ({
+          en: s.name,
+          ru: gemEnRu.get(normName(s.name)) ?? null,
+          compat: s.compatible_with,
+        }));
+      const payload = { actives, supports, nActive: actives.length, nSupport: supports.length };
+      gemdataCache = payload;
+      console.log(`[overlay] buildgen:gemdata: ${actives.length} активных, ${supports.length} саппортов (офлайн-датасет)`);
+      return { ok: true, ...payload };
+    } catch (err) {
+      console.warn('[overlay] buildgen:gemdata failed:', (err as Error).message);
+      return { ok: false, error: `Датасет гемов недоступен: ${(err as Error).message}` };
     }
   });
 

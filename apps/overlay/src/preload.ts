@@ -73,8 +73,10 @@ export interface OverlayAPI {
   craftPlanBuffer(): Promise<unknown>;
   /** №135: курсы валют по лигам ({ league, leagues, rates: [{name, chaos, divine, trend, source}] }). */
   currencyRates(league?: string): Promise<unknown>;
-  /** №136: мета-генератор билдов ({ league, slugs, sample, classes: [{label, count, medianDps, medianEhp, topSkills, topPassives, top}] }). */
+  /** №136: мета-генератор билдов ({ league, slugs, sample, classes: [...] }). */
   buildgenMeta(leagueSlug?: string): Promise<unknown>;
+  /** №139: данные гемов для конструктора связок ({ actives, supports }) — офлайн-датасет. */
+  buildgenGemData(): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -205,6 +207,7 @@ const api: OverlayAPI = {
   currencyRates: (league) => ipcRenderer.invoke('currency:rates', league),
 
   buildgenMeta: (leagueSlug) => ipcRenderer.invoke('buildgen:meta', leagueSlug),
+  buildgenGemData: () => ipcRenderer.invoke('buildgen:gemdata'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

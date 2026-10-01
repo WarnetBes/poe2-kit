@@ -1353,6 +1353,8 @@ export const rendererHtml = `<!doctype html>
   function renderGenView() {
     var host = $('genContent');
     if (!host) return;
+    // №139: два режима — мета ладдера и конструктор связок.
+    if (genMode === 'combo') { renderComboView(); return; }
     if (!genData || !genData.ok) {
       host.innerHTML = '<div class="lvl-hint">' +
         (genData && genData.error ? genData.error : 'Загружаю мета билдов…') + '</div>';
@@ -1391,6 +1393,7 @@ export const rendererHtml = `<!doctype html>
       body = '<div class="lvl-hint">Выбери класс чипсом выше — покажу, что играют топы: скиллы, узлы, DPS/EHP.</div>';
     }
     host.innerHTML =
+      genModeChips() +
       '<div class="tree-chips">' + lc + '</div>' +
       '<div class="slang-hint">Выборка: ' + genData.sample + ' билдов · ' + (genData.cached ? 'кэш' : 'свежие данные') + ' · poe.ninja</div>' +
       '<div class="tree-chips">' + cc + '</div>' + body;
@@ -1407,6 +1410,173 @@ export const rendererHtml = `<!doctype html>
       s2[j].addEventListener('click', function () {
         genClass = this.getAttribute('data-genclass');
         renderGenView();
+      });
+    }
+    bindGenMode(host);
+  }
+  // ─── №139: «🔗 Конструктор связок» — актив + саппорты, фильтр по типам ─────
+  // Данные: офлайн-датасет (skillTypes у активов, compatible_with у саппортов),
+  // RU-имена гемов — верифицированный gemsRuEn. Совпадения — чистая арифметика
+  // по датасету, ничего не выдумано. Саппорты совместимы по attack/spell.
+  var genMode = 'meta';          // 'meta' | 'combo'
+  var comboData = null;          // ответ buildgen:gemdata (офлайн, на сессию)
+  var comboTags = [];            // выбранные EN-теги (AND-фильтр)
+  var comboSel = [];             // EN-имена выбранных активных (макс 5)
+  var comboSups = {};            // EN(актив) -> [EN(саппорт), …]
+  var COMBO_TAGS = [
+    ['Молния', 'Lightning'], ['Приспешники', 'Minion'], ['По площади', 'Area'],
+    ['Снаряды', 'Projectile'], ['Чары', 'Spell'], ['Атака', 'Attack'],
+    ['Холод', 'Cold'], ['Огонь', 'Fire'], ['Хаос', 'Chaos'],
+    ['Физический', 'Physical'], ['Длительность', 'Duration'],
+  ];
+  function comboName(x) {
+    var ru = x.ru ? esc(x.ru) : esc(x.en);
+    return x.ru && x.ru.toLowerCase() !== String(x.en).toLowerCase()
+      ? ru + ' <span style="color:#9aa4b0">' + esc(x.en) + '</span>'
+      : ru;
+  }
+  function bindGenMode(host) {
+    var m = host.querySelectorAll('[data-genmode]');
+    for (var i = 0; i < m.length; i++) {
+      m[i].addEventListener('click', function () {
+        genMode = this.getAttribute('data-genmode');
+        renderGenView();
+      });
+    }
+  }
+  function genModeChips() {
+    return '<div class="tree-chips">' +
+      '<button class="tree-chip' + (genMode === 'meta' ? ' on' : '') + '" data-genmode="meta">🏆 Мета ладдера</button>' +
+      '<button class="tree-chip' + (genMode === 'combo' ? ' on' : '') + '" data-genmode="combo">🔗 Конструктор связок</button>' +
+      '</div>';
+  }
+  function loadCombo() {
+    var host = $('genContent');
+    if (host) host.innerHTML = '<div class="lvl-hint">Загружаю датасет гемов…</div>';
+    window.poe2k.buildgenGemData().then(function (res) {
+      comboData = res;
+      renderGenView();
+    }).catch(function (err) {
+      comboData = { ok: false, error: 'IPC error: ' + err };
+      renderGenView();
+    });
+  }
+  function renderComboView() {
+    var host = $('genContent');
+    if (!host) return;
+    if (!comboData) { loadCombo(); return; }
+    if (!comboData.ok) {
+      host.innerHTML = genModeChips() + '<div class="lvl-hint">' +
+        (comboData.error ? comboData.error : 'Датасет гемов недоступен.') + '</div>';
+      bindGenMode(host);
+      return;
+    }
+    var A = comboData.actives || [];
+    var S = comboData.supports || [];
+    var tc = COMBO_TAGS.map(function (t) {
+      return '<button class="tree-chip' + (comboTags.indexOf(t[1]) >= 0 ? ' on' : '') +
+        '" data-cmbtag="' + t[1] + '">' + t[0] + '</button>';
+    }).join('');
+    var filtered = A.filter(function (a) {
+      return comboTags.every(function (t) { return (a.types || []).indexOf(t) >= 0; });
+    }).sort(function (a, b) { return (a.unlock || 0) - (b.unlock || 0); });
+    var MAX_SHOW = 60;
+    var shown = filtered.slice(0, MAX_SHOW);
+    var actRows = shown.map(function (a) {
+      var on = comboSel.indexOf(a.en) >= 0;
+      return '<div class="slang-row" data-cmben="' + esc(a.en) + '"><div class="slang-term">' +
+        (on ? '<span style="color:#7fc97f">✔</span> ' : '') + comboName(a) +
+        '</div><div class="slang-def">ур.' + (a.unlock || 0) +
+        (on ? ' · <span style="color:var(--dim)">выбран</span>' : '') +
+        '</div></div>';
+    }).join('');
+    var actList = '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">' +
+      'Активные навыки (клик — в связку)</div>' +
+      (filtered.length > MAX_SHOW
+        ? '<div class="lvl-hint">Показаны первые ' + MAX_SHOW + ' из ' + filtered.length + ' — уточни фильтром выше.</div>'
+        : '') +
+      '<div data-cmblist>' + (actRows || '<div class="lvl-hint">Ничего не найдено — сними часть фильтров.</div>') + '</div></div>';
+    // Блоки выбранных активов + их совместимые саппорты.
+    var supBlocks = comboSel.map(function (en) {
+      var a = A.find(function (x) { return x.en === en; });
+      if (!a) return '';
+      var lo = (a.types || []).map(function (t) { return String(t).toLowerCase(); });
+      var comp = S.filter(function (sp) {
+        return (sp.compat || []).some(function (c) { return lo.indexOf(String(c)) >= 0; });
+      });
+      if (!comp.length) comp = S; // редкий случай: unknown compat — показываем все
+      var picked = comboSups[en] || [];
+      var MAX_SP = 24;
+      var spChips = comp.slice(0, MAX_SP).map(function (sp) {
+        var on = picked.indexOf(sp.en) >= 0;
+        return '<button class="tree-chip' + (on ? ' on' : '') +
+          '" data-cmbsup="' + esc(en) + '||' + esc(sp.en) + '">' +
+          (on ? '✔ ' : '') + comboName(sp) + '</button>';
+      }).join('');
+      var supNote = (comp.length > MAX_SP ? '<div class="lvl-hint">Показаны ' + MAX_SP + ' из ' + comp.length + ' саппортов (сортировка датасета).</div>' : '');
+      var pickedList = picked.length
+        ? '<div class="lvl-hint" style="margin-top:3px"> В связке: <b>' +
+          picked.map(function (p) { return esc(p); }).join('</b>, <b>') + '</b></div>'
+        : '';
+      return '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#7fc97f">' +
+        comboName(a) + ' · ур.' + (a.unlock || 0) + ' · ' + (a.types || []).slice(0, 6).join(', ') +
+        '</div><div class="tree-chips">' + spChips + '</div>' + supNote + pickedList + '</div>';
+    }).join('');
+    var comboSum = comboSel.length
+      ? '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#7fc97f">Ваша связка</div>' +
+        comboSel.map(function (en) {
+          var a = A.find(function (x) { return x.en === en; });
+          var ps = (comboSups[en] || []);
+          return '<div class="slang-row"><div class="slang-term">' + comboName(a) +
+            '</div><div class="slang-def">Uncut Skill Gem ур.' + (a ? (a.unlock || 0) : 0) +
+            (ps.length ? '<br><span style="color:var(--dim)">+ ' + ps.map(esc).join(', ') + '</span>' : '') +
+            '</div></div>';
+        }).join('') +
+        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div></div>'
+      : '';
+    host.innerHTML = genModeChips() +
+      '<div class="lvl-hint">Собери атаку: фильтр → активные → саппорты. Пример друга ⬇ одним кликом.</div>' +
+      '<div class="tree-chips"><button class="tree-chip" data-cmbpreset="1">⚡ Молния по карте + стая волков + комета с неба</button></div>' +
+      (tc ? '<div class="tree-chips">' + tc + '</div>' : '') +
+      actList + supBlocks + comboSum;
+    bindGenMode(host);
+    var p = host.querySelector('[data-cmbpreset]');
+    if (p) p.addEventListener('click', function () {
+      comboTags = [];
+      comboSel = ['Ball Lightning', 'Azmerian Wolf', 'Comet'];
+      comboSups = {};
+      renderComboView();
+    });
+    var tt = host.querySelectorAll('[data-cmbtag]');
+    for (var i = 0; i < tt.length; i++) {
+      tt[i].addEventListener('click', function () {
+        var t = this.getAttribute('data-cmbtag');
+        var ix = comboTags.indexOf(t);
+        if (ix >= 0) comboTags.splice(ix, 1); else comboTags.push(t);
+        renderComboView();
+      });
+    }
+    var ll = host.querySelectorAll('[data-cmblist] .slang-row');
+    for (var k = 0; k < ll.length; k++) {
+      ll[k].addEventListener('click', function () {
+        var en = this.getAttribute('data-cmben');
+        if (!en) return;
+        var ix = comboSel.indexOf(en);
+        if (ix >= 0) { comboSel.splice(ix, 1); delete comboSups[en]; }
+        else if (comboSel.length < 5) comboSel.push(en);
+        renderComboView();
+      });
+    }
+    var ss = host.querySelectorAll('[data-cmbsup]');
+    for (var q = 0; q < ss.length; q++) {
+      ss[q].addEventListener('click', function () {
+        var kv = this.getAttribute('data-cmbsup').split('||');
+        if (!comboSups[kv[0]]) comboSups[kv[0]] = [];
+        var arr = comboSups[kv[0]];
+        var ix = arr.indexOf(kv[1]);
+        if (ix >= 0) arr.splice(ix, 1);
+        else if (arr.length < 5) arr.push(kv[1]);
+        renderComboView();
       });
     }
   }
@@ -1427,9 +1597,13 @@ export const rendererHtml = `<!doctype html>
     $('body').classList.remove('hide');
     var h = $('priceHead');
     if (h) h.classList.remove('hide');
-    $('itemName').textContent = '🧬 Генератор билдов (ладдер poe.ninja)';
+    $('itemName').textContent = genMode === 'combo'
+      ? '🧬 Конструктор связок (датасет PoE2)'
+      : '🧬 Генератор билдов (ладдер poe.ninja)';
     showMode('gen');
-    if (genData) renderGenView();
+    if (genMode === 'combo') {
+      if (comboData) renderGenView(); else loadCombo();
+    } else if (genData) renderGenView();
     else loadGen();
     requestSize();
   }
