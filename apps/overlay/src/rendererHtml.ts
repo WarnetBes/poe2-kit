@@ -625,6 +625,18 @@ export const rendererHtml = `<!doctype html>
         <div class="tip">Выключите, чтобы kit не обращался к user32.dll вовсе: оверлей встанет в угол экрана (двигается Ctrl+F5), не будет следовать за окном игры и прятаться при alt-tab.</div>
       </div>
 
+      <div class="set-row" id="uiLangSection">
+        <div class="lbl">
+          <span>Язык панели <small>— подписи/хинты UI; Auto — язык Windows</small></span>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button id="uiLangRu" style="font-size:10px">RU</button>
+            <button id="uiLangAuto" style="font-size:10px">Auto</button>
+            <button id="uiLangEn" style="font-size:10px">EN</button>
+          </div>
+        </div>
+        <div class="tip">Panel language: RU original / EN translation. Item and gem names from your game client are not translated — trade lookups resolve them to English automatically.</div>
+      </div>
+
       <div class="set-row" id="gemLangSection">
         <div class="lbl">
           <span>Язык имён камней <small>— имена в панели билда и рекомендациях саппортов</small></span>
@@ -692,6 +704,179 @@ export const rendererHtml = `<!doctype html>
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  // ─── №158: EN-локализация панели ────────────────────────────────────────────
+  // Механика: словарь RU→EN (T_DICT) + проход по DOM (applyLang): текстовые
+  // узлы, title/placeholder. Составные фразы покрываются СЕГМЕНТАМИ словаря
+  // ('Побед: '), промах = RU-фолбэк (ничего не ломается). Dynamic renders ловит
+  // MutationObserver на #panel (debounce 50мс). Прогресс меряется CDP-скриптом:
+  // кириллица в DOM при lang=en = backlog словаря.
+  var LANG = null; // 'ru' | 'en' — устанавливается в applyLang()
+  var T_DICT = {
+    // — каркас: табы, хинты, настройки —
+    '💰 Прайс': '💰 Price', '🛒 Билд': '🛒 Build', '💎 Камни': '💎 Gems',
+    '📥 Импорт': '📥 Import', '📈 Прокачка': '📈 Leveling', '🧭 Плитки': '🧭 Waystones',
+    '📖 Слэнг': '📖 Slang', '⚒ Крафт': '⚒ Craft', '💱 Курс': '💱 Rates',
+    '🧬 Билды': '🧬 Builds', '🛡 Пиннакл': '🛡 Pinnacle', '⚙ Настройки': '⚙ Settings',
+    'Прайс': 'Price', 'Прокачка': 'Leveling', 'Перемещение': 'Move',
+    'Импорт билда': 'Import build', 'Панель билда': 'Build panel',
+    'Чекап перед пиннаклом': 'Pre-pinnacle checklist', 'Настройки': 'Settings',
+    'Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6 · Пиннакл: Ctrl+F7':
+      'Price: Ctrl+F1 · Build: Ctrl+F2 · Import: Ctrl+F3 · Leveling: Ctrl+F4 · Move: Ctrl+F5 · Settings: Ctrl+F6 · Pinnacle: Ctrl+F7',
+    'Закрыть (Ctrl+F6)': 'Close (Ctrl+F6)',
+    'Прозрачность фона': 'Background opacity', 'Масштаб текста': 'Text scale',
+    'Ширина оверлея': 'Overlay width', 'Высота оверлея': 'Overlay height',
+    'Автоподбор высоты': 'Auto height', 'Включить (окно будет «прыгать»)': 'Enable (window will jump)',
+    'Угол прикрепления': 'Attach corner', 'В·л': 'T·L', 'В·п': 'T·R', 'Н·л': 'B·L', 'Н·п': 'B·R',
+    'Вкладки панели': 'Panel tabs', 'Лига (для цен и курсов)': 'League (prices & rates)',
+    'Горячие клавиши (Ctrl+F1…F6)': 'Hotkeys (Ctrl+F1…F6)', 'Формат:': 'Format:',
+    'Цвета': 'Colors', 'Обычная': 'Default', 'Контраст': 'Contrast', 'Дальтонизм': 'Colorblind',
+    'Свои': 'Custom', 'Фон': 'Background', 'Текст': 'Text', 'Акцент': 'Accent',
+    'Второстеп.': 'Secondary', '↺ Сброс': '↺ Reset',
+    // — статусы/подсказки каркаса —
+    'Загрузка списка лиг…': 'Loading league list…',
+    'Проверяю буфер…': 'Checking clipboard…', 'Копирую предмет…': 'Fetching item…',
+    'Список пуст': 'List is empty',
+    'Побед: ': 'Wins: ', 'провалов: ': 'deaths: ', 'лучшее: ': 'best: ', 'прошлое: ': 'last: ',
+    'Акт ': 'Act ', 'Интерлюдия ': 'Interlude ', 'Триалы асценданси': 'Ascendancy trials',
+    'Пиннакл (эндгейм)': 'Pinnacle (endgame)', 'Эндгейм': 'Endgame',
+    // — волна 2: titles табов и скролл —
+    'Прайс предмета из буфера (Ctrl+F1)': 'Item price from clipboard (Ctrl+F1)',
+    'Панель билда (Ctrl+F2)': 'Build panel (Ctrl+F2)',
+    'Камни навыков билда: сетапы и чек-лист': 'Build skill gems: setups and checklist',
+    'Импорт PoB-кода из буфера (Ctrl+F3)': 'Import PoB code from clipboard (Ctrl+F3)',
+    'Прокачка: контекст уровня (Ctrl+F4)': 'Leveling: level context (Ctrl+F4)',
+    'Крафт плиток смотрителя (Waystones): рецепты и таблица': 'Waystone crafting: recipes and table',
+    'Словарь игрового слэнга PoE2: сокращения и жаргон — по-человечески': 'PoE2 slang dictionary: abbreviations and jargon, explained',
+    'Окно крафта: план по предмету (Ctrl+C в игре), все рецепты 0.5.5, эссенции и омены': 'Crafting window: plan for an item (in-game Ctrl+C), all 0.5.5 recipes, essences and omens',
+    'Курсы валют по лигам: сколько стоит валюта в chaos (poe2scout + poe.ninja)': 'Currency rates by league: value in chaos (poe2scout + poe.ninja)',
+    'Генератор билдов: живые билды топ-игроков poe.ninja по всем классам — скиллы, узлы, DPS/EHP': 'Build generator: live poe.ninja builds of top players for every class — skills, nodes, DPS/EHP',
+    'Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)': 'Pre-pinnacle check: resists/EHP/stun (Ctrl+F7)',
+    'Что делает активная вкладка — окно с описанием функции и хоткеями': 'What the active tab does — a window with the feature description and hotkeys',
+    'Прокрутить панель вверх (замена колеса мыши, если оно над оверлеем не работает)': 'Scroll panel up (mouse wheel substitute when the wheel does not work over the overlay)',
+    'Прокрутить панель вниз': 'Scroll panel down',
+    // — волна 2: grab/idle/busy/watch-хром —
+    '⠿ Тащи меня мышью · ': '⠿ Drag me with the mouse · ',
+    'сброс': 'reset', ' · Ctrl+F5 — закрепить': ' · Ctrl+F5 — pin',
+    'Готово. Нажми ': 'Done. Press ', ' — прайс предмета из буфера.': ' — item price from clipboard.',
+    ' — импорт билда из PoB-кода,': ' — import a build from PoB code,',
+    ' — шопинг-лист билда.': ' — build shopping list.',
+    'Ссылка на персонажа poe.ninja + Ctrl+F3 — автосинхронизация эквипа.': 'poe.ninja character link + Ctrl+F3 — auto-sync of equipment.',
+    'Оценка цены…': 'Estimating price…', '👁 Следить за ценой': '👁 Watch price',
+    // — волна 2: настройки (строки/tips) —
+    'Автоподбор высоты': 'Auto height',
+    '— окно само растёт под контент и меняет размер при переключении панелей': '— the window grows to fit content and resizes when switching panels',
+    'Выключено (по умолчанию): высота — по слайдеру выше, длинный билд/списки прокручиваются внутри окна. Включите, если хотите, чтобы окно всегда вмещало весь контент целиком (в пределах экрана).':
+      'Off (default): height follows the slider above; long builds/lists scroll inside the window. Enable if you want the window to always fit all content (within the screen).',
+    'Угол прикрепления': 'Attach corner',
+    '— скрыть неиспользуемые кнопки из боковой колонки': '— hide unused buttons from the side column',
+    'Как у аналогов: отмечено = кнопка видна, снято = скрыта (сама функция остаётся доступной по хоткею). «⚙ Настройки» скрыть нельзя — иначе теряется управление.':
+      'Like similar tools: checked = button visible, unchecked = hidden (the feature stays on its hotkey). ⚙ Settings cannot be hidden — otherwise you lose control.',
+    'Список — из poe2scout (✦ = актуальная челлендж-лига). Применяется сразу и сохраняется — цены пересчитаются под выбранную лигу.':
+      'The list comes from poe2scout (✦ = current challenge league). Applies immediately and is saved — prices recalculate for the selected league.',
+    '— доступность: дальтонизм, контраст': '— accessibility: colorblind, contrast',
+    'Стандартная тема kit': 'Default kit theme',
+    'Чёрный фон, белый текст — максимальный контраст': 'Black background, white text — maximum contrast',
+    'Палитра Okabe-Ito: безопасна при красно-зелёной и сине-жёлтой слепоте (статусы различимы и по светлоте)':
+      'Okabe-Ito palette: safe for red-green and blue-yellow color blindness (statuses also differ by lightness)',
+    'Свои цвета — пипетки ниже': 'Custom colors — pickers below',
+    'Вернуть стандартную тему': 'Restore default theme',
+    'Применяется сразу. При проблемах восприятия цвета пробуйте «Дальтонизм» (универсальная палитра Okabe-Ito) или «Контраст». «Свои» — точечная настройка фона/текста пипетками; статусы (✅/⚠/✕) меняет только тема.':
+      'Applies immediately. If you struggle with colors, try "Colorblind" (universal Okabe-Ito palette) or "Contrast". "Custom" fine-tunes background/text with pickers; statuses (✅/⚠/✕) change only with the theme.',
+    'Формат:': 'Format:', 'Пустое поле = стандарт.': 'Empty field = default.',
+    '— следить за ценой, алерт при падении': '— watch a price, alert when it drops',
+    '➕ Из буфера': '➕ From clipboard', 'Проверить': 'Check now',
+    'Нажмите ': 'Press ',
+    ' на предмете в игре → «➕ Из буфера», либо кнопкой «👁 Следить» в прайс-токе. Проверка каждые 5 мин, алерт «цена упала с X до Y».':
+      ' on an item in game → "➕ From clipboard", or the "👁 Watch" button in price-check. Checks every 5 min, alert "price dropped from X to Y".',
+    'Привязка к окну игры': 'Game window binding',
+    '— «осторожный режим»: без Win32-вызовов, позиция по углу экрана': '— "safe mode": no Win32 calls, position pinned to a screen corner',
+    'Включена (читает позицию окна игры)': 'Enabled (reads game window position)',
+    'Выключите, чтобы kit не обращался к user32.dll вовсе: оверлей встанет в угол экрана (двигается Ctrl+F5), не будет следовать за окном игры и прятаться при alt-tab.':
+      'Turn off so kit never touches user32.dll: the overlay sits in a screen corner (move via Ctrl+F5), will not follow the game window and will not hide on alt-tab.',
+    'Язык панели': 'Panel language',
+    '— подписи/хинты UI; Auto — язык Windows': '— UI labels/hints; Auto = Windows language',
+    'Язык имён камней': 'Gem name language',
+    '— имена в панели билда и рекомендациях саппортов': '— names in the build panel and support recommendations',
+    'RU — имена как в русском клиенте игры (перевод из офлайн-словаря poe2db). EN — как в PoB.':
+      'RU — names as in the Russian game client (offline poe2db dictionary). EN — as in PoB.',
+    'Автопрайс-чек из буфера': 'Auto price-check from clipboard',
+    '— проверять новые предметы без Ctrl+F1': '— check new items without Ctrl+F1',
+    'Слежение 500мс (opt-in)': '500ms watching (opt-in)',
+    'Выключено по умолчанию (приватность): пока включено — kit читает буфер обмена каждые 500мс. Реагирует только на клир-текст предметов («Rarity:»), прочие копипасты игнорируются.':
+      'Off by default (privacy): while enabled, kit reads the clipboard every 500ms. It reacts only to item clear-text ("Rarity:") — other copy-pastes are ignored.',
+    'Журнал обучения': 'Learning journal',
+    '— запоминать структуру предметов (локально)': '— remember item structure (locally)',
+    'Включить (opt-in)': 'Enable (opt-in)', '📤 Поделиться предметами': '📤 Share items',
+    'Выключено по умолчанию. Пишется только структура предмета (редкость/база/моды), без персонажа и аккаунта, в файл на вашем диске. «Поделиться» копирует готовый текст для issue на SourceCraft — одной вставкой.':
+      'Off by default. Only item structure is stored (rarity/base/mods) — no character or account — in a file on your disk. "Share" copies ready text for a SourceCraft issue, in one paste.',
+    'Диагностика': 'Diagnostics', '📋 Отправить диагностику': '📋 Send diagnostics',
+    'Соберёт хвост ': 'Collects the tail of ',
+    ' + конфиг машины, скопирует всё в буфер обмена и сохранит файл в userData — готово для вставки в отчёт/issue, файлы искать вручную не нужно.':
+      ' + machine config, copies everything to the clipboard and saves a file in userData — ready to paste into a report/issue, no need to hunt for files manually.',
+    '⚠ Сторонний инструмент. GGG не гарантирует безопасность сторонних тулов. Kit ничего не делает за вас в игре: читает буфер и публичные API цен — каждое действие в игре делаете сами вы. Использование — на ваш риск.':
+      '⚠ Third-party tool. GGG does not guarantee third-party tool safety. Kit does nothing for you in game: it reads the clipboard and public price APIs — every in-game action is yours alone. Use at your own risk.',
+    'Сбросить клавиши': 'Reset hotkeys', 'Сохранить': 'Save',
+  };
+  // Отсортированные ключи по убыванию длины — сперва длинные, чтобы
+  // «Акт 1» не побилось коротким ключом раньше составного.
+  var T_KEYS = Object.keys(T_DICT).sort(function (a, b) { return b.length - a.length; });
+
+  function tStr(s) {
+    if (LANG !== 'en' || !s) return s;
+    if (T_DICT[s] != null) return T_DICT[s];
+    var out = s, idx;
+    for (var i = 0; i < T_KEYS.length; i++) {
+      idx = out.indexOf(T_KEYS[i]);
+      if (idx >= 0) out = out.replace(T_KEYS[i], T_DICT[T_KEYS[i]]);
+    }
+    return out;
+  }
+
+  function applyLang(lang) {
+    LANG = lang === 'en' ? 'en' : 'ru';
+    document.documentElement.setAttribute('lang', LANG);
+    document.title = LANG === 'en' ? 'PoE2 Kit — overlay' : 'PoE2 Kit — оверлей';
+    if (LANG === 'en') {
+      // Полный проход по DOM: text-узлы + title/placeholder.
+      // SCRIPT/STYLE исключаем: их текст — исходник, не UI.
+      var filter = { acceptNode: function (n) {
+        var p = n.parentElement;
+        if (p && (p.nodeName === 'SCRIPT' || p.nodeName === 'STYLE')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      } };
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, filter);
+      var nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(function (n) { if (/[А-Яа-яЁё]/.test(n.nodeValue)) n.nodeValue = tStr(n.nodeValue); });
+      var attrs = document.querySelectorAll('[title],[placeholder]');
+      for (var i = 0; i < attrs.length; i++) {
+        var el = attrs[i];
+        if (el.title && /[А-Яа-яЁё]/.test(el.title)) el.title = tStr(el.title);
+        if (el.placeholder && /[А-Яа-яЁё]/.test(el.placeholder)) el.placeholder = tStr(el.placeholder);
+      }
+    }
+  }
+
+  // №158: dynamic renders при lang=en — единый observer вместо правки 80 render-функций.
+  var __langObserver = null;
+  function startLangObserver() {
+    if (__langObserver || LANG !== 'en' || !document.body) return;
+    var pending = null;
+    __langObserver = new MutationObserver(function () {
+      if (pending) return;
+      pending = setTimeout(function () {
+        pending = null;
+        if (LANG !== 'en') return;
+        applyLang('en'); // повторный проход — новые узлы; старые уже без кириллицы (кроме данных предметов)
+      }, 50);
+    });
+    __langObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  function stopLangObserver() {
+    if (__langObserver) { __langObserver.disconnect(); __langObserver = null; }
+  }
+
 
   function setBusy(b) {
     $('busy').classList.toggle('hide', !b);
@@ -3011,6 +3196,7 @@ export const rendererHtml = `<!doctype html>
     $('setAutoClip').checked = !!s.autoClipboard;
     $('setBindWindow').checked = s.bindWindow !== false;
     paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
+    paintUiLang(s.lang === 'ru' || s.lang === 'en' ? s.lang : 'auto');
     // №105: тема доступности + пипетки.
     paintTheme((s.theme === 'contrast' || s.theme === 'cb' || s.theme === 'custom') ? s.theme : 'default');
     if (s.colors) {
@@ -3255,6 +3441,26 @@ export const rendererHtml = `<!doctype html>
     gemLangBtns.en.classList.toggle('on', lang === 'en');
   }
 
+  // №158: язык UI панели — применяется перезагрузкой renderer (перевод
+  // деструктивен, обратное переключение без reload RU не восстановит).
+  var uiLangBtns = { ru: $('uiLangRu'), auto: $('uiLangAuto'), en: $('uiLangEn') };
+  ['ru', 'auto', 'en'].forEach(function (lang) {
+    uiLangBtns[lang].addEventListener('click', function () {
+      if (this.classList.contains('on')) return;
+      var draft = currentDraft();
+      draft.lang = lang;
+      draft.hotkeys = collectHotkeys();
+      window.poe2k.settingsApply(draft).then(function () {
+        location.reload(); // boot сам применит язык и запустит observer
+      }).catch(function () {});
+    });
+  });
+  function paintUiLang(lang) {
+    uiLangBtns.ru.classList.toggle('on', lang === 'ru');
+    uiLangBtns.auto.classList.toggle('on', lang === 'auto');
+    uiLangBtns.en.classList.toggle('on', lang === 'en');
+  }
+
   // №105: цвета доступности. Пресеты (CSS-переменные :root):
   //  - contrast: чёрный/белый — максимальная светимость текста; статусы
   //    различимы и по светлоте (✕ ярче ⚠ ярче ✅ по насыщенности, все с иконками).
@@ -3358,6 +3564,11 @@ export const rendererHtml = `<!doctype html>
   // только при изменениях, а не на старте) — берём настройки сами.
   window.poe2k.settingsGet().then(function (s) {
     if (!s) return;
+    // №158: язык UI — auto = язык Windows.
+    var lang = (s && (s.lang === 'ru' || s.lang === 'en')) ? s.lang
+      : ((navigator.language || 'ru').toLowerCase().indexOf('ru') === 0 ? 'ru' : 'en');
+    applyLang(lang);
+    startLangObserver();
     applyThemeColors(
       s.theme === 'contrast' || s.theme === 'cb' || s.theme === 'custom' ? s.theme : 'default',
       s.colors || null,

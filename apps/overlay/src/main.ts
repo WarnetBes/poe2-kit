@@ -184,6 +184,12 @@ interface OverlaySettings {
   autoClipboard?: boolean;
   /** Язык имён камней в панели билда и рекомендациях: 'ru' (кли ru-клиента) | 'en'. */
   gemLang?: 'ru' | 'en';
+  /** 🔢 №158: язык UI панели (хром/подписи/хинты): 'ru' | 'en' | 'auto'
+   * (auto — язык Windows через navigator.language). Данные предметов не
+   * переводятся — это локальные имена клиента; EN-режим переключает поля
+   * там, где датасет двуязычен. Словарь RU→EN живёт в rendererHtml.ts
+   * (T_DICT), промах словаря = RU-фолбэк. */
+  lang?: 'ru' | 'en' | 'auto';
   /** №105: цветовая тема доступности. 'contrast' — максимальный контраст,
    *  'cb' — палитра Okabe-Ito (безопасна при красно-зелёной и сине-жёлтой
    *  слепоте; статусы различимы и по светлоте), 'custom' — свои цвета ниже. */
@@ -218,6 +224,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   hotkeys: {},
   bindWindow: true,
   gemLang: 'ru',
+  lang: 'auto',
   theme: 'default',
   colors: {},
   hiddenTabs: [],
@@ -1120,6 +1127,8 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
   if (raw.gemLang === 'en' || raw.gemLang === 'ru') next.gemLang = raw.gemLang;
+  // №158: язык UI панели.
+  if (raw.lang === 'ru' || raw.lang === 'en' || raw.lang === 'auto') next.lang = raw.lang;
   // №105: цветовая тема доступности.
   const themes = ['default', 'contrast', 'cb', 'custom'] as const;
   if (themes.includes(raw.theme as (typeof themes)[number])) next.theme = raw.theme as OverlaySettings['theme'];
@@ -3567,9 +3576,15 @@ function setupIPC(): void {
     opacity: settings.opacity,
     scale: settings.scale,
     width: settings.width,
+    height: settings.height,
+    autoHeight: settings.autoHeight ?? false,
     learn: settings.learn ?? false,
     bindWindow: settings.bindWindow ?? true,
     autoClipboard: settings.autoClipboard ?? false,
+    gemLang: settings.gemLang ?? 'ru',
+    lang: settings.lang ?? 'auto',
+    theme: settings.theme ?? 'default',
+    colors: { ...(settings.colors ?? {}) },
     hotkeys: { ...settings.hotkeys },
     defaultHotkeys: { ...DEFAULT_HOTKEYS },
     hiddenTabs: [...(settings.hiddenTabs ?? [])],
