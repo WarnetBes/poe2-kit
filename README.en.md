@@ -1,28 +1,75 @@
+<div align="center">
+
 # poe2-kit
 
-[![Русский](https://img.shields.io/badge/README-Русский-blue)](README.md)
+**A transparent overlay and AI toolkit for Path of Exile 2 (Windows).**
 
-A complete helper for **Path of Exile 2**: leveling guide, AI advice, universal
-trading, build analysis and item price checking.
+Price-check an item on a hotkey, track your build shopping list, follow the
+leveling guide, watch currency rates — and drive all of it from your AI
+assistant. Reads only what the game writes to disk and what you copy
+yourself. No automation, no memory reading.
 
-One core (**`@poe2-kit/core`**) powers three frontends:
+[Download the latest release »](https://github.com/WarnetBes/poe2-kit/releases/latest)
+
+[![GitHub Release](https://img.shields.io/github/v/release/WarnetBes/poe2-kit)](https://github.com/WarnetBes/poe2-kit/releases)
+[![GitHub Downloads (latest release)](https://img.shields.io/github/downloads/WarnetBes/poe2-kit/latest/total)](https://github.com/WarnetBes/poe2-kit/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Ru readme](https://img.shields.io/badge/README-Русский-blue)](README.md)
+
+<a href="docs/screenshots/overlay-build.png"><img src="docs/screenshots/overlay-build.png" height="420" alt="poe2-kit overlay: build shopping list over the game"></a>
+<a href="docs/screenshots/overlay-price.png"><img src="docs/screenshots/overlay-price.png" height="420" alt="poe2-kit overlay: item price check with market table"></a>
+
+*Left: build shopping list — target items with live prices and “you are
+wearing” hints, synced from your character page. Right: price check — an
+RU-client item is translated to its English name and priced across
+poe2scout, poe.ninja and trade2.*
+
+</div>
+
+---
+
+## What it does
+
+- **💰 Price check on a hotkey** — hover an item → Ctrl+C → Ctrl+F1: price
+  estimate with confidence and the raw market table from free public APIs
+  ([poe.ninja](https://poe.ninja), [poe2scout](https://poe2scout.com), the
+  official Path of Exile 2 `trade2` API). No API keys required.
+- **🛒 Build shopping list** — paste a PoB2 share-code (Ctrl+F3): target gear
+  per slot with live prices, “bought” checkmarks synced from your public
+  character page, total budget.
+- **💎 Gem setups** — which support gems go into which item, checked off as
+  you socket them.
+- **📈 Leveling guide** — step-by-step campaign hints that follow your actual
+  zone (read from the standard game log).
+- **+ more tabs**: waypoint/tilestone recipes, boss-timer, RU⇄EN item/gem
+  dictionaries, crafting recipes (essences, omens), currency rates, a
+  “pinnacle readiness” checklist, live top-builds from poe.ninja.
+- **🤖 MCP server** — 59 poe2_* tools, so your AI assistant (OpenCode,
+  Claude Desktop, …) can price items, decode PoB codes, pull ladders,
+  rates and dataset info for you.
+- **🌐 Web dashboard** — the same core in the browser: rates, price check,
+  build import.
+
+One core (**`@poe2-kit/core`**) powers all three frontends:
 
 | Frontend | Package | What it is |
 |---|---|---|
-| 🌐 Web app | `apps/web` | Dashboard: currency rates, price check, leveling guide, build import |
-| 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: price check on a hotkey, panel tabs (build, 💎 gems, leveling, settings), clipboard auto-pricing, watchlist alerts |
-| 🧠 MCP server for AI | `apps/mcp` | 55 `poe2_*` tools for AI assistants (OpenCode, Claude Desktop, …) |
+| 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: hotkey pricing, build/gems/leveling tabs, watchlist alerts |
+| 🧠 MCP server for AI | `apps/mcp` | 59 `poe2_*` tools for AI assistants (stdio) |
+| 🌐 Web app | `apps/web` | Browser dashboard: currency rates, price check, leveling guide, build import |
 
-Prices and trade data come **only from free public APIs**: [poe.ninja](https://poe.ninja),
-[poe2scout](https://poe2scout.com), the official Path of Exile 2 `trade2` API and
-open RePoE data. No API keys required.
+> **Note**: the overlay UI is currently Russian-first (it grew out of an
+> SSF campaign on the RU client); all price/lookup data is English, and the
+> built-in RU⇄EN dictionaries translate items and gems on the fly. Full EN
+> localization is on the roadmap. The screenshots above are real usage
+> data — an English item name price-checked from a Russian client.
 
 ## Quick start (non-programmer)
 
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
 1. **Download**: [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-   the latest release (v1.0.17):
+   the latest release:
    - **`poe2-kit-portable-…-win64.zip`** (36 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
@@ -37,22 +84,17 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
    - **`start-web.bat`** — dashboard in the browser: http://localhost:5173
    - **`start-mcp.bat`** — MCP server for AI assistants (stdio).
 
-Feedback, bugs and ideas → issues on
-[SourceCraft](https://sourcecraft.dev/volkovpartilaholin/poe2-kit/issues).
-Version history: [CHANGELOG.md](CHANGELOG.md).
+## Hotkeys (overlay)
 
-## Privacy & community learning (opt-in)
-
-- The kit **never sends data about you** anywhere: the only network endpoints
-  are public price APIs (poe.ninja, poe2scout, trade2).
-- **Opt-in learn log**: if you enable it (overlay → Ctrl+F6 → “Learn log”
-  checkbox), each price check stores the item’s **structure only**
-  (rarity, base, mods, stat ids) **locally** — no character or account names.
-- **Contributing items**: Ctrl+F6 → “📤 Share items” copies a ready-to-paste
-  text block. Open an issue on SourceCraft and paste it — that is all.
-  Only the maintainer merges contributions, via a strict validator
-  (`merge-contributions.mjs`): user contributions are data, never code —
-  see [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+| Hotkey | Action |
+|---|---|
+| Ctrl+F1 | Price check (item from clipboard) |
+| Ctrl+F3 | Import PoB2 share-code → build shopping list |
+| Ctrl+F2 | Build panel |
+| Ctrl+F4 | Leveling context |
+| Ctrl+F5 / Ctrl+Shift+F5 | Move / pin the overlay |
+| Ctrl+F6 | Settings |
+| Ctrl+F7 | Pinnacle readiness checklist |
 
 ## Rules & disclaimer
 
@@ -79,6 +121,19 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
   as common trade tools (Awakened PoE Trade etc.): read-only, no automation,
   no hidden information — but the decision to use it is yours.
 
+## Privacy & community learning (opt-in)
+
+- The kit **never sends data about you** anywhere: the only network endpoints
+  are public price APIs (poe.ninja, poe2scout, trade2).
+- **Opt-in learn log**: if you enable it (overlay → Ctrl+F6 → “Learn log”
+  checkbox), each price check stores the item’s **structure only**
+  (rarity, base, mods, stat ids) **locally** — no character or account names.
+- **Contributing items**: Ctrl+F6 → “📤 Share items” copies a ready-to-paste
+  text block. Open an issue and paste it — that is all.
+  Only the maintainer merges contributions, via a strict validator
+  (`merge-contributions.mjs`): user contributions are data, never code —
+  see [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## For developers
 
 Requires **Node.js ≥ 20**.
@@ -96,3 +151,10 @@ npm run portable     # build the portable zip release asset
 - Full tool list: [README.md](README.md) (Russian),
   assistant prompt: `apps/mcp/ASSISTANT_GUIDE.md`.
 - License: MIT.
+
+## Links
+
+- Canonical repo & issue tracker: [SourceCraft](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
+  (this GitHub repo mirrors releases and accepts issues here too)
+- Version history: [CHANGELOG.md](CHANGELOG.md)
+- Roadmap & build diary: [WORK_LOG.md](WORK_LOG.md) (Russian)

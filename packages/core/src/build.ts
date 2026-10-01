@@ -551,9 +551,11 @@ export async function buildCodeToGear(input: string): Promise<BuildGearItem[]> {
     const attrs = _attrs(m[1]!);
     if (!attrs.id) continue;
     const raw = m[2]!;
-    // клир-текст — это всё до первого вложенного `<`-тега (ModRange и прочее)
+    // клир-текст — это всё до первого вложенного `<`-тега (ModRange и прочее).
+    // XML-сущности (&apos; в «Arakaali&apos;s Gift» и т.п.) декодируем сразу,
+    // иначе они протекают в имя/itemText (панель «носите:», прайс-чек).
     const lt = raw.indexOf('</');
-    const text = (lt >= 0 ? raw.slice(0, lt) : raw).trim();
+    const text = _unescape(lt >= 0 ? raw.slice(0, lt) : raw).trim();
     if (text) itemTextById.set(attrs.id, text);
   }
 

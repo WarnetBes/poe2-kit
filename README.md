@@ -4,13 +4,18 @@
 
 Единый помощник для **Path of Exile 2**: гид по прокачке, AI-советы, универсальная торговля, анализ билдов и прайс-чек предметов.
 
+<div align="center">
+<a href="docs/screenshots/overlay-build.png"><img src="docs/screenshots/overlay-build.png" height="420" alt="Оверлей poe2-kit: шопинг-лист билда"></a>
+<a href="docs/screenshots/overlay-price.png"><img src="docs/screenshots/overlay-price.png" height="420" alt="Оверлей poe2-kit: прайс-чек предмета с таблицей рынка"></a>
+</div>
+
 Одно ядро **`@poe2-kit/core`** обслуживает три формы помощника:
 
 | Форма | Пакет | Что это |
 |---|---|---|
 | 🌐 Веб-приложение | `apps/web` | Дашборд: курсы валют, прайс-чек, гид по прокачке, импорт билда |
 | 🖥️ Windows-оверлей | `apps/overlay` | Прозрачное окно поверх игры: прайс-чек по хоткею, вкладки панели (билд, 💎 Камни, прокачка, настройки), автопрайс из буфера, watchlist с алертами |
-| 🧠 MCP-сервер для ИИ | `apps/mcp` | 51 инструментов `poe2_*` для ИИ-ассистентов (OpenCode и др.) |
+| 🧠 MCP-сервер для ИИ | `apps/mcp` | 59 инструментов `poe2_*` для ИИ-ассистентов (OpenCode и др.) |
 
 Цены и торговля — **только с бесплатных публичных API**: [poe.ninja](https://poe.ninja), [poe2scout](https://poe2scout.com), официальный `trade2` Path of Exile 2 и открытые данные RePoE. Ключей не требуется.
 

@@ -21,6 +21,8 @@ weeks I built **PoE2 Kit**, a free companion overlay for Path of Exile 2.
 Sharing it in case it helps someone, and I'd genuinely like feedback on what
 to build next.
 
+Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. Panel UI is Russian-first for now; EN data everywhere, full EN UI is on the roadmap.
+
 **What it does** (everything works from hotkeys, noisy bits are opt-in):
 
 * **Price check** — hover an item → Ctrl+C → Ctrl+F1: median estimate in
@@ -84,13 +86,20 @@ GitHub or SourceCraft. Thanks for reading!
 
 ## Publish checklist (r/PathOfExile2)
 
-1. **Rules вживую**: открыть https://www.reddit.com/r/PathOfExile2/about/rules
-   в браузере (из рабочей сессии reddit отдаёт Cloudflare-блок — правила
-   не верифицированы). Если есть отдельные требования к self-promo / tool-постам
-   (флейр «Tool», «Feedback», модератор-аппрув) — соблюсти их.
+1. **Rules — верифицированы 01.10.2026 (владелец прислал текст)**. Ключевые:
+   - **Self-promotion**: максимум 2 промо-поста в неделю; желательно ~10
+     осмысленных комментов в сабреддите на 1 промо; заголовок обязан объяснять,
+     почему незнакомцу это интересно (варианты 1/3 это делают).
+   - **Use English**: пост EN — ок; RU-скрины допустимы, но лучше подписать
+     («RU client, EN item data»), что в теле уже сделано.
+   - **Content must feature PoE**: text-post — ок; скрины с игровым контентом
+     (когда друг пришлёт живые) усиливают соответствие.
+   - **No signup-walls**: GitHub — анонимная скачка, ок. SourceCraft-канон
+     оставить второй ссылкой.
 2. **Аккаунт**: постить с аккаунта с историей участия (не свежая регистрация);
-   если аккаунт новый — сначала 2–3 недели обычных комментариев. В посте
-   уже есть прозрачность («I built»), это и есть reddit-гигиена.
+   если аккаунт новый — сначала прогреть 2–3 недели обычными комментариями;
+   критично для self-promo-правила (10:1). В посте уже есть прозрачность
+   («I built»), это и есть reddit-гигиена.
 3. **Тип поста**: text-post (не link-post) — тело выше, ссылка внутри.
    Заголовок — вариант 1 или 3 (вариант 2 мягче, но длиннее 220 симв. —
    reddit режет; проверить лимит при вставке).
