@@ -53,10 +53,19 @@ function rotateLogIfNeeded(file: string): void {
 }
 
 function teeConsoleToFile(): void {
+  // №100: Error-объекты JSON.stringify даёт как "{}" (неперечислимые поля),
+  // поэтому разворачиваем их в message+stack — иначе причина падения теряется.
+  const serializeArg = (a: unknown): string => {
+    if (typeof a === 'string') return a;
+    if (a instanceof Error) return `${a.name}: ${a.message}\n${a.stack ?? '(нет stack)'}`;
+    try {
+      return JSON.stringify(a) ?? String(a);
+    } catch {
+      return String(a);
+    }
+  };
   const stamp = (args: unknown[]): string =>
-    `${new Date().toISOString()} ${args
-      .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
-      .join(' ')}\n`;
+    `${new Date().toISOString()} ${args.map(serializeArg).join(' ')}\n`;
   for (const method of ['log', 'warn', 'error'] as const) {
     const orig = console[method].bind(console);
     console[method] = (...args: unknown[]) => {
@@ -82,10 +91,43 @@ teeConsoleToFile();
 // неизвестна». С этими обработчиками причина остаётся в overlay.log.
 process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
   console.error('[overlay] uncaughtException:', err?.stack ?? String(err));
+  statEvent('crash:uncaughtException', err?.message);
 });
 process.on('unhandledRejection', (reason: unknown) => {
-  console.error('[overlay] unhandledRejection:', String(reason));
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  console.error('[overlay] unhandledRejection:', reason instanceof Error ? reason.stack : msg);
+  statEvent('crash:unhandledRejection', msg);
 });
+
+// ─── №100: счётчики событий сессии → в диагностику ────────────────────────────
+// Пока «настраиваем», удалённо важно видеть не только хвост лога, но и суммы:
+// сколько прайс-чеков было успешным, какие ошибки сколько раз и когда последний.
+interface StatEntry {
+  count: number;
+  first: string;
+  last: string;
+  lastDetail?: string;
+}
+const sessionStats = new Map<string, StatEntry>();
+
+function statEvent(name: string, detail?: string): void {
+  const now = new Date().toISOString();
+  const e = sessionStats.get(name) ?? { count: 0, first: now, last: now };
+  e.count += 1;
+  e.last = now;
+  if (detail !== undefined) e.lastDetail = detail;
+  sessionStats.set(name, e);
+}
+
+/** Сводка счётчиков для диагностики: по убыванию счётчика, с окнами времени. */
+function sessionStatsDigest(): string[] {
+  const rows = [...sessionStats.entries()].sort((a, b) => b[1].count - a[1].count);
+  return rows.map(
+    ([name, e]) =>
+      `${name}: ×${e.count} (${e.first.slice(11, 19)} → ${e.last.slice(11, 19)} UTC)` +
+      (e.lastDetail ? ` | последний: ${e.lastDetail}` : ''),
+  );
+}
 
 // ─── Настройки по умолчанию ────────────────────────────────────────────────
 // Хоткеи — F-клавиши с Ctrl: почти не конфликтуют ни с игрой, ни с Intel/Discord
@@ -1810,8 +1852,11 @@ async function syncCharacterGear(force = false): Promise<void> {
     console.log(
       `[overlay] char sync ok: ${charSync.character} (${charSync.league}), совпало слотов: ${matched} (новых: ${fresh})`,
     );
+    statEvent('charSync:ok', `${charSync.character}: совпало ${matched}, новых ${fresh}`);
   } catch (err) {
-    console.warn('[overlay] char sync failed:', err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[overlay] char sync failed:', err instanceof Error ? err : msg);
+    statEvent('charSync:failed', msg);
     sendBuildUpdate({
       error: `Синхронизация с poe.ninja не удалась: ${err instanceof Error ? err.message : err}`,
     });
@@ -1859,6 +1904,13 @@ function buildTreeSummary(imported: {
   }
 }
 
+/** №101: буфер похож на скопированный предмет (RU/EN игровой формат всегда
+ *  начинается с «Класс предмета: …» / «Item Class: …» и содержит «Редкость:» /
+ *  «Rarity:»). Используется и прайсом, и импортом — для понятных подсказок. */
+function looksLikeItemText(raw: string): boolean {
+  return /^\s*(Item Class|Класс предмета|Rarity|Редкость)\s*:/im.test(raw);
+}
+
 async function runBuildImport(): Promise<void> {
   const input = clipboard.readText().trim();
   if (!input) {
@@ -1884,6 +1936,19 @@ async function runBuildImport(): Promise<void> {
       info: `🧍 Автосинхронизация включена: ${profileRef.character} (${profileRef.league}). Эквип сверяется с билдом автоматически.`,
     });
     void syncCharacterGear(true);
+    return;
+  }
+
+  // №101(c): в буфере текст предмета, а не PoB-код — понятная подсказка вместо
+  // крипто-диагностики base64 (живые факты 30.09–01.10: «невалидный base64 …
+  // контекст "Класспредмет"» ×6 за сессию; друг — не-программист).
+  if (looksLikeItemText(input)) {
+    console.log('[overlay] build import skip: в буфере текст предмета, не PoB-код (№101)');
+    statEvent('buildImport:rejected:isItem', `${input.length} chars`);
+    sendBuildUpdate({
+      error:
+        'В буфере текст предмета, а не PoB-код. Прайс этого предмета — Ctrl+F1. Для импорта билда скопируйте PoB share-код (в Path of Building: «Export» → копировать код).',
+    });
     return;
   }
 
@@ -1948,6 +2013,7 @@ async function runBuildImport(): Promise<void> {
     console.log(
       `[overlay] build imported: ${buildState.slots.length} slots, class=${buildState.className ?? '?'} @${buildState.ascendancy ?? '?'}`,
     );
+    statEvent('buildImport:ok', `class=${buildState.className ?? '?'} slots=${buildState.slots.length}`);
 
     // Живая панель: EHP/дыры защиты и мета — считаем в фоне, не мешая прайсингу.
     void refreshBuildEstimate();
@@ -1980,6 +2046,7 @@ async function runBuildImport(): Promise<void> {
         console.warn(
           `[overlay] build price failed: slot=${slot.slot} item="${slot.name}": ${err instanceof Error ? err.message : err}`,
         );
+        statEvent('buildPrice:failed', `slot=${slot.slot} ${err instanceof Error ? err.message : String(err)}`);
       }
       sendBuildUpdate({ status: 'ready' });
     }
@@ -1989,6 +2056,7 @@ async function runBuildImport(): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('[overlay] build import failed:', msg);
+    statEvent('buildImport:failed', msg);
     sendBuildUpdate({
       error: `Импорт не удался: ${msg}. Нужен PoB share-код, XML, ссылка или .build JSON.`,
     });
@@ -2064,6 +2132,7 @@ async function importStarterBuild(classQuery: string): Promise<void> {
     console.log(
       `[overlay] starter build imported: ${starter.className}, ${buildState.slots.length} slots, tagline="${starter.tagline}"`,
     );
+    statEvent('starterImport', starter.className);
     void refreshBuildEstimate();
 
     // №98: прайсинг синтетических white-баз стартера отключён. Медиана белой базы
@@ -2538,16 +2607,20 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
       'priceCheck',
     );
     const itemName = (result as { itemName?: string } | undefined)?.itemName ?? '?';
+    const estimateObj = (result as { estimate?: { median?: number } | null } | undefined)?.estimate ?? null;
+    const listingsCount = (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0;
     console.log(
-      `[overlay] price done: item="${itemName}" estimate=${JSON.stringify(
-        (result as { estimate?: unknown } | undefined)?.estimate ?? null,
-      )} listings=${
-        (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0
-      }`,
+      `[overlay] price done: item="${itemName}" estimate=${JSON.stringify(estimateObj)} listings=${listingsCount}`,
+    );
+    statEvent(
+      estimateObj ? 'priceCheck:ok' : 'priceCheck:noPrice',
+      `${itemName} median=${estimateObj?.median ?? '—'} listings=${listingsCount}`,
     );
     return { ...(result as unknown as Record<string, unknown>), itemText };
   } catch (err) {
-    console.warn('[overlay] priceCheck failed:', err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[overlay] priceCheck failed:', err instanceof Error ? err : msg);
+    statEvent('priceCheck:failed', msg);
     // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
     const parsed = core.parse.parseItemText(itemText);
     return {
@@ -2610,6 +2683,36 @@ async function runPriceCheck(): Promise<unknown> {
       console.log(`[overlay] clipboard head: ${JSON.stringify(raw.slice(0, 80))}`);
     } else {
       console.warn('[overlay] clipboard is empty — Ctrl+C в игре по наведённому предмету?');
+    }
+
+    // №101(b): быстрый отказ на не-предметном буфере — ДО словаря и trade-поиска.
+    // Живой лог-факт 01.10 00:23: произвольный текст (PowerShell-вывод, «Проверка
+    // статуса…») жёг 10 014 мс ожидания ensureRuEnDict и блокировал Ctrl+F1 busy.
+    // Предмет из игры ВСЕГДА содержит «Редкость:»/«Rarity:» («Класс предмета:»),
+    // PoB-код — base64-алфавит (для него ниже отдельная подсказка №98/101).
+    if (raw.trim() && !looksLikeItemText(raw) && !/^[A-Za-z0-9+/=\s._-]+$/.test(raw.trim())) {
+      const startedFast = Date.now();
+      console.log('[overlay] pricecheck: буфер — не предмет и не PoB-код, быстрый отказ (№101)');
+      statEvent('priceCheck:rejected:nonItem', `${raw.trim().length} chars`);
+      const fastPayload = {
+        items: [
+          {
+            itemName: 'Не предмет',
+            estimate: null,
+            listings: 0,
+            buildCodeHint:
+              'В буфере не текст предмета. Наведите на предмет в игре и нажмите Ctrl+C, затем Ctrl+F1 (прайс). PoB-код билда — Ctrl+F3 (импорт).',
+          },
+        ],
+        count: 1,
+        totalEstimate: null,
+        elapsedMs: Date.now() - startedFast,
+      };
+      await overlayWindow?.webContents.send('price:batch', fastPayload);
+      console.log(
+        `[overlay] price batch: items=1 totalEstimate=null elapsedMs=${fastPayload.elapsedMs}`,
+      );
+      return fastPayload;
     }
     await overlayWindow?.webContents.send('price:busy', true);
 
@@ -2790,6 +2893,8 @@ function collectDiagnostics(): string {
   L.push('CPU ядер: ' + os.cpus().length + '; RAM: ' + Math.round(os.totalmem() / 1024 ** 3) + ' ГБ');
   L.push('userData: ' + userData);
   L.push('cwd: ' + process.cwd());
+  L.push('uptime процесса: ' + Math.round(process.uptime()) + ' с');
+  L.push('память процесса (RSS): ' + Math.round(process.memoryUsage().rss / 1024 ** 2) + ' МБ');
   L.push('');
   L.push('-- Настройки оверлея --');
   L.push('corner: ' + settings.corner);
@@ -2819,10 +2924,20 @@ function collectDiagnostics(): string {
     L.push(name + ': ' + info);
   }
   L.push('');
-  L.push('-- Хвост overlay.log (последние 150 строк) --');
-  L.push(tailLines(path.join(userData, 'overlay.log'), 150) || '(лог пуст)');
+  // №100: счётчики событий сессии — вместо гадания по хвосту лога видно суммы:
+  // сколько прайс-чеков ок/фэйл, импорты, charSync, стартеры, клики асценданси.
+  L.push('-- События сессии (счётчики, №100) --');
+  const stats = sessionStatsDigest();
+  for (const s of stats) L.push(s);
+  if (!stats.length) L.push('(пока пусто — событий не было)');
+  L.push('');
+  L.push('-- Хвост overlay.log (последние 400 строк) --');
+  L.push(tailLines(path.join(userData, 'overlay.log'), 400) || '(лог пуст)');
   return L.join('\n');
 }
+
+/** Последняя распечатанная сигнатура «starter ascendancy» — для дедупа лога (№100). */
+let ascPickLogSig: string | null = null;
 
 function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
@@ -2942,9 +3057,15 @@ function setupIPC(): void {
     buildState.ascendancy = asc.name;
     buildState.starter.ascPicked = asc.name;
     buildState.starter.ascKeystones = core.starterBuilds.ascendancyKeystones(asc.id);
-    console.log(
-      `[overlay] starter ascendancy: ${asc.name} (${asc.id}) — keystones: ${(buildState.starter.ascKeystones ?? []).join(', ') || 'нет'}`,
-    );
+    // №100: дедуп лога — рендерер шлёт pick_asc несколько раз на клик, а ранее
+    // каждый повтор печатал весь список кейстоунов (лог тонул в дублях ×3–×12).
+    const ks = (buildState.starter.ascKeystones ?? []).join(', ');
+    const sig = `${asc.id}:${ks}`;
+    if (ascPickLogSig !== sig) {
+      ascPickLogSig = sig;
+      console.log(`[overlay] starter ascendancy: ${asc.name} (${asc.id}) — keystones: ${ks || 'нет'}`);
+    }
+    statEvent('starterAscendancy:pick', asc.name);
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
     return { ok: true };

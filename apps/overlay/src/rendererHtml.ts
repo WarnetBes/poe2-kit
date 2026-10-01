@@ -356,6 +356,9 @@ export const rendererHtml = `<!doctype html>
         <div id="buildSum"></div>
         <div id="buildErr" class="hide"></div>
       </div>
+      <div id="importWrap" class="hide">
+        <div id="importContent"></div>
+      </div>
       <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6</div>
     </div>
     <div id="settingsPanel" class="hide">
@@ -673,6 +676,41 @@ export const rendererHtml = `<!doctype html>
     $('buildWrap').classList.toggle('hide', mode !== 'build');
     $('gemsWrap').classList.toggle('hide', mode !== 'gems');
     $('mapsWrap').classList.toggle('hide', mode !== 'maps');
+    $('importWrap').classList.toggle('hide', mode !== 'import');
+  }
+
+  // ─── Вкладка «📥 Импорт» (№101): собственный вью вместо прыжка на «Билд» ─────
+  // Раньше клик по табу сразу запускал runBuildImport и onBuildUpdate
+  // переключал showMode('build') — друг читал это как «вкладку перекинуло».
+  // Теперь таб показывает инструкцию/результат; запуск — кнопкой или Ctrl+F3.
+  var importResult = null; // последний build:update от импорта (для повтора клика)
+  function showImportView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    showMode('import');
+    var el = $('importContent');
+    var html =
+      '<div class="sub-h sub">📥 Импорт билда из буфера обмена</div>' +
+      '<div class="lvl-hint">Скопируйте <b>PoB share-код</b>, ссылку профиля poe.ninja или .build JSON и нажмите кнопку ниже (или <b>Ctrl+F3</b>).</div>' +
+      '<button class="watch-btn" id="importRun" style="margin:4px 0 6px">📥 Импортировать из буфера (Ctrl+F3)</button>';
+    if (importResult) {
+      if (importResult.error) {
+        html += '<div class="err-box">⚠ ' + esc(importResult.error) + '</div>';
+      } else if (importResult.ok) {
+        html += '<div class="lvl-hint">✅ Импортировано: <b>' + esc(importResult.ok) +
+          '</b><br/><span class="sub">Панель слотов — во вкладке «🛒 Билд» (Ctrl+F2).</span></div>';
+      }
+    } else if (lastBuildState && lastBuildState.slots && lastBuildState.slots.length) {
+      html += '<div class="lvl-hint">Текущий билд: <b>' + esc(String(lastBuildState.className || '?')) + '</b>, ' +
+        lastBuildState.slots.length + ' слотов — будет заменён новым импортом.</div>';
+    }
+    el.innerHTML = html;
+    $('importRun').addEventListener('click', function () {
+      el.innerHTML = '<div class="status-busy">Импорт из буфера…</div>';
+      window.poe2k.panelOpen('import').catch(function () {});
+    });
   }
 
   // ─── Вкладка «🧭 Плитки» (№85): крафт плиток смотрителя (Waystones) ────────
@@ -1055,6 +1093,20 @@ export const rendererHtml = `<!doctype html>
   window.poe2k.onBuildUpdate(function (state) {
     if (!state) return;
     if (!state.visible && !(state.error && !state.build) && !state.info) return;
+    // №101: пользователь на вкладке «Импорт» и это результат импорта (успех/ошибка) —
+    // остаёмся во вью импорта, рисуем итог там; showMode('build') не дёргаем.
+    if (activeTab === 'import' && (state.error || state.visible)) {
+      importResult = state.error
+        ? { error: state.error }
+        : {
+            ok:
+              (state.build.className ? state.build.className + ' / ' : '') +
+              (state.build.ascendancy ? state.build.ascendancy + ' / ' : '') +
+              (state.build.slots ? state.build.slots.length : 0) + ' слотов',
+          };
+      showImportView();
+      return;
+    }
     setBusy(false);
     $('idle').classList.add('hide');
     $('body').classList.remove('hide');
@@ -1572,7 +1624,11 @@ export const rendererHtml = `<!doctype html>
   // №64: вкладки — кликом открывают те же панели, что и хоткеи.
   // Подсветка активной вкладки синхронизируется и с хоткейами (события main).
   var tabBtns = document.querySelectorAll('#tabRow button');
+  // №101: активная вкладка — onBuildUpdate не должен силой перекрашивать её,
+  // когда пользователь смотрит результат импорта (это и был «прыжок на Билд»).
+  var activeTab = '';
   function setActiveTab(tab) {
+    activeTab = tab;
     for (var ti = 0; ti < tabBtns.length; ti++) {
       tabBtns[ti].classList.toggle('on', tabBtns[ti].getAttribute('data-tab') === tab);
     }
@@ -1586,6 +1642,8 @@ export const rendererHtml = `<!doctype html>
           showGemsView(); // локальная панель, IPC не нужен
         } else if (tab === 'maps') {
           showMapsView(); // №85: статический справочник крафта плиток, IPC не нужен
+        } else if (tab === 'import') {
+          showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
         } else {
           window.poe2k.panelOpen(tab).catch(function () {});
         }
@@ -1612,7 +1670,11 @@ export const rendererHtml = `<!doctype html>
   // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
   window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
   window.poe2k.onLevelResult(function () { setActiveTab('level'); });
-  window.poe2k.onBuildUpdate(function (st) { setActiveTab(st && st.visible ? 'build' : ''); });
+  window.poe2k.onBuildUpdate(function (st) {
+    // №101: на вкладке «Импорт» подсветка не перекрашивается в «Билд» — там свой вью.
+    if (activeTab === 'import') return;
+    setActiveTab(st && st.visible ? 'build' : '');
+  });
   window.poe2k.onSettingsToggle(function () {
     setActiveTab($('settingsPanel').classList.contains('hide') ? '' : 'settings');
   });
