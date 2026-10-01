@@ -242,6 +242,9 @@ let overlayWindow: BrowserWindow | null = null;
 let busy = false;
 /** Режим перемещения оверлея (Ctrl+F5): окно кликабельно и таскается мышью. */
 let moveUnlocked = false;
+// №113e-b: true = клавиатуру сейчас держит поле ввода (keyboard:set):
+// before-input-event НЕ гасит keystrokes.
+let keyboardCaptured = false;
 /** Пользовательское смещение (DIP) от закреплённой позиции; переживает перезапуск. */
 let userOffset: OverlayOffset | null = null;
 
@@ -977,6 +980,7 @@ function toggleMoveMode(): void {
   if (!win || win.isDestroyed()) return;
   moveUnlocked = !moveUnlocked;
   if (moveUnlocked) {
+    keyboardCaptured = false; // №113e-b: move-режим не текстовый ввод
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
     // Окно могло жить с начальных координат создания (-w,-h — за экраном,
@@ -2381,8 +2385,23 @@ async function createOverlayWindow(): Promise<void> {
   });
 
   // Отключаем выделение/нужные события в оверлее.
+  // №113e-b: прежде здесь ВСЕ keystrokes гасились безусловно (preventDefault)
+  // — из-за этого текст не вводился НИКОГДА, даже с отданным фокусом.
+  // Гасим только пока клавиатуру не захватило поле ввода (keyboard:set):
+  // во всех прочих режимах клавиши не доходят до рендерера (как раньше).
   overlayWindow.webContents.on('before-input-event', (event) => {
-    event.preventDefault();
+    if (!keyboardCaptured) event.preventDefault();
+  });
+
+  // №113e-b: клик из оверлея в игру — OS-фокус уходит, DOM-focusout поля
+  // при этом НЕ гарантирован. Возвращаем focusable=false по blur окна,
+  // чтобы «застрявший» focusable не ловил клавиатуру после клика в игру.
+  overlayWindow.on('blur', () => {
+    if (moveUnlocked) return; // move-режим управляет фокусом сам
+    if (!keyboardCaptured) return;
+    keyboardCaptured = false;
+    overlayWindow?.setFocusable(false);
+    console.log('[overlay] keyboard: blur окна → возвращена игре');
   });
 
   overlayWindow.loadFile(writtenRendererPath());
@@ -3449,18 +3468,28 @@ function setupIPC(): void {
     return interact;
   });
 
-  // №113e: клавиатура для полей ввода (поиск нод и т.п.). Окно создаётся
+  // №113e(+b): клавиатура для полей ввода (поиск нод и т.п.). Окно создаётся
   // focusable:false, чтобы не красть фокус у игры (main.ts: BrowserWindow).
   // Из-за этого клик по <input> не давал текстового ввода. Отдаём клавиатуру
-  // ТОЛЬКО на время фокуса поля (focusin/focusout в renderer): наведение
-  // курсора на панель фокус не ворует, WASD в бою не теряется.
+  // ТОЛЬКО на время фокуса поля (focusin/mousedown/focusout в renderer):
+  // наведение курсора на панель фокус не ворует, WASD в бою не теряется.
+  // №113e-b по живому логу друга: вызовов keyboard:set НОЛЬ — focusin в
+  // блюрнутом renderer не срабатывал; guard moveUnlocked стоял ДО лога
+  // (слепая зона телеметрии). Теперь логируем ВСЕГДА, включая отказ.
   ipcMain.handle('keyboard:set', (_evt, want: boolean) => {
     const win = overlayWindow;
-    if (!win || win.isDestroyed()) return false;
-    if (moveUnlocked) return false; // move-режим управляет фокусом сам
+    if (!win || win.isDestroyed()) {
+      console.log('[overlay] keyboard: НЕТ ОКНА, отказ');
+      return false;
+    }
+    if (moveUnlocked) {
+      console.log(`[overlay] keyboard: ${want ? 'запрос' : 'снятие'} ОТКЛОНЁН — активен move-режим (unlocked, фокусом управляет он)`);
+      return false;
+    }
     win.setFocusable(want);
     if (want) win.focus();
-    console.log(`[overlay] keyboard: ${want ? 'захвачена полем ввода' : 'возвращена игре'}`);
+    keyboardCaptured = want; // №113e-b: до этого before-input-event гасил все клавиши
+    console.log(`[overlay] keyboard: ${want ? 'захвачена полем ввода (setFocusable+focus)' : 'возвращена игре (setFocusable false)'}`);
     return want;
   });
 

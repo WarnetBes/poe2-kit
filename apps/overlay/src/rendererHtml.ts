@@ -2399,6 +2399,22 @@ export const rendererHtml = `<!doctype html>
       window.poe2k.captureKeyboard(false).catch(function () {});
     }
   });
+  // №113e-b: focusin в блюрнутом renderer (окно без OS-фокуса) может НЕ
+  // сработать — по живому логу друга keyboard:set не вызывался вовсе.
+  // mousedown доходит всегда: хватаем клавиатуру на нажатии по полю и
+  // принудительно фокусим элемент после (клик в блюрнутом окне не
+  // обязательно ставит DOM-фокус).
+  document.addEventListener('mousedown', function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+      window.poe2k.captureKeyboard(true).catch(function () {});
+      setTimeout(function () {
+        if (document.activeElement !== t && t.focus) {
+          try { t.focus(); } catch (e) { /* элемент мог уйти из DOM */ }
+        }
+      }, 0);
+    }
+  });
   // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
   window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
   window.poe2k.onLevelResult(function () { setActiveTab('level'); });
