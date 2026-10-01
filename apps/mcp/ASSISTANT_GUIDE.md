@@ -103,7 +103,7 @@
 ## Живой контекст игрока и добор информации (№69)
 
 **«Что происходит у игрока прямо сейчас?»**
-- **poe2_overlay_state** — состояние PoE2 Kit Overlay: лига, настройки, билд (слоты/цены/камни/дерево), watchlist, хвост overlay.log. Каталог по умолчанию %APPDATA%\@poe2-kit\overlay; удалённый ПК — data_dir="\\192.168.0.195\poe2kit-appdata\overlay" (или env POE2K_OVERLAY_DATA).
+- **poe2_overlay_state** — состояние PoE2 Kit Overlay: лига, настройки, билд (слоты/цены/камни/дерево), watchlist, хвост overlay.log. Каталог по умолчанию %APPDATA%\@poe2-kit\overlay; удалённый ПК — data_dir="\\<overlay-pc-ip>\poe2kit-appdata\overlay" (или env POE2K_OVERLAY_DATA).
 - **poe2_log_state** — живая игра из Client.txt: зона, уровень, смерти.
 
 **«Двусторонний канал: ответить игроку поверх игры» (№85)**

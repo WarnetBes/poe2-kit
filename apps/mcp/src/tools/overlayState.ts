@@ -165,7 +165,7 @@ export function registerOverlayStateTools(server: McpServer): number {
 Читает: лига, настройки (высота/хоткеи/режимы), билд (класс/ур./слоты/цены/камни/дерево), watchlist, char-sync. Никаких аккаунтных данных.
 
 Аргументы:
-  - data_dir (string, опц.): каталог userData оверлея. По умолчанию: env POE2K_OVERLAY_DATA, иначе %APPDATA%\\@poe2-kit\\overlay. Для удалённого ПК: data_dir="\\\\192.168.0.195\\poe2kit-appdata\\overlay".
+  - data_dir (string, опц.): каталог userData оверлея. По умолчанию: env POE2K_OVERLAY_DATA, иначе %APPDATA%\\@poe2-kit\\overlay. Для удалённого ПК: data_dir="\\\\<overlay-pc-ip>\\poe2kit-appdata\\overlay".
   - log_tail (number, опц.): сколько строк overlay.log показать (по умолчанию 15, max 80).
 
 Используйте вместе с poe2_log_state (живая игра из Client.txt) для полной картины.`,

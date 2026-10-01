@@ -9,10 +9,10 @@
  *  1. аргумент data_dir;
  *  2. env POE2K_OVERLAY_DATA;
  *  3. %APPDATA%\@poe2-kit\overlay. Для удалённого ПК (у друга):
- *     data_dir="\\192.168.0.195\OpenCodeProjectsF\poe2-kit\apps\overlay" —
+ *     data_dir="\\<overlay-pc-ip>\OpenCodeProjectsF\poe2-kit\apps\overlay" —
  *     ВАЖНО: очередь пишется в <data_dir>/agent-queue.json, overlay поллит её
  *     и в userData, и рядом со своим dist. Зеркало userData
- *     (\\192.168.0.195\poe2kit-appdata\overlay) READ-ONLY — туда писать нельзя.
+ *     (\\<overlay-pc-ip>\poe2kit-appdata\overlay) READ-ONLY — туда писать нельзя.
  *
  * Формат очереди (append-merge):
  *  { notify: [{title?, text}], watchAdd: [...], watchRemove: [id] }
@@ -97,7 +97,7 @@ export function registerOverlayBridgeTools(server: McpServer): number {
       inputSchema: {
         text: z.string().min(1).max(2000).describe('Текст уведомления для игрока'),
         title: z.string().max(200).optional().describe('Заголовок тоста'),
-        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\192.168.0.195\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
+        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\<overlay-pc-ip>\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
       },
       annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: false },
     },
@@ -140,7 +140,7 @@ export function registerOverlayBridgeTools(server: McpServer): number {
       inputSchema: {
         item_text: z.string().min(5).max(20000).describe('Полный текст предмета (Rarity: … — как Ctrl+C в игре)'),
         label: z.string().max(200).optional().describe('Метка предмета в списке'),
-        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\192.168.0.195\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
+        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\<overlay-pc-ip>\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
       },
       annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -187,7 +187,7 @@ export function registerOverlayBridgeTools(server: McpServer): number {
   - data_dir (string, опц.): каталог userData оверлея (UNC-путь для удалённого ПК).`,
       inputSchema: {
         id: z.string().min(1).max(100).describe('id записи в watchlist'),
-        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\192.168.0.195\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
+        data_dir: z.string().optional().describe('Каталог очереди: локально — userData оверлея; удалённо — \\\\<overlay-pc-ip>\\OpenCodeProjectsF\\poe2-kit\\apps\\overlay (зеркало userData read-only)'),
       },
       annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
     },
