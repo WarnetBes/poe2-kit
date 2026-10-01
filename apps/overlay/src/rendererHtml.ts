@@ -2065,7 +2065,10 @@ export const rendererHtml = `<!doctype html>
     // Обновляем элементы панели настроек, если она открыта.
     if (!$('settingsPanel').classList.contains('hide')) {
       buildSettingsPanel({
-        corner: s.corner, opacity: alpha, scale: z,
+        corner: s.corner,
+        // №107-fix: было opacity: alpha — несуществующая переменная, ReferenceError
+        // при каждом settings:display с открытой панелью настроек.
+        opacity: (typeof s.opacity === 'number' ? s.opacity : 0.86), scale: z,
         width: (typeof s.width === 'number' ? s.width : 420),
         hotkeys: {}, defaultHotkeys: {}
       });
