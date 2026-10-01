@@ -1551,15 +1551,17 @@ export const rendererHtml = `<!doctype html>
             (ps.length ? '<br><span style="color:var(--dim)">+ ' + ps.map(esc).join(', ') + '</span>' : '') +
             '</div></div>';
         }).join('') +
-        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div>' +
-        '<div class="tree-chips" style="margin-top:4px">' +
-        '<button class="tree-chip" data-cmbcode="1">📋 Код импорта (в буфер)</button></div>' +
-        '<div class="lvl-hint" data-cmbcodemsg style="min-height:14px"></div></div>'
+        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div></div>'
       : '';
+    // №141-bis: кнопка кода ВСЕГДА видима (друг живёт мышью; пустая связка →
+    // внятная ошибка от IPC, а не исчезнувшая кнопка).
+    var comboCodeUi = '<div class="tree-chips" style="margin:6px 0">' +
+      '<button class="tree-chip" data-cmbcode="1">📋 Код импорта (в буфер)</button></div>' +
+      '<div class="lvl-hint" data-cmbcodemsg style="min-height:14px"></div>';
     host.innerHTML = genModeChips() +
       '<div class="lvl-hint">Собери связку: фильтр → активные → саппорты. Готовый набор можно выгрузить кодом импорта.</div>' +
       (tc ? '<div class="tree-chips">' + tc + '</div>' : '') +
-      actList + supBlocks + comboSum;
+      actList + supBlocks + comboSum + comboCodeUi;
     bindGenMode(host);
     var cc = host.querySelector('[data-cmbcode]');
     if (cc) cc.addEventListener('click', function () {
