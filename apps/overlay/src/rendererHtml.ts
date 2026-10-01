@@ -908,6 +908,15 @@ export const rendererHtml = `<!doctype html>
       'Source: poe2wiki.net "Waystone" (verified 30.09.2026). ',
     'Механики меняются патчами — панель обновляется в ките.':
       'Mechanics change with patches — the panel is updated in the kit.',
+    // №167: промахи EN-этапа 2, видимые в прайс-вью (проверено живым CDP-рендером при lang=en).
+    'Рынок (по возрастанию цены):': 'Market (cheapest first):',
+    'Источники:': 'Sources:',
+    '(приблизительно)': '(approx.)',
+    '(точно)': '(exact)',
+    '(грубо)': '(rough)',
+    'предложений:': 'listings:',
+    'медиана:': 'median:',
+    '⇗ эффект:': '⇗ effect:',
   };
   // Отсортированные ключи по убыванию длины — сперва длинные, чтобы
   // «Акт 1» не побилось коротким ключом раньше составного.

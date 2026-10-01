@@ -30,7 +30,7 @@ Hey everyone! I came to Path of Exile 2 as a complete newcomer to this genre —
 
 I got tired of playing the game in one window and the wiki in four others, so over the last few weeks I built **PoE2 Kit** — a free companion overlay for Path of Exile 2. Sharing it in case it helps other new players survive their first league, and I'd genuinely like feedback on what to build next.
 
-Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); one honest caveat: guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
+Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build-en.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price-en.png) — note a Russian-client clipboard item resolved to its English name ("Uncut Spirit Gem") and priced in chaos. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); one honest caveat: guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
 
 **What it does** (everything works from hotkeys, noisy bits are opt-in):
 
@@ -87,8 +87,8 @@ Screenshots for those who don't want to click through to GitHub:
 6. **Большое текстовое поле:** вставляешь БЛОК 2 целиком. Звёздочки (`*`, `**`), стрелки `→` и скобки `[текст](ссылка)` оставляй как есть — reddit сам превратит их в жирный шрифт и кликабельные ссылки. Ничего вручную не правь: каждая ссылка уже в тексте (GitHub Releases, исходники, SourceCraft, два скриншота).
 7. Нажимаешь **«Post»**. Пост опубликован.
 8. **Первый комментарий (обязательно, в течение пары минут):** открой свой пост → поле «Add a comment» → вставь БЛОК 3 → под полем нажми иконку **«Image»** → выбери файлы по очереди:
-   - `C:\Users\mezhavikiserj\BildPOE2\poe2-kit\docs\screenshots\overlay-build.png`
-   - `C:\Users\mezhavikiserj\BildPOE2\poe2-kit\docs\screenshots\overlay-price.png`
+   - `C:\Users\mezhavikiserj\BildPOE2\poe2-kit\docs\screenshots\overlay-build-en.png`
+   - `C:\Users\mezhavikiserj\BildPOE2\poe2-kit\docs\screenshots\overlay-price-en.png`
    → «Comment». Внутри текстового поста картинки не показываются превью — поэтому скрины едут первым комментом.
 9. **Флейр:** на своём посту нажми «…» (меню) → **«Add flair» / «Изменить метку»** → выбери **Tool** (если списка нет — пропусти шаг, не критично).
 10. **Когда постить:** будний день, 18:00–21:00 UTC (по Москве это 21:00–00:00). Не в день старта лиги — утонет в потоке.

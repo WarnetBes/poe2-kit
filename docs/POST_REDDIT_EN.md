@@ -35,7 +35,7 @@ so over the last few weeks I built **PoE2 Kit** — a free companion overlay
 for Path of Exile 2. Sharing it in case it helps other new players survive
 their first league, and I'd genuinely like feedback on what to build next.
 
-Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
+Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build-en.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price-en.png) — note a Russian-client clipboard item resolved to its English name ("Uncut Spirit Gem") and priced in chaos. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
 
 **What it does** (everything works from hotkeys, noisy bits are opt-in):
 
