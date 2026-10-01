@@ -666,8 +666,8 @@ export const rendererHtml = `<!doctype html>
   window.poe2k.onWatchAlert(function (a) {
     if (!a) return;
     var from = Number(a.from), to = Number(a.to), l = String(a.label || 'Предмет');
-    var fromTxt = Number.isFinite(from) ? from.toFixed(1) : '—';
-    var toTxt = Number.isFinite(to) ? to.toFixed(1) : '—';
+    var fromTxt = Number.isFinite(from) ? fmtChaosNum(from) : '—';
+    var toTxt = Number.isFinite(to) ? fmtChaosNum(to) : '—';
     showToast('<b>📉 Цена упала:</b> ' + esc(l) + '<br/>' + fromTxt + ' → ' + toTxt + ' chaos');
   });
 
@@ -690,7 +690,7 @@ export const rendererHtml = `<!doctype html>
         return;
       }
       box.innerHTML = entries.map(function (e) {
-        var px = (e.lastPrice == null) ? '—' : Number(e.lastPrice).toFixed(1) + ' chaos';
+        var px = (e.lastPrice == null) ? '—' : fmtChaosNum(e.lastPrice) + ' chaos';
         return '<div class="wl-row">' +
           '<span class="nm ' + (e.enabled ? '' : ' off') + '">' + esc(e.label) + (e.enabled ? '' : ' <small>(пауза)</small>') + '</span>' +
           '<span class="px ' + (e.enabled ? '' : ' off') + '">' + px + '</span>' +
@@ -994,11 +994,20 @@ export const rendererHtml = `<!doctype html>
     }).catch(function () {});
   }
 
+  // №113c: адаптивная точность (медиана бывает < 0.1 хаоса — toFixed(1) давал «0.0»).
+  function fmtChaosNum(v) {
+    var a = Math.abs(Number(v));
+    if (!Number.isFinite(a)) return String(v);
+    if (a >= 10) return a.toFixed(1);
+    if (a >= 1) return a.toFixed(2);
+    return a.toFixed(3);
+  }
+
   function fmtPrice(v) {
     if (v == null) return '…';
     return Number(v) >= 1000
       ? (Number(v) / 1000).toFixed(1) + 'k chaos'
-      : Number(v).toFixed(1) + ' chaos';
+      : fmtChaosNum(v) + ' chaos';
   }
 
   // ── Помощник по пассивному дереву: кейнстоуны/нотабли PoB-билда + поиск нод ──
@@ -1655,9 +1664,9 @@ export const rendererHtml = `<!doctype html>
       est.classList.remove('hide');
       var conf = res.estimate.confidence === 'exact' ? 'точно' : (res.estimate.confidence === 'approx' ? 'приблизительно' : 'грубо');
       var range = (res.estimate.min != null && res.estimate.max != null)
-        ? ' ~' + Number(res.estimate.min).toFixed(1) + '–' + Number(res.estimate.max).toFixed(1) + ' chaos'
+        ? ' ~' + fmtChaosNum(res.estimate.min) + '–' + fmtChaosNum(res.estimate.max) + ' chaos'
         : '';
-      est.innerHTML = '<span class="value">' + Number(res.estimate.median).toFixed(1) + ' chaos</span>' +
+      est.innerHTML = '<span class="value">' + fmtChaosNum(res.estimate.median) + ' chaos</span>' +
         '<span class="range">' + esc(range) + '</span>' +
         '<span class="conf">(' + esc(conf) + ')</span>';
       est.querySelector('.range').textContent = '';
@@ -1748,7 +1757,7 @@ export const rendererHtml = `<!doctype html>
         }
         chVals.sort(function (a, b) { return a - b; });
         var chMid = chVals.length
-          ? ' · ≈<b style="color:var(--accent)">' + Number(chVals[Math.floor(chVals.length / 2)]).toFixed(1) + '</b> chaos'
+          ? ' · ≈<b style="color:var(--accent)">' + fmtChaosNum(chVals[Math.floor(chVals.length / 2)]) + '</b> chaos'
           : '';
         rows += '<tr><td colspan="3" class="grp">' + esc(curNames[gi]) +
           ' · предложений: ' + g.length + ' · медиана: <b>' + esc(String(gmid)) + '</b>' + chMid + '</td></tr>';
@@ -1787,7 +1796,7 @@ export const rendererHtml = `<!doctype html>
     var head = $('priceBatchHead');
     var total = payload.totalEstimate;
     var headTxt = '📦 Предметов: ' + items.length;
-    if (total != null) headTxt += ' · сумма ~' + Number(total).toFixed(1) + ' chaos';
+    if (total != null) headTxt += ' · сумма ~' + fmtChaosNum(total) + ' chaos';
     if (payload.elapsedMs != null) headTxt += ' · ' + Math.round(payload.elapsedMs / 1000) + 'с';
     head.textContent = headTxt;
 
@@ -1796,7 +1805,7 @@ export const rendererHtml = `<!doctype html>
       var estTxt;
       if (res.estimate && res.estimate.median != null) {
         var conf = res.estimate.confidence === 'exact' ? '' : (res.estimate.confidence === 'approx' ? ' ~' : ' грубо');
-        estTxt = '<span class="value">≈' + Number(res.estimate.median).toFixed(1) + ' chaos</span>' + '<span class="conf">(' + esc(conf) + ')</span>';
+        estTxt = '<span class="value">≈' + fmtChaosNum(res.estimate.median) + ' chaos</span>' + '<span class="conf">(' + esc(conf) + ')</span>';
       } else {
         estTxt = '<span class="muted">н/д</span>';
       }

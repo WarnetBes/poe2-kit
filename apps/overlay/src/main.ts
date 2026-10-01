@@ -474,9 +474,19 @@ function startAgentQueuePolling(): void {
   console.log(`[overlay] agent queue: polling ${AGENT_QUEUE_FILE} (userData + рядом с dist) каждые ${AGENT_QUEUE_POLL_MS} мс`);
 }
 
+/** №113c: адаптивная точность цен — хаосовые цены бывает < 0.1 (0.015 = пол-экза),
+ *  toFixed(1) давал бессмысленный алерт «0.0 → 0.0» (лог-факт 04:46:30Z). */
 function fmtChaos(v: number): string {
-  return Number.isFinite(v) ? Number(v).toFixed(1) : String(v);
+  if (!Number.isFinite(v)) return String(v);
+  const a = Math.abs(v);
+  if (a >= 10) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(2);
+  return v.toFixed(3);
 }
+
+/** №113c: порог падения для алерта (доля от базовой линии). Медиана trade2
+ *  шумит на ±единицы процентов; без порога алертило на −6% по мелочи. */
+const WATCH_DROP_ALERT_REL = 0.1;
 
 /** Всплывающее уведомление о падении цены: системный тост Windows + инлайн-тост в оверлее. */
 function notifyWatchDrop(entry: WatchEntry, from: number, to: number): void {
@@ -522,7 +532,10 @@ async function pollWatchEntry(entry: WatchEntry): Promise<void> {
     entry.updatedAt = Date.now();
     return;
   }
-  const dropped = m < entry.lastPrice;
+  // №113c: алерт — только падение ≥10% от базовой линии (шум медианы trade2
+  // на мелких дробях раньше алертил на −6% с текстом «0.0 → 0.0»).
+  // База при падении НЕ двигается: накопленное падение за порог — всё равно алерт.
+  const dropped = entry.lastPrice > 0 && (entry.lastPrice - m) / entry.lastPrice >= WATCH_DROP_ALERT_REL;
   if (dropped && !entry.alerted) {
     // Падение от базовой линии: уведомляем один раз, базу не двигаем,
     // следующий алерт возможен после восстановления цены.
