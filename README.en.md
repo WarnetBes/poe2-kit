@@ -169,6 +169,8 @@ Support is entirely optional; a thank-you in the issues is already great.
 
 - **SBP / Russian bank transfer (Alfa-Bank / Rosselkhozbank)** — by phone
   `+7 981 760-60-27` (any Russian banking app: “SBP transfer” → phone → pick bank).
-- **WebMoney** — WMID `649044135447`.
+- **WebMoney** (WMID `649044135447`) — purses:
+  - `Z235374758440` (USD) · `E248778175899` (EUR)
+  - `T958910155976` · `Q495876683152` · `M672735954801` · `F873704704436` · `H177756398822` · `X190692638474` · `L890511223722`
 
 </details>
