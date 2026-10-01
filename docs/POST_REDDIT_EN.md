@@ -81,3 +81,24 @@ specifically unsure whether the combo-import code PoB2 accepts cleanly on
 all setups, and whether non-RU players want a full translation of the panel
 UI (it's currently RU with EN item data). Bug reports and ideas → issues on
 GitHub or SourceCraft. Thanks for reading!
+
+## Publish checklist (r/PathOfExile2)
+
+1. **Rules вживую**: открыть https://www.reddit.com/r/PathOfExile2/about/rules
+   в браузере (из рабочей сессии reddit отдаёт Cloudflare-блок — правила
+   не верифицированы). Если есть отдельные требования к self-promo / tool-постам
+   (флейр «Tool», «Feedback», модератор-аппрув) — соблюсти их.
+2. **Аккаунт**: постить с аккаунта с историей участия (не свежая регистрация);
+   если аккаунт новый — сначала 2–3 недели обычных комментариев. В посте
+   уже есть прозрачность («I built»), это и есть reddit-гигиена.
+3. **Тип поста**: text-post (не link-post) — тело выше, ссылка внутри.
+   Заголовок — вариант 1 или 3 (вариант 2 мягче, но длиннее 220 симв. —
+   reddit режет; проверить лимит при вставке).
+4. **Время**: постить в прайм NA/EU (18:00–21:00 UTC), не в выходной поток
+   лутеров — иначе bury без чтения.
+5. **После поста**: не отвечать на каждое сообщение шаблоном; отвечать по
+   делу, критику про «RU panel» принимать как roadmap-факт.
+6. **Не кросспостить** тот же текст в другие сабреддиты в один день —
+   анти-спам-фильтр reddit помечает одинаковое содержимое как
+   скоординированный спам.
+
