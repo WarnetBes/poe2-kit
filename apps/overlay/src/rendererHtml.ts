@@ -3472,6 +3472,7 @@ export const rendererHtml = `<!doctype html>
       '<span class="close-info" id="infoWinClose" title="Закрыть">✕</span></div>';
     for (var i = 0; i < inf.b.length; i++) html += '<div>· ' + inf.b[i] + '</div>';
     html += '<div class="sub" style="margin-top:8px">ℹ — повторное нажатие закрывает это окно.</div>';
+    html += '<div class="sub" style="margin-top:4px">☕ Kit бесплатный и без рекламы. Помочь разработке (СБП / WebMoney) — раздел «Поддержка» в README проекта.</div>';
     w.innerHTML = html;
     w.classList.remove('hide');
     document.getElementById('infoWinClose').addEventListener('click', hideInfoWin);
