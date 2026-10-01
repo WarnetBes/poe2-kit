@@ -1849,12 +1849,19 @@ export const rendererHtml = `<!doctype html>
       showImportView();
       return;
     }
-    setBusy(false);
-    $('idle').classList.add('hide');
-    $('body').classList.remove('hide');
-    $('est').classList.add('hide');
-    $('busy').classList.add('hide');
-    showMode('build');
+    // №138-бис (живой репорт: «открыл Курс — перекидывает на Билд»): build:update
+    // приходит фоном (charSync/watch/прайсинг) — НЕ воровать активную вкладку.
+    // Данные рендерим (buildSum свежий при возврате), но showMode('build')
+    // дёргаем только если юзер на Билде или панель ещё в idle-старте.
+    const steal = activeTab === '' || activeTab === 'build';
+    if (steal) {
+      setBusy(false);
+      $('idle').classList.add('hide');
+      $('body').classList.remove('hide');
+      $('est').classList.add('hide');
+      $('busy').classList.add('hide');
+      showMode('build');
+    }
     renderBuild(state);
     // Инфо-сообщение (например, «синхронизация включена») — тем же блоком, но без «⚠».
     if (state.info) {
