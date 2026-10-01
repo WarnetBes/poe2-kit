@@ -3802,39 +3802,99 @@ function setupIPC(): void {
   });
 
   // ─── №139: «🔗 Конструктор связок» — данные гемов из ЛОКАЛЬНЫХ датасетов ────
-  // Никакой сети и выдумок: активные (getSkillGums: skillTypes, unlock) и
+  // Никакой сети и выдумок: активные (getSkillGems: skillTypes, unlock) и
   // саппорты (getSupportGems: compatible_with) — офлайн-датасет PoE2.
   // RU-имена — верифицированный gemsRuEn (гем ⇄ RU-страница poe2db).
-  let gemdataCache: unknown = null;
-  ipcMain.handle('buildgen:gemdata', async () => {
+  // №141: IPC-пейлоад ~2000 гемов одним сообщением лагал рендерер
+  // (structured-clone всего массива за один тик) — теперь ЧАНКАМИ:
+  // {offset,limit} → срез, рендерер тянет последовательными короткими
+  // запросами. Вызов без параметра = полный пейлоад (обратная совместимость).
+  interface GemdataItem {
+    kind: 'active' | 'support';
+    en: string;
+    ru: string | null;
+    types?: string[];
+    unlock?: number;
+    cost?: unknown | null;
+    compat?: string[];
+  }
+  let gemdataCache: GemdataItem[] | null = null;
+  function buildGemdata(): GemdataItem[] {
+    if (gemdataCache) return gemdataCache;
+    seedGemDictFromDataset(); // гарантия: gemEnRu засеян офлайн-датасетом
+    const activesAll = core.dataset.getSkillGems();
+    const supportsAll = core.dataset.getSupportGems();
+    const actives: GemdataItem[] = activesAll
+      .filter((g) => g.name && g.source?.kind === 'UncutSkillGem')
+      .map((g) => ({
+        kind: 'active' as const,
+        en: g.name,
+        ru: gemEnRu.get(normName(g.name)) ?? null,
+        types: (g.skillTypes ?? []).filter((t: string) => t !== 'Invokable'),
+        unlock: g.source?.unlockLevel ?? 0,
+        cost: g.firstLevelCost ?? null,
+      }));
+    const supports: GemdataItem[] = supportsAll
+      .filter((s) => s.name && Array.isArray(s.compatible_with))
+      .map((s) => ({
+        kind: 'support' as const,
+        en: s.name,
+        ru: gemEnRu.get(normName(s.name)) ?? null,
+        compat: s.compatible_with,
+      }));
+    gemdataCache = [...actives, ...supports];
+    console.log(`[overlay] buildgen:gemdata: ${actives.length} активных, ${supports.length} саппортов (офлайн-датасет, чанки по запросу)`);
+    return gemdataCache;
+  }
+  ipcMain.handle('buildgen:gemdata', (_evt, p?: { offset?: number; limit?: number }) => {
     try {
-      seedGemDictFromDataset(); // гарантия: gemEnRu засеян офлайн-датасетом
-      if (gemdataCache) return { ok: true, ...(gemdataCache as object) };
-      const activesAll = core.dataset.getSkillGems();
-      const supportsAll = core.dataset.getSupportGems();
-      const actives = activesAll
-        .filter((g) => g.name && g.source?.kind === 'UncutSkillGem')
-        .map((g) => ({
-          en: g.name,
-          ru: gemEnRu.get(normName(g.name)) ?? null,
-          types: (g.skillTypes ?? []).filter((t: string) => t !== 'Invokable'),
-          unlock: g.source?.unlockLevel ?? 0,
-          cost: g.firstLevelCost ?? null,
-        }));
-      const supports = supportsAll
-        .filter((s) => s.name && Array.isArray(s.compatible_with))
-        .map((s) => ({
-          en: s.name,
-          ru: gemEnRu.get(normName(s.name)) ?? null,
-          compat: s.compatible_with,
-        }));
-      const payload = { actives, supports, nActive: actives.length, nSupport: supports.length };
-      gemdataCache = payload;
-      console.log(`[overlay] buildgen:gemdata: ${actives.length} активных, ${supports.length} саппортов (офлайн-датасет)`);
-      return { ok: true, ...payload };
+      const items = buildGemdata();
+      const nActive = items.reduce((n, x) => (x.kind === 'active' ? n + 1 : n), 0);
+      const nSupport = items.length - nActive;
+      const off = typeof p?.offset === 'number' && p.offset >= 0 ? p.offset : null;
+      if (off == null) {
+        // Легаси-вызов без параметров — полный пейлоад (совместимость).
+        return { ok: true, actives: items.filter((x) => x.kind === 'active'), supports: items.filter((x) => x.kind === 'support'), nActive, nSupport };
+      }
+      const limit = typeof p?.limit === 'number' && p.limit > 0 ? Math.min(p.limit, 500) : 400;
+      return { ok: true, offset: off, limit, total: items.length, nActive, nSupport, done: off + limit >= items.length, items: items.slice(off, off + limit) };
     } catch (err) {
       console.warn('[overlay] buildgen:gemdata failed:', (err as Error).message);
       return { ok: false, error: `Датасет гемов недоступен: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №141: импорт-код для связки из конструктора ───────────────────────────
+  // PoB-код = urlsafe(base64(zlib(XML))); энкодер core.pobcode.encodeShareCode.
+  // XML секция Skills — формат сверен с живым экспортом PoE2 (char_L48_*.xml):
+  // <Skill enabled="true"> + <Gem nameSpec="…" level="N" quality="0" enabled="true"/>.
+  // gemId/skillId НЕ пишем: точные значения без живого PoB не вывести
+  // (пример из живого XML: nameSpec «Charge Profusion I» ↔ skillId
+  // «SupportChargeProfusionPlayer» — алгоритмом не выводится). Оверлейный
+  // импорт парсит nameSpec (buildGemSetups: nameSpec ?? skillId); PoB2 тоже
+  // резолвит по nameSpec (❓ живая проверка друга в PoB2).
+  function xmlEsc(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  ipcMain.handle('buildgen:combocode', (_evt, p: { actives?: Array<{ en: string; unlock?: number }>; supports?: Record<string, string[]> }) => {
+    try {
+      const actives = (p?.actives ?? []).filter((a) => a && typeof a.en === 'string' && a.en);
+      if (!actives.length) return { ok: false, error: 'Связка пуста — выбери хотя бы один активный навык.' };
+      const supports = p?.supports ?? {};
+      const groups = actives.map((a) => {
+        const lvl = Math.max(1, Math.min(40, Number(a.unlock) > 0 ? Number(a.unlock) : 1));
+        const sups = (supports[a.en] ?? []).filter((s): s is string => typeof s === 'string' && !!s).slice(0, 5);
+        const gems = [`<Gem nameSpec="${xmlEsc(a.en)}" level="${lvl}" quality="0" count="1" enabled="true"/>`, ...sups.map((s2) => `<Gem nameSpec="${xmlEsc(s2)}" level="${lvl}" quality="0" count="1" enabled="true"/>`)].join('\n');
+        return `<Skill enabled="true" label="${xmlEsc(a.en)}" mainActiveSkill="1">\n${gems}\n</Skill>`;
+      }).join('\n');
+      const xml = `<PathOfBuilding>\n<Build level="1" mainSkillGroup="1" viewMode="CODE"/>\n<Skills activeSkillSet="1">\n<SkillSet id="1">\n${groups}\n</SkillSet>\n</Skills>\n</PathOfBuilding>`;
+      const code = core.pobcode.encodeShareCode(xml);
+      clipboard.writeText(code);
+      console.log(`[overlay] buildgen:combocode: ${actives.length} активных, код ${code.length} симв. записан в буфер`);
+      return { ok: true, code, chars: code.length, nActives: actives.length, nSupports: Object.values(supports).reduce((n, v) => n + (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x).length : 0), 0) };
+    } catch (err) {
+      console.warn('[overlay] buildgen:combocode failed:', (err as Error).message);
+      return { ok: false, error: `Не удалось собрать код: ${(err as Error).message}` };
     }
   });
 

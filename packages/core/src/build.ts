@@ -678,7 +678,12 @@ export async function buildGemSetups(input: string): Promise<GemSetup[]> {
       continue;
     }
     // Активный камень: не саппорт (по gemId), саппорты — остальные.
-    const isSupport = (x: { gemId: string; variant: string }) => /support/i.test(x.gemId) || /Support$/.test(x.variant);
+    // №141: добавлен name-тест «… Support» — верифицировано по датасету
+    // (680/680 саппортов оканчиваются на « Support», 0/1365 активных так не
+    // называются). Нужен кодам БЕЗ gemId/variantId (конструктор связок №141
+    // пишет честный nameSpec — выдумывать PoB-идентификаторы запрещено).
+    const isSupport = (x: { gemId: string; variant: string; name: string }) =>
+      /support/i.test(x.gemId) || /Support$/.test(x.variant) || /\sSupport$/.test(x.name);
     const activeGem = gems.find((x) => !isSupport(x)) ?? gems[0];
     // Ascendancy-камень (напр. Meditate) — пассивный, не вставляется никуда.
     if (/ascendancy/i.test(activeGem.gemId) || activeGem.variant.startsWith('Ascendancy')) {

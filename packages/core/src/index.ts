@@ -89,6 +89,7 @@ import * as starterBuildsMod from './starterBuilds.js';
 import * as endgameMod from './endgame.js';
 import * as questRewardsMod from './questRewards.js';
 import * as craftMod from './craftGuide.js';
+import * as pobcodeMod from './pobcode.js';
 
 export const core = {
   trade,
@@ -130,6 +131,7 @@ export const core = {
   endgame: endgameMod,
   questRewards: questRewardsMod,
   craft: craftMod,
+  pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
 };
 
 export default core;

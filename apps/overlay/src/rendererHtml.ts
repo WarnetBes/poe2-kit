@@ -1453,10 +1453,29 @@ export const rendererHtml = `<!doctype html>
   function loadCombo() {
     var host = $('genContent');
     if (host) host.innerHTML = '<div class="lvl-hint">Загружаю датасет гемов…</div>';
-    window.poe2k.buildgenGemData().then(function (res) {
-      comboData = res;
-      renderGenView();
-    }).catch(function (err) {
+    // №141: датасет ~2000 гемов одним IPC-пакетом лагал рендерер —
+    // тянем ЧАНКАМИ по 400, между запросами рендерер свободен.
+    comboData = null;
+    var acts = [], sups = [], nA = 0, nS = 0, got = 0, total = 0;
+    function pull(offset) {
+      return window.poe2k.buildgenGemData({ offset: offset, limit: 400 }).then(function (res) {
+        if (!res || !res.ok) throw new Error(res && res.error ? res.error : 'датасет недоступен');
+        nA = res.nActive || nA; nS = res.nSupport || nS; total = res.total || total;
+        var items = res.items || [];
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].kind === 'support') sups.push(items[i]); else acts.push(items[i]);
+        }
+        got += items.length;
+        if (host && !comboData) host.innerHTML = '<div class="lvl-hint">Загружаю датасет гемов… ' + got + (total ? '/' + total : '') + '</div>';
+        if (res.done || (total && got >= total)) {
+          comboData = { ok: true, actives: acts, supports: sups, nActive: nA, nSupport: nS };
+          renderGenView();
+        } else {
+          return pull(offset + items.length);
+        }
+      });
+    }
+    pull(0).catch(function (err) {
       comboData = { ok: false, error: 'IPC error: ' + err };
       renderGenView();
     });
@@ -1532,20 +1551,37 @@ export const rendererHtml = `<!doctype html>
             (ps.length ? '<br><span style="color:var(--dim)">+ ' + ps.map(esc).join(', ') + '</span>' : '') +
             '</div></div>';
         }).join('') +
-        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div></div>'
+        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div>' +
+        '<div class="tree-chips" style="margin-top:4px">' +
+        '<button class="tree-chip" data-cmbcode="1">📋 Код импорта (в буфер)</button></div>' +
+        '<div class="lvl-hint" data-cmbcodemsg style="min-height:14px"></div></div>'
       : '';
     host.innerHTML = genModeChips() +
-      '<div class="lvl-hint">Собери атаку: фильтр → активные → саппорты. Пример друга ⬇ одним кликом.</div>' +
-      '<div class="tree-chips"><button class="tree-chip" data-cmbpreset="1">⚡ Молния по карте + стая волков + комета с неба</button></div>' +
+      '<div class="lvl-hint">Собери связку: фильтр → активные → саппорты. Готовый набор можно выгрузить кодом импорта.</div>' +
       (tc ? '<div class="tree-chips">' + tc + '</div>' : '') +
       actList + supBlocks + comboSum;
     bindGenMode(host);
-    var p = host.querySelector('[data-cmbpreset]');
-    if (p) p.addEventListener('click', function () {
-      comboTags = [];
-      comboSel = ['Ball Lightning', 'Azmerian Wolf', 'Comet'];
-      comboSups = {};
-      renderComboView();
+    var cc = host.querySelector('[data-cmbcode]');
+    if (cc) cc.addEventListener('click', function () {
+      var msgEl = host.querySelector('[data-cmbcodemsg]');
+      if (msgEl) msgEl.textContent = 'Собираю код…';
+      var payload = {
+        actives: comboSel.map(function (en) {
+          var a = A.find(function (x) { return x.en === en; });
+          return { en: en, unlock: a ? (a.unlock || 0) : 0 };
+        }),
+        supports: comboSups,
+      };
+      // №141: main собирает PoB-XML (nameSpec-формат) → encodeShareCode → буфер.
+      window.poe2k.buildgenComboCode(payload).then(function (res) {
+        if (!msgEl) return;
+        if (res && res.ok) {
+          msgEl.textContent = '✅ Код (' + res.chars + ' симв.) в буфере — Ctrl+F3 вставит билд сюда; Paste в PoB2 тоже должен принять.';
+        } else {
+          msgEl.style.color = '#e07070';
+          msgEl.textContent = res && res.error ? res.error : 'Не удалось собрать код.';
+        }
+      });
     });
     var tt = host.querySelectorAll('[data-cmbtag]');
     for (var i = 0; i < tt.length; i++) {

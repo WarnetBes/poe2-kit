@@ -78,7 +78,10 @@ export interface OverlayAPI {
   /** №136: мета-генератор билдов ({ league, slugs, sample, classes: [...] }). */
   buildgenMeta(leagueSlug?: string): Promise<unknown>;
   /** №139: данные гемов для конструктора связок ({ actives, supports }) — офлайн-датасет. */
-  buildgenGemData(): Promise<unknown>;
+  /** №141: чанковая загрузка датасета гемов ( offset..offset+limit ). */
+  buildgenGemData(chunk?: { offset: number; limit?: number }): Promise<unknown>;
+  /** №141: импорт-код связки из конструктора (копируется в буфер обмена). */
+  buildgenComboCode(payload: unknown): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -212,7 +215,9 @@ const api: OverlayAPI = {
   currencyRates: (league) => ipcRenderer.invoke('currency:rates', league),
 
   buildgenMeta: (leagueSlug) => ipcRenderer.invoke('buildgen:meta', leagueSlug),
-  buildgenGemData: () => ipcRenderer.invoke('buildgen:gemdata'),
+  buildgenGemData: (chunk) => ipcRenderer.invoke('buildgen:gemdata', chunk),
+  // №141: импорт-код связки конструктора (вернёт ok+code, main кладёт в буфер).
+  buildgenComboCode: (payload) => ipcRenderer.invoke('buildgen:combocode', payload),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);
