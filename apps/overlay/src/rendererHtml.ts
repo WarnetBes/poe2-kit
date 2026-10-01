@@ -305,6 +305,13 @@ export const rendererHtml = `<!doctype html>
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; }
   .corner-row button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  /* №105: пипетки цветов доступности */
+  .color-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .color-row label { font-size: 11px; color: var(--dim); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .color-row input[type="color"] { width: 28px; height: 20px; padding: 0; border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 4px; background: transparent; cursor: pointer; }
+  .color-row button { font-size: 10px; padding: 3px 8px; cursor: pointer; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15); color: var(--dim); border-radius: 6px; }
   /* №64: вкладки-кнопки — открывают кликом то же, что хоткеи. */
   .tabrow { display: flex; gap: 4px; }
   .tabrow button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
@@ -445,6 +452,24 @@ export const rendererHtml = `<!doctype html>
         <span>Лига (для цен и курсов)</span>
         <select id="setLeague"></select>
         <div class="tip">Список — из poe2scout (✦ = актуальная челлендж-лига). Применяется сразу и сохраняется — цены пересчитаются под выбранную лигу.</div>
+      </div>
+
+      <div class="set-row">
+        <div class="lbl"><span>🎨 Цвета <small>— доступность: дальтонизм, контраст</small></span></div>
+        <div class="corner-row" id="themeRow">
+          <button data-theme="default" title="Стандартная тема kit">Обычная</button>
+          <button data-theme="contrast" title="Чёрный фон, белый текст — максимальный контраст">Контраст</button>
+          <button data-theme="cb" title="Палитра Okabe-Ito: безопасна при красно-зелёной и сине-жёлтой слепоте (статусы различимы и по светлоте)">Дальтонизм</button>
+          <button data-theme="custom" title="Свои цвета — пипетки ниже">Свои</button>
+        </div>
+        <div class="color-row">
+          <label>Фон <input type="color" id="setColBg" value="#0d1117" /></label>
+          <label>Текст <input type="color" id="setColFg" value="#f0e6d2" /></label>
+          <label>Второстеп. <input type="color" id="setColDim" value="#a89a83" /></label>
+          <label>Акцент <input type="color" id="setColAccent" value="#c69a52" /></label>
+          <button id="setColReset" title="Вернуть стандартную тему">↺ Сброс</button>
+        </div>
+        <div class="tip">Применяется сразу. При проблемах восприятия цвета пробуйте «Дальтонизм» (универсальная палитра Okabe-Ito) или «Контраст». «Свои» — точечная настройка фона/текста пипетками; статусы (✅/⚠/✕) меняет только тема.</div>
       </div>
 
       <div class="set-row">
@@ -1596,6 +1621,8 @@ export const rendererHtml = `<!doctype html>
   var hkInputs = {};
 
   function currentDraft() {
+    var themeBtn = document.querySelector('#themeRow .on');
+    var draftTheme = themeBtn ? themeBtn.getAttribute('data-theme') : 'default';
     return {
       corner: document.querySelector('#cornerRow .on')?.getAttribute('data-corner') || 'top-right',
       opacity: Number($('setOpacity').value) / 100,
@@ -1607,6 +1634,14 @@ export const rendererHtml = `<!doctype html>
       bindWindow: !!$('setBindWindow').checked,
       autoClipboard: !!$('setAutoClip').checked,
       gemLang: $('gemLangEn').classList.contains('on') ? 'en' : 'ru',
+      // №105: тема доступности + свои цвета (пипетки).
+      theme: draftTheme,
+      colors: draftTheme === 'custom' ? {
+        bg: $('setColBg').value,
+        fg: $('setColFg').value,
+        dim: $('setColDim').value,
+        accent: $('setColAccent').value,
+      } : {},
       hotkeys: {}
     };
   }
@@ -1632,6 +1667,14 @@ export const rendererHtml = `<!doctype html>
     $('setAutoClip').checked = !!s.autoClipboard;
     $('setBindWindow').checked = s.bindWindow !== false;
     paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
+    // №105: тема доступности + пипетки.
+    paintTheme((s.theme === 'contrast' || s.theme === 'cb' || s.theme === 'custom') ? s.theme : 'default');
+    if (s.colors) {
+      if (s.colors.bg) $('setColBg').value = s.colors.bg;
+      if (s.colors.fg) $('setColFg').value = s.colors.fg;
+      if (s.colors.dim) $('setColDim').value = s.colors.dim;
+      if (s.colors.accent) $('setColAccent').value = s.colors.accent;
+    }
     setDirty.opacity = true; setDirty.scale = true; setDirty.width = true; setDirty.height = true;
     window.poe2k.learnInfo().then(function (li) {
       if (!li) return;
@@ -1817,6 +1860,37 @@ export const rendererHtml = `<!doctype html>
     });
   }
 
+  // №105: тема цветов применяется мгновенно (как угол) — эффект виден сразу
+  // на открытой панели, «Сохранить» для неё не нужен.
+  var themeBtns = document.querySelectorAll('#themeRow button');
+  for (var th = 0; th < themeBtns.length; th++) {
+    themeBtns[th].addEventListener('click', function () {
+      var theme = this.getAttribute('data-theme');
+      paintTheme(theme);
+      var draft = currentDraft();
+      draft.hotkeys = collectHotkeys();
+      applyThemeColors(draft.theme, draft.colors, Number($('setOpacity').value) / 100);
+      window.poe2k.settingsApply(draft).catch(function () {});
+    });
+  }
+  ['setColBg', 'setColFg', 'setColDim', 'setColAccent'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      // Пипетка = режим «Свои»: автоматически переключаем тему и красим живьём.
+      paintTheme('custom');
+      var draft = currentDraft();
+      draft.hotkeys = collectHotkeys();
+      applyThemeColors('custom', draft.colors, Number($('setOpacity').value) / 100);
+      window.poe2k.settingsApply(draft).catch(function () {});
+    });
+  });
+  $('setColReset').addEventListener('click', function () {
+    paintTheme('default');
+    var draft = currentDraft();
+    draft.hotkeys = collectHotkeys();
+    applyThemeColors('default', null, Number($('setOpacity').value) / 100);
+    window.poe2k.settingsApply(draft).catch(function () {});
+  });
+
   // Язык имён камней: применяется мгновенно (как угол) — это лишь имена в панели.
   var gemLangBtns = { ru: $('gemLangRu'), en: $('gemLangEn') };
   ['ru', 'en'].forEach(function (lang) {
@@ -1833,6 +1907,61 @@ export const rendererHtml = `<!doctype html>
   function paintGemLang(lang) {
     gemLangBtns.ru.classList.toggle('on', lang === 'ru');
     gemLangBtns.en.classList.toggle('on', lang === 'en');
+  }
+
+  // №105: цвета доступности. Пресеты (CSS-переменные :root):
+  //  - contrast: чёрный/белый — максимальная светимость текста; статусы
+  //    различимы и по светлоте (✕ ярче ⚠ ярче ✅ по насыщенности, все с иконками).
+  //  - cb: палитра Okabe-Ito (Okabe & Ito, 2008) — универсально безопасна при
+  //    красно-зелёной (де-/протанопия) и сине-жёлтой (тританопия) слепоте:
+  //    небесно-синий/жёлтый/киноварь/сине-зелёный различимы по тону И светлоте.
+  var lastOpacity = 0.86;
+  var THEME_PRESETS = {
+    default: null,
+    contrast: { bg: '#000000', fg: '#ffffff', dim: '#e0e0e0', accent: '#ffd700',
+      border: 'rgba(255,215,0,0.85)', ok: '#00e676', warn: '#ffffff', err: '#ff4040' },
+    cb: { bg: '#10151b', fg: '#ffffff', dim: '#b0bec5', accent: '#56b4e9',
+      border: 'rgba(86,180,233,0.65)', ok: '#009e73', warn: '#f0e442', err: '#d55e00' },
+  };
+  function hexToRgba(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha == null ? 1 : alpha).toFixed(2) + ')';
+  }
+  /** Применить тему/цвета к CSS-переменным. theme='custom' — только пипетки. */
+  function applyThemeColors(theme, colors, opacity) {
+    var rootStyle = document.documentElement.style;
+    if (typeof opacity === 'number') lastOpacity = opacity;
+    // Сброс к дефолту (:root) — снимаем все переопределения.
+    ['--bg', '--fg', '--dim', '--accent', '--border', '--ok', '--warn', '--err'].forEach(function (v) {
+      rootStyle.removeProperty(v);
+    });
+    var bg = null, fg = '#f0e6d2', dim = '#a89a83', accent = '#c69a52';
+    var preset = THEME_PRESETS[theme];
+    if (preset) {
+      bg = preset.bg; fg = preset.fg; dim = preset.dim; accent = preset.accent;
+      rootStyle.setProperty('--border', preset.border);
+      rootStyle.setProperty('--ok', preset.ok);
+      rootStyle.setProperty('--warn', preset.warn);
+      rootStyle.setProperty('--err', preset.err);
+    }
+    if (theme === 'custom' && colors) {
+      if (colors.bg) bg = colors.bg;
+      if (colors.fg) fg = colors.fg;
+      if (colors.dim) dim = colors.dim;
+      if (colors.accent) accent = colors.accent;
+    }
+    // 'default' — не трогаем :root вовсе (CSS-дефолты). Любая другая тема —
+    // перекрашиваем фон (с сохранением альфы прозрачности) и текст.
+    if (theme !== 'default') {
+      if (bg) rootStyle.setProperty('--bg', hexToRgba(bg, lastOpacity));
+      rootStyle.setProperty('--fg', fg);
+      rootStyle.setProperty('--dim', dim);
+      rootStyle.setProperty('--accent', accent);
+    }
+  }
+  function paintTheme(theme) {
+    var btns = document.querySelectorAll('#themeRow button');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-theme') === theme);
   }
 
   // Открытие/закрытие панели настроек (Ctrl+F6 из main).
@@ -1871,6 +2000,16 @@ export const rendererHtml = `<!doctype html>
     }
   }
   bindTabs();
+  // №105: применить сохранённую тему/цвета при загрузке (main шлёт settings:display
+  // только при изменениях, а не на старте) — берём настройки сами.
+  window.poe2k.settingsGet().then(function (s) {
+    if (!s) return;
+    applyThemeColors(
+      s.theme === 'contrast' || s.theme === 'cb' || s.theme === 'custom' ? s.theme : 'default',
+      s.colors || null,
+      typeof s.opacity === 'number' ? s.opacity : 0.86
+    );
+  }).catch(function () {});
   // №65: клики по оверлею. Окно по умолчанию click-through
   // (setIgnoreMouseEvents(true,{forward:true}), main.ts) — ВСЕ кнопки UI
   // (вкладки/✕/слайдеры) были некликабельны вне режима Ctrl+F5. С forward:true
@@ -1902,9 +2041,12 @@ export const rendererHtml = `<!doctype html>
   // Применение настроек отображения из main (прозрачность/масштаб/ширина/угол).
   window.poe2k.onSettingsDisplay(function (s) {
     if (!s) return;
-    // Прозрачность фона панели (свой --bg альфа), текст остаётся читаемым.
-    var alpha = (typeof s.opacity === 'number' ? s.opacity : 0.86);
-    document.documentElement.style.setProperty('--bg', 'rgba(13,17,23,' + alpha.toFixed(2) + ')');
+    // Прозрачность фона панели + тема/цвета доступности (№105) — единым путём:
+    applyThemeColors(
+      s.theme === 'contrast' || s.theme === 'cb' || s.theme === 'custom' ? s.theme : 'default',
+      s.colors || null,
+      typeof s.opacity === 'number' ? s.opacity : 0.86
+    );
     // Масштаб UI через zoom (учитывается в авторазмере высоты).
     var z = (typeof s.scale === 'number' ? s.scale : 1);
     var panel = $('panel');

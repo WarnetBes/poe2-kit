@@ -182,6 +182,13 @@ interface OverlaySettings {
   autoClipboard?: boolean;
   /** Язык имён камней в панели билда и рекомендациях: 'ru' (кли ru-клиента) | 'en'. */
   gemLang?: 'ru' | 'en';
+  /** №105: цветовая тема доступности. 'contrast' — максимальный контраст,
+   *  'cb' — палитра Okabe-Ito (безопасна при красно-зелёной и сине-жёлтой
+   *  слепоте; статусы различимы и по светлоте), 'custom' — свои цвета ниже. */
+  theme?: 'default' | 'contrast' | 'cb' | 'custom';
+  /** №105: свои цвета (hex '#rrggbb'), применяются при theme='custom'
+   *  (частично — поверх дефолтной темы). */
+  colors?: { bg?: string; fg?: string; dim?: string; accent?: string };
 }
 
 type HotkeyAction =
@@ -202,6 +209,8 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   hotkeys: {},
   bindWindow: true,
   gemLang: 'ru',
+  theme: 'default',
+  colors: {},
 };
 
 /** Стандартные хоткеи для действия (если пользователь не переопределил). */
@@ -786,29 +795,20 @@ function settingsFile(): string {
 }
 
 function loadSettings(): OverlaySettings {
-  const base: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
+  // №105: единая проверка настроек — тот же normalizeSettings, что и для
+  // settings:apply (раньше hand-parse ВЫБРАСЫВАЛ height/autoHeight/gemLang —
+  // ручная высота и язык камней не переживали рестарт).
   try {
     // BOM-толерантность: файл иногда правят PowerShell-ом (Set-Content -Encoding utf8
     // в Windows PowerShell = UTF-8 с BOM) — JSON.parse с '\uFEFF' падает, и overlay
     // молча уходил в дефолты. BOM срезаем перед парсингом.
     let text = fs.readFileSync(settingsFile(), 'utf8');
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-    const raw = JSON.parse(text);
-    if (raw && typeof raw === 'object') {
-      const corners: OverlayCorner[] = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
-      if (corners.includes(raw.corner)) base.corner = raw.corner;
-      if (typeof raw.opacity === 'number') base.opacity = clamp(raw.opacity, 0.25, 1);
-      if (typeof raw.scale === 'number') base.scale = clamp(raw.scale, 0.7, 1.4);
-      if (typeof raw.width === 'number') base.width = clamp(Math.round(raw.width), 280, 640);
-      if (raw.hotkeys && typeof raw.hotkeys === 'object') base.hotkeys = { ...raw.hotkeys };
-      if (typeof raw.learn === 'boolean') base.learn = raw.learn;
-      if (typeof raw.bindWindow === 'boolean') base.bindWindow = raw.bindWindow;
-      if (typeof raw.autoClipboard === 'boolean') base.autoClipboard = raw.autoClipboard;
-    }
+    return normalizeSettings(JSON.parse(text));
   } catch {
     /* нет файла или он битый — берём настройки по умолчанию */
+    return { ...DEFAULT_SETTINGS, hotkeys: {} };
   }
-  return base;
 }
 
 function saveSettings(s: OverlaySettings): void {
@@ -1025,6 +1025,8 @@ function pushDisplaySettings(): void {
     scale: settings.scale,
     width: overlayWidth,
     corner: settings.corner,
+    theme: settings.theme ?? 'default',
+    colors: settings.colors ?? {},
   });
 }
 
@@ -1078,6 +1080,19 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
   if (raw.gemLang === 'en' || raw.gemLang === 'ru') next.gemLang = raw.gemLang;
+  // №105: цветовая тема доступности.
+  const themes = ['default', 'contrast', 'cb', 'custom'] as const;
+  if (themes.includes(raw.theme as (typeof themes)[number])) next.theme = raw.theme as OverlaySettings['theme'];
+  if (raw.colors && typeof raw.colors === 'object') {
+    const HEX_RE = /^#[0-9a-f]{6}$/i;
+    const src = raw.colors as Record<string, unknown>;
+    const dst: NonNullable<OverlaySettings['colors']> = {};
+    for (const key of ['bg', 'fg', 'dim', 'accent'] as const) {
+      const v = src[key];
+      if (typeof v === 'string' && HEX_RE.test(v)) dst[key] = v.toLowerCase();
+    }
+    if (Object.keys(dst).length) next.colors = dst;
+  }
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
     for (const [action, combo] of Object.entries(raw.hotkeys as Record<string, unknown>)) {
