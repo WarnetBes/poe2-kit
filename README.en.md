@@ -16,8 +16,8 @@ yourself. No automation, no memory reading.
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ru readme](https://img.shields.io/badge/README-Русский-blue)](README.md)
 
-<a href="docs/screenshots/overlay-build.png"><img src="docs/screenshots/overlay-build.png" height="420" alt="poe2-kit overlay: build shopping list over the game"></a>
-<a href="docs/screenshots/overlay-price.png"><img src="docs/screenshots/overlay-price.png" height="420" alt="poe2-kit overlay: item price check with market table"></a>
+<a href="docs/screenshots/overlay-build-en.png"><img src="docs/screenshots/overlay-build-en.png" height="420" alt="poe2-kit overlay: build shopping list over the game"></a>
+<a href="docs/screenshots/overlay-price-en.png"><img src="docs/screenshots/overlay-price-en.png" height="420" alt="poe2-kit overlay: item price check with market table"></a>
 
 *Left: build shopping list — target items with live prices and “you are
 wearing” hints, synced from your character page. Right: price check — an
