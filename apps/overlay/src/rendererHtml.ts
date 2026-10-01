@@ -355,8 +355,18 @@ export const rendererHtml = `<!doctype html>
     color: var(--dim); border-radius: 6px; white-space: nowrap; }
   .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
   .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  .tabrow button.info-btn { margin-top: 6px; border-style: dashed; color: #9aa4b0; }
+  /* №128: инфоокно функции — «что делает эта вкладка» */
+  #infoWin { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 60;
+    background: rgba(12,14,18,0.97); overflow-y: auto; padding: 10px 12px; font-size: 12px; }
+  #infoWin .h2 { font-weight: bold; color: var(--accent); margin-bottom: 6px; font-size: 13px; }
+  #infoWin .hk { display: inline-block; border: 1px solid var(--accent); border-radius: 3px;
+    padding: 0 4px; font-size: 10px; color: var(--accent); }
+  #infoWin li { margin: 3px 0 3px 14px; }
+  #infoWin .close-info { float: right; cursor: pointer; color: #9aa4b0; }
+  #infoWin .sub { color: #9aa4b0; }
   /* №113: правая часть панели — бывшие прямые потомки #panel (grab/idle/body/settings). */
-  #content { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  #content { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; position: relative; }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
   /* №113b: чекбоксы видимости вкладок. */
   .tabs-grid { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
@@ -392,8 +402,10 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
+      <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
     </div>
     <div id="content">
+    <div id="infoWin" class="hide"></div>
     <div id="grab" class="hide">
       ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+F5 — закрепить
     </div>
@@ -2414,6 +2426,60 @@ export const rendererHtml = `<!doctype html>
         }
       }, 0);
     }
+  });
+  // №128: у каждой функции — окно с информацией (что делает вкладка, хоткеи).
+  var TAB_INFO = {
+    price: { t: '💰 Прайс', h: 'Ctrl+F1', b: [
+      'Копируешь предмет в игре (Ctrl+C) — жмёшь <span class="hk">Ctrl+F1</span>: оверлей покажет оценку по его клир-тексту.',
+      'Показывает группы листингов с медианами (в хаосе, если известен курс), линк на торговый сайт.',
+      'SSF-режим: вместо цены — план: сохранить ли фрактуред-мод, целевой крафт «двух якорей» (эссенции/омены/руны), зоны дропа базы.',
+      'Watchlist: мониторинг ваших позиций, алерт при падении цены ≥10%.' ] },
+    build: { t: '🛒 Билд', h: 'Ctrl+F2', b: [
+      'Шопинг-лист эталонного билда: что искать на каждом слоте, дефициты (жизнь/резисты/ЭС) на основе импортированного PoB.',
+      'Поиск по дереву (поле «поиск нод»): ключевые камни и заметные ноды с их эффектами.',
+      'Уровневые метки: что капать на текущем уровне кампаньи.' ] },
+    gems: { t: '💎 Камни', h: '—', b: [
+      'Чек-лист камней сетапов билда: имя, уровень требований, ссылки для покупки/поиска.',
+      'Привязка к наборам оружия: бейдж «⚔ набор I/II» — как игра это видит и как чинить «нельзя использовать».' ] },
+    import: { t: '📥 Импорт', h: 'Ctrl+F3', b: [
+      'Импорт билда из PoB-кода (Path of Building 2): вставил код в буфер → <span class="hk">Ctrl+F3</span>.',
+      'Ссылка профиля poe.ninja + Ctrl+F3 — автосинхронизация реального гира персонажа со слотами билда.' ] },
+    level: { t: '📈 Прокачка', h: 'Ctrl+F4', b: [
+      'Маршрут текущего акта: зоны, что в них искать, квестовые награды (✔ забрал — персист), вэйпоинты.',
+      'Бестиарий боссов: сюжет, триалы, пиннакл — ключи и награды.',
+      'Эндгейм-механики (карты/лиги) и чек-лист резистов до 75%.' ] },
+    maps: { t: '🧭 Плитки', h: '—', b: [
+      'Рецепты крафта Waystone (плитки смотрителя): таблица тиры/рецепты/ингредиенты.' ] },
+    pinnacle: { t: '🛡 Пиннакл', h: 'Ctrl+F7', b: [
+      'Чекап перед боссом-пиннаклом: резисты, EHP, стан-порог — честные «—» при неизвестных данных.',
+      'Что фармить до попытки: weakest-звенья билда по эталону.' ] },
+    settings: { t: '⚙ Настройки', h: 'Ctrl+F6', b: [
+      'Лига (список действующих), прозрачность, тема (вкл. палитра для дальтоников).',
+      'Видимость вкладок панели: скрыть ненужные (функция остаётся на хоткеях).',
+      'Диагностика пишется в overlay.log в userData.' ] }
+  };
+  function hideInfoWin() { document.getElementById('infoWin').classList.add('hide'); }
+  document.getElementById('tabInfoBtn').addEventListener('click', function () {
+    var w = document.getElementById('infoWin');
+    if (!w.classList.contains('hide')) { hideInfoWin(); return; } // повторное ℹ закрывает
+    var w = document.getElementById('infoWin');
+    var inf = TAB_INFO[activeTab] || { t: 'Оверлей poe2-kit', h: '—', b: [
+      'Выбери вкладку слева — «ℹ ?» расскажет, что она делает и каким хоткеем открывается.',
+      'Ctrl+F1 прайс · Ctrl+F2 билд · Ctrl+F3 импорт · Ctrl+F4 прокачка · Ctrl+F5 закрепить позицию · Ctrl+F6 настройки · Ctrl+F7 чекап пиннакла.' ] };
+    var html = '<div class="h2">' + inf.t + ' <span class="hk">' + inf.h + '</span>' +
+      '<span class="close-info" id="infoWinClose" title="Закрыть">✕</span></div>';
+    for (var i = 0; i < inf.b.length; i++) html += '<div>· ' + inf.b[i] + '</div>';
+    html += '<div class="sub" style="margin-top:8px">ℹ — повторное нажатие закрывает это окно.</div>';
+    w.innerHTML = html;
+    w.classList.remove('hide');
+    document.getElementById('infoWinClose').addEventListener('click', hideInfoWin);
+  });
+  // повторное ℹ закрывает; клик по другой вкладке закрывает инфоокно
+  document.getElementById('tabInfoBtn').addEventListener('dblclick', hideInfoWin);
+  var tabRowEl = document.getElementById('tabRow');
+  if (tabRowEl) tabRowEl.addEventListener('click', function (ev) {
+    var b = ev.target;
+    if (b && b.getAttribute && b.getAttribute('data-tab')) hideInfoWin();
   });
   // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
   window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
