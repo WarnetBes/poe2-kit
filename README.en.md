@@ -21,7 +21,7 @@ open RePoE data. No API keys required.
 
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
-1. **Download**: repository page → **Releases** → the latest release (v1.0.15):
+1. **Download**: repository page → **Releases** → the latest release (v1.0.17):
    - **`poe2-kit-portable-…-win64.zip`** (36 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
@@ -58,9 +58,13 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
 - **No automation.** The kit only reads and shows: hotkey → read clipboard →
   public API request. It never presses anything in the game — one keystroke
   by the user = one action. No auto-flasks, no macros, no input simulation.
-- **No game-client access.** The kit never reads game memory or files,
-  injects code or hooks its output. The only “contact” with the game is you
-  copying item text (Ctrl+C), same as any trade tool.
+- **No game-client access.** The kit never reads game memory, injects code
+  or hooks its output. It reads exactly two things the game writes to disk
+  or you copy yourself: the standard **game log**
+  (`…\Path of Exile 2\logs\LatestClient.txt` — the same file every
+  levelling overlay reads: zone entry lines drive levelling progress and
+  the boss-timer stopwatch) and the **clipboard** when you press Ctrl+C on
+  an item (same as any trade tool). That's the entire “contact” surface.
 - **Overlay window tracking.** To sit on top of the game, the Windows overlay
   calls exactly three **read-only** Win32 functions via FFI (`koffi`,
   `user32.dll`): `EnumWindows` (find window), `GetWindowRect` (position),
