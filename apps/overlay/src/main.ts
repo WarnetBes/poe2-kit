@@ -1403,8 +1403,23 @@ const EQUIPMENT_CLASS_SLUGS = [
 // страница класса отдала пустые мапы (Cloudflare/сбой сети), дырявый словарь
 // больше не кэшируется навсегда — при следующем старте достраиваем.
 // v5 (ТЗ-A1): +валюты (Stackable_Currency/Essence/Omens/Catalysts/Rune/
+// v6 (№138, живой лог 01.10 06:00:30): Uncut-камни — это item-класс Gems, их
+// нет ни в EQUIPMENT_CLASS_SLUGS, ни на страницах классов → RU-базы не
+// переводились → trade2 400 «Unknown item base type» («Неогранённый камень
+// духа (уровень 14)»). RU-имена всех трёх ✅ проверены poe2db.tw/ru/<Slug>
+// (поля BaseType, 01.10.2026) — НЕ ручные догадки.
 // Liquid_Emotions/Splinter через a.item_currency) — RU-валюты прайс-чекаются.
-const RU_EN_DICT_VERSION = 5;
+const RU_EN_DICT_VERSION = 6;
+// Статические дополнения к словарю (ключи — normName внутри seedRuEnStatic()).
+const RU_EN_STATIC_BASES: Array<[string, string]> = [
+  ['Неогранённый камень духа', 'Uncut Spirit Gem'],
+  ['Неогранённый камень умения', 'Uncut Skill Gem'],
+  ['Неогранённый камень поддержки', 'Uncut Support Gem'],
+];
+/** Влить статические RU→EN-базы (идемпотентно). */
+function seedRuEnStatic(): void {
+  for (const [ru, en] of RU_EN_STATIC_BASES) ruEnBases.set(normName(ru), en);
+}
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
 let ruEnDictLoaded = false;
@@ -1457,6 +1472,7 @@ function loadRuEnDict(): boolean {
  */
 function ensureRuEnDict(): Promise<void> {
   if (ruEnDictLoaded || ruEnDictPromise) return ruEnDictPromise ?? Promise.resolve();
+  seedRuEnStatic(); // статические базы (#138 Uncut) — до кэша
   ruEnDictPromise = (async () => {
     try {
       const failed: string[] = [];
@@ -3853,6 +3869,7 @@ app.whenReady().then(async () => {
   startAgentQueuePolling();
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
   if (!loadRuEnDict()) void ensureRuEnDict();
+  else seedRuEnStatic(); // кэш валиден — но статические базы должны быть всегда (#138)
   setupIPC();
   void createOverlayWindow().then(() => {
     startGameTracker();
