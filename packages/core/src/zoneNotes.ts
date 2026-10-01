@@ -99,6 +99,109 @@ export interface LevelingContext {
  * заметки текущей зоны/акта + следующие зоны для уровня персонажа.
  * Если state=null/недоступен — по actFallback (1..4).
  */
+/** №103 Campaign Companion: одна зона маршрута акта со статусом прохождения. */
+export interface CampaignPlanRow {
+  /** Каноническое EN-имя зоны (как в LEVELING_PLAN). */
+  zone: string;
+  /** Код зоны из zoneNotes (для матчинга с Client.txt areaCode). */
+  zoneCode: string | null;
+  index: number;
+  /** Рекомендуемый уровень монстров зоны. */
+  monsterLevel: number;
+  hasWaypoint: boolean;
+  /** Квестовые награды зоны (скилпоинты, резисты и т.п.). */
+  rewards: string[];
+  /** Гайд зоны «что делать/что искать» (RU приоритетно), до 2 строк. */
+  note: string;
+  /** 'done' — уже были; 'current' — вы здесь; 'todo' — впереди. */
+  status: 'done' | 'current' | 'todo';
+  /** Уровень персонажа (прокси areaLevel) минус уровень зоны; null — уровень неизвестен. */
+  levelDelta: number | null;
+}
+
+/** №103 Campaign Companion: полный маршрут текущего акта для панели «Прокачка». */
+export interface CampaignPlan {
+  act: number;
+  actName: string;
+  /** Сводка наград акта (RU приоритетно). */
+  actNote: string;
+  /** Прокси-уровень персонажа (level_up не пишется; = areaLevel текущей зоны). */
+  level: number | null;
+  /** Индекс текущей зоны в плане (-1 — не найдена/клиент недоступен). */
+  currentIndex: number;
+  rows: CampaignPlanRow[];
+  done: number;
+  total: number;
+}
+
+/**
+ * №103: построить маршрут кампании по текущему акту из состояния клиента.
+ *
+ * Статусы зон:
+ *  - 'current' — совпадение areaCode/имени текущей зоны;
+ *  - 'done' — зона есть в visitedCodes (окно хвоста Client.txt) ИЛИ её индекс
+ *    меньше furthestIndex (персистентный прогресс переживает окно хвоста);
+ *    если actsBefore > act — весь акт пройден;
+ *  - 'todo' — остальное.
+ * Вызывается из overlay main (persist там) и из смоков/тестов напрямую.
+ */
+export function buildCampaignPlan(
+  state: ClientGameState | null,
+  opts: {
+    actFallback?: number;
+    /** areaCode посещённых зон (из state.zoneVisits). */
+    visitedCodes?: string[];
+    /** Персистентный прогресс: { act, index } — самая дальняя зона, когда-либо записанная. */
+    furthest?: { act: number; index: number } | null;
+  } = {},
+): CampaignPlan {
+  const act = state?.act ?? opts.actFallback ?? 1;
+  const zones = getZonesByAct(act);
+  const level = state?.level ?? state?.zone?.areaLevel ?? null;
+  const curCode = state?.zone?.areaCode ?? null;
+  const curName = state?.zone?.zoneName ?? null;
+  const visited = new Set((opts.visitedCodes ?? state?.zoneVisits?.map((v) => v.areaCode) ?? []).filter(Boolean));
+  const actCleared = opts.furthest != null && opts.furthest.act > act;
+
+  const rows: CampaignPlanRow[] = zones.map((z, index) => {
+    const noteHit = getZoneNoteByName(z.zone);
+    const code = noteHit?.zoneCode ?? null;
+    const isCurrent =
+      (!!code && !!curCode && code === curCode) || (!!curName && z.zone === curName);
+    const note = (noteHit?.notes_ru ?? noteHit?.notes ?? '')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(' ');
+    const done =
+      actCleared ||
+      (!isCurrent && ((!!code && visited.has(code)) || (opts.furthest?.act === act && index < opts.furthest!.index)));
+    return {
+      zone: z.zone,
+      zoneCode: code,
+      index,
+      monsterLevel: z.monsterLevel,
+      hasWaypoint: !!z.hasWaypoint,
+      rewards: z.rewards.slice(0, 3),
+      note,
+      status: isCurrent ? 'current' : done ? 'done' : 'todo',
+      levelDelta: level != null ? level - z.monsterLevel : null,
+    };
+  });
+
+  return {
+    act,
+    actName: zones[0]?.actName ?? `Act ${act}`,
+    actNote: (getActNote(act)?.notes_ru ?? getActNote(act)?.notes ?? '').trim(),
+    level,
+    currentIndex: rows.findIndex((r) => r.status === 'current'),
+    rows,
+    done: rows.filter((r) => r.status === 'done').length,
+    total: rows.length,
+  };
+}
+
 export function getLevelingContext(
   state: ClientGameState | null,
   opts: { actFallback?: number } = {},

@@ -163,6 +163,26 @@ export const rendererHtml = `<!doctype html>
   .lvl-zone { font-size: 15px; font-weight: 700; color: #fff;
     font-family: var(--font-display); letter-spacing: 0.3px; }
 
+  /* №103 Campaign Companion: маршрут акта */
+  .camp-head { font-size: 13px; font-weight: 700; color: var(--accent); margin: 8px 0 2px; }
+  .camp-prog { height: 5px; background: rgba(255,255,255,0.10); border-radius: 3px;
+    overflow: hidden; margin: 4px 0 6px; }
+  .camp-prog i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .camp-row { padding: 4px 6px; border-radius: 6px; margin-bottom: 3px;
+    border-left: 3px solid transparent; }
+  .camp-row.done { opacity: 0.55; border-left-color: #4caf7d; }
+  .camp-row.current { background: rgba(198,154,82,0.14); border-left-color: var(--accent); }
+  .camp-row.todo { border-left-color: rgba(255,255,255,0.18); }
+  .camp-zname { font-size: 13px; font-weight: 700; color: #fff; }
+  .camp-row.done .camp-zname { color: var(--dim); text-decoration: line-through; }
+  .camp-meta { font-size: 11px; color: var(--dim); margin-left: 6px; font-weight: 400; }
+  .camp-badge { display: inline-block; font-size: 10px; padding: 0 5px; margin-left: 4px;
+    border-radius: 6px; background: rgba(76,175,125,0.18); color: #7ddba8; }
+  .camp-wp { color: var(--accent); font-size: 11px; margin-left: 4px; }
+  .camp-note { font-size: 11px; color: var(--dim); line-height: 1.45; margin-top: 1px; }
+  .camp-actnote { font-size: 11px; color: var(--dim); line-height: 1.5; margin: 6px 0 4px;
+    border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 4px; white-space: pre-line; }
+
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
 
@@ -340,6 +360,7 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="lvlWrap" class="hide">
         <div class="lvl-zone" id="lvlZone"></div>
+        <div id="campWrap"></div>
         <div id="lvlHints"></div>
       </div>
       <div id="gemsWrap" class="hide">
@@ -1137,6 +1158,9 @@ export const rendererHtml = `<!doctype html>
       ? '📍 ' + (lvl.zone.name || lvl.zone.code)
       : (lvl.available ? 'Зона неизвестна' : '⚠️ ' + (lvl.reason || 'Client.txt не найден'));
 
+    // №103 Campaign Companion: маршрут акта
+    renderCamp(lvl.camp);
+
     var hints = $('lvlHints');
     hints.innerHTML = '';
     var items = (lvl.hints || []).slice(0, 5);
@@ -1149,7 +1173,94 @@ export const rendererHtml = `<!doctype html>
     if (!items.length) {
       hints.innerHTML = '<div class="lvl-hint">Подсказок нет — идите вперёд по плану.</div>';
     }
+    // №103: пока открыта панель прокачки — подпитывать контекст каждые 20 с
+    // (зоны меняются часто; panelOpen — no-op если панель уже открыта).
+    campStartPoll(lvl.camp);
   });
+
+  /** №103: отрисовать маршрут акта (campWrap). */
+  function renderCamp(camp) {
+    var wrap = $('campWrap');
+    wrap.innerHTML = '';
+    if (!camp || !camp.rows || !camp.rows.length) return;
+
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    head.textContent = camp.actName + '  ·  ' + camp.done + '/' + camp.total + ' зон';
+    wrap.appendChild(head);
+
+    var prog = document.createElement('div');
+    prog.className = 'camp-prog';
+    var bar = document.createElement('i');
+    bar.style.width = Math.round(((camp.done + (camp.currentIndex >= 0 ? 1 : 0)) / camp.total) * 100) + '%';
+    prog.appendChild(bar);
+    wrap.appendChild(prog);
+
+    for (var i = 0; i < camp.rows.length; i++) {
+      var r = camp.rows[i];
+      var row = document.createElement('div');
+      row.className = 'camp-row ' + r.status;
+
+      var name = document.createElement('div');
+      name.className = 'camp-zname';
+      name.textContent = r.status === 'current' ? '📍 ' + r.zone :
+        (r.status === 'done' ? '✔ ' + r.zone : '○ ' + r.zone);
+      var meta = document.createElement('span');
+      meta.className = 'camp-meta';
+      meta.textContent = 'ур. ' + r.monsterLevel +
+        (r.levelDelta != null && r.status !== 'done'
+          ? (r.levelDelta < -2 ? ' (⚠ зона на ' + (-r.levelDelta) + ' выше вас)' : (r.levelDelta > 3 ? ' (зона на ' + r.levelDelta + ' ниже вас — быстро)' : (r.levelDelta < 0 ? ' (выше вас на ' + (-r.levelDelta) + ')' : '')))
+          : '');
+      name.appendChild(meta);
+      if (r.hasWaypoint) {
+        var wp = document.createElement('span');
+        wp.className = 'camp-wp';
+        wp.title = 'В зоне есть вэпоинт (быстрый телепорт)';
+        wp.textContent = '⌖WP';
+        name.appendChild(wp);
+      }
+      for (var j = 0; j < (r.rewards || []).length; j++) {
+        var b = document.createElement('span');
+        b.className = 'camp-badge';
+        b.textContent = r.rewards[j];
+        name.appendChild(b);
+      }
+      row.appendChild(name);
+
+      if (r.note) {
+        var note = document.createElement('div');
+        note.className = 'camp-note';
+        note.textContent = r.note;
+        row.appendChild(note);
+      }
+      wrap.appendChild(row);
+    }
+
+    if (camp.actNote) {
+      var an = document.createElement('div');
+      an.className = 'camp-actnote';
+      an.textContent = '🎁 ' + camp.actNote;
+      wrap.appendChild(an);
+    }
+  }
+
+  /** №103: автообновление контекста прокачки, пока вкладка видима. */
+  var campTimer = null;
+  function campStartPoll(camp) {
+    if (campTimer) { clearInterval(campTimer); campTimer = null; }
+    if (!camp || !camp.rows || !camp.rows.length) return;
+    campTimer = setInterval(function () {
+      // Панель сменилась/закрылась — таймер не нужен (у панелей single-mode,
+      // но showMode других вкладок прячет lvlWrap).
+      var wrap = $('campWrap');
+      if (!wrap || wrap.classList.contains('hide') || !$('lvlWrap') || $('lvlWrap').classList.contains('hide')) {
+        clearInterval(campTimer);
+        campTimer = null;
+        return;
+      }
+      window.poe2k.panelOpen('level');
+    }, 20000);
+  }
 
   function priceSingleView() {
     $('priceBatchWrap').classList.add('hide');

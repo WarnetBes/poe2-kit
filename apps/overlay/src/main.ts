@@ -2801,6 +2801,34 @@ function gameLogOverride(): string | null {
   }
 }
 
+/**
+ * №103: персистентный прогресс кампании — самая дальняя достигнутая зона.
+ * Хвост Client.txt (~1 МБ) не покрывает весь плей-фаб; файл переживает рестарты.
+ */
+interface LevelingProgressFile {
+  act: number;
+  index: number;
+  /** ISO-метка времени записи. */
+  ts: string;
+}
+function readLevelingProgress(): { act: number; index: number } | null {
+  try {
+    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
+    const p = JSON.parse(raw) as LevelingProgressFile;
+    if (typeof p.act === 'number' && typeof p.index === 'number') return { act: p.act, index: p.index };
+    return null;
+  } catch {
+    return null;
+  }
+}
+function writeLevelingProgress(p: LevelingProgressFile): void {
+  try {
+    fs.writeFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), JSON.stringify(p, null, 2));
+  } catch (e) {
+    console.log(`[overlay] leveling-progress.json не записан: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
 async function runLevelingContext(): Promise<unknown> {
   if (busy) return null;
   busy = true;
@@ -2810,6 +2838,20 @@ async function runLevelingContext(): Promise<unknown> {
     console.log(`[overlay] game log: ${state.logPath ?? 'не найден'}`);
     const reason = state.available ? null : state.reason ?? 'лог недоступен';
     const ctx = core.zoneNotes.getLevelingContext(state.available ? state : null);
+
+    // №103 Campaign Companion: полный маршрут акта со статусами зон.
+    // Хвост Client.txt ограничен (~1 МБ): ранние зоны вымываются из окна, поэтому
+    // «самая дальняя достигнутая зона» персистится в leveling-progress.json.
+    const furthest = readLevelingProgress();
+    const visitedCodes = state.zoneVisits.map((v) => v.areaCode).filter(Boolean);
+    const camp = core.zoneNotes.buildCampaignPlan(state.available ? state : null, {
+      visitedCodes,
+      furthest,
+    });
+    if (camp.currentIndex >= 0 && (furthest == null || camp.act > furthest.act || (camp.act === furthest.act && camp.currentIndex > furthest.index))) {
+      writeLevelingProgress({ act: camp.act, index: camp.currentIndex, ts: new Date().toISOString() });
+    }
+
     const payload = {
       summary: ctx.summary,
       zone: ctx.zone ? { code: ctx.zone.areaCode, name: ctx.zone.zoneName } : null,
@@ -2822,6 +2864,7 @@ async function runLevelingContext(): Promise<unknown> {
         levelDelta: z.levelDelta,
         rewards: z.rewardList,
       })),
+      camp, // №103: { act, actName, actNote, level, currentIndex, rows[], done, total }
     };
     await overlayWindow?.webContents.send('level:result', payload);
     return payload;
