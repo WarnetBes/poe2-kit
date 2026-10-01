@@ -1170,9 +1170,25 @@ export const rendererHtml = `<!doctype html>
           return '<div class="slang-row"><div class="slang-term">' + esc(e.ru || e.en) +
             (e.ru ? ' <span style="color:var(--dim)">' + esc(e.en) + '</span>' : '') + '</div>' +
             '<div class="slang-def">' + esc(e.guaranteed) +
-            ' · ' + (e.action === 'magicToRare' ? 'Magic → Rare + мод' : 'Rare: заменить мод') + '</div></div>';
+            ' · ' + (e.action === 'magicToRare' ? 'Magic → Rare + мод' : 'Rare: заменить мод') +
+            (e.perfect ? ' <span style="color:var(--dim)">Perfect: ' + esc(e.perfect) + '</span>' : '') +
+            '</div></div>';
         }).join('');
         html += '<div class="lvl-hint">' + esc(cat2.perfectHint) + '</div>';
+        if (cat2.specEssences && cat2.specEssences.length) {
+          html += '<div class="lvl-group" style="margin:6px 0"><div class="lvl-title" style="color:#c88">Спец-эссенции (Rare: удалить мод + гарантированный)</div>' +
+            cat2.specEssences.map(function (e) {
+              return '<div class="slang-row"><div class="slang-term">' + esc(e.en) + '</div>' +
+                '<div class="slang-def">' + esc(e.perSlot) + '</div></div>';
+            }).join('') + '</div>';
+        }
+        if (cat2.alloys && cat2.alloys.length) {
+          html += '<div class="lvl-group" style="margin:6px 0"><div class="lvl-title" style="color:#c88">Alloys (Экспедиция, Runes of Aldur; занимает crafted-слот)</div>' +
+            cat2.alloys.map(function (e) {
+              return '<div class="slang-row"><div class="slang-term">' + esc(e.en) + '</div>' +
+                '<div class="slang-def">' + esc(e.perSlot) + '</div></div>';
+            }).join('') + '</div>';
+        }
       }
     } else if (craftSub === 'omens') {
       var cat3 = craftCatalog;
@@ -1181,10 +1197,12 @@ export const rendererHtml = `<!doctype html>
       } else {
         html += cat3.omens.map(function (o) {
           return '<div class="slang-row"><div class="slang-term">' + esc(o.en) + '</div>' +
-            '<div class="slang-def">' + esc(o.purpose) + '</div></div>';
+            '<div class="slang-def">' + esc(o.purpose) +
+            (o.drop ? ' <span style="color:var(--dim)">[' + esc(o.drop) + ']</span>' : '') +
+            '</div></div>';
         }).join('');
-        html += '<div class="lvl-hint">Омены активируются ДО применения валюты и действуют на ОДНУ операцию. ' +
-          'Дроп: Ritual / Tribute.</div>';
+        html += '<div class="slang-hint">Омены активируются ДО применения валюты и действуют на ОДНУ операцию. ' +
+          'Крафтовые (Ritual) стакаются; часть отключена от дропа — помечена ⚠️. Полная таблица: poe2db.tw/us/Omen.</div>';
       }
     }
     host.innerHTML = html;

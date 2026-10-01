@@ -29,31 +29,74 @@ export interface EssenceInfo {
   en: string;
   /** RU-имя, если верифицировано живым клиентом; иначе null. */
   ru: string | null;
-  /** Гарантированный мод (кратко, русским). */
+  /** Гарантированный мод (кратко, русским; диапазон Lesser→Greater). */
   guaranteed: string;
+  /** Что даёт Perfect-версия (действует на Rare: удалить случайный мод + добавить этот). */
+  perfect?: string;
   /** Что делает эссенция. */
   action: EssenceAction;
   /** Слоты, где эссенция осмысленна. */
   slots: 'weapon' | 'armour' | 'jewellery' | 'any' | 'caster';
 }
 
-/** Ключевая эссенция-таблица (подборка из полного списка poe2db/us/Essence). */
+/**
+ * Полная таблица семейств эссенций 0.5.5 — poe2db.tw/us/Essence (проверено
+ * 01.10.2026, страница «Essence /95»). Тиры Lesser/Normal/Greater = Magic →
+ * Rare + гарантированный мод (диапазон растёт с тиром). Действие Perfect —
+ * отдельное (remove random + add), записано в `perfect` каждого семейства.
+ */
 export const CRAFT_ESSENCES: EssenceInfo[] = [
-  { en: 'Essence of Grounding', ru: 'сущность заземления', guaranteed: '+% к сопротивлению молнии', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Thawing', ru: null, guaranteed: '+% к сопротивлению холоду', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Insulation', ru: null, guaranteed: '+% к сопротивлению огню', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Ruin', ru: null, guaranteed: '+% к сопротивлению хаосу — самый ценный резист эндгейма', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of the Body', ru: null, guaranteed: '+жизнь', action: 'magicToRare', slots: 'armour' },
-  { en: 'Essence of the Mind', ru: null, guaranteed: '+мана', action: 'magicToRare', slots: 'jewellery' },
-  { en: 'Essence of Enhancement', ru: null, guaranteed: '+% брони/уклонения/ЭС', action: 'magicToRare', slots: 'armour' },
-  { en: 'Essence of Abrasion', ru: null, guaranteed: '+физ. урон оружию (Perfect: «Gain % as Extra Physical»)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Electricity', ru: null, guaranteed: '+урон молнией (Perfect: «Gain % as Extra Lightning»)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Ice', ru: null, guaranteed: '+урон холодом (Perfect: «Gain % as Extra Cold»)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Sorcery', ru: null, guaranteed: '+% урона чарам (Focus/Wand/Staff)', action: 'magicToRare', slots: 'caster' },
-  { en: 'Essence of Battle', ru: null, guaranteed: '+точность (Perfect: +2/+3 к уровню атакующих умений на оружии)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Haste', ru: null, guaranteed: '+% скорости атаки', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Seeking', ru: null, guaranteed: '+% шанса крит. удара', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of the Infinite', ru: null, guaranteed: '+сила/ловкость/интеллект', action: 'magicToRare', slots: 'jewellery' },
+  // Резисты (Armour/Belt/Jewellery: 11-15 → 21-25 → 31-35%)
+  { en: 'Essence of Grounding', ru: 'сущность заземления', guaranteed: '+(11-15)% … +(31-35)% к сопротивлению молнии', perfect: 'Перчатки: (26-30)% урона молнией, полученного при ударах, восполняется жизнью (Recoup)', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Thawing', ru: null, guaranteed: '+% к сопротивлению холоду (11-15 … 31-35%)', perfect: 'Шлем: (26-30)% урона холодом Recoup жизнью', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Insulation', ru: null, guaranteed: '+% к сопротивлению огню (11-15 … 31-35%)', perfect: 'Пояс: (26-30)% урона огнём Recoup жизнью', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Ruin', ru: null, guaranteed: '+(4-7)% … +(16-19)% к сопротивлению хаосу — самый ценный резист', perfect: 'Броня: (10-15)% физ. урона от ударов принимается как хаос', action: 'magicToRare', slots: 'any' },
+  // Жизнь/мана/защита
+  { en: 'Essence of the Body', ru: null, guaranteed: '+(30-39) … +(100-119) к жизни (броня/пояс выше, бижутерия ниже)', perfect: 'Броня: +(8-10)% к максимуму жизни', action: 'magicToRare', slots: 'armour' },
+  { en: 'Essence of the Mind', ru: null, guaranteed: '+(25-34) … +(90-104) к мане', perfect: 'Кольцо: +(4-6)% к максимуму маны', action: 'magicToRare', slots: 'jewellery' },
+  { en: 'Essence of Enhancement', ru: null, guaranteed: '(27-42) … (68-79)% брони/уклонения/ЭС', perfect: 'Амулет: (20-30)% глобальной брони/уклонения/ЭС', action: 'magicToRare', slots: 'armour' },
+  // Урон оружию (Lesser→Greater: 1H/Bow и 2H/Crossbow разные диапазоны)
+  { en: 'Essence of Abrasion', ru: null, guaranteed: '+физ. урон оружию (1H 4-6d7-11 … 16-24d28-42; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Physical (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Flames', ru: null, guaranteed: '+урон огнём оружию (1H 4-6d7-10 … 35-44d56-71; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Fire (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Ice', ru: null, guaranteed: '+урон холодом оружию (1H 3-5d6-9 … 31-38d47-59; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Cold (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Electricity', ru: null, guaranteed: '+урон молнией оружию (1H 1d13-19 … 1-6d85-107; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Lightning (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Sorcery', ru: null, guaranteed: '+% урона чарам (Focus/Wand 35-44% … 75-89%; Staff 69-88% … 149-188%)', perfect: 'Wand: +3 / Staff: +5 к уровню всех чар', action: 'magicToRare', slots: 'caster' },
+  { en: 'Essence of Battle', ru: null, guaranteed: '+точность (Martial 61-84 … 237-346; Greater — также перчатки/колчан)', perfect: '1H/Bow: +2 к уровню всех атакующих умений (2H: +3)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Haste', ru: null, guaranteed: '+% скорости атаки (Melee 11-13% … 23-25%; Bow/Crossbow ниже)', perfect: 'Оружие: (20-25)% шанс Onslaught при убийстве ударом', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Seeking', ru: null, guaranteed: '+шанс крита (Martial +1.5-2.1% … +3.1-3.8%; чары: Focus/Wand/Staff — increased)', perfect: 'Броня: удары по тебе — (40-50)% сниженный крит-бонус', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Alacrity', ru: null, guaranteed: '+% скорости каста (Focus/Wand 13-16% … 25-28%; Staff 20-25% … 38-43%)', perfect: 'Focus/Wand: (18-20)% эффективности маны (Staff 28-32%)', action: 'magicToRare', slots: 'caster' },
+  // Прочее
+  { en: 'Essence of the Infinite', ru: null, guaranteed: '+СИЛ/ЛОВ/ИНТ (9-12 … 25-27)', perfect: 'Амулет: +(7-10)% СИЛ/ЛОВ/ИНТ', action: 'magicToRare', slots: 'jewellery' },
+  { en: 'Essence of Opulence', ru: null, guaranteed: '+% редкости предметов (боты/перчатки/шлем/бижутерия 6-10 … 15-18%)', perfect: 'Перчатки: +(10-15)% золота с убитых', action: 'magicToRare', slots: 'armour' },
+  { en: 'Essence of Command', ru: null, guaranteed: 'Скипетр: союзники рядом наносят +(35-44 … 75-89)% урона', perfect: 'Скипетр: ауры +(15-20)% силы эффектов', action: 'magicToRare', slots: 'caster' },
+];
+
+/** Спец-эссенции (действие как Perfect: Rare — удалить случайный мод + гарантированный), poe2db «Removes a random modifier…». */
+export interface SpecEssenceInfo { en: string; perSlot: string }
+export const CRAFT_SPEC_ESSENCES: SpecEssenceInfo[] = [
+  { en: 'Essence of Hysteria', perSlot: 'Шлем: +1 к уровню умений прислужников · Броня: физ. шипы 64-97d98-145 · Перчатки: +(25-29)% крит-множителя · Боты: +30% скорости бега · Кольцо: +(50-59)% реген маны · Амулет: (19-21)% урона Recoup жизнью · Пояс: +(254-304) порога оглушения · Щит: +(20-24)% блока · Колчан: +(43-50)% урона луками · Фокус: +(20-23)% скорости восстановления ЭС' },
+  { en: 'Essence of Delirium', perSlot: 'Броня: даёт случайный Notable из пассивного дерева (Allocation!)' },
+  { en: 'Essence of Horror', perSlot: 'Перчатки/боты: +60% эффекта вставленных рун/сокол (Augment Items)' },
+  { en: 'Essence of Insanity', perSlot: 'Пояс: при коррупции предмет получает ДВА энчанта' },
+  { en: 'Essence of the Abyss', perSlot: 'Любой слот: «Mark of the Abyssal Lord» (Abyssal Depths-дроп)' },
+  { en: 'Essence of the Breach', perSlot: 'Бижутерия: +20% к максимуму качества (под катализаторы Breach)' },
+];
+
+/** Alloys — валюта Экспедиции (лига Runes of Aldur): Rare — удалить случайный мод + гарантированный; занимают crafted-слот. */
+export const CRAFT_ALLOYS: SpecEssenceInfo[] = [
+  { en: 'Runic Alloy', perSlot: 'Кольцо: +(37-49) Runic Ward · Амулет: +(6-10)% макс. Runic Ward · Пояс: +(15-20)% реген Runic Ward' },
+  { en: 'Adaptive Alloy', perSlot: 'Staff: +(42-52)% урона как Extra Fire без Runic Ward · Wand: +(21-26)% · Скипетр/Перчатки: свои бонусы' },
+  { en: 'Protective Alloy', perSlot: 'Пояс: восстановить (32-45) Runic Ward при использовании чарма · Оружие: +(51-74) Runic Ward · Щит: (10-15) Ward при блоке' },
+  { en: 'Expansive Alloy', perSlot: 'Броня: +(35-50)% радиуса присутствия · Шлем: +(18-29)% эффективности маны · Боты: +1-2 к лимиту временных прислужников' },
+  { en: 'Swift Alloy', perSlot: 'Перчатки: +(9-12)% скорости каста · Кольцо: +(7-9)% скорости атаки · Пояс: фласки +(0.75-1) заряда/сек · Щит/Фокус: +(30-49)% скорости тотемов' },
+  { en: 'Cyclonic Alloy', perSlot: 'Броня: −(15-30)% силы замедлений · Боты: +(15-19)% длительности умений · Перчатки: +(20-25)% длительности негатив. состояний · Шлем: +(35-42)% длительности Archon-бафа' },
+  { en: 'Prismatic Alloy', perSlot: 'Перчатки: урон пробивает +(9-15)% резистов · Martial: +(20-30)% силы состояний · Focus/Staff/Wand: +(40-50)% эффекта Exposure' },
+  { en: 'Mystic Alloy', perSlot: 'Шлем: +(10-15)% области чар · Перчатки: +(10-15)% области атак · Боты: +(10-15) духа · Колчан: +(25-35)% шанс доп. цепи · Caster-оружие: +1 к лимиту элементных инфузий' },
+  { en: 'Sovereign Alloy', perSlot: 'Оружие: +(20-30)% эффекта вставленных рун/сокол · Броня: +(24-30)% Runic Ward · Бижутерия/пояс: +(20-30)% величины резист-модов' },
+  { en: 'Celestial Alloy', perSlot: 'Staff/Wand: +(142-188) маны и +1 к уровню всех чар · Martial: +(327-427) точности и +(5-8)% скорости атаки' },
+  { en: 'Transcendent Alloy', perSlot: 'Staff: +(39-47)% скорости каста, +(11-16)% элем. урона как Extra Cold · Focus/Wand: +(26-31)% каст, +(7-11)% Extra Cold · Martial: +(15-20)% физ. урона, +(7-10) ко всем атрибутам' },
+  { en: "The Runebinder's Alloy", perSlot: 'Staff: (25-50)% шанс Nature Archon при переросте растений · Wand: +1 к лимиту элементных умений · Скипетр: +(4-5) стаков Puppet Master · Crossbow: +2 баллиста-тотема · Bow: +(40-50)% эффекта Mark-умений' },
+  { en: "The Runefather's Alloy", perSlot: 'Mace: (60-75)% шанс сохранить 40% Glory · Quarterstaff: Tempest Bells +4-5 ударов · Spear: +(8-10) к дальности оружия · Talisman: молния даёт Flammability/Ignite' },
 ];
 
 /** Perfect-эссенции (действие: удалить случайный мод у Rare + добавить гарантированный). */
@@ -64,19 +107,78 @@ export const CRAFT_PERFECT_ESSENCES_HINT =
 export interface OmenInfo {
   en: string;
   purpose: string;
+  /** Где/почём дропает или статус дропа (напр. «не дропается с 0.3.0, существующие работают»). */
+  drop?: string;
 }
 
-/** Ключевые крафтовые омены (Ritual). Полный список: poe2db.tw/us/Omen. */
+/**
+ * Полный список оменов 0.5.5 — poe2db.tw/us/Omen (проверено 01.10.2026,
+ * страница «Omen /50»); статусы дропа — версия-история poe2wiki «Omen».
+ * Активируется правым кликом; меняет поведение СЛЕДУЮЩЕЙ валюты; после
+ * срабатывания расходуется. Связанные омены стакаются, несовместимые —
+ * деактивируют прежний (poe2wiki «Omen»).
+ */
 export const CRAFT_OMENS: OmenInfo[] = [
+  // Chaos Orb
+  { en: 'Omen of Whittling', purpose: 'Chaos Orb удалит мод МИНИМАЛЬНОГО уровня (не случайный)' },
+  { en: 'Omen of Sinistral Erasure', purpose: 'Chaos Orb удалит ТОЛЬКО префиксы', drop: 'дорогой, хай-энд' },
+  { en: 'Omen of Dextral Erasure', purpose: 'Chaos Orb удалит ТОЛЬКО суффиксы', drop: 'дорогой, хай-энд' },
+  // Orb of Alchemy
+  { en: 'Omen of Sinistral Alchemy', purpose: 'Orb of Alchemy даст максимум префиксов', drop: '⚠️ не дропается с 0.3.0; существующие работают' },
+  { en: 'Omen of Dextral Alchemy', purpose: 'Orb of Alchemy даст максимум суффиксов', drop: '⚠️ не дропается с 0.3.0; существующие работают' },
+  // Regal Orb
+  { en: 'Omen of Sinistral Coronation', purpose: 'Regal Orb добавит только префикс', drop: '⚠️ не дропается с 0.3.0; существующие работают' },
+  { en: 'Omen of Dextral Coronation', purpose: 'Regal Orb добавит только суффикс', drop: '⚠️ не дропается с 0.3.0; существующие работают' },
+  { en: 'Omen of Homogenising Coronation', purpose: 'Regal добавит мод ТИПА существующего на предмете', drop: '⚠️ отключён с 0.4.0; существующие работают' },
+  // Exalted Orb
+  { en: 'Omen of Greater Exaltation', purpose: 'Exalted Orb добавит ДВА мода' },
   { en: 'Omen of Sinistral Exaltation', purpose: 'Exalted Orb добавит только ПРЕФИКС' },
   { en: 'Omen of Dextral Exaltation', purpose: 'Exalted Orb добавит только СУФФИКС' },
-  { en: 'Omen of Greater Exaltation', purpose: 'Exalted Orb добавит ДВА мода' },
-  { en: 'Omen of Whittling', purpose: 'Chaos Orb удалит худший (минимального уровня) мод' },
-  { en: 'Omen of Sinistral/Dextral Erasure', purpose: 'Chaos Orb удалит только префикс/суффикс (дорогие!)' },
-  { en: 'Omen of Sinistral/Dextral Coronation', purpose: 'Regal Orb добавит только префикс/суффикс' },
-  { en: 'Omen of Sinistral/Dextral Crystallisation', purpose: 'Perfect-эссенция удалит только нужную сторону' },
-  { en: 'Omen of Light', purpose: 'Orb of Annulment удалит только desecrated-мод (перезапуск провала)' },
-  { en: 'Omen of Sanctification', purpose: 'Divine Orb — Sanctify (без негатива)' },
+  { en: 'Omen of Homogenising Exaltation', purpose: 'Exalted Orb добавит мод типа существующего', drop: '⚠️ отключён с 0.4.0; существующие работают' },
+  { en: 'Omen of Catalysing Exaltation', purpose: 'Exalted Orb съест качество катализаторов ради шанса мода их тега' },
+  // Orb of Annulment
+  { en: 'Omen of Greater Annulment', purpose: 'Orb of Annulment удалит ДВА мода', drop: '⚠️ не дропается с 0.3.0; существующие работают' },
+  { en: 'Omen of Sinistral Annulment', purpose: 'Orb of Annulment удалит только префиксы' },
+  { en: 'Omen of Dextral Annulment', purpose: 'Orb of Annulment удалит только суффиксы' },
+  { en: 'Omen of Light', purpose: 'Orb of Annulment удалит ТОЛЬКО desecrated-мод (перезапуск провала Дезекрации)' },
+  // Perfect/Corrupted Essence
+  { en: 'Omen of Sinistral Crystallisation', purpose: 'Perfect/Corrupted-эссенция удалит только префиксы' },
+  { en: 'Omen of Dextral Crystallisation', purpose: 'Perfect/Corrupted-эссенция удалит только суффиксы' },
+  // Desecration (Abyss)
+  { en: 'Omen of Sinistral Necromancy', purpose: 'Desecration добавит только префиксы' },
+  { en: 'Omen of Dextral Necromancy', purpose: 'Desecration добавит только суффиксы' },
+  { en: 'Omen of Abyssal Echoes', purpose: 'Один переролл тройки опций Well of Souls при раскрытии' },
+  { en: 'Omen of the Sovereign', purpose: 'Desecration оружия/бижутерии даст случайный Ulaman-мод' },
+  { en: 'Omen of the Liege', purpose: 'Desecration оружия/бижутерии даст случайный Amanamu-мод' },
+  { en: 'Omen of the Blackblooded', purpose: 'Desecration оружия/бижутерии даст случайный Kurgal-мод' },
+  { en: 'Omen of Putrefaction', purpose: 'Desecration заменит ВСЕ моды предмета (до 6 нераскрытых) и скорруптит его', drop: 'экстремальный риск' },
+  // Divine / Vaal / Chance
+  { en: 'Omen of the Blessed', purpose: 'Divine Orb рероллит только ИМПЛИЦИТЫ' },
+  { en: 'Omen of Sanctification', purpose: 'Divine Orb на Rare — Sanctify (без негатива)' },
+  { en: 'Omen of Corruption', purpose: 'Vaal Orb ВСЕГДА изменит предмет (без исхода «ничего»)' },
+  { en: 'Omen of Chance', purpose: 'Orb of Chance НЕ уничтожит предмет при провале' },
+  { en: 'Omen of the Ancients', purpose: 'Orb of Chance апгрейдит до случайного уника того же класса' },
+  // Waystone-плитки
+  { en: 'Omen of Chaotic Rarity', purpose: 'Chaos на плитке заменит моды на НЕ дающие Item Rarity' },
+  { en: 'Omen of Chaotic Quantity', purpose: 'Chaos на плитке заменит моды на НЕ дающие Pack Size' },
+  { en: 'Omen of Chaotic Monsters', purpose: 'Chaos на плитке заменит моды на НЕ дающие Monster Rarity' },
+  { en: 'Omen of Chaotic Effectiveness', purpose: 'Chaos на плитке заменит моды на НЕ дающие Monster Effectiveness' },
+  // Экспедиция-саги (Logbook)
+  { en: "Aldur's Saga", purpose: 'Следующий Logbook добавит спец-моды в раскрытые Grand Expedition-зоны', drop: 'Expedition' },
+  { en: "Medved's Saga", purpose: 'Следующий Logbook гарантирует встречу Medved', drop: 'Expedition' },
+  { en: "Vorana's Saga", purpose: 'Следующий Logbook гарантирует встречу Vorana', drop: 'Expedition' },
+  { en: "Uhtred's Saga", purpose: 'Следующий Logbook гарантирует встречу Uhtred', drop: 'Expedition' },
+  { en: "Olroth's Saga", purpose: 'Следующий Logbook гарантирует встречу Olroth', drop: 'Expedition' },
+  // Некрафтовые (кратко)
+  { en: 'Omen of Refreshment', purpose: 'При Low Life полностью восстановить заряды фласок/чармов', drop: 'некрафтовый' },
+  { en: 'Omen of Resurgence', purpose: 'При Low Life полностью восстановить жизнь/ману/ЭС', drop: 'некрафтовый' },
+  { en: 'Omen of Amelioration', purpose: 'При смерти сохранить 75% опыта (смягчение потери)', drop: 'некрафтовый' },
+  { en: 'Omen of Answered Prayers', purpose: 'Следующий Святилище (Shrine) даст дополнительный эффект', drop: 'некрафтовый' },
+  { en: 'Omen of Secret Compartments', purpose: 'Следующий Strongbox можно открыть повторно', drop: 'некрафтовый' },
+  { en: 'Omen of the Hunt', purpose: 'Следующий Possessed-монстр выпустит всех Azmeri-духов', drop: 'Wildwood' },
+  { en: 'Omen of Reinforcements', purpose: 'Следующий Rogue Exile призовёт союзника', drop: 'некрафтовый' },
+  { en: 'Omen of Gambling', purpose: 'Следующая покупка-гэмблинг: 50% шанс бесплатно', drop: 'некрафтовый' },
+  { en: 'Omen of Bartering', purpose: 'Следующая продажа — вендор «ошибётся» в твою пользу', drop: 'некрафтовый' },
 ];
 
 // ─── №130: Полный каталог крафт-систем/рецептов 0.5.5 ────────────────────────

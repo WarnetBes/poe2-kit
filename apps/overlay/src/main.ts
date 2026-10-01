@@ -3491,6 +3491,8 @@ function setupIPC(): void {
         ok: true,
         recipes: core.craft.CRAFT_RECIPES,
         essences: core.craft.CRAFT_ESSENCES,
+        specEssences: core.craft.CRAFT_SPEC_ESSENCES,
+        alloys: core.craft.CRAFT_ALLOYS,
         perfectHint: core.craft.CRAFT_PERFECT_ESSENCES_HINT,
         omens: core.craft.CRAFT_OMENS,
       };
