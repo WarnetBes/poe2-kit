@@ -2994,6 +2994,63 @@ interface LevelingProgressFile {
   /** №140: причина последнего сброса — показать юзеру один раз. */
   resetNote?: string;
 }
+// ─── №143: таймер боссов ─────────────────────────────────────────────────────
+/** Одна попытка босса: вход в зону (по логу) → нажатие «Убит»/«Смерть». */
+interface BossAttempt {
+  zoneCode: string;
+  /** «kill» = победа, «death» = провал (в best не идёт). */
+  kind: 'kill' | 'death';
+  /** Прошло от входа в зону до кнопки, мс. */
+  ms: number;
+  /** ISO-время записи. */
+  ts: string;
+}
+interface BossTimesFile {
+  /** №140-правило: ключ персиста = лига. */
+  league?: string;
+  attempts: BossAttempt[];
+}
+function bossTimesPath(): string {
+  return path.join(app.getPath('userData'), 'boss-times.json');
+}
+function readBossTimes(): BossTimesFile {
+  try {
+    const p = JSON.parse(fs.readFileSync(bossTimesPath(), 'utf8')) as BossTimesFile;
+    if (Array.isArray(p.attempts)) return p;
+  } catch {
+    /* нет файла — норма */
+  }
+  return { league: activeLeague ?? undefined, attempts: [] };
+}
+/** Записать попытку. Смена лиги = обнуление истории (время в другой лиге несравнимо). */
+function appendBossAttempt(zoneCode: string, kind: 'kill' | 'death', ms: number): BossTimesFile {
+  const cur = activeLeague ?? undefined;
+  let file = readBossTimes();
+  if (!cur || file.league !== cur) {
+    if (file.attempts.length) console.log(`[overlay] boss:timer: история сброшена (лига ${file.league ?? '?'} → ${cur ?? '?'})`);
+    file = { league: cur, attempts: [] };
+  }
+  file.attempts.push({ zoneCode, kind, ms, ts: new Date().toISOString() });
+  // Верхний предел истории: 200 последних попыток (файл не растёт бесконечно).
+  if (file.attempts.length > 200) file.attempts = file.attempts.slice(-200);
+  try {
+    fs.writeFileSync(bossTimesPath(), JSON.stringify(file, null, 2));
+  } catch (e) {
+    console.log(`[overlay] boss-times.json не записан: ${e instanceof Error ? e.message : e}`);
+  }
+  return file;
+}
+/** Статистика по зоне: победы/провалы/лучшее/последнее время (мс). */
+function bossZoneStats(zoneCode: string): { kills: number; deaths: number; best: number | null; last: number | null } {
+  const kills: BossAttempt[] = readBossTimes().attempts.filter((a) => a.zoneCode === zoneCode && a.kind === 'kill');
+  const deaths = readBossTimes().attempts.filter((a) => a.zoneCode === zoneCode && a.kind === 'death').length;
+  return {
+    kills: kills.length,
+    deaths,
+    best: kills.length ? Math.min(...kills.map((k) => k.ms)) : null,
+    last: kills.length ? kills[kills.length - 1]!.ms : null,
+  };
+}
 function readLevelingProgressFile(): LevelingProgressFile | null {
   try {
     const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
@@ -3217,6 +3274,23 @@ async function runLevelingContext(): Promise<unknown> {
         sekhemas: core.bosses.SEKHEMAS_BOSSES,
         pinnacle: core.bosses.PINNACLE_BOSSES,
       },
+      // №143: таймер босса текущей зоны — стартуем от последнего входа в зону
+      // (Client.txt пишет area-строку с timestamp; смерть босса лог НЕ пишет —
+      // фиксация вручную кнопкой, старт всегда честный по логу).
+      bossTimer: (() => {
+        const visit = state.available ? state.zone : null;
+        const code = visit?.areaCode;
+        if (!code) return null;
+        const bs = core.bosses.bossesByZone(code);
+        if (!bs.length) return null;
+        const startedAtRaw = Date.parse(visit.timestamp);
+        return {
+          zoneCode: code,
+          bossNames: bs.map((b) => b.name),
+          startedAt: Number.isFinite(startedAtRaw) ? startedAtRaw : null,
+          stats: bossZoneStats(code),
+        };
+      })(),
       // №108: неполученные важные квесты текущего и прошлых актов
       quests: {
         list: core.questRewards.unclaimedQuests({
@@ -3384,6 +3458,32 @@ function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
   ipcMain.handle('level:check', () => runLevelingContext());
+  // №143: фиксация попытки босса. Время = Date.now() − ts входа в зону по
+  // ЖИВОМУ логу на момент клика (не по возрасту payload). Лог не пишет смерть
+  // босса → «Убит»/«Смерть» жмёт друг мышью, это часть дизайна.
+  ipcMain.handle('boss:timerdone', (_e, zoneCode: unknown, kind: unknown) => {
+    if (typeof zoneCode !== 'string' || (kind !== 'kill' && kind !== 'death')) {
+      return { ok: false, error: 'Неверный вызов таймера' };
+    }
+    const bs = core.bosses.bossesByZone(zoneCode);
+    if (!bs.length) return { ok: false, error: 'Это не боссовская зона' };
+    const override = gameLogOverride();
+    const live = core.log.getClientState(override ? { logPath: override } : {});
+    const visit = live.available ? live.zone : null;
+    if (!visit || visit.areaCode !== zoneCode) {
+      return { ok: false, error: 'Ты уже не в зоне босса — время не зафиксировать' };
+    }
+    const start = Date.parse(visit.timestamp);
+    if (!Number.isFinite(start)) return { ok: false, error: 'Лог не дал время входа в зону' };
+    const ms = Date.now() - start;
+    // sanity: от нуля до 6 часов
+    if (ms < 0 || ms > 6 * 3600 * 1000) return { ok: false, error: 'Подозрительное время попытки' };
+    appendBossAttempt(zoneCode, kind as 'kill' | 'death', ms);
+    console.log(
+      `[overlay] boss:timer: ${bs.map((b) => b.name).join(' + ')} — ${kind === 'kill' ? 'убит' : 'смерть'} за ${Math.floor(ms / 1000)} с`,
+    );
+    return { ok: true, ms, stats: bossZoneStats(zoneCode) };
+  });
 
   // №140: ручной сброс прогресса прокачки — новый персонаж в той же лиге.
   ipcMain.handle('level:reset', () => {

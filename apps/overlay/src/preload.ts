@@ -82,6 +82,8 @@ export interface OverlayAPI {
   buildgenGemData(chunk?: { offset: number; limit?: number }): Promise<unknown>;
   /** №141: импорт-код связки из конструктора (копируется в буфер обмена). */
   buildgenComboCode(payload: unknown): Promise<unknown>;
+  /** №143: фиксация попытки босса (kill|death) — время от входа в зону по живому логу. */
+  bossTimerDone(zoneCode: string, kind: 'kill' | 'death'): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -97,6 +99,10 @@ const api: OverlayAPI = {
 
   // №140: сброс прогресса прокачки (новый персонаж в той же лиге).
   levelReset: () => ipcRenderer.invoke('level:reset'),
+
+  // №143: фиксация попытки босса («Убит»/«Смерть») — время от входа в зону.
+  bossTimerDone: (zoneCode: string, kind: 'kill' | 'death') =>
+    ipcRenderer.invoke('boss:timerdone', zoneCode, kind),
 
   onPinnacleResult: (cb) => {
     const listener = (_evt: unknown, data: unknown) => cb(data);

@@ -48,6 +48,12 @@ export interface BossInfo {
   atlasPoints?: number | null;
   /** Этаж триала (Sekhemas: 1..4). */
   floor?: number;
+  /** №143: чем босс опасен (механики, урон) — только верифицированные источники, НЕ выдумывать. */
+  strengths?: string[];
+  /** №143: чем босса удобно бить (урезистентности, уязвимости, окна). Только верифицированное. */
+  weaknesses?: string[];
+  /** №143: что и зачем с него фармят (дроп-фокус, частота) — верифицированные заметки. */
+  farm?: string[];
 }
 
 /** Сюжетные боссы кампании (акты 1–4) + интерлюдии. */
@@ -93,6 +99,16 @@ export const ASC_TRIAL_BOSSES: BossInfo[] = [
     zone: "Trialmaster's Tower",
     access: '3 Fate-ключа: Deadly Fate + Cowardly Fate + Victorious Fate (Trial of Chaos; 0.5.5: до 30 комнат через Inscribed Ultimatum ×2, Trialmaster-фрагменты за каждое продолжение)',
     reward: 'эндгейм-дроп уников; 0.5.5 — продолжения рана дают только Currency + Soul Cores',
+    // №143: сильные стороны — разбор механики из verified-гайда (без новых фактов).
+    strengths: [
+      'Телепорты + двойной свайп, Sunder-слэмы, Timestop Sunder (три отложенных слэма).',
+      'Каналируемая Bloodburst-зона (взрывается), Cyclone c шоквейвами.',
+      'Уровень босса — 80; паузы в игре во время боя нет.',
+    ],
+    // №143: зачем фармят — 0.5.5 (verified патчноут).
+    farm: [
+      '0.5.5: продолжения рана (Inscribed Ultimatum ×2, до 30 комнат) — Trialmaster-фрагменты за каждое продолжение; награды продолжений — Currency + Soul Cores.',
+    ],
     tips: [
       'Булава: телепорты, двойной свайп, Sunder-слэмы, Timestop Sunder (три отложенных слэма), Bloodburst (каналируемая зона взрывается), Cyclone c шоквейвами.',
       'Нельзя ставить игру на паузу во время боя. Уровень босса — 80.',
@@ -149,6 +165,11 @@ export const SEKHEMAS_BOSSES: BossInfo[] = [
     reward: 'асценданси (Sekhemas); 0.5.5 бонусы Sekhemas на area level 65+',
     // Кандидат «Зарох» НЕ подтверждён по RU-клиенту — name_ru не заполняем (см. шапку).
     name_ru: undefined,
+    // №143: верифицированные данные (см. комментарии блока Sekhemas).
+    strengths: ['Манипуляции временем (финал Sekhemas).'],
+    farm: [
+      'Асценданси; 0.5.5 бонусы Sekhemas на картах area level 65+ (magic/rare шанс, pack size, качество/количество с боссов).',
+    ],
     tips: [
       'Финальный босс Sekhemas: манипуляции временем.',
       'Honor = Life + ES; восстанавливайте Honor шрайнами за Sacred Water; рекомендация — 75% Honour Resistance на реликвиях.',
@@ -172,8 +193,12 @@ export const PINNACLE_BOSSES: BossInfo[] = [
     atlasPoints: null,
     tips: [
       // 0.5.5 (verified, патчноут): НЕ All Elemental Res — вместо этого Fire Res + Cold Vulnerability.
-      'С 0.5.5 босс: сопротивление огню + уязвимость к холоду (НЕ All Elemental Res) — берите cold-урон.',
       'Нет опыта за бой, но и без потери опыта при смерти. Квестовые ключи первой попытки — с бесконечными возрождениями.',
+    ],
+    // №143: cold-уязвимость — verified 0.5.5 патчноут.
+    weaknesses: ['С 0.5.5 босс: fire res + COLD VULNERABILITY (не All Elemental Res) — берите cold-урон.'],
+    farm: [
+      'Уники пиннакла. Ключ доступа (фрагменты Citadels: Doryani / Jamanra / Geonor — uber-акты) — сам по себе регулирует частоту фарма.',
     ],
   },
   {
@@ -270,6 +295,14 @@ const byZoneCode: Map<string, BossInfo> = (() => {
 /** Босс зоны по её коду (или null). */
 export function bossByZoneCode(zoneCode: string): BossInfo | null {
   return byZoneCode.get(zoneCode) ?? null;
+}
+
+/**
+ * №143: ВСЕ боссы зоны по её коду. В G2_9_2 (The Spires of Deshar) два босса
+ * (Гарухан + Тор Гул) — одиночная карта затирала второго; таймеру нужен список.
+ */
+export function bossesByZone(zoneCode: string): BossInfo[] {
+  return ALL_BOSSES.filter((b) => b.zoneCode === zoneCode);
 }
 
 /** Сюжетные боссы одного акта (1..4). */

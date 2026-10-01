@@ -200,8 +200,13 @@ export const rendererHtml = `<!doctype html>
 
   /* №109: неподтверждённые записи — приглушённо */
   .boss-entry.boss-unverified { opacity: 0.55; border-left-color: rgba(160,160,160,0.35); }
+
   .boss-unv-mark { display: inline-block; font-size: 10px; padding: 0 5px; margin-left: 4px;
     border-radius: 6px; background: rgba(160,160,160,0.18); color: var(--dim); }
+
+  /* №143: таймер босса текущей зоны */
+  .boss-timer { margin-top: 6px; padding: 4px 6px; border-radius: 6px;
+    background: rgba(127,201,127,0.08); border: 1px dashed rgba(127,201,127,0.45); }
 
   /* №108: чек-лист квестовых наград */
   .quest-row { padding: 3px 6px 4px; border-radius: 6px; background: rgba(255,255,255,0.04);
@@ -2126,9 +2131,11 @@ export const rendererHtml = `<!doctype html>
 
     // №140: маршрут акта + прогресс (лига/сброс) для шапки renderCamp
     window.poe2k.__lastLevelProgress = lvl.progress || null;
+    // №143: таймер босса текущей зоны (для карточек боссов).
+    window.poe2k.__bossTimer = lvl.bossTimer || null;
     renderCamp(lvl.camp);
-    // №104: бестиарий боссов
-    renderBosses(lvl.bosses, lvl.camp);
+    // №104: бестиарий боссов (№143: + bt — таймер/статистика текущей зоны)
+    renderBosses(lvl.bosses, lvl.camp, window.poe2k.__bossTimer);
     // №108: чек-лист неполученных квестовых наград
     renderQuests(lvl.quests);
     // №112-lite: обзор эндгейм-механик + этажность Sekhemas
@@ -2249,7 +2256,27 @@ export const rendererHtml = `<!doctype html>
   }
 
   /** №104: бестиарий боссов (все сюжетные по актам + триалы + пиннакл). */
-  function renderBosses(bosses, camp) {
+  // №143: mm:ss (или h:mm:ss) для таймера босса.
+  function fmtBossMs(ms) {
+    if (!isFinite(ms) || ms < 0) return '—';
+    var s = Math.floor(ms / 1000);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var ss = s % 60;
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(ss) : m + ':' + pad(ss);
+  }
+  // №143: один глобальный тикер для всех видимых таймеров (без утечки интервалов).
+  if (!window.__bossTick) {
+    window.__bossTick = window.setInterval(function () {
+      var els = document.querySelectorAll('[data-boss-elapsed]');
+      for (var i = 0; i < els.length; i++) {
+        var st = Number(els[i].getAttribute('data-boss-start'));
+        if (isFinite(st) && st > 0) els[i].textContent = fmtBossMs(Date.now() - st);
+      }
+    }, 1000);
+  }
+  function renderBosses(bosses, camp, bt) {
     var wrap = $('campWrap');
     if (!bosses || !bosses.story) return;
     var curAct = camp && camp.act;
@@ -2296,6 +2323,84 @@ export const rendererHtml = `<!doctype html>
           tp.className = 'boss-tip';
           tp.textContent = '• ' + b.tips[t];
           e.appendChild(tp);
+        }
+      }
+      // №143: расширенная карточка — только верифицированные данные.
+      if (b.strengths) {
+        var stw = document.createElement('div');
+        stw.className = 'boss-tip';
+        stw.innerHTML = '<span style="color:#e0a34c">💪 Сильные стороны:</span>';
+        e.appendChild(stw);
+        for (var si2 = 0; si2 < b.strengths.length; si2++) {
+          var st2 = document.createElement('div');
+          st2.className = 'boss-tip';
+          st2.textContent = '  • ' + b.strengths[si2];
+          e.appendChild(st2);
+        }
+      }
+      if (b.weaknesses) {
+        var wkw = document.createElement('div');
+        wkw.className = 'boss-tip';
+        wkw.innerHTML = '<span style="color:#7fc97f">🎯 Как бить:</span>';
+        e.appendChild(wkw);
+        for (var wi2 = 0; wi2 < b.weaknesses.length; wi2++) {
+          var wk2 = document.createElement('div');
+          wk2.className = 'boss-tip';
+          wk2.textContent = '  • ' + b.weaknesses[wi2];
+          e.appendChild(wk2);
+        }
+      }
+      if (b.farm) {
+        var fmw = document.createElement('div');
+        fmw.className = 'boss-tip';
+        fmw.innerHTML = '<span style="color:#9db4e8">🪙 Что фармится / зачем идут:</span>';
+        e.appendChild(fmw);
+        for (var fi = 0; fi < b.farm.length; fi++) {
+          var fm = document.createElement('div');
+          fm.className = 'boss-tip';
+          fm.textContent = '  • ' + b.farm[fi];
+          e.appendChild(fm);
+        }
+      }
+      // №143: свой таймер — только у босса ТЕКУЩЕЙ зоны (старт = вход в зону по логу).
+      if (b.zoneCode && bt && bt.zoneCode === b.zoneCode) {
+        var tm = document.createElement('div');
+        tm.className = 'boss-timer';
+        var hasStart = bt.startedAt != null && bt.startedAt > 0;
+        tm.innerHTML =
+          '<div style="font-size:12px;color:#fff">⏱ Попытка: <span data-boss-elapsed data-boss-start="' +
+          (hasStart ? bt.startedAt : 0) + '" style="font-size:13px;font-weight:700">' +
+          (hasStart ? fmtBossMs(Date.now() - bt.startedAt) : '—') + '</span>' +
+          ' <span class="tree-chips" style="display:inline-block;margin-left:4px">' +
+          '<button class="tree-chip" data-btzone="' + esc(b.zoneCode) + '" data-btkind="kill">🏆 Убит</button> ' +
+          '<button class="tree-chip" data-btzone="' + esc(b.zoneCode) + '" data-btkind="death">💀 Смерть</button></span></div>' +
+          '<div class="lvl-hint" data-btstats>' +
+          (bt.stats && bt.stats.kills
+            ? 'Побед: ' + bt.stats.kills + ' · провалов: ' + (bt.stats.deaths || 0) +
+              ' · лучшее: ' + fmtBossMs(bt.stats.best) + ' · прошлое: ' + fmtBossMs(bt.stats.last)
+            : 'Попыток ещё не записано. Жми «🏆 Убит» сразу после убийства — время зафиксируется от входа в зону.') +
+          '</div>';
+        e.appendChild(tm);
+        var btns = tm.querySelectorAll('[data-btzone]');
+        for (var bi = 0; bi < btns.length; bi++) {
+          btns[bi].addEventListener('click', function () {
+            var zc = this.getAttribute('data-btzone');
+            var kd = this.getAttribute('data-btkind');
+            var statsEl = this.closest('.boss-timer')?.querySelector('[data-btstats]');
+            if (statsEl) statsEl.textContent = '⏳ фиксирую…';
+            window.poe2k.bossTimerDone(zc, kd).then(function (r) {
+              if (r && r.ok) {
+                if (statsEl) {
+                  statsEl.textContent = (kd === 'kill' ? '🏆 Убит за ' : '💀 Провал через ') +
+                    fmtBossMs(r.ms) + ' — записано. Обновляю…';
+                }
+                // свежий payload: onLevelResult перерисует бестиарий с новой статистикой
+                window.poe2k.panelOpen('level');
+              } else if (statsEl) {
+                statsEl.textContent = '⚠ ' + ((r && r.error) || 'не удалось записать');
+              }
+            });
+          });
         }
       }
       return e;
