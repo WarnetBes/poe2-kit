@@ -79,6 +79,141 @@ export const CRAFT_OMENS: OmenInfo[] = [
   { en: 'Omen of Sanctification', purpose: 'Divine Orb — Sanctify (без негатива)' },
 ];
 
+// ─── №130: Полный каталог крафт-систем/рецептов 0.5.5 ────────────────────────
+// Источник каждой записи — docs/crafting_knowledge_base.md (§1–§5), все
+// механики верифицированы (пометки ✅ в базе). Веса/шансы не выдумываем.
+
+export type CraftSystem =
+  | 'currency'
+  | 'essence'
+  | 'omen'
+  | 'rune'
+  | 'quality'
+  | 'bench'
+  | 'desecration'
+  | 'special'
+  | 'waystone';
+
+export interface CraftRecipe {
+  id: string;
+  system: CraftSystem;
+  name: string;
+  /** Рецепт: что делаем + чем + результат. */
+  recipe: string;
+  /** SSF-примечание (когда жечь, чем заменить). */
+  ssfNote?: string;
+}
+
+/** Все крафтовые рецепты PoE2 0.5.5, известные киту (см. базы знаний §1–§5). */
+export const CRAFT_RECIPES: CraftRecipe[] = [
+  // §1 Базовая валюта (линейки Greater: floor 44/35, Perfect: 70/50)
+  { id: 'transmute', system: 'currency', name: 'Orb of Transmutation (G/P)', recipe: 'White → Magic (+1 мод). Greater — минимальный уровень мода 44, Perfect — 70: мусорные тиры вырезаны из пула.', ssfNote: 'Расходник основы; G-версия экономит дешёвые резисты на бижутерии.' },
+  { id: 'augment', system: 'currency', name: 'Orb of Augmentation (G/P)', recipe: 'Magic +1 мод (доливает второй слот Magic 1+1).', ssfNote: 'Расходник №1 по объёму.' },
+  { id: 'regal', system: 'currency', name: 'Regal Orb (G/P)', recipe: 'Magic → Rare (+1 мод; полный набор дальше слэмится Exalt).', ssfNote: 'С оменом Sinistral/Dextral Coronation — таргет-сторона.' },
+  { id: 'alchemy', system: 'currency', name: 'Orb of Alchemy', recipe: 'White/Magic → Rare сразу 4 мода.', ssfNote: 'Дороже PoE1-аналога: в SSF жечь только на базе ilvl 81+.' },
+  { id: 'exalt', system: 'currency', name: 'Exalted Orb (G/P)', recipe: 'Rare +1 мод (слэм).', ssfNote: '«Валюта» PoE2: основной ресурс эндгейм-крафта.' },
+  { id: 'chaos', system: 'currency', name: 'Chaos Orb (G/P)', recipe: 'Удалить 1 случайный мод + добавить 1 (НЕ реролл всего предмета).', ssfNote: 'Чистка с оменами Whittling/Erasure; без оменов — только на расходных слотах.' },
+  { id: 'annul', system: 'currency', name: 'Orb of Annulment', recipe: 'Удалить случайный мод.', ssfNote: 'С Omen of Light — снять только desecrated-мод (перезапуск провала Дезекрации).' },
+  { id: 'divine', system: 'currency', name: 'Divine Orb', recipe: 'Рероллить числа модов ВНУТРИ их тиров.', ssfNote: 'Топ-капитал: только на готовом предмете, у которого правильные моды.' },
+  { id: 'vaal', system: 'currency', name: 'Vaal Orb', recipe: 'Коррупт: +1 сокет / реролл части модов / энчант / ничего (случайный исход).', ssfNote: 'Финализатор — последним, когда терять предмет уже не страшно.' },
+  { id: 'chance', system: 'currency', name: 'Orb of Chance', recipe: 'White → Unique (шанс) ИЛИ уничтожить предмет.', ssfNote: 'Гэмблинг: только на базы, уникальный вариант которых реально нужен.' },
+  { id: 'fracturing', system: 'currency', name: 'Fracturing Orb', recipe: 'Закрепить (фракчер) случайный мод на Rare с 4+ модами — мод переживёт дальнейший крафт.', ssfNote: 'Атласный дроп, high-end; закрепится случайный мод — только на предмете, где «любой из 4 не жалко».' },
+  { id: 'hinekora', system: 'currency', name: "Hinekora's Lock", recipe: 'Показать результат СЛЕДУЮЩЕЙ валюты до её применения (без расхода при отказе).', ssfNote: 'Планирование Perfect-крафта: лочим, смотрим, отменяем плохое.' },
+  { id: 'artificer', system: 'currency', name: "Artificer's Orb", recipe: "Добавить augment-сокет предмету (из 10 Artificer's Shards с Salvage Bench).", ssfNote: 'Путь к рунам/соколам; шардья копятся разборкой мусора.' },
+  { id: 'extraction', system: 'currency', name: 'Orb of Extraction', recipe: 'Уничтожить предмет, вернуть сокетабл (руну/сокол).', ssfNote: 'Спасение дорогой руны из провального предмета.' },
+  { id: 'jeweller', system: 'currency', name: "Jeweller's Orb (L/G/P)", recipe: '3/4/5 сокета саппортов камню навыка.', ssfNote: 'Камни — отдельная трата; 5 сокетов — Perfect, только на основной сетап.' },
+  // §1 Мифы (запрещённые рецепты PoE1)
+  { id: 'no-scouring', system: 'special', name: 'НЕТ Scouring/Alteration/Regret/Chromatic', recipe: 'Удалены из PoE2 — «откатить» предмет нельзя, а кулер не крафтится Color Orb-ом.', ssfNote: 'Вали проигранного редкого — Salvage/Reforging Bench, не «пере-альтить».' },
+  { id: 'one-crafted', system: 'special', name: 'ОДИН crafted-мод на предмет', recipe: 'Эссенции и Alloys делят один crafted-слот: вторая эссенция мод НЕ заменит, а зря сгорит.', ssfNote: 'Якорь выбирай один раз — затем только Exalt/Chaos/Desecration.' },
+  // §5 Спец-системы
+  { id: 'alloy', system: 'special', name: 'Alloys (Runes of Aldur)', recipe: 'Экспедиция-валюта: добавить гарантированный мод, заменив случайный (занимает crafted-слот).', ssfNote: 'Прямой таргет-инструмент достать сложно — беречь для ключевого слота.' },
+  { id: 'flux', system: 'special', name: 'Flux-валюта (Blazing/Chilling/Crackling/Void)', recipe: 'Конвертировать резист на предмете в другой тип (fire→cold и т.п.).', ssfNote: 'Спасение «не того» резиста на готовом предмете без переделки.' },
+  { id: 'runeforging', system: 'special', name: 'Runeforging (Verisium, Ward)', recipe: "Ward-моды и апгрейд уникального оружия (Aldur's Legacy руна из уникала, Uhtred's Sidereum — Chronomancy-моды в пул ботинок).", ssfNote: 'Система нишевая; для CI-Invoker не приоритет.' },
+  // §2 Эссенции (полная таблица — CRAFT_ESSENCES выше) + правило Perfect
+  { id: 'essence-anchor', system: 'essence', name: 'Lesser/Normal/Greater эссенция — якорь №1', recipe: 'Magic → Rare + ГАРАНТИРОВАННЫЙ мод (таблица модов — CRAFT_ESSENCES). Тир ограничен ilvl базы.', ssfNote: 'Ядро SSF-крафта: резисты/ЭС/урон детерминантом, без лотереи.' },
+  { id: 'essence-perfect', system: 'essence', name: 'Perfect эссенция', recipe: 'Rare: удалить случайный мод + добавить гарантированный (аналог управляемого Chaos).', ssfNote: 'С Omen of Sinistral/Dextral Crystallisation удаление — только нужная сторона.' },
+  // §3 Омены (полная таблица — CRAFT_OMENS выше)
+  { id: 'omen-rule', system: 'omen', name: 'Омены = детерминизм слэмa', recipe: 'Активный омен меняет поведение СЛЕДУЮЩЕЙ валюты: сторона слэма, число модов, что удалится (таблица — CRAFT_OMENS).', ssfNote: 'Дроп: Ritual/Tribute; дорогие Erasure — только на хай-энде.' },
+  // §4 Руны, сокеты, качество
+  { id: 'rune-socket', system: 'rune', name: 'Augment-сокет: руна', recipe: '2 сокета: body/2H; 1: 1H/шлем/перчатки/боты/щит/фокус. Руны Lesser→Perfect; две ОДИНАКОВЫЕ = усиленный «Bonded»-бонус.', ssfNote: 'Комбинирование рун 3:1 на Reforging Bench — апгрейд тира из мусора.' },
+  { id: 'soul-core', system: 'rune', name: 'Soul Cores (+ Jiquani\u2019s)', recipe: "Сокеты: Trial of Chaos-соколы, сильнее рун (Limited 1). Jiquani's Soul Cores (Forbidden Rites): «+1 к уровню Strike/Storm/Herald/… умений» на оружии. Atziri's — детерминированная коррупция («всегда изменит»).", ssfNote: 'Актуальный путь к +уровням скиллов в 0.5.5.' },
+  { id: 'quality-weapon', system: 'quality', name: 'Качество оружия', recipe: "Blacksmith's Whetstone: +1% more физ. урона за 1% (макс 20%; Vaal Infusers — +10% сверх с риском коррупта).", ssfNote: 'Дёшево и навсегда — делать на любом рабочем оружии.' },
+  { id: 'quality-armour', system: 'quality', name: 'Качество брони', recipe: "Armourer's Scrap: +1% more защиты за 1% (макс 20%).", ssfNote: 'Аналогично — дешёвый апгрейд.' },
+  { id: 'quality-caster', system: 'quality', name: 'Качество жезлов/посохов', recipe: "Arcanist's Etcher для основы; Glassblower's Baubles — фласки; GCP — гемы.", ssfNote: 'Фласки/гемы качаются первым делом — это чистый бонус.' },
+  { id: 'quality-jewellery', system: 'quality', name: 'Катализаторы (бижутерия)', recipe: 'Теговые катализаторы (Breach): +Quality и усиление модов своего тега; Omen of Catalysing Exaltation жрёт это качество ради шанса мода нужного тега.', ssfNote: ' Essence of the Breach: +20% max quality кольцам.' },
+  { id: 'quality-waystone', system: 'waystone', name: "Cartographer's Chisel", recipe: 'Качество Waystone-плитки: повышает силу её модов при активации карты.', ssfNote: 'Стандартный расходник на T15–16 перед коррупцией.' },
+  // §5 Бенчи и Desecration
+  { id: 'salvage', system: 'bench', name: 'Salvage Bench (Act 1)', recipe: 'Разборка предмета → материалы + Artificer\u2019s Shards.', ssfNote: 'Мусорный рарник → шардья сокетов; точная доля возврата ❓ (база знаний).' },
+  { id: 'reforge', system: 'bench', name: 'Reforging Bench (Act 3, Ziggurat)', recipe: '3 одинаковых → 1 новая база того же типа (базы, руны, соколы, эссенции; 3 Magic → 1 Rare-заготовка; шанс Greater у эссенций — ~2.5% краудсорс ❓).', ssfNote: 'Рецикл ВСЕХ провальных крафтов — не выбрасывать слабые краты.' },
+  { id: 'desecration', system: 'desecration', name: 'Desecration (Abyss) — якорь №2', recipe: 'Preserved Rib (броня) / Jawbone (оружие) / Collarbone (бижутерия) → скрытый desecrated-мод → Well of Souls: выбор 1 из 3. Слот отдельный (crafted не занимает). На 4-модовом — новый 4-й мод; на 6-модовом — замена случайного.', ssfNote: 'Управление: Sinistral/Dextral Necromancy (сторона), Abyssal Echoes (переролл тройки). Провал: Omen of Light + Annulment → повтор.' },
+  // Waystone-плитки (§ панели Плитки, poe2wiki 30.09.2026)
+  { id: 'waystone-t16', system: 'waystone', name: 'Тир 16 — только коррупция Т15', recipe: 'Vaal Orb на Т15: 25% шанс «тир ±1» (исходы: ничего / тир±1 / лок префиксов+reroll суффиксов (или наоборот) / лок обоих + 0–4 доп. мода до 8).', ssfNote: 'Единственный путь к Т16; корруптить только готовую Т15.' },
+  { id: 'waystone-31', system: 'waystone', name: '3:1 перековка тиров', recipe: 'Reforging Bench: 3 плитки одинакового тира и редкости → 1 плитка тиром выше.', ssfNote: 'Стабильный ап-тир без риска — основной SSF-путь Т10→Т15.' },
+  { id: 'waystone-omen', system: 'waystone', name: 'Omens для плиток', recipe: 'Omen of Chaotic Rarity/Quantity/Monsters/Effectiveness — реролл модов карты без потери нужного.', ssfNote: 'Ritual-дроп; беречь для T15–16.' },
+  { id: 'waystone-mods', system: 'waystone', name: 'Правило модов плитки', recipe: 'Модов до 6 (3 префикса + 3 суффикса), обычная/волшебная/редкая; моды переносятся на карту при активации; каждый явный мод = −1 возрождение карты (6 без модов → 0 при 6+).', ssfNote: 'Жирная карта = без права на ошибку: сначала выживаемость, потом жадность.' },
+];
+
+// Waystone-плитки: базовый класс в EN-клиенте — «Waystones»; RU-имя не
+// верифицировано живым логом — матчим и «плитк» (терминология панели «Плитки»).
+const WAYSTONE_RE = /waystone|плитк/i;
+
+/**
+ * №130: крафт-план для Waystone-плитки (источник: панель «Плитки»,
+ * poe2wiki.net «Waystone», проверено 30.09.2026; см. CRAFT_RECIPES system='waystone').
+ */
+export function waystoneCraftPlan(input: CraftPlanInput): CraftPlanStep[] {
+  const ilvl = input.itemLevel ?? null;
+  const tier = input.parsed ? waystoneTierFromText(input.parsed) : null;
+  return [
+    {
+      step: tier ? `1. Плитка тира ${tier}: выбор стратегии` : '1. Определи тир плитки (строка «Waystone Tier» в описании)',
+      detail:
+        (tier != null && tier >= 15
+          ? `Тир ${tier}: цель — Т16, путь один — коррупция Vaal Orb (см. шаг 3). `
+          : tier != null && tier >= 10
+            ? `Тир ${tier}: до Т15 — стабильный путь 3:1 перековки (шаг 2), дальше только коррупция. `
+            : 'Низкие тиры: не вкладывать валюту — фарм и 3:1 перековка. ') +
+        'Модов до 6 (3 префикса + 3 суффикса); моды переносятся на карту при активации.',
+    },
+    {
+      step: '2. Ап-тир без риска: Reforging Bench 3:1',
+      detail:
+        '3 плитки ОДИНАКОВОГО тира и редкости → 1 плитка тиром выше (Act 3, Ziggurat Encampment). ' +
+        (ilvl != null ? `ilvl предмета ${ilvl} — влияет на пул модов новой плитки. ` : '') +
+        'Основной SSF-путь от Т10 к Т15; неудачные дубликаты — не выбрасывать, копить в тройки. ' +
+        'Числовые пороги тиров НЕ верифицированы — см. WAYSTONE_TIERS_UNVERIFIED (endgame.ts).',
+    },
+    {
+      step: '3. Т16 — только коррупция Т15 (25% тир±1)',
+      detail:
+        'Vaal Orb на Т15: исходы по 25% каждый — ничего · тир ±1 · лок префиксов + реролл суффиксов (или наоборот, игнор лимита) · лок обоих + 0–4 доп. мода (до 8 всего). ' +
+        'Единственный путь к Т16. Корруптить только готовую Т15 с нужными модами; перед этим — Omen of Chaotic-серия (реролл отдельных групп модов без потери остальных).',
+    },
+    {
+      step: '4. Качество и омены перед активацией',
+      detail:
+        "Cartographer's Chisel: качество плитки — усиливает её моды при активации карты. " +
+        'Omens (Ritual-дроп): Chaotic Rarity/Quantity/Monsters/Effectiveness — точечно рероллят нужную группу модов. Беречь для Т15–16.',
+    },
+    {
+      step: '5. Правило возрождений: жирная карта = без права на ошибку',
+      detail: 'Каждый явный мод плитки = −1 возрождение карты: 6 без модов → 0 при 6+ модах. ' +
+        'Сначала выживаемость билда (чекап Ctrl+F7), потом жадные моды количества/редкости.',
+    },
+  ];
+}
+
+/** Тир Waystone из разобранного текста (моды + сырые секции: «Waystone Tier 15» / «Тир: 15»). */
+function waystoneTierFromText(parsed: ParsedItem): number | null {
+  const texts: string[] = (parsed.mods || []).map((x) => x.text);
+  for (const sec of parsed.sections || []) texts.push(...sec);
+  for (const t of texts) {
+    const m = /(?:waystone\s*)?(?:tier|тир)\D{0,4}(\d{1,2})/i.exec(t);
+    if (m) return parseInt(m[1]!, 10);
+  }
+  return null;
+}
+
 // ─── Определение роли предмета ─────────────────────────────────────────────
 
 const WEAPON_RE = /quarterstaff|quarterstave|staff|sceptre|bow|crossbow|wand|mace|sword|axe|claw|dagger|spear|flail|weapon|weapon Set/i;
@@ -140,6 +275,10 @@ export interface CraftPlanInput {
  * docs/crafting_knowledge_base.md §6). Шаги нумеруются вызывающим.
  */
 export function craftPlan(input: CraftPlanInput): CraftPlanStep[] {
+  // №130: Waystone-плитка — отдельная методология (ап-тиры/коррупция, не аффикс-крафт)
+  if (WAYSTONE_RE.test(`${input.itemClass ?? ''} ${input.baseType ?? ''}`)) {
+    return waystoneCraftPlan(input);
+  }
   const role = slotRole(input.itemClass ?? '', input.baseType ?? '');
   const ilvl = input.itemLevel ?? null;
   const ess = essenceSuggestions(input.itemClass ?? '', input.baseType ?? '')[0];

@@ -268,13 +268,34 @@ export function pinnacleChecklist(
 
   const checks: PinnacleCheck[] = [];
 
-  // 1) Элем-резисты к капу (computed: наши суммы из гира, кап = data-факт).
-  for (const [name, v] of [['fire', est.defenses.fireRes], ['cold', est.defenses.coldRes], ['lightning', est.defenses.lightningRes]] as const) {
+  // 1) Элем-резисты к капу. №130-ф1: приоритет — PoB PlayerStat (Fire/Cold/
+  // LightningResist: гир+дерево+гиры полные, «слитное» имя — живой XML), fallback —
+  // оценка только по гиру (может занижать). Фикс-подсказка при fail — №130-ф3.
+  const ESSENCE_BY_RES: Record<string, { en: string; ru: string | null }> = {
+    fire: { en: 'Essence of Insulation', ru: null },
+    cold: { en: 'Essence of Thawing', ru: null },
+    lightning: { en: 'Essence of Grounding', ru: 'сущность заземления' },
+  };
+  for (const [name, v, statKey] of [
+    ['fire', est.defenses.fireRes, 'FireResist'],
+    ['cold', est.defenses.coldRes, 'ColdResist'],
+    ['lightning', est.defenses.lightningRes, 'LightningResist'],
+  ] as const) {
+    const pob = num(ps[statKey]);
+    const val = pob ?? v; // PoB-стат честнее: включает резисты с дерева/пассивок
+    const verdict = val >= OPTIMIZE_CONSTANTS.RESIST_CAP ? 'pass' : 'fail';
+    const src = pob != null ? 'computed (PoB total)' : 'estimated (только гир — дерево не учтено)';
+    const ess = ESSENCE_BY_RES[name]!;
+    const essRu = ess.ru ? `, в RU-клиенте «…${ess.ru}…»` : '';
+    const hint =
+      verdict === 'fail'
+        ? ` Фикс: ${ess.en}${essRu} → гарантированный резист-суффикс (крафт-план: Ctrl+F1 по предмету слота), либо руна/Flux-конвертация.`
+        : '';
     checks.push({
       item: `${name} resistance ≥ ${OPTIMIZE_CONSTANTS.RESIST_CAP}%`,
-      verdict: v >= OPTIMIZE_CONSTANTS.RESIST_CAP ? 'pass' : 'fail',
-      detail: `${v} / ${OPTIMIZE_CONSTANTS.RESIST_CAP} (босс-резисты ${ph.elementalResist}%, пенетрация ${ph.elementalPenetration}%)`,
-      kind: 'estimated',
+      verdict,
+      detail: `${val} / ${OPTIMIZE_CONSTANTS.RESIST_CAP} [${src}] — босс-резисты ${ph.elementalResist}%, пенетрация ${ph.elementalPenetration}%${hint}`,
+      kind: pob != null ? 'computed' : 'estimated',
     });
   }
 
@@ -282,27 +303,42 @@ export function pinnacleChecklist(
   if (isCI) {
     checks.push({ item: 'chaos resistance', verdict: 'pass', detail: `CI: chaos-иммунитет (Life=${life})`, kind: 'computed' });
   } else {
+    const pobChaos = num(ps['ChaosResist']);
+    const val = pobChaos ?? est.defenses.chaosRes;
     checks.push({
       item: 'chaos resistance ≥ 0%',
-      verdict: est.defenses.chaosRes >= 0 ? 'pass' : 'fail',
-      detail: `${est.defenses.chaosRes} (босс-хаос-урон ${ph.chaosDamage})`,
-      kind: 'estimated',
+      verdict: val >= 0 ? 'pass' : 'fail',
+      detail: `${val} ${pobChaos != null ? '[computed (PoB total)]' : '[estimated (только гир)]'} — босс-хаос-урон ${ph.chaosDamage}. Фикс: Essence of Ruin → гарантированный chaos-резист-суффикс.`,
+      kind: pobChaos != null ? 'computed' : 'estimated',
     });
   }
 
-  // 3) EHP-порог: худший слой против ударов босса (computed: удар — таблица, требуемый множитель — эвристика).
+  // 3) EHP-порог. №130-ф2: удар босса (ph.damage) — физический (stunmod ниже
+  // зовётся 'physical'/'melee'), поэтому сравниваем его с EHP ФИЗИЧЕСКОГО слоя
+  // (est.ehp.physical), а НЕ с худшим слоем — смешение типов давало ложный
+  // fail (например chaos-слой CI против физического удара). Худший слой —
+  // отдельной строкой-инфо (computed: удар — таблица, множитель — эвристика).
   const ehpHits = opts.ehpHits ?? OPTIMIZE_CONSTANTS.PINNACLE_EHP_HITS;
+  const physEhp = est.ehp?.physical?.effectiveHp ?? null;
   const worst = est.worstEhp?.effectiveHp ?? null;
   const required = (ph.damage ?? 0) * ehpHits;
-  if (worst != null && required > 0) {
+  if (physEhp != null && required > 0) {
     checks.push({
-      item: `худший EHP ≥ ${ehpHits}× удара босса${boss !== 'none' ? ` (${boss})` : ''}`,
-      verdict: worst >= required ? 'pass' : 'fail',
-      detail: `computed EHP ${Math.round(worst)} vs required ${Math.round(required)} (удар ${ph.damage}); порог ${ehpHits}× — estimated-эвристика`,
+      item: `EHP против физ. удара ≥ ${ehpHits}× удара босса${boss !== 'none' ? ` (${boss})` : ''}`,
+      verdict: physEhp >= required ? 'pass' : 'fail',
+      detail: `computed physical EHP ${Math.round(physEhp)} vs required ${Math.round(required)} (удар ${ph.damage}); порог ${ehpHits}× — estimated-эвристика`,
       kind: 'computed',
     });
   } else {
-    checks.push({ item: 'EHP-порог', verdict: 'unknown', detail: 'не удалось посчитать худший EHP', kind: 'computed' });
+    checks.push({ item: 'EHP-порог', verdict: 'unknown', detail: 'не удалось посчитать EHP физического слоя', kind: 'computed' });
+  }
+  if (worst != null) {
+    checks.push({
+      item: `самый слабый слой EHP (${est.worstEhp?.damageType ?? '?'}): ${Math.round(worst)} — инфо`,
+      verdict: 'unknown',
+      detail: `худший слой: держит ${ph.damage > 0 ? Math.floor(worst / ph.damage) : '?'} физ. ударов; ослабить пики этого типа урона (элем-физ пушки босса — см. модель врага)`,
+      kind: 'computed',
+    });
   }
 
   // 4) Устойчивость к стану: ударов босса до Heavy Stun игрока (computed: формула stun.ts).

@@ -3016,8 +3016,11 @@ async function runPinnacleCheck(): Promise<unknown> {
   }
   busy = true;
   try {
+    // №130-ф1: rawInput (исходный PoB-код/XML), а НЕ слоты: estimateBuild из строки
+    // наполняет pobStats (PlayerStat: FireResist/ColdResist/… — резисты с ДЕРЕВА
+    // и гира сразу), из массива слотов pobStats пуст и чек-лист ложно краснеет.
     const est = await withTimeout(
-      core.estimate.estimateBuild(buildState!.slots.map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText }))),
+      core.estimate.estimateBuild(buildState!.rawInput),
       30_000,
       'estimateBuild',
     );

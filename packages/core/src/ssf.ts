@@ -103,7 +103,14 @@ const ACC_CLASSES = /ring|amulet|belt|focus/i;
 const GEM_CLASSES = /gem|stackable currency/i;
 const FLASK_CLASSES = /flask/i;
 
+const WAYSTONE_CLASSES = /waystone|плитк/i;
+
 function craftingFor(itemClass: string, isGear: boolean, ilvl: number | null): SsfCraftingStep[] {
+  // №130: Waystone-плитки — свой план (3:1 перековка, коррупция Т15→Т16),
+  // до GEM_CLASSES: не должен провалиться в «stackable currency»/generic.
+  if (WAYSTONE_CLASSES.test(itemClass)) {
+    return craftPlan({ itemClass, baseType: itemClass, itemLevel: ilvl }).map((s) => ({ step: s.step, detail: s.detail }));
+  }
   if (GEM_CLASSES.test(itemClass)) {
     return [
       {
