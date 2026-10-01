@@ -1299,7 +1299,11 @@ export const rendererHtml = `<!doctype html>
         ' <span style="color:' + (r.trend > 0 ? '#e08080' : '#7fc97f') + '">' +
         (r.trend > 0 ? '▲+' : r.trend < 0 ? '▼' : '') + r.trend.toFixed(1) + '%</span>';
       var dv = r.divine != null ? ' <span style="color:var(--dim)">' + r.divine.toFixed(1) + ' div</span>' : '';
-      return '<div class="slang-row"><div class="slang-term">' + esc(r.name) + '</div>' +
+      // №138-ter: RU-имя (из словаря poe2db) + EN рядом приглушённо; нет RU — только EN.
+      var nm = r.ru && r.ru.toLowerCase() !== String(r.name).toLowerCase()
+        ? esc(r.ru) + ' <span style="color:#9aa4b0">' + esc(r.name) + '</span>'
+        : esc(r.name);
+      return '<div class="slang-row"><div class="slang-term">' + nm + '</div>' +
         '<div class="slang-def">' + fmtChaos(r.chaos) + ' chaos' + dv + tr + '</div></div>';
     }).join('');
     host.innerHTML = chips +

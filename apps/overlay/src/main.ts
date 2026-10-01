@@ -3554,6 +3554,22 @@ function setupIPC(): void {
   // кэши ядра). Кэш ответа в main 10 мин/лига — чипсы лиг не спамят API.
   const currencyRatesCache = new Map<string, { at: number; payload: unknown }>();
   const CURRENCY_TTL_MS = 10 * 60 * 1000;
+  // №138-ter: RU-имя валюты из готового ru→en-словаря poe2db (обратный поиск).
+  // Ключи ruEnBases — normName(RU), поэтому для показа поднимаем регистр слов.
+  // Словарь может грузиться в фоне — нет RU, значит показываем только EN.
+  let enRuReverse: Map<string, string> | null = null;
+  let enRuReverseSize = -1;
+  function ruNameForCurrency(en: string): string | undefined {
+    if (!ruEnBases.size) return undefined;
+    if (!enRuReverse || enRuReverse.size !== ruEnBases.size) {
+      enRuReverse = new Map();
+      enRuReverseSize = ruEnBases.size;
+      for (const [ru, v] of ruEnBases) enRuReverse.set(normName(v), ru);
+    }
+    const ru = enRuReverse.get(normName(en));
+    if (!ru) return undefined;
+    return ru[0].toUpperCase() + ru.slice(1); // нормализованный ключ → «Сфера хаоса»
+  }
   ipcMain.handle('currency:rates', async (_evt, league?: string) => {
     try {
       const leagues = await core.trade.fetchLeagues();
@@ -3579,6 +3595,7 @@ function setupIPC(): void {
         .sort((a, b) => (b.chaosValue ?? 0) - (a.chaosValue ?? 0))
         .map((r) => ({
           name: r.name,
+          ru: ruNameForCurrency(r.name), // №138-ter: RU-имя из словаря poe2db
           chaos: r.chaosValue as number,
           divine: r.divineValue,
           trend: trend.get(r.name.toLowerCase()) ?? null,
