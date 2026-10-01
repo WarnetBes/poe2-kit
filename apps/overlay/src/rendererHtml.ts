@@ -365,6 +365,15 @@ export const rendererHtml = `<!doctype html>
   #infoWin li { margin: 3px 0 3px 14px; }
   #infoWin .close-info { float: right; cursor: pointer; color: #9aa4b0; }
   #infoWin .sub { color: #9aa4b0; }
+  /* №132: кнопки прокрутки панели (детерминированный скролл мышью —
+     колесо над нефокусируемым click-through окном не гарантировано) */
+  #scrollCtl { position: absolute; right: 2px; bottom: 2px; display: flex;
+    flex-direction: column; gap: 2px; z-index: 30; opacity: 0.55; }
+  #scrollCtl:hover { opacity: 1; }
+  #scrollCtl button { width: 20px; height: 20px; font-size: 10px; line-height: 1;
+    cursor: pointer; background: rgba(20,24,32,0.85); color: var(--accent);
+    border: 1px solid rgba(198,154,82,0.5); border-radius: 4px; padding: 0; }
+  #scrollCtl button:hover { background: rgba(198,154,82,0.25); }
   /* №129: чипсы-фильтр нод — поиск мышью без клавиатуры */
   .tree-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
   .tree-chips .chip { font-size: 10px; padding: 3px 6px; cursor: pointer; white-space: nowrap;
@@ -456,6 +465,10 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
+      </div>
+      <div id="scrollCtl">
+        <button id="scrlUp" title="Прокрутить панель вверх (замена колеса мыши, если оно над оверлеем не работает)">▲</button>
+        <button id="scrlDn" title="Прокрутить панель вниз">▼</button>
       </div>
       <div id="buildWrap" class="hide">
         <div id="buildHead"></div>
@@ -815,6 +828,55 @@ export const rendererHtml = `<!doctype html>
     $('mapsWrap').classList.toggle('hide', mode !== 'maps');
     $('pinnacleWrap').classList.toggle('hide', mode !== 'pinnacle');
     $('importWrap').classList.toggle('hide', mode !== 'import');
+    updateScrollCtl();
+  }
+
+  // ─── №132: детерминированная прокрутка панели мышью (кнопки ▲/▼) ──────────
+  // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
+  // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
+  // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'importWrap'];
+  function activeScrollWrap() {
+    for (var i = 0; i < SCROLL_WRAPS.length; i++) {
+      var el = $(SCROLL_WRAPS[i]);
+      if (el && !el.classList.contains('hide') && el.scrollHeight > el.clientHeight + 20) return el;
+    }
+    return null;
+  }
+  function updateScrollCtl() {
+    var ctl = $('scrollCtl');
+    if (!ctl) return;
+    ctl.classList.toggle('hide', !activeScrollWrap());
+  }
+  (function () {
+    var ctl = $('scrollCtl');
+    if (!ctl) return;
+    var SCROLL_STEP_PX = 220; // ~ треть высоты панели за клик
+    $('scrlUp').addEventListener('click', function () {
+      var w = activeScrollWrap();
+      if (w) w.scrollBy({ top: -SCROLL_STEP_PX, behavior: 'smooth' });
+    });
+    $('scrlDn').addEventListener('click', function () {
+      var w = activeScrollWrap();
+      if (w) w.scrollBy({ top: SCROLL_STEP_PX, behavior: 'smooth' });
+    });
+  })();
+  // Телеметрия №132: приходят ли wheel-события в renderer вообще (первое за
+  // сессию пишем в консоль → overlay.log через console-message дубликатор).
+  var wheelSeen = false;
+  document.addEventListener('wheel', function (ev) {
+    if (!wheelSeen) {
+      wheelSeen = true;
+      console.log('[overlay] renderer: wheel дошёл (deltaY=' + (ev.deltaY || 0) + ', режим=' + (winUnlocked ? 'move' : 'hover') + ')');
+    }
+  }, { passive: true, capture: true });
+  // Контент в врапе вырос/скролл появился — перепроверяем кнопки.
+  if (typeof ResizeObserver !== 'undefined') {
+    var ro2 = new ResizeObserver(function () { updateScrollCtl(); });
+    SCROLL_WRAPS.forEach(function (id) {
+      var el = $(id);
+      if (el) ro2.observe(el);
+    });
   }
 
   // ─── Вкладка «📥 Импорт» (№101): собственный вью вместо прыжка на «Билд» ─────
