@@ -279,7 +279,7 @@ export const rendererHtml = `<!doctype html>
   #gemsWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
   /* №113d: эти три врапа вообще не имели скролла (Плитки — большая таблица):
      низ срезался #body{overflow:hidden}. Единый паттерн как у #buildWrap. */
-  #mapsWrap, #pinnacleWrap, #importWrap, #slangWrap, #craftWrap, #ratesWrap {
+  #mapsWrap, #pinnacleWrap, #importWrap, #slangWrap, #craftWrap, #ratesWrap, #genWrap {
     display: flex; flex-direction: column; gap: 4px;
     min-height: 0; flex: 1 1 auto; overflow-y: auto; padding-right: 4px; }
   /* №67: полоска сравнения цены с максимумом группы (внутри td, % от ширины). */
@@ -295,12 +295,13 @@ export const rendererHtml = `<!doctype html>
   #gemsWrap::-webkit-scrollbar, #mapsWrap::-webkit-scrollbar,
   #pinnacleWrap::-webkit-scrollbar, #importWrap::-webkit-scrollbar,
   #slangWrap::-webkit-scrollbar, #craftWrap::-webkit-scrollbar, #ratesWrap::-webkit-scrollbar,
+  #genWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
   #gemsWrap::-webkit-scrollbar-thumb, #mapsWrap::-webkit-scrollbar-thumb,
   #pinnacleWrap::-webkit-scrollbar-thumb, #importWrap::-webkit-scrollbar-thumb,
   #slangWrap::-webkit-scrollbar-thumb, #craftWrap::-webkit-scrollbar-thumb,
-  #ratesWrap::-webkit-scrollbar-thumb,
+  #ratesWrap::-webkit-scrollbar-thumb, #genWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
     background: rgba(198,154,82,0.45); border-radius: 3px; }
 
@@ -428,6 +429,7 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="slang" title="Словарь игрового слэнга PoE2: сокращения и жаргон — по-человечески">📖 Слэнг</button>
       <button data-tab="craft" title="Окно крафта: план по предмету (Ctrl+C в игре), все рецепты 0.5.5, эссенции и омены">⚒ Крафт</button>
       <button data-tab="rates" title="Курсы валют по лигам: сколько стоит валюта в chaos (poe2scout + poe.ninja)">💱 Курс</button>
+      <button data-tab="gen" title="Генератор билдов: живые билды топ-игроков poe.ninja по всем классам — скиллы, узлы, DPS/EHP">🧬 Билды</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
       <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
@@ -483,6 +485,9 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="ratesWrap" class="hide">
         <div id="ratesContent"></div>
+      </div>
+      <div id="genWrap" class="hide">
+        <div id="genContent"></div>
       </div>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
@@ -836,7 +841,7 @@ export const rendererHtml = `<!doctype html>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'import' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'gen' | 'import' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('augLine').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
@@ -851,6 +856,7 @@ export const rendererHtml = `<!doctype html>
     $('slangWrap').classList.toggle('hide', mode !== 'slang');
     $('craftWrap').classList.toggle('hide', mode !== 'craft');
     $('ratesWrap').classList.toggle('hide', mode !== 'rates');
+    $('genWrap').classList.toggle('hide', mode !== 'gen');
     $('importWrap').classList.toggle('hide', mode !== 'import');
     updateScrollCtl();
   }
@@ -859,7 +865,7 @@ export const rendererHtml = `<!doctype html>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'importWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -1312,6 +1318,97 @@ export const rendererHtml = `<!doctype html>
     // Первый вход: грузим; повторный (другая вкладка → назад) — рисуем кэш.
     if (ratesData) renderRatesView();
     else loadRates();
+    requestSize();
+  }
+
+  // ─── Вкладка «🧬 Билды» (№136): генератор по ладдеру poe.ninja ────────────
+  // IPC buildgen:meta (main): один запрос ладдера → группировка по классам:
+  // частые скиллы/ключевые узлы, медианные DPS/EHP, топ-3 примера. Ни один
+  // «совет» не выдуман — всё из живых билдов топ-игроков.
+  var genData = null;   // последний ответ buildgen:meta
+  var genLeague = null; // выбранный slug лиги
+  var genClass = null;  // выбранный класс (чипс)
+  function renderGenView() {
+    var host = $('genContent');
+    if (!host) return;
+    if (!genData || !genData.ok) {
+      host.innerHTML = '<div class="lvl-hint">' +
+        (genData && genData.error ? genData.error : 'Загружаю мета билдов…') + '</div>';
+      return;
+    }
+    var lc = (genData.slugs || []).map(function (s) {
+      return '<button class="tree-chip' + (genLeague === s ? ' on' : '') +
+        '" data-genslug="' + esc(s) + '">' + esc(s) + '</button>';
+    }).join('');
+    var cc = (genData.classes || []).map(function (c) {
+      return '<button class="tree-chip' + (genClass === c.label ? ' on' : '') +
+        '" data-genclass="' + esc(c.label) + '">' + esc(c.label) + ' <span style="color:var(--dim)">' + c.count + '</span></button>';
+    }).join('');
+    var cls = genData.classes.find(function (c) { return c.label === genClass; });
+    var body = '';
+    if (cls) {
+      body += '<div class="slang-hint"><b>' + esc(cls.label) + '</b> · ' + cls.count + ' билдов · медианные <b>DPS ' +
+        (cls.medianDps || '—') + '</b> / <b>EHP ' + (cls.medianEhp || '—') + '</b></div>';
+      body += '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Скиллы (частые)</div>' +
+        cls.topSkills.map(function (s) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(s.name) + '</div><div class="slang-def">×' + s.count + '</div></div>';
+        }).join('') + '</div>';
+      if (cls.topPassives && cls.topPassives.length) {
+        body += '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Ключевые узлы (частые)</div>' +
+          cls.topPassives.map(function (p) {
+            return '<div class="slang-row"><div class="slang-term">' + esc(p.name) + '</div><div class="slang-def">×' + p.count + '</div></div>';
+          }).join('') + '</div>';
+      }
+      body += '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Примеры (топ по уровню)</div>' +
+        cls.top.map(function (t) {
+          return '<div class="slang-row"><div class="slang-term">ур.' + t.level + ' · ' + esc(String(t.name)) + '</div>' +
+            '<div class="slang-def">DPS ' + t.dps + ' · EHP ' + t.ehp + '<br><span style="color:var(--dim)">' +
+            (t.skills || []).map(esc).join(', ') + '</span></div></div>';
+        }).join('') + '</div>';
+    } else {
+      body = '<div class="lvl-hint">Выбери класс чипсом выше — покажу, что играют топы: скиллы, узлы, DPS/EHP.</div>';
+    }
+    host.innerHTML =
+      '<div class="tree-chips">' + lc + '</div>' +
+      '<div class="slang-hint">Выборка: ' + genData.sample + ' билдов · ' + (genData.cached ? 'кэш' : 'свежие данные') + ' · poe.ninja</div>' +
+      '<div class="tree-chips">' + cc + '</div>' + body;
+    var s1 = host.querySelectorAll('[data-genslug]');
+    for (var i = 0; i < s1.length; i++) {
+      s1[i].addEventListener('click', function () {
+        genLeague = this.getAttribute('data-genslug');
+        genClass = null; // классы меняются вместе с лигой
+        loadGen();
+      });
+    }
+    var s2 = host.querySelectorAll('[data-genclass]');
+    for (var j = 0; j < s2.length; j++) {
+      s2[j].addEventListener('click', function () {
+        genClass = this.getAttribute('data-genclass');
+        renderGenView();
+      });
+    }
+  }
+  function loadGen() {
+    var host = $('genContent');
+    if (host) host.innerHTML = '<div class="lvl-hint">Загружаю ладдер ' + (genLeague || '') + '…</div>';
+    window.poe2k.buildgenMeta(genLeague || undefined).then(function (res) {
+      genData = res;
+      if (res && res.ok && !genLeague) genLeague = res.league;
+      renderGenView();
+    }).catch(function (err) {
+      genData = { ok: false, error: 'IPC error: ' + err };
+      renderGenView();
+    });
+  }
+  function showGenView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '🧬 Генератор билдов (ладдер poe.ninja)';
+    showMode('gen');
+    if (genData) renderGenView();
+    else loadGen();
     requestSize();
   }
 
@@ -2431,6 +2528,7 @@ export const rendererHtml = `<!doctype html>
     ['slang', '📖 Слэнг'],
     ['craft', '⚒ Крафт'],
     ['rates', '💱 Курс'],
+    ['gen', '🧬 Билды'],
     ['pinnacle', '🛡 Пиннакл'],
     ['settings', '⚙ Настройки'],
   ];
@@ -2848,6 +2946,8 @@ export const rendererHtml = `<!doctype html>
           showCraftView(); // №134: локальный вью; план/каталог тянутся по IPC
         } else if (tab === 'rates') {
           showRatesView(); // №135: курсы валют по лигам (IPC currency:rates)
+        } else if (tab === 'gen') {
+          showGenView(); // №136: генератор билдов по ладдеру poe.ninja
         } else if (tab === 'import') {
           showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
         } else {
@@ -2951,6 +3051,10 @@ export const rendererHtml = `<!doctype html>
       'Курсы валют по лигам: сколько стоит каждая валюта в chaos-эквиваленте.',
       'Лига выбирается чипсами (✦ — актуальная); тренд ▲/▼ — движение цены за окно poe.ninja.',
       'Источник: poe2scout + poe.ninja; кэш 10 минут, чтобы не спамить API.' ] },
+    gen: { t: '🧬 Билды', h: '—', b: [
+      '<b>Генератор билдов</b>: живые билды топ-игроков poe.ninja по всем классам выбранной лиги.',
+      'По каждому классу: самые частые скиллы и ключевые узлы, медианные DPS/EHP, топ-3 примера.',
+      'Выборка — ладдер (первые по уровню); кэш 30 минут. Класс и лига — чипсами.' ] },
     pinnacle: { t: '🛡 Пиннакл', h: 'Ctrl+F7', b: [
       'Чекап перед боссом-пиннаклом: резисты, EHP, стан-порог — честные «—» при неизвестных данных.',
       'Что фармить до попытки: weakest-звенья билда по эталону.' ] },

@@ -197,7 +197,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -3578,6 +3578,75 @@ function setupIPC(): void {
     } catch (err) {
       console.warn('[overlay] currency:rates failed:', (err as Error).message);
       return { ok: false, error: `Не удалось получить курсы: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №136: генератор билдов по ладдеру poe.ninja (→ «🧬 Билды») ───────────
+  // Один запрос searchLadderBuilds(slug) → группировка по классам в main:
+  // скиллы/ключевые узлы по частоте, медианные DPS/EHP, топ-3 примера.
+  // Это честный «генератор»: каждый совет = живой билд топ-игрока.
+  const buildgenCache = new Map<string, { at: number; payload: unknown }>();
+  const BUILDGEN_TTL_MS = 30 * 60 * 1000;
+  ipcMain.handle('buildgen:meta', async (_evt, leagueSlug?: string) => {
+    try {
+      const all = await core.ladder.listLadderLeagues();
+      const slugs = (all || []).filter((s) => !/^pl\d+$/i.test(String(s)));
+      const wanted = String(leagueSlug ?? '').trim();
+      const slug = wanted && slugs.includes(wanted) ? wanted : (slugs[0] ?? (wanted || 'standard'));
+      const cached = buildgenCache.get(slug);
+      if (cached && Date.now() - cached.at < BUILDGEN_TTL_MS) {
+        return { ok: true, ...(cached.payload as object), cached: true };
+      }
+      const res = await core.ladder.searchLadderBuilds(slug, { sort: 'level' });
+      if (!res || !res.rows.length) {
+        return { ok: false, error: 'Лэддер poe.ninja недоступен (сеть?).' };
+      }
+      const byClass = new Map<string, {
+        count: number; dps: number[]; ehp: number[];
+        skills: Map<string, number>; passives: Map<string, number>;
+        top: Array<{ name: unknown; level: unknown; ehp: string; dps: string; skills: string[] }>;
+      }>();
+      for (const r of res.rows) {
+        const label = String(r.classLabel ?? r.class ?? '—').trim() || '—';
+        let c = byClass.get(label);
+        if (!c) { c = { count: 0, dps: [], ehp: [], skills: new Map(), passives: new Map(), top: [] }; byClass.set(label, c); }
+        c.count++;
+        const dps = core.ladder.parseNinjaNumber(r['dps.total']);
+        const ehpNum = core.ladder.parseNinjaNumber(r['ehp__str'] ?? r.ehp);
+        if (dps != null) c.dps.push(dps);
+        if (ehpNum != null) c.ehp.push(ehpNum);
+        const skills = Array.isArray(r.skills) ? (r.skills as unknown[]).filter((s) => typeof s === 'string') as string[] : [];
+        for (const s of skills) c.skills.set(s, (c.skills.get(s) ?? 0) + 1);
+        const kps = Array.isArray(r.keypassives) ? (r.keypassives as unknown[]).filter((s) => typeof s === 'string') as string[] : [];
+        for (const p of kps) c.passives.set(p, (c.passives.get(p) ?? 0) + 1);
+        const dpsStr = dps != null ? (dps >= 1e6 ? (dps / 1e6).toFixed(1) + 'M' : dps >= 1e3 ? (dps / 1e3).toFixed(0) + 'k' : String(Math.round(dps))) : '—';
+        const ehpStr = ehpNum != null ? (ehpNum >= 1e6 ? (ehpNum / 1e6).toFixed(1) + 'M' : ehpNum >= 1e3 ? (ehpNum / 1e3).toFixed(0) + 'k' : String(Math.round(ehpNum))) : String(r['ehp__str'] ?? '—');
+        if (c.top.length < 3) c.top.push({ name: r.name ?? '—', level: r.level ?? '—', ehp: ehpStr, dps: dpsStr, skills: skills.slice(0, 5) });
+      }
+      const med = (arr: number[]): string | null => {
+        if (!arr.length) return null;
+        const s = [...arr].sort((a, b) => a - b);
+        const m = s.length >> 1;
+        const v = s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+        return v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'k' : String(Math.round(v));
+      };
+      const topN = (m: Map<string, number>, n: number) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n)
+        .map(([name, count]) => ({ name, count }));
+      const classes = [...byClass.entries()]
+        .map(([label, c]) => ({
+          label, count: c.count,
+          medianDps: med(c.dps), medianEhp: med(c.ehp),
+          topSkills: topN(c.skills, 6), topPassives: topN(c.passives, 6),
+          top: c.top,
+        }))
+        .sort((a, b) => b.count - a.count);
+      const payload = { league: slug, slugs, sample: res.rows.length, classes };
+      buildgenCache.set(slug, { at: Date.now(), payload });
+      console.log(`[overlay] buildgen:meta: ${slug} — ${res.rows.length} билдов, ${classes.length} классов (кэш 30 мин)`);
+      return { ok: true, ...payload };
+    } catch (err) {
+      console.warn('[overlay] buildgen:meta failed:', (err as Error).message);
+      return { ok: false, error: `Генератор недоступен: ${(err as Error).message}` };
     }
   });
 
