@@ -267,14 +267,22 @@ async function gggFetch(host: string, url: string, init: RequestInit): Promise<R
   }
 }
 
+/** №145: transient 5xx от апстрима (лог-факт: trade2 «HTTP 500» на Ruby Ring)?
+ *  Один повторный заход через ту же очередь/лимитер после паузы.
+ *  Финальные 4xx и таймауты НЕ ретраятся — там повтор бессмыслен. */
+function isTransient5xx(err: unknown): boolean {
+  return err instanceof Error && /\bHTTP 5\d\d\b/.test(err.message);
+}
+
 export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {}): Promise<T> {
   const timeoutMs = opts.timeoutMs ?? 10000;
   const host = new URL(url).host;
   const finalUrl = toProxyUrl(url);
   // Весь запрос к хостим через очередь + рейт-лимитер: лимит ждёт окно,
   // очередь сериализует пики массовых запросов (прайс-чек пачки предметов).
-  return queueFor(host).enqueue(async () => {
-    await limiterFor(host).wait();
+  const once = (): Promise<T> =>
+    queueFor(host).enqueue(async () => {
+      await limiterFor(host).wait();
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -307,7 +315,16 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
     } finally {
       clearTimeout(timer);
     }
-  });
+    });
+
+  // №145: один ретрай transient-5xx с паузой (повтор через ту же очередь/лимитер).
+  try {
+    return await once();
+  } catch (err) {
+    if (!isTransient5xx(err)) throw err;
+    await new Promise((r) => setTimeout(r, 1500));
+    return await once();
+  }
 }
 
 /**

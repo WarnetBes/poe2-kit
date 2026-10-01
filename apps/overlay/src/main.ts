@@ -2135,7 +2135,7 @@ async function runBuildImport(): Promise<void> {
         continue;
       }
       try {
-        const res = await withTimeout(core.trade.priceCheck(slot.itemText), HOTKEY_TIMEOUT_MS, 'priceCheck');
+        const res = await withTimeout(core.trade.priceCheck(slot.itemText), SLOT_PRICE_TIMEOUT_MS, 'priceCheck');
         slot.median = res.estimate?.median ?? null;
         slot.confidence = res.estimate?.confidence ?? null;
         if (slot.median != null) {
@@ -2651,6 +2651,12 @@ const hotkeyLevelAction = (): void => {
 };
 
 const HOTKEY_TIMEOUT_MS = 45_000;
+
+// №145: потолок прайса ОДНОГО слота билда. Ядро само держит бюджет 20с
+// (PRICE_UNIQUE_TIMEOUT_MS в trade.ts) — 45-секундный HOTKEY-потолок на слот
+// только зря держал индикатор: зависший слот жёг 45с (лог-факт: «build price
+// failed ... timeout after 45000ms»). 25с = 20с бюджета ядра + запас на очередь.
+const SLOT_PRICE_TIMEOUT_MS = 25_000;
 
 /** Обёртка-«страховка»: даже если priceCheck зависнет (сеть), отпустим busy по таймауту. */
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
