@@ -817,6 +817,97 @@ export const rendererHtml = `<!doctype html>
     '⚠ Сторонний инструмент. GGG не гарантирует безопасность сторонних тулов. Kit ничего не делает за вас в игре: читает буфер и публичные API цен — каждое действие в игре делаете сами вы. Использование — на ваш риск.':
       '⚠ Third-party tool. GGG does not guarantee third-party tool safety. Kit does nothing for you in game: it reads the clipboard and public price APIs — every in-game action is yours alone. Use at your own risk.',
     'Сбросить клавиши': 'Reset hotkeys', 'Сохранить': 'Save',
+    // — волна 3 (этап 2, хром-онли): контент вкладок — заголовки/статусы/подписи.
+    // Гайд-контент (босс-советы, слэнг, крафт-рецепты, советы саппортов) остаётся RU by design.
+    // Правило: ключи — точные оригиналы исходника (dict-хит до сегментов = без манглинга).
+    'Не предмет': 'Not an item', 'Зона неизвестна': 'Zone unknown', 'персонаж неизвестен': 'character unknown',
+    '🔄 Сброс': '🔄 Reset',
+    '🛒 Шопинг-лист билда': '🛒 Build shopping list', '💎 Камни билда': '💎 Build gems',
+    'Куда вставлять. Ctrl+C по камню в игре отметит его ✅.': 'Where to socket. Ctrl+C a gem in game to mark it ✅.',
+    'Ctrl+F1 на купленном предмете — отметит слот ✔': 'Ctrl+F1 on a purchased item — marks the slot ✔',
+    '📖 Словарь слэнга PoE2': '📖 PoE2 slang dictionary',
+    '🧭 Крафт плиток смотрителя': '🧭 Waystone tile crafting',
+    '💱 Курсы валют по лигам': '💱 Currency rates by league', 'Лига:': 'League:',
+    'свежие данные': 'fresh data', ' источник: ': ' source: ',
+    '🧬 Генератор билдов (ладдер poe.ninja)': '🧬 Build generator (poe.ninja ladder)',
+    '🏆 Мета ладдера': '🏆 Ladder meta', '🔗 Конструктор связок': '🔗 Link builder',
+    'Выборка: ': 'Sample: ', ' билдов ': ' builds ',
+    'Выбери класс чипсом выше — покажу, что играют топы: скиллы, узлы, DPS/EHP.':
+      'Pick a class with the chips above — I will show what the top players run: skills, nodes, DPS/EHP.',
+    'ур. ': 'lvl. ',
+    '🌱 Стартовый билд новичка:': '🌱 Newcomer starter build:',
+    '🌳 Дерево билда: ': '🌳 Build tree: ', ' нод': ' nodes',
+    'нераспознанных: ': 'unrecognized: ', 'Нотабли (': 'Notables (', 'показать все ': 'show all ',
+    'Кейнстоуны:': 'Keystones:',
+    'Поиск нод: имя или стат (напр. cold damage)': 'Search nodes: name or stat (e.g. cold damage)',
+    'Показать ноды: ': 'Show nodes: ', 'Найдено: ': 'Found: ', 'ничего не найдено': 'nothing found',
+    'резисты': 'resists', 'жизнь': 'life', 'эн. щит': 'ES',
+    'Оружие': 'Weapon', 'Броня': 'Body Armour', 'Перчатки': 'Gloves', 'Обувь': 'Boots',
+    'Амулет': 'Amulet', 'Кольцо 1': 'Ring 1', 'Кольцо 2': 'Ring 2', 'Ремень': 'Belt',
+    'Флакон 1': 'Flask 1', 'Флакон 2': 'Flask 2',
+    '↑ носите: ': '↑ wearing: ',
+    'Надето сейчас (poe.ninja)': 'Currently equipped (poe.ninja)',
+    'Слабейший EHP:': 'Weakest EHP:', 'Диагноз:': 'Diagnosis:',
+    'Бюджет: ': 'Budget: ', 'доступно проверок: ': 'checks available: ',
+    'Модель врага: ': 'Enemy model: ', ' · режим ': ' · mode ', 'пенетрация элем-резистов ': 'elemental resist penetration ',
+    ' собрано · ': ' collected · ', ' оценяется ': ' assessed ', ' оценивается ': ' assessed ',
+    'Этаж ': 'Floor ',
+    '💪 Сильные стороны:': '💪 Strengths:', '🎯 Как бить:': '🎯 How to fight:',
+    '🪙 Что фармится / зачем идут:': '🪙 What is farmed / why players run it:',
+    'не подтверждено': 'unverified',
+    '🎖 Неполученные квесты': '🎖 Unclaimed quests',
+    'Все важные награды собраны или отмечены «забрал».': 'All important rewards are collected or marked as claimed.',
+    '⚠ упущено · ': '⚠ missed · ', '◻ впереди · ': '◻ ahead · ',
+    'Ваш худший элем. резист ': 'Your worst elemental resist ',
+    '% (меньше 75%) — награда очень желательна': '% (below 75%) — the reward is highly desirable',
+    'Резист сейчас ': 'Resist now ', '% (меньше 75%) — взять в первую очередь': '% (below 75%) — grab this first',
+    '✔ забрал': '✔ claimed',
+    'Отметить награду полученной — уйдёт из чек-листа навсегда': 'Mark the reward as claimed — it leaves the checklist for good',
+    'В зоне есть вэпоинт (быстрый телепорт)': 'The zone has a waypoint (fast teleport)',
+    '⚒ Крафт: план и рецепты': '⚒ Craft: plan and recipes',
+    '🎯 План': '🎯 Plan', '📋 Рецепты': '📋 Recipes', '💧 Эссенции': '💧 Essences', '🔮 Омены': '🔮 Omens',
+    'Наведи на предмет в игре →': 'Hover over an item in game →',
+    '📋 План по предмету (буфер обмена)': '📋 Item plan (clipboard)',
+    'Порядок: Ctrl+C по предмету в игре → кнопка. План обновится под этот предмет.':
+      'Order: Ctrl+C the item in game → the button. The plan will then update for that item.',
+    '📥 Импорт билда из буфера обмена': '📥 Import build from clipboard',
+    'Скопируйте': 'Copy', 'PoB share-код': 'PoB share code',
+    ', ссылку профиля poe.ninja или .build JSON и нажмите кнопку ниже (или ':
+      ', a poe.ninja profile link or .build JSON, then press the button below (or ',
+    '📥 Импортировать из буфера (Ctrl+F3)': '📥 Import from clipboard (Ctrl+F3)',
+    'Импорт из буфера…': 'Import from clipboard…', '✅ Импортировано: ': '✅ Imported: ',
+    'Текущий билд: ': 'Current build: ', ' слотов — будет заменён новым импортом.': ' slots — will be replaced by the new import.',
+    'Панель слотов — во вкладке «🛒 Билд» (Ctrl+F2).': 'The slots panel is in the "🛒 Build" tab (Ctrl+F2).',
+    'из буфера обмена': 'from clipboard',
+    'В буфере не текст предмета. Наведите на предмет в игре и нажмите Ctrl+C, затем Ctrl+F1 (прайс). PoB-код билда — Ctrl+F3':
+      'Clipboard has no item text. Hover an item in game and press Ctrl+C, then Ctrl+F1 (price). PoB build code — Ctrl+F3',
+    'свежо': 'fresh', ' мин)': ' min)',
+    ' (импорт)': ' (import)',
+    '«—» = данных для проверки нет (импортируйте билд Ctrl+F3). ⚠ Оценки из гира — перед пиннаклом сверьтесь в игре.':
+      '«—» = no data to verify (import the build via Ctrl+F3). ⚠ Gear-based estimates — double-check in game before the pinnacle.',
+    'Квестовые награды кампании (акты 1–4) по данным гайдов прокачки кита: Spirit, resists, очки пассивок, асценданси. Интерлюдии и полный список всех квестов игры не покрывает.':
+      'Campaign quest rewards (acts 1–4) from the kit leveling guides: Spirit, resists, passive points, ascendancy. Does not cover intermissions or the full list of all quests.',
+    'Новый персонаж в этой лиге? Сбросит пройденные зоны и «забранные» награды — статусы соберутся заново по логу.':
+      'New character in this league? It resets cleared zones and "claimed" rewards — statuses rebuild from the log.',
+    'Источник: вычислено по правилу': 'Source: computed by rule',
+    'Плитки смотрителя (Waystones)': 'Custodian tiles (Waystones)', '(лестница)': '(ladder)',
+    'асценданси': 'ascendancy', '(1 средний)': '(1 average)',
+    '⚔ Боссы': '⚔ Bosses',
+    '💒 Trial of the Sekhemas на вашем уровне: этажей до финала — ':
+      '💒 Trial of the Sekhemas at your level — floors to the final: ',
+    ' (лестница боссов — раздел «⚔ Боссы» выше).': ' (the boss ladder is in the "⚔ Bosses" section above).',
+    'Квестовые награды кампании (акты 1–4) по данным гайдов прокачки кита: ':
+      'Campaign quest rewards (acts 1–4) per the kit leveling guides: ',
+    'очки пассивок': 'passive points', 'Интерлюдии и полный список всех квестов игры не покрывает.':
+      'Does not cover intermissions or the full list of all quests.',
+    '🎯 Персональный план: скопируйте Waystone-плитку в игре (Ctrl+C) и нажмите Ctrl+F1 — ':
+      '🎯 Personal plan: copy a Waystone in game (Ctrl+C) and press Ctrl+F1 — ',
+    'кит покажет крафт-план под её тир (3:1 перековка / коррупция Т15→Т16 омены/качество).':
+      'the kit will show a craft plan for its tier (3:1 recombo / Т15→Т16 corruption omens/quality).',
+    'Источник: poe2wiki.net «Waystone» (проверено 30.09.2026). ':
+      'Source: poe2wiki.net "Waystone" (verified 30.09.2026). ',
+    'Механики меняются патчами — панель обновляется в ките.':
+      'Mechanics change with patches — the panel is updated in the kit.',
   };
   // Отсортированные ключи по убыванию длины — сперва длинные, чтобы
   // «Акт 1» не побилось коротким ключом раньше составного.
@@ -2048,19 +2139,20 @@ export const rendererHtml = `<!doctype html>
       '<div id="treeResults"></div>';
     host.innerHTML = html;
     var QUICK_TREE = [
-      ['резисты', 'resist'],
-      ['жизнь', 'life'],
-      ['эн. щит', 'energy shield'],
-      ['урон', 'damage'],
-      ['крит', 'critical'],
-      ['скор. атаки', 'attack speed'],
-      ['скор. магии', 'cast speed'],
-      ['мана', 'mana'],
+      ['резисты', 'resist', 'resists'],
+      ['жизнь', 'life', 'life'],
+      ['эн. щит', 'energy shield', 'ES'],
+      ['урон', 'damage', 'damage'],
+      ['крит', 'critical', 'crit'],
+      ['скор. атаки', 'attack speed', 'atk speed'],
+      ['скор. магии', 'cast speed', 'cast speed'],
+      ['мана', 'mana', 'mana'],
     ];
     var chipsBox = $('treeChips');
     if (chipsBox) {
       chipsBox.innerHTML = QUICK_TREE.map(function (q, i) {
-        return '<button class="chip" data-q="' + esc(q[1]) + '" title="Показать ноды: ' + esc(q[1]) + '">' + esc(q[0]) + '</button>';
+        var label = LANG === 'en' ? q[2] : q[0];
+        return '<button class="chip" data-q="' + esc(q[1]) + '" title="Показать ноды: ' + esc(q[1]) + '">' + esc(label) + '</button>';
       }).join('');
     }
     function runTreeSearch(q) {
