@@ -86,6 +86,8 @@ GitHub or SourceCraft. Thanks for reading!
 
 The project is completely free. If you find it useful, there's an entirely
 optional support link at the bottom of the README — no pressure either way.
+P.S. I'm getting married on October 22 — so that support link is, let's say,
+seasonally relevant this month 🙂
 
 ## Publish checklist (r/PathOfExile2)
 

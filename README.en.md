@@ -167,6 +167,11 @@ Support is entirely optional; a thank-you in the issues is already great.
 <details>
 <summary>☕ Optional support (RU payment rails)</summary>
 
+Developer’s calendar: October 22, 2026 — wedding in Saint Petersburg
+(Wedding Palace No. 1). If the support links below happen to get a bit
+busier that month, organizing the celebration becomes slightly easier 🙂
+Still entirely optional — the kit stays free either way.
+
 - **SBP / Russian bank transfer (Alfa-Bank / Rosselkhozbank)** — by phone
   `+7 981 760-60-27` (any Russian banking app: “SBP transfer” → phone → pick bank).
 - **WebMoney** (WMID `649044135447`) — purses:
