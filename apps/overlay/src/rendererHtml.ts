@@ -2064,7 +2064,8 @@ export const rendererHtml = `<!doctype html>
       ? '📍 ' + (lvl.zone.name || lvl.zone.code)
       : (lvl.available ? 'Зона неизвестна' : '⚠️ ' + (lvl.reason || 'Client.txt не найден'));
 
-    // №103 Campaign Companion: маршрут акта
+    // №140: маршрут акта + прогресс (лига/сброс) для шапки renderCamp
+    window.poe2k.__lastLevelProgress = lvl.progress || null;
     renderCamp(lvl.camp);
     // №104: бестиарий боссов
     renderBosses(lvl.bosses, lvl.camp);
@@ -2075,6 +2076,16 @@ export const rendererHtml = `<!doctype html>
 
     var hints = $('lvlHints');
     hints.innerHTML = '';
+    // №140: причина недавнего сброса прогресса — первой строкой (одноразовая:
+    // в main сброс живёт до первого нового визита зоны).
+    if (lvl.progress && lvl.progress.resetNote) {
+      var rn = document.createElement('div');
+      rn.className = 'lvl-hint';
+      rn.style.color = '#e0b060';
+      rn.textContent = '🔄 Прогресс прокачки сброшен: ' + lvl.progress.resetNote +
+        '. Открой зоны по порядку — статусы «пройдено» восстановятся по логу.';
+      hints.appendChild(rn);
+    }
     var items = (lvl.hints || []).slice(0, 5);
     for (var i = 0; i < items.length; i++) {
       var d = document.createElement('div');
@@ -2098,7 +2109,21 @@ export const rendererHtml = `<!doctype html>
 
     var head = document.createElement('div');
     head.className = 'camp-head';
-    head.textContent = camp.actName + '  ·  ' + camp.done + '/' + camp.total + ' зон';
+    // №140: шапка с лигой-владельцем прогресса + чужой сброс для нового перса.
+    var prog = window.poe2k.__lastLevelProgress || null;
+    head.textContent = camp.actName + '  ·  ' + camp.done + '/' + camp.total + ' зон' +
+      (prog && prog.league ? '  ·  лига: ' + prog.league : '');
+    // №140: ручной сброс — новый персонаж в той же лиге (КДЫ зон очищаются,
+    // по логу статусы восстановятся по мере прохождения этим персонажем).
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'tree-chip';
+    resetBtn.style.cssText = 'margin:0 0 0 8px;padding:1px 8px;font-size:11px;vertical-align:middle';
+    resetBtn.title = 'Новый персонаж в этой лиге? Сбросит пройденные зоны и «забранные» награды — статусы соберутся заново по логу.';
+    resetBtn.textContent = '🔄 Сброс';
+    resetBtn.addEventListener('click', function () {
+      window.poe2k.levelReset();
+    });
+    head.appendChild(resetBtn);
     wrap.appendChild(head);
 
     var prog = document.createElement('div');

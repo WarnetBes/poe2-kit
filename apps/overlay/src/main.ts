@@ -2974,24 +2974,67 @@ function gameLogOverride(): string | null {
 /**
  * №103: персистентный прогресс кампании — самая дальняя достигнутая зона.
  * Хвост Client.txt (~1 МБ) не покрывает весь плей-фаб; файл переживает рестарты.
+ * №140 (живая жалоба: «Прокачка не понимает, что пройдено»): прогресс
+ * ПРИВЯЗАН К ЛИГЕ — смена лиги = авто-сброс (старое и новое — разные ладдеры,
+ * по-другому честные статусы «пройдено» для нового персонажа не построить:
+ * PoE2 не пишет level_up в лог (№20), а area_change не называет персонажа).
+ * Плюс накапливаем visitedCodes (КДОЫ зон) — переживают ротацию LatestClient.
  */
 interface LevelingProgressFile {
+  /** №140: лига-владелец прогресса; отсутствие = старый формат (v1) → сброс. */
+  league?: string;
   act: number;
   index: number;
   /** ISO-метка времени записи. */
   ts: string;
+  /** №140: накопленные коды посещённых зон кампании (союз persisted + окна лога). */
+  visitedCodes?: string[];
   /** №108: ключи квест-наград, отмеченных «забрал» (core.questRewards key). */
   claimedRewards?: string[];
+  /** №140: причина последнего сброса — показать юзеру один раз. */
+  resetNote?: string;
 }
-function readLevelingProgress(): { act: number; index: number } | null {
+function readLevelingProgressFile(): LevelingProgressFile | null {
   try {
     const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
     const p = JSON.parse(raw) as LevelingProgressFile;
-    if (typeof p.act === 'number' && typeof p.index === 'number') return { act: p.act, index: p.index };
+    if (typeof p.act === 'number' && typeof p.index === 'number') return p;
     return null;
   } catch {
     return null;
   }
+}
+/** №140: прямая запись (без merge) — только для сбросов прогресса. */
+function writeLevelingProgressReset(p: LevelingProgressFile): void {
+  try {
+    fs.writeFileSync(
+      path.join(app.getPath('userData'), 'leveling-progress.json'),
+      JSON.stringify({ ...p, visitedCodes: p.visitedCodes ?? [], claimedRewards: p.claimedRewards ?? [] }, null, 2),
+    );
+  } catch (e) {
+    console.log(`[overlay] leveling-progress.json не записан: ${e instanceof Error ? e.message : e}`);
+  }
+}
+function levelingProgressForLeague(): LevelingProgressFile | null {
+  const p = readLevelingProgressFile();
+  if (!p) return null;
+  const cur = activeLeague ?? undefined;
+  if (!cur || p.league === cur) return p;
+  const reason = p.league == null
+    ? 'файл старого формата (без лиги) — прогресс пересоберётся по логу'
+    : `лига сменилась (${p.league} → ${cur})`;
+  const fresh: LevelingProgressFile = {
+    league: cur,
+    act: 1,
+    index: -1,
+    ts: new Date().toISOString(),
+    visitedCodes: [],
+    claimedRewards: [],
+    resetNote: reason,
+  };
+  writeLevelingProgressReset(fresh);
+  console.log(`[overlay] leveling: прогресс сброшен — ${reason}`);
+  return fresh;
 }
 function writeLevelingProgress(p: LevelingProgressFile): void {
   try {
@@ -3002,9 +3045,13 @@ function writeLevelingProgress(p: LevelingProgressFile): void {
     } catch {
       prev = null;
     }
+    const prevSameLeague = prev && p.league && prev.league === p.league ? prev : null;
     const merged: LevelingProgressFile = {
       ...p,
-      claimedRewards: Array.from(new Set([...(prev?.claimedRewards ?? []), ...(p.claimedRewards ?? [])])),
+      visitedCodes: Array.from(new Set([...(p.visitedCodes ?? []), ...(prevSameLeague?.visitedCodes ?? [])])),
+      claimedRewards: prevSameLeague
+        ? Array.from(new Set([...(p.claimedRewards ?? []), ...(prevSameLeague.claimedRewards ?? [])]))
+        : (p.claimedRewards ?? []),
     };
     fs.writeFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), JSON.stringify(merged, null, 2));
   } catch (e) {
@@ -3026,10 +3073,18 @@ function readClaimedRewards(): string[] {
 /** №108: отметить квест-награду «забрал» (исчезает из чек-листа навсегда). */
 function claimQuestReward(key: string): boolean {
   if (typeof key !== 'string' || !key.includes('|')) return false;
-  const cur = readLevelingProgress();
-  if (cur == null) return false;
-  const claimed = Array.from(new Set([...readClaimedRewards(), key]));
-  writeLevelingProgress({ act: cur.act, index: cur.index, ts: new Date().toISOString(), claimedRewards: claimed });
+  // №140: пишем поверх файла ТЕКУЩЕЙ лиги — иначе merge затёр бы league/visitedCodes.
+  const prog = levelingProgressForLeague();
+  if (prog == null) return false;
+  const claimed = Array.from(new Set([...(prog.claimedRewards ?? []), key]));
+  writeLevelingProgress({
+    league: prog.league,
+    act: prog.act,
+    index: prog.index,
+    ts: new Date().toISOString(),
+    visitedCodes: prog.visitedCodes ?? [],
+    claimedRewards: claimed,
+  });
   return true;
 }
 
@@ -3101,16 +3156,39 @@ async function runLevelingContext(): Promise<unknown> {
     const ctx = core.zoneNotes.getLevelingContext(state.available ? state : null);
 
     // №103 Campaign Companion: полный маршрут акта со статусами зон.
-    // Хвост Client.txt ограничен (~1 МБ): ранние зоны вымываются из окна, поэтому
-    // «самая дальняя достигнутая зона» персистится в leveling-progress.json.
-    const furthest = readLevelingProgress();
-    const visitedCodes = state.zoneVisits.map((v) => v.areaCode).filter(Boolean);
+    // №140: персист ПРИВЯЗАН к лиге (levelingProgressForLeague — авто-сброс при
+    // смене), visitedCodes = persisted ∪ окно лога — ротация LatestClient не
+    // вымывает пройденные зоны, furthest растёт только вперёд.
+    const prog = levelingProgressForLeague();
+    const resetNote = prog?.resetNote ?? null;
+    const persistedCodes = prog?.visitedCodes ?? [];
+    const furthest = prog ? { act: prog.act, index: prog.index } : null;
+    const windowCodes = state.zoneVisits.map((v) => v.areaCode).filter(Boolean) as string[];
+    const visitedCodes = Array.from(new Set([...persistedCodes, ...windowCodes]));
     const camp = core.zoneNotes.buildCampaignPlan(state.available ? state : null, {
       visitedCodes,
       furthest,
     });
     if (camp.currentIndex >= 0 && (furthest == null || camp.act > furthest.act || (camp.act === furthest.act && camp.currentIndex > furthest.index))) {
-      writeLevelingProgress({ act: camp.act, index: camp.currentIndex, ts: new Date().toISOString() });
+      writeLevelingProgress({
+        league: activeLeague ?? undefined,
+        act: camp.act,
+        index: camp.currentIndex,
+        ts: new Date().toISOString(),
+        visitedCodes,
+        claimedRewards: readClaimedRewards(),
+      });
+    } else if (windowCodes.some((c) => !persistedCodes.includes(c))) {
+      // №140: новых зон нет в персисте — дополняем (без resetNote: заметка
+      // о сбросе живёт ровно до первого нового визита зоны).
+      writeLevelingProgress({
+        league: activeLeague ?? undefined,
+        act: prog?.act ?? camp.act,
+        index: prog?.index ?? camp.currentIndex,
+        ts: new Date().toISOString(),
+        visitedCodes,
+        claimedRewards: readClaimedRewards(),
+      });
     }
 
     const payload = {
@@ -3126,6 +3204,12 @@ async function runLevelingContext(): Promise<unknown> {
         rewards: z.rewardList,
       })),
       camp, // №103: { act, actName, actNote, level, currentIndex, rows[], done, total }
+      // №140: что знает оверлей о прогрессе — лига + причина недавнего сброса.
+      progress: {
+        league: activeLeague ?? null,
+        resetNote,
+        zonesSeen: visitedCodes.length,
+      },
       // №104: бестиарий боссов (те же данные, что в core.bosses)
       bosses: {
         story: core.bosses.CAMPAIGN_BOSSES,
@@ -3300,6 +3384,22 @@ function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
   ipcMain.handle('level:check', () => runLevelingContext());
+
+  // №140: ручной сброс прогресса прокачки — новый персонаж в той же лиге.
+  ipcMain.handle('level:reset', () => {
+    const fresh: LevelingProgressFile = {
+      league: activeLeague ?? undefined,
+      act: 1,
+      index: -1,
+      ts: new Date().toISOString(),
+      visitedCodes: [],
+      claimedRewards: [],
+      resetNote: 'ручной сброс (новый персонаж)',
+    };
+    writeLevelingProgressReset(fresh);
+    console.log('[overlay] leveling: прогресс сброшен вручную');
+    return runLevelingContext();
+  });
 
   // №108: «забрал» квест-награду — персист в leveling-progress.json claimedRewards,
   // после — пересобрать панель прокачки (квест исчезает из чек-листа).

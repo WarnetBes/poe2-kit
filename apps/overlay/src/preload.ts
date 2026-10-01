@@ -11,6 +11,8 @@ export interface OverlayAPI {
   onLevelResult(cb: (level: unknown) => void): () => void;
   /** №108: отметить квест-награду «забрал» (персист claimedRewards). */
   levelClaim(key: string): Promise<{ ok: boolean }>;
+  /** №140: сброс прогресса прокачки (новый персонаж в той же лиге). */
+  levelReset(): Promise<unknown>;
   /** №111: результат чекапа перед пиннаклом (Ctrl+F7). */
   onPinnacleResult(cb: (payload: unknown) => void): () => void;
   setLeague(league: string): Promise<string>;
@@ -89,6 +91,9 @@ const api: OverlayAPI = {
   },
 
   levelClaim: (key) => ipcRenderer.invoke('level:claim', key),
+
+  // №140: сброс прогресса прокачки (новый персонаж в той же лиге).
+  levelReset: () => ipcRenderer.invoke('level:reset'),
 
   onPinnacleResult: (cb) => {
     const listener = (_evt: unknown, data: unknown) => cb(data);
