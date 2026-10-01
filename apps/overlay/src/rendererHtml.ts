@@ -365,6 +365,13 @@ export const rendererHtml = `<!doctype html>
   #infoWin li { margin: 3px 0 3px 14px; }
   #infoWin .close-info { float: right; cursor: pointer; color: #9aa4b0; }
   #infoWin .sub { color: #9aa4b0; }
+  /* №129: чипсы-фильтр нод — поиск мышью без клавиатуры */
+  .tree-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+  .tree-chips .chip { font-size: 10px; padding: 3px 6px; cursor: pointer; white-space: nowrap;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--dim); border-radius: 9px; }
+  .tree-chips .chip:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
+  .tree-chips .chip.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
   /* №113: правая часть панели — бывшие прямые потомки #panel (grab/idle/body/settings). */
   #content { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; position: relative; }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
@@ -1059,8 +1066,53 @@ export const rendererHtml = `<!doctype html>
       html += notables.map(treeNodeRow).join('');
     }
     html += '<input id="treeSearch" placeholder="Поиск нод: имя или стат (напр. cold damage)">' +
+      // №129: кликабельный фильтр по нодам — ввод текста у друга не гарантирован
+      // (окно зависит от focus-режимов), popular-запросы должны работать мышью.
+      '<div id="treeChips" class="tree-chips"></div>' +
       '<div id="treeResults"></div>';
     host.innerHTML = html;
+    var QUICK_TREE = [
+      ['резисты', 'resist'],
+      ['жизнь', 'life'],
+      ['эн. щит', 'energy shield'],
+      ['урон', 'damage'],
+      ['крит', 'critical'],
+      ['скор. атаки', 'attack speed'],
+      ['скор. магии', 'cast speed'],
+      ['мана', 'mana'],
+    ];
+    var chipsBox = $('treeChips');
+    if (chipsBox) {
+      chipsBox.innerHTML = QUICK_TREE.map(function (q, i) {
+        return '<button class="chip" data-q="' + esc(q[1]) + '" title="Показать ноды: ' + esc(q[1]) + '">' + esc(q[0]) + '</button>';
+      }).join('');
+    }
+    function runTreeSearch(q) {
+      clearTimeout(treeSearchTimer);
+      if (q.length < 2) { res.innerHTML = ''; return; }
+      treeSearchTimer = setTimeout(function () {
+        window.poe2k.treeSearch(q).then(function (nodes) {
+          res.innerHTML = (nodes || []).length
+            ? '<div class="sub">Найдено: ' + nodes.length + '</div>' + nodes.map(treeNodeRow).join('')
+            : '<div class="tstats">ничего не найдено</div>';
+        }).catch(function () {});
+      }, 120);
+    }
+    if (chipsBox) {
+      chipsBox.onclick = function (ev) {
+        var b = ev.target;
+        if (!b || !b.getAttribute || !b.getAttribute('data-q')) return;
+        // подсветка активного чипа; повторный клик — сброс
+        var was = b.classList.contains('on');
+        var all = chipsBox.querySelectorAll('button.chip');
+        for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
+        if (was) { res.innerHTML = ''; return; }
+        b.classList.add('on');
+        var q = b.getAttribute('data-q');
+        if (inp) inp.value = ''; // чипсы и текстовый поиск не смешиваются
+        runTreeSearch(q);
+      };
+    }
     var tg = $('treeNotToggle');
     if (tg) {
       tg.onclick = function (ev) {
@@ -1075,19 +1127,12 @@ export const rendererHtml = `<!doctype html>
     var inp = $('treeSearch');
     var res = $('treeResults');
     inp.oninput = function () {
-      clearTimeout(treeSearchTimer);
-      var q = inp.value.trim();
-      if (q.length < 2) {
-        res.innerHTML = '';
-        return;
+      // сброс подсветки чипсов при ручном вводе
+      if (chipsBox) {
+        var all = chipsBox.querySelectorAll('button.chip');
+        for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
       }
-      treeSearchTimer = setTimeout(function () {
-        window.poe2k.treeSearch(q).then(function (nodes) {
-          res.innerHTML = (nodes || []).length
-            ? nodes.map(treeNodeRow).join('')
-            : '<div class="tstats">ничего не найдено</div>';
-        }).catch(function () {});
-      }, 250);
+      runTreeSearch(inp.value.trim());
     };
     inp.onkeydown = function (ev) { ev.stopPropagation(); };
   }

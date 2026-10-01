@@ -1023,6 +1023,7 @@ function toggleMoveMode(): void {
     }
     win.setFocusable(false);
     win.setIgnoreMouseEvents(true, { forward: true });
+    keyboardCaptured = false; // №113e-c: выходим из move-режима — гаситель клавиш обратно активен
   }
   const payload = {
     unlocked: moveUnlocked,
@@ -3136,6 +3137,7 @@ function registerHotkeys(): void {
     resetOverlayOffset();
     if (moveUnlocked) {
       moveUnlocked = false;
+      keyboardCaptured = false; // №113e-c
       overlayWindow?.setFocusable(false);
       overlayWindow?.setIgnoreMouseEvents(true, { forward: true });
     }
@@ -3483,8 +3485,13 @@ function setupIPC(): void {
       return false;
     }
     if (moveUnlocked) {
-      console.log(`[overlay] keyboard: ${want ? 'запрос' : 'снятие'} ОТКЛОНЁН — активен move-режим (unlocked, фокусом управляет он)`);
-      return false;
+      // №113e-c (живой лог №128): друг ЖИВЁТ в move-режиме после первого Ctrl+F5 —
+      // отказы «ОТКЛОНЁН» ломали ему ввод навсегда. Move-режим уже держит
+      // setFocusable(true), поэтому фокус не трогаем — отключаем полю сам гаситель
+      // before-input-event (keyboardCaptured), и не отбиваем setFocusable на снятии.
+      keyboardCaptured = want;
+      console.log(`[overlay] keyboard: ${want ? 'передана полю ввода (move-режим: фокус уже у окна, снят гаситель клавиш)' : 'снята с поля (move-режим)'}`);
+      return true;
     }
     win.setFocusable(want);
     if (want) win.focus();
