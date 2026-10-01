@@ -1952,6 +1952,21 @@ async function runBuildImport(): Promise<void> {
     return;
   }
 
+  // №101(c+): произвольный текст (не base64-алфавит, не JSON, не линк, не предмет)
+  // — мгновенный понятный отказ вместо крипто-диагностики base64. Живой факт
+  // 01.10 00:51–00:53: «Main Skills…» (PoB-скрин) и «ВКЛАД В БИБЛИОТЕКУ…»
+  // (123 932 симв.) дали buildImport:failed ×7 с «U+412, контекст "ВКЛАДВБИБЛИО"».
+  // JSON (.build) начинается с { или [ — исключаем, чтобы не сломать его импорт.
+  if (!/^[{\[]/.test(input) && !/^[A-Za-z0-9+/=\s._-]+$/.test(input)) {
+    console.log('[overlay] build import skip: буфер — не PoB-код, быстрый отказ (№101c+)');
+    statEvent('buildImport:rejected:notCode', `${input.length} chars`);
+    sendBuildUpdate({
+      error:
+        'В буфере нет PoB-кода билда. В Path of Building откройте билд → «Export» → скопируйте share-код (это одна длинная строка из букв и цифр без пробелов), затем Ctrl+F3.',
+    });
+    return;
+  }
+
   const token = ++pricingToken;
   if (buildPricing) console.warn('[overlay] новый импорт отменяет прайсинг предыдущего билда');
   buildPricing = true;
