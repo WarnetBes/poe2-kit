@@ -8,7 +8,7 @@
  * Использование:
  *   1) PAT (fine-grained или classic, scopes: repo) положить в env GH_TOKEN
  *      (PowerShell: $env:GH_TOKEN = "ghp_...")
- *   2) node scripts/mirror-github.mjs --user ВАШ_ЛОГИН [--tag v1.0.17]
+ *   2) node scripts/mirror-github.mjs --user ВАШ_ЛОГИН [--tag v1.0.19]
  *
  * Что делает (идемпотентно, можно перезапускать):
  *   A. Создаёт public-репо <user>/poe2-kit, если его нет (POST /user/repos).
@@ -37,7 +37,7 @@ function arg(name, def) {
 
 const GH_USER = arg('user');
 const GH_REPO = arg('repo', 'poe2-kit');
-const TAG = arg('tag', 'v1.0.17');
+const TAG = arg('tag', 'v1.0.19');
 const TOKEN = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 const NOTES_FILE = arg('notes-file', null);
 

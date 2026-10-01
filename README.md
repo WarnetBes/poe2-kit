@@ -51,7 +51,7 @@ poe2-kit/
 
 1. **Скачать**: **GitHub Releases** (зеркало, прямой анонимный доступ):
    [github.com/WarnetBes/poe2-kit/releases/latest](https://github.com/WarnetBes/poe2-kit/releases/latest)
-   → последний релиз (v1.0.18):
+   → последний релиз (v1.0.19):
    - **`poe2-kit-portable-…-win64.zip`** (37 МБ) — рекомендую: распаковать →
      запустить `start-overlay.bat`. Node.js и npm не нужны; при первом запуске
      скрипт один раз скачает движок Electron (~110 МБ), дальше — офлайн.

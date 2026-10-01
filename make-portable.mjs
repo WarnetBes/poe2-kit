@@ -65,7 +65,7 @@ function copyDir(src, dst) {
       if (/\.(log|zip)$/i.test(ent.name)) continue;
       if (ent.name === 'WORK_LOG.md' || ent.name === 'README-netfix.md') continue; // внутренние
       // чек-листы публикации владельца + разовый мусор истории — не для публичного архива
-      if (/^(POST_REDDIT|attach_resp|e2e_code|portable_out|HANDOFF)/i.test(ent.name)) continue;
+      if (/^(POST_REDDIT|attach_resp|e2e_code|portable_out|HANDOFF|_extract_|_smoke)/i.test(ent.name)) continue;
       fs.copyFileSync(path.join(src, ent.name), path.join(dst, ent.name));
     } else if (ent.isDirectory()) {
       copyDir(path.join(src, ent.name), path.join(dst, ent.name));

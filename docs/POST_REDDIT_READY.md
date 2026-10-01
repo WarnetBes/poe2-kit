@@ -52,7 +52,7 @@ Screenshots (overlay over the game): [build shopping list](https://github.com/Wa
 * Clipboard watching is opt-in and off by default. No data about you is sent anywhere — network calls go to public APIs only (trade2, poe.ninja, poe2scout).
 * Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does not endorse this project.
 
-* **Download** (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-1.0.18-win64.zip` — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
+* **Download** (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-1.0.19-win64.zip` — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
 * **Source:** [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit) — full source code and version history. I'm not asking anyone to trust a binary they can't read.
 * **Canonical repo** (RU docs, development, issues): [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
 

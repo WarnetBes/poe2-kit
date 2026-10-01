@@ -13,7 +13,7 @@
 
 1. PoE2 Kit — a free companion overlay I built as a genre newcomer to survive Path of Exile 2: price check, boss timers, craft plans, PoB2 import (full RU-client support)
 2. I kept alt-tabbing to price-check my drops on the RU client — so I built a full-Russian overlay, and it does boss timers too
-3. PoE2 Kit v1.0.18 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
+3. PoE2 Kit v1.0.19 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
 
 ## Body
 
@@ -83,7 +83,7 @@ tool post):
   not endorse this project.
 
 * Download (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-  `poe2-kit-portable-1.0.18-win64.zip` — unzip → run `start-overlay.bat`
+  `poe2-kit-portable-1.0.19-win64.zip` — unzip → run `start-overlay.bat`
   (it downloads the Electron runtime once, ~110 MB, then works offline).
   No admin rights, no installer, no Node.js needed.
 * Source: [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit)
