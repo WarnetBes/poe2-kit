@@ -17,6 +17,8 @@ export interface OverlayAPI {
   /** Список действующих лиг для селекта настроек: { current, leagues: [{name, isCurrent}] }. */
   leaguesList(): Promise<unknown>;
   setInteractive(interact: boolean): Promise<boolean>;
+  /** №113e: захват клавиатуры на время фокуса поля ввода (focusable у окна). */
+  captureKeyboard(want: boolean): Promise<boolean>;
   onMoveMode(cb: (state: { unlocked: boolean; resetOffset: boolean }) => void): () => void;
   resetOffset(): Promise<boolean>;
   onBuildUpdate(cb: (state: unknown) => void): () => void;
@@ -101,6 +103,10 @@ const api: OverlayAPI = {
   leaguesList: () => ipcRenderer.invoke('leagues:list'),
 
   setInteractive: (interact) => ipcRenderer.invoke('interact:set', interact),
+  // №113e: окна по умолчанию focusable:false (не красть фокус у игры) —
+  // поля ввода не получали клавиатуру. Renderer включает фокус на focusin
+  // и снимает на focusout — WASD игре не воруем.
+  captureKeyboard: (want) => ipcRenderer.invoke('keyboard:set', want),
 
   onMoveMode: (cb) => {
     const listener = (_evt: unknown, state: { unlocked: boolean; resetOffset: boolean }) =>

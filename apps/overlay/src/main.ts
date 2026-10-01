@@ -3449,6 +3449,21 @@ function setupIPC(): void {
     return interact;
   });
 
+  // №113e: клавиатура для полей ввода (поиск нод и т.п.). Окно создаётся
+  // focusable:false, чтобы не красть фокус у игры (main.ts: BrowserWindow).
+  // Из-за этого клик по <input> не давал текстового ввода. Отдаём клавиатуру
+  // ТОЛЬКО на время фокуса поля (focusin/focusout в renderer): наведение
+  // курсора на панель фокус не ворует, WASD в бою не теряется.
+  ipcMain.handle('keyboard:set', (_evt, want: boolean) => {
+    const win = overlayWindow;
+    if (!win || win.isDestroyed()) return false;
+    if (moveUnlocked) return false; // move-режим управляет фокусом сам
+    win.setFocusable(want);
+    if (want) win.focus();
+    console.log(`[overlay] keyboard: ${want ? 'захвачена полем ввода' : 'возвращена игре'}`);
+    return want;
+  });
+
   // Авторазмер: рендерер меряет контент панели и просит подогнать высоту окна
   // (в DIP; ширина фиксирована). Позицию не трогаем — она за трекером игры.
   ipcMain.handle('overlay:autosize', (_evt, px: number) => {

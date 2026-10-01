@@ -2383,6 +2383,22 @@ export const rendererHtml = `<!doctype html>
     if (winUnlocked) return;
     window.poe2k.setInteractive(false).catch(function () {});
   });
+  // №113e: клавиатура для полей ввода (поиск нод в Билде и т.п.). Окно
+  // focusable:false — без этого текст в поля не вводился. Включаем фокус
+  // ТОЛЬКО пока поле в фокусе: focusin на input → отдать клавиатуру панели,
+  // focusout → вернуть игре. Наведение мыши на панель фокус не ворует.
+  document.addEventListener('focusin', function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+      window.poe2k.captureKeyboard(true).catch(function () {});
+    }
+  });
+  document.addEventListener('focusout', function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+      window.poe2k.captureKeyboard(false).catch(function () {});
+    }
+  });
   // Хоткей-пути красят ту же вкладку: параллельные слушатели событий main.
   window.poe2k.onPriceBatch(function () { setActiveTab('price'); });
   window.poe2k.onLevelResult(function () { setActiveTab('level'); });
