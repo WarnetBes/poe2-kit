@@ -197,7 +197,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -3479,6 +3479,55 @@ function setupIPC(): void {
   ipcMain.handle('interact:set', (_evt, interact: boolean) => {
     overlayWindow?.setIgnoreMouseEvents(!interact, { forward: true });
     return interact;
+  });
+
+  // ─── №134: окно «⚒ Крафт» — каталог и персональный план ────────────────────
+  // Каталог рецептов 0.5.5 — единый источник правды poe2-kit/core
+  // (CRAFT_RECIPES/CRAFT_ESSENCES/CRAFT_OMENS, docs/crafting_knowledge_base.md).
+  // Рендерер кэширует ответ: каталог статичен между патчами игры.
+  ipcMain.handle('craft:catalog', () => {
+    try {
+      return {
+        ok: true,
+        recipes: core.craft.CRAFT_RECIPES,
+        essences: core.craft.CRAFT_ESSENCES,
+        perfectHint: core.craft.CRAFT_PERFECT_ESSENCES_HINT,
+        omens: core.craft.CRAFT_OMENS,
+      };
+    } catch (err) {
+      console.warn('[overlay] craft:catalog failed:', (err as Error).message);
+      return { ok: false, error: 'Каталог крафта недоступен (см. overlay.log).' };
+    }
+  });
+  // Персональный план по предмету из буфера: Ctrl+C по предмету в игре →
+  // кнопка в табе «Крафт» → craftPlan (методология «двух якорей», №126/№130).
+  ipcMain.handle('craft:plan', () => {
+    const text = clipboard.readText().trim();
+    if (!looksLikeItemText(text)) {
+      return {
+        ok: false,
+        error: 'В буфере нет предмета. Наведи на предмет в игре → Ctrl+C → нажми кнопку «План по предмету».',
+      };
+    }
+    try {
+      const parsed = core.parse.parseItemText(text);
+      const name = core.parse.itemDisplayName(parsed) || parsed.baseType || 'предмет';
+      const plan = core.craft.craftPlan({
+        itemClass: parsed.itemClass,
+        baseType: parsed.baseType,
+        itemLevel: parsed.itemLevel,
+        rarity: parsed.rarity,
+        parsed,
+      });
+      const essences = core.craft.essenceSuggestions(parsed.itemClass, parsed.baseType);
+      console.log(
+        `[overlay] craft:plan: "${name}" (${parsed.itemClass}, ilvl=${parsed.itemLevel ?? '?'}) — ${plan.length} шагов`,
+      );
+      return { ok: true, name, itemClass: parsed.itemClass, ilvl: parsed.itemLevel, plan, essences };
+    } catch (err) {
+      console.warn('[overlay] craft:plan failed:', (err as Error).message);
+      return { ok: false, error: `Не удалось разобрать предмет: ${(err as Error).message}` };
+    }
   });
 
   // №113e(+b): клавиатура для полей ввода (поиск нод и т.п.). Окно создаётся

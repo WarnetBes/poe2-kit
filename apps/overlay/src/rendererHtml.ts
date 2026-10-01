@@ -279,7 +279,7 @@ export const rendererHtml = `<!doctype html>
   #gemsWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
   /* №113d: эти три врапа вообще не имели скролла (Плитки — большая таблица):
      низ срезался #body{overflow:hidden}. Единый паттерн как у #buildWrap. */
-  #mapsWrap, #pinnacleWrap, #importWrap {
+  #mapsWrap, #pinnacleWrap, #importWrap, #slangWrap, #craftWrap {
     display: flex; flex-direction: column; gap: 4px;
     min-height: 0; flex: 1 1 auto; overflow-y: auto; padding-right: 4px; }
   /* №67: полоска сравнения цены с максимумом группы (внутри td, % от ширины). */
@@ -294,10 +294,12 @@ export const rendererHtml = `<!doctype html>
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
   #gemsWrap::-webkit-scrollbar, #mapsWrap::-webkit-scrollbar,
   #pinnacleWrap::-webkit-scrollbar, #importWrap::-webkit-scrollbar,
+  #slangWrap::-webkit-scrollbar, #craftWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
   #gemsWrap::-webkit-scrollbar-thumb, #mapsWrap::-webkit-scrollbar-thumb,
   #pinnacleWrap::-webkit-scrollbar-thumb, #importWrap::-webkit-scrollbar-thumb,
+  #slangWrap::-webkit-scrollbar-thumb, #craftWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
     background: rgba(198,154,82,0.45); border-radius: 3px; }
 
@@ -374,6 +376,12 @@ export const rendererHtml = `<!doctype html>
     cursor: pointer; background: rgba(20,24,32,0.85); color: var(--accent);
     border: 1px solid rgba(198,154,82,0.5); border-radius: 4px; padding: 0; }
   #scrollCtl button:hover { background: rgba(198,154,82,0.25); }
+  /* №133: словарь слэнга */
+  .slang-row { display: flex; flex-direction: column; gap: 1px; padding: 4px 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .slang-term { color: var(--accent); font-weight: 700; font-size: 12px; }
+  .slang-def { color: #cfd6df; font-size: 11px; line-height: 1.35; }
+  .slang-hint { color: var(--dim); font-size: 10px; margin: 2px 0 4px; }
   /* №129: чипсы-фильтр нод — поиск мышью без клавиатуры */
   .tree-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
   .tree-chips .chip { font-size: 10px; padding: 3px 6px; cursor: pointer; white-space: nowrap;
@@ -416,6 +424,8 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
       <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
       <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
+      <button data-tab="slang" title="Словарь игрового слэнга PoE2: сокращения и жаргон — по-человечески">📖 Слэнг</button>
+      <button data-tab="craft" title="Окно крафта: план по предмету (Ctrl+C в игре), все рецепты 0.5.5, эссенции и омены">⚒ Крафт</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
       <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
@@ -462,6 +472,12 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="mapsWrap" class="hide">
         <div id="mapsContent"></div>
+      </div>
+      <div id="slangWrap" class="hide">
+        <div id="slangContent"></div>
+      </div>
+      <div id="craftWrap" class="hide">
+        <div id="craftContent"></div>
       </div>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
@@ -815,7 +831,7 @@ export const rendererHtml = `<!doctype html>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'import' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'import' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('augLine').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
@@ -827,6 +843,8 @@ export const rendererHtml = `<!doctype html>
     $('gemsWrap').classList.toggle('hide', mode !== 'gems');
     $('mapsWrap').classList.toggle('hide', mode !== 'maps');
     $('pinnacleWrap').classList.toggle('hide', mode !== 'pinnacle');
+    $('slangWrap').classList.toggle('hide', mode !== 'slang');
+    $('craftWrap').classList.toggle('hide', mode !== 'craft');
     $('importWrap').classList.toggle('hide', mode !== 'import');
     updateScrollCtl();
   }
@@ -835,7 +853,7 @@ export const rendererHtml = `<!doctype html>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'importWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'importWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -948,6 +966,276 @@ export const rendererHtml = `<!doctype html>
     showMode('maps');
     renderMapsTab();
     requestSize();
+  }
+
+  // ─── Вкладка «📖 Слэнг» (№133): словарь игрового слэнга/сокращений ─────────
+  // Жаргон PoE2 по-человечески: что говорят в чатах/гайдах и что это значит.
+  // Только устоявшиеся термины сообщества; разделы переключаются чипсами
+  // (паттерн №129 — мышь, без клавиатуры). Фильтр-чипсы + таблица.
+  var SLANG_SECTIONS = [
+    ['all', 'Все'],
+    ['stats', 'Билд и статы'],
+    ['craft', 'Крафт и валюта'],
+    ['combat', 'Бой и карты'],
+    ['trade', 'Трейд'],
+    ['general', 'Общее'],
+  ];
+  // [ термин, пояснение по-человечески, раздел ]
+  var SLANG_GLOSSARY = [
+    ['CI', 'Chaos Inoculation — ключевая пассивка «Хаос-прививка»: жизнь становится 1, но хаос-урон её не пробивает; живём на энергетическом щите (ЭС).', 'stats'],
+    ['ЭС / ES', 'Energy Shield — энергетический щит: «дополнительная жизнь» поверх ХП, восстанавливается после паузы в получении урона.', 'stats'],
+    ['EHP', 'Effective HP — «эффективная жизнь»: сколько урона ты реально выдержишь с учётом щита, резистов и блока. Не то же, что голое ХП.', 'stats'],
+    ['HP / ХП', 'Hit Points — жизнь персонажа. «Пул ХП» = общий запас жизни+щита.', 'stats'],
+    ['Резист / кап резистов', 'Сопротивление урону (огонь/холод/молния/хаос). Максимум 75% — «кап»; добить до 75% — базовая защита в эндгейме.', 'stats'],
+    ['ilvl', 'item level — уровень предмета (виден в деталях). Определяет, какие аффиксы могут выпасть на предмете при крафте.', 'stats'],
+    ['T1 / тир', 'Tier — «ряд» аффикса. T1 — самый сильный вариант мода, дальше T2, T3 и т.д. «Тир-мод» = мод определённого уровня силы.', 'stats'],
+    ['DPS', 'Damage Per Second — урон в секунду. Теоретический показатель силы билда.', 'stats'],
+    ['APS', 'Attacks Per Second — скорость атаки (ударов/кастов в секунду).', 'stats'],
+    ['MS', 'Movement Speed — скорость бега. Базовая кап-скорость на сапогах — главное качество жизни.', 'stats'],
+    ['MF', 'Magic Find — «магический поиск»: шанс найти лучшие предметы. У нас это IIR/IIQ (количество/качество предметов).', 'stats'],
+    ['AOE', 'Area of Effect — радиус действия/площадь эффекта умения.', 'stats'],
+    ['AoE-урон', 'см. AOE — урон по площади.', 'stats'],
+    ['PoB', 'Path of Building — внелинейный планировщик билдов: собираешь билд на бумаге, видишь статы до покупки. PoB-код — текстовый импорт такого билда.', 'general'],
+    ['Крафт', 'Изготовление/улучшение предмета: сламы, эссенции, оммены, руны — любой способ переделать предмет под себя.', 'craft'],
+    ['Слэм / slam', 'Использовать орб-экзальт (Exalted Orb) или аналог — «шлёпнуть» новый случайный мод на предмет. Ставка на удачу.', 'craft'],
+    ['Якорь / пул', 'Якорить мод = «залочить» нужный аффикс, чтобы он не затёрся при следующем крафте. Пул = набор возможных модов, которые могут выпасть.', 'craft'],
+    ['Фракчер / fractured', '«Треснувший» предмет с одним зафиксированным (неизменяемым) модом — экономит шаги крафта.', 'craft'],
+    ['Коррупт / Vaal', 'Испортить предмет через Corruption: необратимо, может дать сильный скрытый мод или испортить вещь. Назад дороги нет.', 'craft'],
+    ['Эссенция', 'Essence — валютный предмет: «запечатывает» случайный мод на базе, превращая её в крафтованную вещь. Частый способ добить резисты/жизнь.', 'craft'],
+    ['Омен', 'Omen — «знамение»: валютный предмет, который вмешивается в крафт (меняет результат следующего крафт-действия, например сохраняет моды от затирания).', 'craft'],
+    ['Руна', 'Rune — вставляется в предмет с гнездом под руну, даёт мод. Выбирай под билд (резист/жизнь/урон).', 'craft'],
+    ['Сокет', 'Socket — гнездо (под руну или камень, в завис. от предмета).', 'craft'],
+    ['Хаос-орб', 'Chaos Orb — валюта: меняет НЕ-выбранные моды предмета на случайные. И валюта «деньги» трейда.', 'craft'],
+    ['Сфера/орб превращения', 'Orb of Transmutation — превращает белый предмет в синий (магический) с 1-2 модами. База любого крафта.', 'craft'],
+    ['Augment / ауги', 'Orb of Augmentation — добавляет один мод на предмет, где есть свободный слот под мод.', 'craft'],
+    ['Алхимика', 'Orb of Alchemy — превращает белый предмет в жёлтый (редкий) с несколькими модами.', 'craft'],
+    ['Рекрафт / reforge', 'Перекрафтить — заново переделать моды предмета (слот-машина, старые моды теряются).', 'craft'],
+    ['Атлас', 'Атлас — глобальная карта эндгейма: сеть Waystone-карт, боссов и механик.', 'combat'],
+    ['Waystone / плитка', 'Предмет-ключ на следующую карту («камень пути»). «Плитки» — сленговое название в нашей панели.', 'combat'],
+    ['Пиннакл-босс', 'Pinnacle boss — финальные боссы игры (вершина контента): Uбер-версии мощнее обычных. «Убер» = усиленная финальная версия.', 'combat'],
+    ['Моб / пачка', 'Монстр; «пачка» — группа монстров. «Зачистить пачку» = убить группу.', 'combat'],
+    ['Аффикс-мобы', 'Монстры с модификаторами (усиленные, с аурой и т.п.).', 'combat'],
+    ['Гейтить', 'Требовать порог статов/билда для входа в контент («не ходи к боссу без 75% резистов» — гейтинг).', 'general'],
+    ['One-shot / ваншот', 'Убить с одного удара (тебя убили с одного удара — «ваншотнуло»).', 'combat'],
+    ['Клатч / clutch', 'Действие, сделанное в последний момент и спасшее ситуацию («клатч-спасение»).', 'general'],
+    ['SSF', 'Solo Self-Found — режим «всё сам»: без трейда, только добытое своими руками.', 'general'],
+    ['HC / SC', 'Hardcore (жизнь одна, смерть = конец лиги персонажа) / Softcore (обычный режим, после смерти респавнишься).', 'general'],
+    ['Лига', 'Сезон: несколько месяцев с новой механикой и свежей экономикой, потом стартует новая.', 'general'],
+    ['Фарм/гринд', 'Повторять выгодную активность ради лута/валюты.', 'general'],
+    ['Мета', 'Meta — набор самых сильных текущих билдов/умений (most effective tactics available).', 'general'],
+    ['Twink / твинк', 'Персонаж, которого качают с финансовой/гир-поддержкой другого персонажа.', 'general'],
+    ['WTB / WTS', 'Want To Buy / Want To Sell — «куплю» / «продаю» в трейд-чатах.', 'trade'],
+    ['WTT', 'Want To Trade — обмен предметами (без валюты).', 'trade'],
+    ['B/O / buyout', 'Buyout — цена «покупаю сразу», без торга.', 'trade'],
+    ['C/O', 'Current Offer — текущая лучшая ставка (аукцион).', 'trade'],
+    ['~b/o 5c', 'Цена покупки — 5 хаос-орбов (c = chaos).', 'trade'],
+    ['c / ex / div', ' Chaos Orb / Exalted Orb / Divine Orb — основная валюта-деньги трейда (div — самая крупная).', 'trade'],
+    ['price-check', 'Оценка рыночной стоимости предмета (наша панель 💰 Прайс делает это по API).', 'trade'],
+  ];
+  var slangFilter = 'all';
+  function renderSlangTab() {
+    var host = $('slangContent');
+    if (!host) return;
+    var chips = SLANG_SECTIONS.map(function (s) {
+      return '<button class="tree-chip' + (slangFilter === s[0] ? ' on' : '') +
+        '" data-sf="' + s[0] + '">' + s[1] + '</button>';
+    }).join('');
+    var rows = SLANG_GLOSSARY
+      .filter(function (e) { return slangFilter === 'all' || e[2] === slangFilter; })
+      .sort(function (a, b) { return a[0].toLowerCase() < b[0].toLowerCase() ? -1 : 1; })
+      .map(function (e) {
+        return '<div class="slang-row"><div class="slang-term">' + e[0] + '</div>' +
+          '<div class="slang-def">' + e[1] + '</div></div>';
+      }).join('');
+    host.innerHTML =
+      '<div class="tree-chips" id="slangChips">' + chips + '</div>' +
+      '<div class="slang-hint">Слэнг и сокращения PoE2 — по-человечески. Разделы — мышкой.</div>' +
+      rows;
+    var ch = host.querySelectorAll('#slangChips .tree-chip');
+    for (var i = 0; i < ch.length; i++) {
+      ch[i].addEventListener('click', function () {
+        slangFilter = this.getAttribute('data-sf');
+        renderSlangTab();
+      });
+    }
+  }
+  function showSlangView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '📖 Словарь слэнга PoE2';
+    showMode('slang');
+    renderSlangTab();
+    requestSize();
+  }
+
+  // ─── Вкладка «⚒ Крафт» (№134): план + каталог рецептов в одном окне ────────
+  // UX-паттерн друга: только мышь (чипсы/кнопки), никакого ввода с клавиатуры.
+  // Данные — из ядра poe2-kit по IPC (единый источник правды craftGuide.ts):
+  // каталог статичен → кэшируем ответ один раз за сессию.
+  var CRAFT_SYSTEMS = [
+    ['all', 'Все'],
+    ['currency', 'Валюта'],
+    ['essence', 'Эссенции'],
+    ['omen', 'Омены'],
+    ['rune', 'Руны/сокеты'],
+    ['quality', 'Качество'],
+    ['bench', 'Верстаки'],
+    ['desecration', 'Дезекрация'],
+    ['special', 'Спец'],
+    ['waystone', 'Плитки'],
+  ];
+  var craftCatalog = null; // кэш ответа craft:catalog
+  var lastCraftPlan = null; // №134: последний успешный план — переживает переключения под-вью
+  var craftSub = 'plan';   // plan | recipes | essences | omens
+  var craftSysFilter = 'all';
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function craftSubChips() {
+    var subs = [['plan', '🎯 План'], ['recipes', '📋 Рецепты'], ['essences', '💧 Эссенции'], ['omens', '🔮 Омены']];
+    return '<div class="tree-chips">' + subs.map(function (s) {
+      return '<button class="tree-chip' + (craftSub === s[0] ? ' on' : '') +
+        '" data-cs="' + s[0] + '">' + s[1] + '</button>';
+    }).join('') + '</div>';
+  }
+  function renderCraftPlan(craftData) {
+    // craftData: последний успешный ответ craft:plan (или null)
+    if (!craftData) {
+      return '<div class="lvl-hint">Наведи на предмет в игре → <b>Ctrl+C</b> → нажми кнопку ниже: ' +
+        'кит составит пошаговый план «двух якорей» под этот слот' +
+        ' (резисты/ЭС — эссенциями, орбы — с оменами, руны — в сокеты).</div>';
+    }
+    var rows = (craftData.plan || []).map(function (s, i) {
+      return '<div class="slang-row"><div class="slang-term">' + (i + 1) + '. ' + esc(s.step) + '</div>' +
+        '<div class="slang-def">' + esc(s.detail) + '</div></div>';
+    }).join('');
+    var ess = (craftData.essences || []).slice(0, 6).map(function (e) {
+      return '<button class="tree-chip" title="' + esc(e.guaranteed) + '">' + esc(e.ru || e.en) + '</button>';
+    }).join('');
+    return '<div class="slang-hint">Предмет: <b>' + esc(craftData.name) + '</b>' +
+      (craftData.ilvl ? ' · ilvl ' + esc(craftData.ilvl) : '') + '</div>' + rows +
+      (ess ? '<div class="slang-hint">Эссенции под этот слот (наведи — мод):</div>' +
+        '<div class="tree-chips">' + ess + '</div>' : '');
+  }
+  function renderCraftView(craftData) {
+    var host = $('craftContent');
+    if (!host) return;
+    var html = craftSubChips();
+    if (craftSub === 'plan') {
+      html += renderCraftPlan(craftData) +
+        '<button id="craftPlanBtn" class="tabbtn" style="margin-top:6px">📋 План по предмету (буфер обмена)</button>' +
+        '<div class="slang-hint">Порядок: Ctrl+C по предмету в игре → кнопка. План обновится под этот предмет.</div>';
+    } else if (craftSub === 'recipes') {
+      var cat = craftCatalog;
+      if (!cat || !cat.ok) {
+        html += '<div class="lvl-hint">Каталог загружается… если не появился — см. overlay.log.</div>';
+      } else {
+        html += '<div class="tree-chips">' + CRAFT_SYSTEMS.map(function (s) {
+          return '<button class="tree-chip' + (craftSysFilter === s[0] ? ' on' : '') +
+            '" data-csys="' + s[0] + '">' + s[1] + '</button>';
+        }).join('') + '</div>';
+        var list = cat.recipes.filter(function (r) {
+          return craftSysFilter === 'all' || r.system === craftSysFilter;
+        });
+        html += list.map(function (r) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(r.name) + '</div>' +
+            '<div class="slang-def">' + esc(r.recipe) +
+            (r.ssfNote ? ' <span style="color:var(--dim)">SSF: ' + esc(r.ssfNote) + '</span>' : '') +
+            '</div></div>';
+        }).join('');
+        html += '<div class="slang-hint">Всего рецептов в базе: ' + cat.recipes.length +
+          ' · источник: crafting_knowledge_base.md (0.5.5).</div>';
+      }
+    } else if (craftSub === 'essences') {
+      var cat2 = craftCatalog;
+      if (!cat2 || !cat2.ok) {
+        html += '<div class="lvl-hint">Каталог загружается…</div>';
+      } else {
+        html += cat2.essences.map(function (e) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(e.ru || e.en) +
+            (e.ru ? ' <span style="color:var(--dim)">' + esc(e.en) + '</span>' : '') + '</div>' +
+            '<div class="slang-def">' + esc(e.guaranteed) +
+            ' · ' + (e.action === 'magicToRare' ? 'Magic → Rare + мод' : 'Rare: заменить мод') + '</div></div>';
+        }).join('');
+        html += '<div class="lvl-hint">' + esc(cat2.perfectHint) + '</div>';
+      }
+    } else if (craftSub === 'omens') {
+      var cat3 = craftCatalog;
+      if (!cat3 || !cat3.ok) {
+        html += '<div class="lvl-hint">Каталог загружается…</div>';
+      } else {
+        html += cat3.omens.map(function (o) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(o.en) + '</div>' +
+            '<div class="slang-def">' + esc(o.purpose) + '</div></div>';
+        }).join('');
+        html += '<div class="lvl-hint">Омены активируются ДО применения валюты и действуют на ОДНУ операцию. ' +
+          'Дроп: Ritual / Tribute.</div>';
+      }
+    }
+    host.innerHTML = html;
+    // Кнопки под-вью
+    var subBtns = host.querySelectorAll('[data-cs]');
+    for (var i = 0; i < subBtns.length; i++) {
+      subBtns[i].addEventListener('click', function () {
+        craftSub = this.getAttribute('data-cs');
+        renderCraftView(craftData);
+      });
+    }
+    // Чипсы-фильтр систем рецептов
+    var sysBtns = host.querySelectorAll('[data-csys]');
+    for (var j = 0; j < sysBtns.length; j++) {
+      sysBtns[j].addEventListener('click', function () {
+        craftSysFilter = this.getAttribute('data-csys');
+        renderCraftView(craftData);
+      });
+    }
+    // План по буферу
+    var planBtn = host.querySelector('#craftPlanBtn');
+    if (planBtn) planBtn.addEventListener('click', function () {
+      planBtn.textContent = '⏳ Читаю буфер…';
+      window.poe2k.craftPlanBuffer().then(function (res) {
+        if (!res || !res.ok) {
+          craftLastError = (res && res.error) || 'Ошибка плана (см. overlay.log)';
+          renderCraftView(null);
+          return;
+        }
+        craftLastError = null;
+        lastCraftPlan = res;
+        renderCraftView(res);
+      }).catch(function (err) {
+        craftLastError = 'IPC error: ' + err;
+        renderCraftView(null);
+      });
+    });
+  }
+  var craftLastError = null;
+  function showCraftView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '⚒ Крафт: план и рецепты';
+    showMode('craft');
+    if (craftLastError) {
+      var host = $('craftContent');
+      if (host) host.innerHTML = craftSubChips() + '<div class="lvl-hint" style="color:#e08080">' + craftLastError + '</div>';
+      craftLastError = null; // показали один раз
+    } else {
+      renderCraftView(lastCraftPlan);
+    }
+    requestSize();
+    // Каталог нужен для вью рецептов/эссенций/оменов — тянем один раз за сессию.
+    if (!craftCatalog) {
+      window.poe2k.craftCatalog().then(function (res) {
+        craftCatalog = res;
+        if (craftSub !== 'plan') renderCraftView(null);
+      }).catch(function (err) {
+        console.warn('[overlay] renderer: craft:catalog failed: ' + err);
+      });
+    }
   }
 
   // ─── Вкладка «💎 Камни» (№66): сетапы камней билда — отдельная панель ──────
@@ -2063,6 +2351,8 @@ export const rendererHtml = `<!doctype html>
     ['import', '📥 Импорт'],
     ['level', '📈 Прокачка'],
     ['maps', '🧭 Плитки'],
+    ['slang', '📖 Слэнг'],
+    ['craft', '⚒ Крафт'],
     ['pinnacle', '🛡 Пиннакл'],
     ['settings', '⚙ Настройки'],
   ];
@@ -2474,6 +2764,10 @@ export const rendererHtml = `<!doctype html>
           showGemsView(); // локальная панель, IPC не нужен
         } else if (tab === 'maps') {
           showMapsView(); // №85: статический справочник крафта плиток, IPC не нужен
+        } else if (tab === 'slang') {
+          showSlangView(); // №133: локальный словарь слэнга, IPC не нужен
+        } else if (tab === 'craft') {
+          showCraftView(); // №134: локальный вью; план/каталог тянутся по IPC
         } else if (tab === 'import') {
           showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
         } else {
@@ -2566,6 +2860,13 @@ export const rendererHtml = `<!doctype html>
       'Эндгейм-механики (карты/лиги) и чек-лист резистов до 75%.' ] },
     maps: { t: '🧭 Плитки', h: '—', b: [
       'Рецепты крафта Waystone (плитки смотрителя): таблица тиры/рецепты/ингредиенты.' ] },
+    slang: { t: '📖 Слэнг', h: '—', b: [
+      'Словарь жаргона и сокращений PoE2 по-человечески: CI, EHP, слэм, якорь, WTS и т.д.',
+      'Разделы переключаются чипсами мышью (клавиатура не нужна).' ] },
+    craft: { t: '⚒ Крафт', h: '—', b: [
+      '<b>План</b>: Ctrl+C по предмету в игре → кнопка «План по предмету» — пошаговый крафт «двух якорей» под этот слот (эссенции/омены/руны).',
+      '<b>Рецепты</b>: все системы 0.5.5 (валюта, эссенции, омены, руны, качество, верстаки, Дезекрация, плитки) — фильтр чипсами.',
+      '<b>Эссенции/Омены</b>: таблицы с гарантированными модами и поведением.' ] },
     pinnacle: { t: '🛡 Пиннакл', h: 'Ctrl+F7', b: [
       'Чекап перед боссом-пиннаклом: резисты, EHP, стан-порог — честные «—» при неизвестных данных.',
       'Что фармить до попытки: weakest-звенья билда по эталону.' ] },

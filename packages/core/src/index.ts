@@ -88,6 +88,7 @@ import * as runesMod from './runes.js';
 import * as starterBuildsMod from './starterBuilds.js';
 import * as endgameMod from './endgame.js';
 import * as questRewardsMod from './questRewards.js';
+import * as craftMod from './craftGuide.js';
 
 export const core = {
   trade,
@@ -128,6 +129,7 @@ export const core = {
   starterBuilds: starterBuildsMod,
   endgame: endgameMod,
   questRewards: questRewardsMod,
+  craft: craftMod,
 };
 
 export default core;

@@ -67,6 +67,10 @@ export interface OverlayAPI {
   learnInfo(): Promise<unknown>;
   /** Сформировать вклад в библиотеку предметов: текст уже в буфере обмена + файл в userData. */
   learnContribute(): Promise<unknown>;
+  /** №134: каталог крафт-рецептов PoE2 ({ recipes, essences, perfectHint, omens }). */
+  craftCatalog(): Promise<unknown>;
+  /** №134: персональный крафт-план по предмету из буфера (Ctrl+C в игре → вызов). */
+  craftPlanBuffer(): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -188,6 +192,11 @@ const api: OverlayAPI = {
   learnInfo: () => ipcRenderer.invoke('learn:info'),
 
   learnContribute: () => ipcRenderer.invoke('learn:contribute'),
+
+  // №134: окно «⚒ Крафт»
+  craftCatalog: () => ipcRenderer.invoke('craft:catalog'),
+
+  craftPlanBuffer: () => ipcRenderer.invoke('craft:plan'),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);
