@@ -1,10 +1,10 @@
 ﻿#!/usr/bin/env node
 /**
- * PoE2 Kit вЂ” MCP-СЃРµСЂРІРµСЂ.
- * РџСЂРµРґРѕСЃС‚Р°РІР»СЏРµС‚ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ poe2_* РїРѕРІРµСЂС… РµРґРёРЅРѕРіРѕ СЏРґСЂР° @poe2-kit/core
- * РґР»СЏ РР-Р°СЃСЃРёСЃС‚РµРЅС‚РѕРІ (OpenCode, Claude Desktop Рё РґСЂ.).
+ * PoE2 Kit — MCP-сервер.
+ * Предоставляет инструменты poe2_* поверх единого ядра @poe2-kit/core
+ * для ИИ-ассистентов (OpenCode, Claude Desktop и др.).
  *
- * Р’СЃРµ РґР°РЅРЅС‹Рµ вЂ” С‚РѕР»СЊРєРѕ Р±РµСЃРїР»Р°С‚РЅС‹Рµ РїСѓР±Р»РёС‡РЅС‹Рµ API Рё Р»РѕРєР°Р»СЊРЅР°СЏ Р±Р°Р·Р° RePoE.
+ * Все данные — только бесплатные публичные API и локальная база RePoE.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -72,14 +72,14 @@ export function buildServer(): number {
   count += registerOverlayBridgeTools(server);
   count += registerRuneTools(server);
 
-  // Р—Р°РїРѕРјРЅРёРј СЃРµСЂРІРµСЂ РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ
+  // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
   return count;
 }
 
-/** РўРѕС‡РєР° РІС…РѕРґР°: РїРѕРґРєР»СЋС‡РµРЅРёРµ РїРѕ stdio. */
+/** Точка входа: подключение по stdio. */
 async function main(): Promise<void> {
-  // Р РµР¶РёРј СЃР°РјРѕРїСЂРѕРІРµСЂРєРё: Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Рё РІС‹Р№С‚Рё.
+  // Режим самопроверки: зарегистрировать инструменты и выйти.
   // Метка источника для opt-in журнала обучения (overlay/mcp/…).
   if (!process.env['POE2K_LEARN_SOURCE']) process.env['POE2K_LEARN_SOURCE'] = 'mcp';
   if (process.argv.includes('--smoke')) {
@@ -94,7 +94,7 @@ async function main(): Promise<void> {
   const server = (globalThis as any).__poe2Server as McpServer;
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // stdout Р·Р°РЅСЏС‚ JSON-RPC, Р»РѕРіРё вЂ” РІ stderr
+  // stdout занят JSON-RPC, логи — в stderr
   console.error(`poe2-kit-mcp started (stdio transport), ${count} tools`);
 }
 

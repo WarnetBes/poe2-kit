@@ -3,7 +3,7 @@
   "version": "1.0.18",
   "private": true,
   "type": "module",
-  "description": "MCP-СЃРµСЂРІРµСЂ PoE2 Kit: РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ poe2_* РїРѕРІРµСЂС… РµРґРёРЅРѕРіРѕ СЏРґСЂР° РґР»СЏ РР-Р°СЃСЃРёСЃС‚РµРЅС‚РѕРІ (OpenCode Рё РґСЂ.)",
+  "description": "MCP-сервер PoE2 Kit: инструменты poe2_* поверх единого ядра для ИИ-ассистентов (OpenCode и др.)",
   "main": "dist/index.js",
   "exports": {
     ".": {

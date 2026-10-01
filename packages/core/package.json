@@ -2,7 +2,7 @@
   "name": "@poe2-kit/core",
   "version": "1.0.18",
   "type": "module",
-  "description": "Р•РґРёРЅРѕРµ СЏРґСЂРѕ PoE2 Kit: С†РµРЅС‹, С‚РѕСЂРіРѕРІР»СЏ, Р±РёР»РґС‹, РїСЂРѕРєР°С‡РєР°, AI-СЃР»РѕР№",
+  "description": "Единое ядро PoE2 Kit: цены, торговля, билды, прокачка, AI-слой",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

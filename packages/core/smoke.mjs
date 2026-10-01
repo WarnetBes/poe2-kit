@@ -1,4 +1,4 @@
-﻿// Smoke-С‚РµСЃС‚ РїСЂРѕС‚РёРІ СЃРѕР±СЂР°РЅРЅРѕРіРѕ dist (Node ESM, Р±РµР· СЃРµС‚Рё).
+// Smoke-тест против собранного dist (Node ESM, без сети).
 import { decodeShareCode, encodeShareCode, PobCodeError, importBuild } from './dist/build.js';
 import { getLevelingPlan, getZonesByAct, levelDiff } from './dist/leveling.js';
 import { getMonkLevelingTips, getMonkLevelingHint, getMonkLevelingPlan, listLevelingClasses, resolveLevelingClass, getClassLevelingTips, getClassLevelingHint, getClassLevelingPlan, validateGuideGems } from './dist/leveling.js';
@@ -148,8 +148,8 @@ ok(parsedRare.defences.armour?.value === 42, 'parse rare: armour 42');
 ok(parsedRare.mods.some(m => m.type === 'implicit' && m.text.includes('Strength')), 'parse rare: implicit mod');
 ok(parsedRare.mods.some(m => m.type === 'explicit' && m.text.includes('Resistance')), 'parse rare: explicit mod');
 
-// PoB-Р°РЅРЅРѕС‚Р°С†РёРё: Rarity РІ РІРµСЂС…РЅРµРј СЂРµРіРёСЃС‚СЂРµ (UNIQUE/RARE/MAGIC) + СЃС‚СЂРѕРєР° "Unique ID:".
-// Р­С‚Рё СЃР»СѓС‡Р°Рё РґРѕР»Р¶РЅС‹ СЂР°Р·Р±РёСЂР°С‚СЊСЃСЏ С‚Р°Рє Р¶Рµ, РєР°Рє Рё РєР»РёСЂ-С‚РµРєСЃС‚ РёР· РёРіСЂС‹.
+// PoB-аннотации: Rarity в верхнем регистре (UNIQUE/RARE/MAGIC) + строка "Unique ID:".
+// Эти случаи должны разбираться так же, как и клир-текст из игры.
 const pobUnique = [
   'Rarity: UNIQUE',
   'Darkness Enthroned',
@@ -172,7 +172,7 @@ const parsedPobMagic = core.core.parse.parseItemText(pobMagic);
 ok(parsedPobMagic.rarity === 'Magic', 'parse PoB: uppercase MAGIC -> Magic');
 ok(
   !parsedPobMagic.baseType.startsWith('Unique ID:'),
-  'parse PoB: magic base РЅРµ СЂР°РІРµРЅ СЃС‚СЂРѕРєРµ "Unique ID:"',
+  'parse PoB: magic base не равен строке "Unique ID:"',
 );
 
 console.log('unique category inference (inferUniqueCategory)');
@@ -187,18 +187,18 @@ const cases = [
   ['Primordial Staff', 'staves'],
   ['Spiral Glass Ring', 'rings'],
   ['Steel Amber Belt', 'belts'],
-  ['Wraithwrap', null], // РЅРµ СЂР°СЃРїРѕР·РЅР°С‘С‚СЃСЏ в†’ null (РЅРµ В«С‚РµР»Рѕ/Р±СЂРѕРЅСЏВ» РїРѕ РѕС€РёР±РєРµ)
+  ['Wraithwrap', null], // не распознаётся → null (не «тело/броня» по ошибке)
 ];
 for (const [base, expected] of cases) {
   ok(inferUniqueCategory(base) === expected, `infer('${base}') = ${expected}`);
 }
 ok(inferUniqueCategory(null) === null, 'infer(null) = null');
-ok(inferUniqueCategory('Mail Armour', 'Boots') === 'boots', 'inner itemClass РїСЂРёРѕСЂРёС‚РµС‚РЅРµРµ baseType');
+ok(inferUniqueCategory('Mail Armour', 'Boots') === 'boots', 'inner itemClass приоритетнее baseType');
 ok(mapItemClassToScoutCategory('Boots') === 'boots', 'mapItemClass boots');
 ok(mapItemClassToScoutCategory('Body Armour') === 'body', 'mapItemClass body');
 ok(mapItemClassToScoutCategory('Unknown') === null, 'mapItemClass unknown = null');
 
-console.log('build gear extraction (PoB XML, Р±РµР· СЃРµС‚Рё)');
+console.log('build gear extraction (PoB XML, без сети)');
 const pobXml = `<?xml version="1.0"?><PathOfBuilding><Build level="20" className="Monk" ascendClassName="Invoker"/>
 <Items activeItemSet="1">
   <ItemSet id="1">
@@ -222,13 +222,13 @@ Barbed Spear
 Item Level: 75</Item>
 </PathOfBuilding>`;
 const gear = await core.core.build.buildCodeToGear(pobXml);
-ok(gear.length === 3, `buildCodeToGear РёР·РІР»РµРєР°РµС‚ ${gear.length} РїСЂРµРґРјРµС‚Р°`);
+ok(gear.length === 3, `buildCodeToGear извлекает ${gear.length} предмета`);
 ok(gear[0]?.slot === 'Weapon 1' && gear[0]?.name === 'Darkness Enthroned', 'gear slot+name (item 1)');
-ok(gear[0]?.itemText.includes('Rarity: UNIQUE'), 'gear itemText СЃРѕРґРµСЂР¶РёС‚ Rarity');
+ok(gear[0]?.itemText.includes('Rarity: UNIQUE'), 'gear itemText содержит Rarity');
 ok(gear[1]?.name === 'Victory Cloak', 'gear item 2 name');
 ok(gear[2]?.slot === 'Ring 1' && gear[2]?.name === "Saitha's Spear", 'gear item 3 slot+name');
 
-console.log('build gear extraction (.build JSON вЂ” С‚РѕР»СЊРєРѕ СѓРЅРёРєРё РїРѕ РёРјРµРЅРё)');
+console.log('build gear extraction (.build JSON — только уники по имени)');
 const buildJson = JSON.stringify({
   inventory_slots: [
     { inventory_id: 'Belt1', unique_name: 'Headhunter' },
@@ -236,9 +236,9 @@ const buildJson = JSON.stringify({
   ],
 });
 const jsonGear = await core.core.build.buildCodeToGear(buildJson);
-ok(jsonGear.length === 1, `РёР· .build JSON РёР·РІР»РµС‡С‘РЅ 1 СѓРЅРёРєР°Р»СЊРЅС‹Р№ (${jsonGear.length})`);
+ok(jsonGear.length === 1, `из .build JSON извлечён 1 уникальный (${jsonGear.length})`);
 ok(jsonGear[0]?.name === 'Headhunter' && jsonGear[0]?.slot === 'Belt1', '.build JSON unique slot+name');
-ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText С„РѕСЂРјР°С‚');
+ok(jsonGear[0]?.itemText.includes('Rarity: Unique'), '.build JSON itemText формат');
 
 console.log('log parser (Client.txt)');
 const { decodeZoneCode, parseLogLine, hasSubstantialLogData, getClientState } = core;
@@ -261,7 +261,7 @@ const evConn = parseLogLine('2026/06/04 11:01:05 77431000 3ef2334b [INFO Client 
 ok(evConn?.kind === 'instance_connect' && evConn?.server === '64.87.33.204:21360', 'parseLogLine instance_connect');
 ok(parseLogLine('garbage line without prefix') === null, 'parseLogLine rejects garbage');
 
-// getClientState РїРѕ СЃРёРЅС‚РµС‚РёС‡РµСЃРєРѕРјСѓ С„Р°Р№Р»Сѓ-Р»РѕРіСѓ
+// getClientState по синтетическому файлу-логу
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -483,11 +483,11 @@ ok(znByName?.zoneCode === 'G1_2', 'zoneNote: by name в†’ G1_2');
 const an = getActNote(1);
 ok(an?.notes.includes('Hunting Ground') || (an?.notes.length ?? 0) > 50, 'actNote: Act 1 summary');
 ok(listZoneNotes().length >= 60, `listZoneNotes: ${listZoneNotes().length} zones`);
-// РљРѕРЅС‚РµРєСЃС‚ Р±РµР· СЃРѕСЃС‚РѕСЏРЅРёСЏ РєР»РёРµРЅС‚Р° вЂ” fallback РЅР° Р°РєС‚ 1.
+// Контекст без состояния клиента — fallback на акт 1.
 const ctx = getLevelingContext(null, { actFallback: 1 });
 ok(ctx.zoneNotes === null && ctx.nextZones.length >= 1 && ctx.hints.length >= 1, `levelingContext fallback act1: ${ctx.hints.length} hints`);
 ok(ctx.nextZones[0].zone === 'The Riverbank', 'levelingContext: first zone Riverbank');
-// РљРѕРЅС‚РµРєСЃС‚ СЃ В«Р¶РёРІС‹РјВ» СЃРѕСЃС‚РѕСЏРЅРёРµРј (СЃРёРЅС‚РµС‚РёРєР°): Р·РѕРЅР° G1_2, СѓСЂРѕРІРµРЅСЊ 4.
+// Контекст с «живым» состоянием (синтетика): зона G1_2, уровень 4.
 const ctx2 = getLevelingContext({
   available: true, logPath: 'x', character: 'Test', klass: 'Monk', level: 4,
   zone: { timestamp: '', areaCode: 'G1_2', areaLevel: 4, zoneName: 'Clearfell', decoded: null },
