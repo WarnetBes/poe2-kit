@@ -1008,7 +1008,14 @@ console.log('stun: immune hit does not mutate meter (Hivemind parity)');
 
   // pinnacle checklist
   const pin = opt.pinnacleChecklist(est, { enemyLevel: 84, boss: 'pinnacle' });
-  ok(pin.enemy.level === 84 && pin.checks.length === 6, `optimize: pinnacle checklist 6 items vs lvl ${pin.enemy.level}`);
+  // №130-ф2: к 6 вердикт-чекам добавлена инфо-строка «самый слабый слой EHP»
+  // (unknown-вердикт). Считаем по вердиктам, а не по длине — инфо-строка не чек.
+  const pinVerdicts = pin.checks.filter((c) => c.verdict !== 'unknown');
+  ok(pin.enemy.level === 84 && pinVerdicts.length === 6, `optimize: pinnacle verdict-checks = 6 vs lvl ${pin.enemy.level} (got ${pinVerdicts.length})`);
+  const pinInfo = pin.checks.find((c) => c.item.includes('слабый слой EHP'));
+  ok(!!pinInfo && /инфо$/.test(pinInfo.item), 'optimize: worst-EHP info row present (№130-ф2)');
+  const physRow = pin.checks.find((c) => c.item.includes('физ. удара'));
+  ok(!!physRow, 'optimize: EHP threshold compares PHYSICAL layer vs boss hit (№130-ф2)');
   const resists = pin.checks.filter((c) => c.item.startsWith('fire') || c.item.startsWith('cold') || c.item.startsWith('lightning'));
   ok(resists.every((c) => c.verdict === 'fail'), 'optimize: uncapped resists (40/…<75) fail vs pinnacle');
   const stunItem = pin.checks.find((c) => c.item.includes('Heavy Stun'));
