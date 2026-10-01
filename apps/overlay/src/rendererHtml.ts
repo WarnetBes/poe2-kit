@@ -1502,11 +1502,11 @@ export const rendererHtml = `<!doctype html>
     var MAX_SHOW = 60;
     var shown = filtered.slice(0, MAX_SHOW);
     var actRows = shown.map(function (a) {
-      var on = comboSel.indexOf(a.en) >= 0;
+      var ix = comboSel.indexOf(a.en);
       return '<div class="slang-row" data-cmben="' + esc(a.en) + '"><div class="slang-term">' +
-        (on ? '<span style="color:#7fc97f">✔</span> ' : '') + comboName(a) +
+        (ix >= 0 ? '<span style="color:#7fc97f">№' + (ix + 1) + '</span> ' : '') + comboName(a) +
         '</div><div class="slang-def">ур.' + (a.unlock || 0) +
-        (on ? ' · <span style="color:var(--dim)">выбран</span>' : '') +
+        (ix >= 0 ? ' · <span style="color:var(--dim)">тап — убрать из связки</span>' : '') +
         '</div></div>';
     }).join('');
     var actList = '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">' +
@@ -1541,28 +1541,50 @@ export const rendererHtml = `<!doctype html>
         comboName(a) + ' · ур.' + (a.unlock || 0) + ' · ' + (a.types || []).slice(0, 6).join(', ') +
         '</div><div class="tree-chips">' + spChips + '</div>' + supNote + pickedList + '</div>';
     }).join('');
-    var comboSum = comboSel.length
-      ? '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#7fc97f">Ваша связка</div>' +
-        comboSel.map(function (en) {
-          var a = A.find(function (x) { return x.en === en; });
-          var ps = (comboSups[en] || []);
-          return '<div class="slang-row"><div class="slang-term">' + comboName(a) +
-            '</div><div class="slang-def">Uncut Skill Gem ур.' + (a ? (a.unlock || 0) : 0) +
-            (ps.length ? '<br><span style="color:var(--dim)">+ ' + ps.map(esc).join(', ') + '</span>' : '') +
-            '</div></div>';
-        }).join('') +
-        '<div class="lvl-hint">Саппорты: Uncut Support Gem того же уровня, что и активный гем.</div></div>'
-      : '';
+    // №142: шаговые слоты — связка собирается ПО ПОРЯДКУ: 5 пронумерованных
+    // строк, следующий пустой слот подсвечен «← в списке ниже». Друг живет
+    // мышью: порядок «первый → второй → третий» обязан быть виден сразу.
+    var MAX_SLOTS = 5;
+    var rows = '';
+    for (var si = 0; si < Math.max(MAX_SLOTS, comboSel.length); si++) {
+      var en = comboSel[si];
+      if (en !== undefined) {
+        var a = A.find(function (x) { return x.en === en; });
+        var ps = (comboSups[en] || []);
+        rows += '<div class="slang-row"><div class="slang-term"><span style="color:#7fc97f">' + (si + 1) + '.</span> ' + comboName(a) +
+          '</div><div class="slang-def">Uncut Skill Gem ур.' + (a ? (a.unlock || 0) : 0) +
+          (ps.length ? ' <span style="color:var(--dim)">+ ' + ps.length + ' сапп.</span>' : '') +
+          '</div></div>';
+      } else {
+        var isNext = (si === comboSel.length);
+        rows += '<div class="slang-row" style="' + (isNext ? 'border:1px dashed #7fc97f' : '') + '">' +
+          '<div class="slang-term" style="color:var(--dim)">' + (si + 1) + '. —</div>' +
+          '<div class="slang-def">' + (isNext
+            ? '<span style="color:#7fc97f">← тапни навык в списке ниже</span>'
+            : 'пусто') + '</div></div>';
+      }
+    }
+    var slotsUi = '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#7fc97f">' +
+      'Связка по порядку (до ' + MAX_SLOTS + ')' +
+      (comboSel.length ? ' <button class="tree-chip" data-cmbclear="1" style="margin-left:6px">🗑 Сброс</button>' : '') +
+      '</div>' + rows +
+      '<div class="lvl-hint">Тап по навыку в списке = следующий номер; тап по выбранному (№) — убрать. Саппорты к каждому — ниже, под списком.</div></div>';
     // №141-bis: кнопка кода ВСЕГДА видима (друг живёт мышью; пустая связка →
     // внятная ошибка от IPC, а не исчезнувшая кнопка).
     var comboCodeUi = '<div class="tree-chips" style="margin:6px 0">' +
       '<button class="tree-chip" data-cmbcode="1">📋 Код импорта (в буфер)</button></div>' +
       '<div class="lvl-hint" data-cmbcodemsg style="min-height:14px"></div>';
     host.innerHTML = genModeChips() +
-      '<div class="lvl-hint">Собери связку: фильтр → активные → саппорты. Готовый набор можно выгрузить кодом импорта.</div>' +
+      '<div class="lvl-hint">Связка — по порядку: тапни первый навык, потом второй и так далее (до 5).</div>' +
       (tc ? '<div class="tree-chips">' + tc + '</div>' : '') +
-      actList + supBlocks + comboSum + comboCodeUi;
+      slotsUi + actList + supBlocks + comboCodeUi;
     bindGenMode(host);
+    var clr = host.querySelector('[data-cmbclear]');
+    if (clr) clr.addEventListener('click', function () {
+      comboSel = [];
+      comboSups = {};
+      renderComboView();
+    });
     var cc = host.querySelector('[data-cmbcode]');
     if (cc) cc.addEventListener('click', function () {
       var msgEl = host.querySelector('[data-cmbcodemsg]');
