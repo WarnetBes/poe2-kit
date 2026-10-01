@@ -6,20 +6,34 @@
 > анонимно (SHA совпадает с эталоном), страница репо/релизов 200.
 > Перед постом: сверить rules r/PathOfExile2 в живом браузере (из этой
 > сессии reddit отдаёт Cloudflare-блок; возможны требования к self-promo).
+> 01.10 №159: заголовок №1 и первый абзац Body переписаны под новичковый
+> угол («how hard it is to get into PoE2») — остальное тело без изменений.
 
-## Title (варианты)
+## Title (варианты; №1 — новичковый угол, рекомендован)
 
-1. PoE2 Kit — a free overlay for SSF players: price check, boss timer, craft plans, PoB2 combo import (full Russian-client support)
+1. PoE2 Kit — a free companion overlay I built as a genre newcomer to survive Path of Exile 2: price check, boss timers, craft plans, PoB2 import (full RU-client support)
 2. I kept alt-tabbing to price-check my drops on the RU client — so I built a full-Russian overlay, and it does boss timers too
 3. PoE2 Kit v1.0.17 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
 
 ## Body
 
-Hey everyone! I've been playing SSF on the Russian client and got tired of
-alt-tabbing between the game, poe.ninja and a spreadsheet — so over the last
-weeks I built **PoE2 Kit**, a free companion overlay for Path of Exile 2.
-Sharing it in case it helps someone, and I'd genuinely like feedback on what
-to build next.
+Hey everyone! I came to Path of Exile 2 as a complete newcomer to this genre
+— no PoE1 muscle memory, none of the knowledge that guides seem to assume
+you already have. Honestly, the first couple of weeks nearly broke me:
+
+* I'd pick up a rare, alt-tab to a price-check site, paste the item, get
+  nothing useful, alt-tab back — and I'd be dead.
+* Every guide said "just import it into PoB" — which turned out to be a
+  whole second program with its own arcane share codes.
+* Crafting advice assumed I already knew what an essence, an omen or a
+  soul core does. I did not.
+* Global chat spoke pure jargon — I had to google "waystone" to understand
+  what I was even supposed to be farming.
+
+I got tired of playing the game in one window and the wiki in four others,
+so over the last few weeks I built **PoE2 Kit** — a free companion overlay
+for Path of Exile 2. Sharing it in case it helps other new players survive
+their first league, and I'd genuinely like feedback on what to build next.
 
 Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. Panel UI is Russian-first for now; EN data everywhere, full EN UI is on the roadmap.
 
