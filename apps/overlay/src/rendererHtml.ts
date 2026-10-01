@@ -274,9 +274,14 @@ export const rendererHtml = `<!doctype html>
      умений/гемов) скроллятся локально, а не обрезаются кэпом высоты окна (№60).
      НЕ vh: vh = ТЕКУЩЕЕ окно — при росте панели клэмпит контент и окно не
      растёт (лог-факт №61). Только px-константы. */
-  #listWrap { max-height: 340px; overflow-y: auto; padding-right: 4px; }
-  #lvlWrap { max-height: 560px; overflow-y: auto; padding-right: 4px; }
-  #gemsWrap { max-height: 560px; overflow-y: auto; padding-right: 4px; }
+  #listWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  #lvlWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  #gemsWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  /* №113d: эти три врапа вообще не имели скролла (Плитки — большая таблица):
+     низ срезался #body{overflow:hidden}. Единый паттерн как у #buildWrap. */
+  #mapsWrap, #pinnacleWrap, #importWrap {
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; flex: 1 1 auto; overflow-y: auto; padding-right: 4px; }
   /* №67: полоска сравнения цены с максимумом группы (внутри td, % от ширины). */
   .cmpbar { display: inline-block; height: 8px; background: var(--accent);
     border-radius: 2px; vertical-align: middle; min-width: 2px; }
@@ -287,10 +292,12 @@ export const rendererHtml = `<!doctype html>
   .wset-badge { font-size: 10px; font-weight: 700; color: var(--warn);
     border: 1px solid var(--warn); border-radius: 6px; padding: 1px 5px; cursor: help; }
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
-  #gemsWrap::-webkit-scrollbar,
+  #gemsWrap::-webkit-scrollbar, #mapsWrap::-webkit-scrollbar,
+  #pinnacleWrap::-webkit-scrollbar, #importWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
-  #gemsWrap::-webkit-scrollbar-thumb,
+  #gemsWrap::-webkit-scrollbar-thumb, #mapsWrap::-webkit-scrollbar-thumb,
+  #pinnacleWrap::-webkit-scrollbar-thumb, #importWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
     background: rgba(198,154,82,0.45); border-radius: 3px; }
 
