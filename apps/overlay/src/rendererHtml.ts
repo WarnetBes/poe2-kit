@@ -1250,8 +1250,14 @@ export const rendererHtml = `<!doctype html>
           '</b> (' + esc(b.summary.worstEhpType) + ')');
       }
       if (b.summary.weaponDps != null && b.summary.weaponDps > 0) {
-        sum.push('DPS оружия (' + esc(b.summary.weapon || '?') + '): <b>' +
-          Math.round(b.summary.weaponDps).toLocaleString('ru-RU') + '</b>');
+        // №131: полноценный DPS-блок с разбивкой + честная пометка «расчётный, не живой»
+        var dpsParts = [];
+        if (b.summary.weaponPhysDps != null && b.summary.weaponPhysDps > 0) dpsParts.push('физ ' + Math.round(b.summary.weaponPhysDps).toLocaleString('ru-RU'));
+        if (b.summary.weaponElemDps != null && b.summary.weaponElemDps > 0) dpsParts.push('элем ' + Math.round(b.summary.weaponElemDps).toLocaleString('ru-RU'));
+        var dpsBreak = dpsParts.length ? ' <span class="sub" style="color:#9aa4b0">(' + dpsParts.join(' + ') +
+          (b.summary.weaponAps ? ' · ' + b.summary.weaponAps + ' уд/с' : '') + ')</span>' : '';
+        sum.push('⚔ DPS по гиру (' + esc(b.summary.weapon || '?') + '): <b title="Расчётный DPS из гира (PoB-оценка), не живой замер: GGG не отдаёт урон внешним тулам. Живой замер — время убийства тренировочного манекена в убежище.">' +
+          Math.round(b.summary.weaponDps).toLocaleString('ru-RU') + '</b>' + dpsBreak);
       }
       (b.summary.gaps || []).forEach(function (g) {
         sum.push('<span class="gap">⚠ ' + esc(g.description) + '</span>');
@@ -2483,7 +2489,8 @@ export const rendererHtml = `<!doctype html>
       'Watchlist: мониторинг ваших позиций, алерт при падении цены ≥10%.' ] },
     build: { t: '🛒 Билд', h: 'Ctrl+F2', b: [
       'Шопинг-лист эталонного билда: что искать на каждом слоте, дефициты (жизнь/резисты/ЭС) на основе импортированного PoB.',
-      'Поиск по дереву (поле «поиск нод»): ключевые камни и заметные ноды с их эффектами.',
+      'Поиск по дереву (поле «поиск нод» + чипсы под ним: резисты/жизнь/урон — мышью без клавиатуры): ключевые камни и заметные ноды с их эффектами.',
+      '⚔ DPS по гиру — расчётный (PoB-оценка оружия: физ+элем×скорость), НЕ живой замер: игра не отдаёт урон внешним тулам. Живой замер — тайминг убийства манекена в убежище.',
       'Уровневые метки: что капать на текущем уровне кампаньи.' ] },
     gems: { t: '💎 Камни', h: '—', b: [
       'Чек-лист камней сетапов билда: имя, уровень требований, ссылки для покупки/поиска.',

@@ -626,6 +626,10 @@ interface BuildSummaryState {
   gaps: Array<{ description: string; recommendation: string }>;
   weapon: string | null;
   weaponDps: number | null;
+  /** №131: разбивка DPS оружия для блока в панели билда. */
+  weaponPhysDps?: number | null;
+  weaponElemDps?: number | null;
+  weaponAps?: number | null;
   notes: string[];
   /** №108: суммы резистов из клир-текста гира (без PoB-верификации),
    *  для подсветки квестов «резист < 75%». null = оценка не считалась. */
@@ -2243,6 +2247,10 @@ async function refreshBuildEstimate(): Promise<void> {
       gaps: est.gaps.slice(0, 3).map((g) => ({ description: g.description, recommendation: g.recommendation })),
       weapon: est.weapon?.weapon ?? null,
       weaponDps: est.weapon ? Math.round(est.weapon.totalDps) : null,
+      // №131: разбивка для DPS-блока (физ/элем/скорость атаки)
+      weaponPhysDps: est.weapon ? Math.round(est.weapon.physDps) : null,
+      weaponElemDps: est.weapon ? Math.round(est.weapon.elementalDps) : null,
+      weaponAps: est.weapon ? Math.round(est.weapon.attacksPerSecond * 100) / 100 : null,
       notes: est.notes.slice(0, 2),
       // №108: резисты гира — для панели квестов («молния < 75% → Spires of Deshar»).
       resists: {
