@@ -2,14 +2,10 @@
 
 > Готовый к публикации текст. Факты сверены с CHANGELOG 1.0.17 и кодом
 > (win32.ts: три read-only user32-функции; main.ts: Client.txt, clipboard opt-in).
-> Заголовков дано три — выбрать один. Не постить всё сразу после регистрации
-> аккаунта: у reddita анти-спам к свежим аккаунтам с ссылками.
->
-> ⚠️ Ссылки: SourceCraft-страницы видны анонимно, НО прямая скачка zip-ассета
-> там требует логин (проверено 01.10.2026). Первичные ссылки в посте —
-> GitHub-зеркало (scripts/mirror-github.mjs); после первого запуска зеркала
-> заменить SourceCraft-Download-ссылки ниже на `github.com/<user>/poe2-kit/...`.
-> SourceCraft оставить как canonical-исходник во втором упоминании.
+> Ссылки верифицированы анонимным curl 01.10.2026: GitHub zip качается
+> анонимно (SHA совпадает с эталоном), страница репо/релизов 200.
+> Перед постом: сверить rules r/PathOfExile2 в живом браузере (из этой
+> сессии reddit отдаёт Cloudflare-блок; возможны требования к self-promo).
 
 ## Title (варианты)
 
@@ -70,19 +66,18 @@ tool post):
 * Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does
   not endorse this project.
 
-**Install (portable, ~37 MB zip)**: unzip → run `start-overlay.bat` (it
-downloads the Electron runtime once, ~110 MB, then works offline). No admin
-rights, no installer, no Node.js needed. Source code and full version history
-are in the repository — I'm not asking anyone to trust a binary they can't
-read.
-
-* Download: [Releases](https://sourcecraft.dev/volkovpartilaholin/poe2-kit/releases) →
-  `poe2-kit-portable-1.0.17-win64.zip`
-* Source: [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
-* Changelog with per-feature detail: [CHANGELOG.md](https://sourcecraft.dev/volkovpartilaholin/poe2-kit/blob/main/CHANGELOG.md)
+* Download (portable, ~37 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
+  `poe2-kit-portable-1.0.17-win64.zip` — unzip → run `start-overlay.bat`
+  (it downloads the Electron runtime once, ~110 MB, then works offline).
+  No admin rights, no installer, no Node.js needed.
+* Source: [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit)
+  — full source code and version history. I'm not asking anyone to trust a
+  binary they can't read.
+* Canonical repo (RU docs, development, issues):
+  [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
 
 **Ask**: if you tried it — what's missing for your league start? I'm
 specifically unsure whether the combo-import code PoB2 accepts cleanly on
 all setups, and whether non-RU players want a full translation of the panel
 UI (it's currently RU with EN item data). Bug reports and ideas → issues on
-SourceCraft. Thanks for reading!
+GitHub or SourceCraft. Thanks for reading!
