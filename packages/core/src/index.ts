@@ -21,6 +21,7 @@ export * from './learnlog.js';
 export * from './learnedStats.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
+export * from './bosses.js';
 export * from './sources.js';
 export * from './ladder.js';
 export * from './advice.js';
@@ -72,6 +73,7 @@ import * as oauthmod from './oauth.js';
 import * as unqmod from './uniques.js';
 import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
+import * as bossesmod from './bosses.js';
 import * as ladmod from './ladder.js';
 import * as advicemod from './advice.js';
 import * as ssfmod from './ssf.js';
@@ -101,6 +103,7 @@ export const core = {
   uniques: unqmod,
   poe2db: p2dbmod,
   zoneNotes: znmod,
+  bosses: bossesmod,
   ladder: ladmod,
   advice: advicemod,
   ssf: ssfmod,

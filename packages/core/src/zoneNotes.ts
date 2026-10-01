@@ -15,6 +15,7 @@ import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
 import type { ClientGameState } from './log.js';
 import type { LevelingZone } from './types.js';
 import { getZonesByAct, nextZones, levelDiff, rewardsOf } from './leveling.js';
+import { bossByZoneCode } from './bosses.js';
 
 function dataDir(): string {
   return pathMod!.join(pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)), '..', 'data');
@@ -117,6 +118,8 @@ export interface CampaignPlanRow {
   status: 'done' | 'current' | 'todo';
   /** Уровень персонажа (прокси areaLevel) минус уровень зоны; null — уровень неизвестен. */
   levelDelta: number | null;
+  /** №104: босс зоны (если есть в бестиарии). */
+  boss?: { name: string; reward?: string };
 }
 
 /** №103 Campaign Companion: полный маршрут текущего акта для панели «Прокачка». */
@@ -177,6 +180,7 @@ export function buildCampaignPlan(
     const done =
       actCleared ||
       (!isCurrent && ((!!code && visited.has(code)) || (opts.furthest?.act === act && index < opts.furthest!.index)));
+    const bossHit = code ? bossByZoneCode(code) : null;
     return {
       zone: z.zone,
       zoneCode: code,
@@ -187,6 +191,7 @@ export function buildCampaignPlan(
       note,
       status: isCurrent ? 'current' : done ? 'done' : 'todo',
       levelDelta: level != null ? level - z.monsterLevel : null,
+      boss: bossHit ? { name: bossHit.name, reward: bossHit.reward } : undefined,
     };
   });
 

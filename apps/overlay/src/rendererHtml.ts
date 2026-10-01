@@ -182,6 +182,19 @@ export const rendererHtml = `<!doctype html>
   .camp-note { font-size: 11px; color: var(--dim); line-height: 1.45; margin-top: 1px; }
   .camp-actnote { font-size: 11px; color: var(--dim); line-height: 1.5; margin: 6px 0 4px;
     border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 4px; white-space: pre-line; }
+  .camp-boss { display: inline-block; font-size: 10px; padding: 0 5px; margin-left: 4px;
+    border-radius: 6px; background: rgba(200,80,80,0.20); color: #e8a0a0; }
+
+  /* №104 Бестиарий боссов */
+  .boss-sec { margin-top: 10px; }
+  .boss-grp-title { font-size: 12px; font-weight: 700; color: var(--dim);
+    margin: 8px 0 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .boss-entry { padding: 3px 6px 5px; margin-bottom: 4px; border-radius: 6px;
+    background: rgba(255,255,255,0.04); border-left: 3px solid rgba(200,80,80,0.45); }
+  .boss-entry.boss-cur { border-left-color: var(--accent); }
+  .boss-name { font-size: 13px; font-weight: 700; color: #fff; }
+  .boss-sub { font-size: 11px; color: var(--dim); line-height: 1.4; }
+  .boss-tip { font-size: 11px; color: var(--dim); line-height: 1.45; }
 
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
@@ -1160,6 +1173,8 @@ export const rendererHtml = `<!doctype html>
 
     // №103 Campaign Companion: маршрут акта
     renderCamp(lvl.camp);
+    // №104: бестиарий боссов
+    renderBosses(lvl.bosses, lvl.camp);
 
     var hints = $('lvlHints');
     hints.innerHTML = '';
@@ -1225,6 +1240,13 @@ export const rendererHtml = `<!doctype html>
         b.textContent = r.rewards[j];
         name.appendChild(b);
       }
+      if (r.boss) {
+        var bo = document.createElement('span');
+        bo.className = 'camp-boss';
+        bo.textContent = '⚔ ' + r.boss.name;
+        if (r.boss.reward) bo.title = r.boss.reward;
+        name.appendChild(bo);
+      }
       row.appendChild(name);
 
       if (r.note) {
@@ -1242,6 +1264,93 @@ export const rendererHtml = `<!doctype html>
       an.textContent = '🎁 ' + camp.actNote;
       wrap.appendChild(an);
     }
+  }
+
+  /** №104: бестиарий боссов (все сюжетные по актам + триалы + пиннакл). */
+  function renderBosses(bosses, camp) {
+    var wrap = $('campWrap');
+    if (!bosses || !bosses.story) return;
+    var curAct = camp && camp.act;
+
+    var sec = document.createElement('div');
+    sec.className = 'boss-sec';
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    head.textContent = '⚔ Боссы';
+    sec.appendChild(head);
+
+    function entry(b, cur) {
+      var e = document.createElement('div');
+      e.className = 'boss-entry' + (cur ? ' boss-cur' : '');
+      var nm = document.createElement('div');
+      nm.className = 'boss-name';
+      nm.textContent = b.name;
+      e.appendChild(nm);
+      var sub = document.createElement('div');
+      sub.className = 'boss-sub';
+      sub.textContent = (b.zone ? b.zone : (b.access ? '🔑 ' + b.access : '')) +
+        (b.act && b.zone ? ' · акт ' + b.act : '') +
+        (b.reward ? ' · 🎁 ' + b.reward : '');
+      e.appendChild(sub);
+      if (b.access && b.zone) {
+        var ac = document.createElement('div');
+        ac.className = 'boss-sub';
+        ac.textContent = '🔑 ' + b.access;
+        e.appendChild(ac);
+      }
+      if (b.tips) {
+        for (var t = 0; t < b.tips.length; t++) {
+          var tp = document.createElement('div');
+          tp.className = 'boss-tip';
+          tp.textContent = '• ' + b.tips[t];
+          e.appendChild(tp);
+        }
+      }
+      return e;
+    }
+
+    // Сюжет — по актам
+    var byAct = {};
+    for (var i = 0; i < bosses.story.length; i++) {
+      var b = bosses.story[i];
+      var k = b.act;
+      (byAct[k] = byAct[k] || []).push(b);
+    }
+    var actKeys = Object.keys(byAct);
+    actKeys.sort(function (a, b2) { return a.localeCompare(b2, 'ru', { numeric: true }); });
+    for (var a = 0; a < actKeys.length; a++) {
+      var grp = document.createElement('div');
+      grp.className = 'boss-grp';
+      var gt = document.createElement('div');
+      gt.className = 'boss-grp-title';
+      var isInter = actKeys[a] === 'I' || actKeys[a] === 'II' || actKeys[a] === 'III';
+      gt.textContent = isInter ? 'Интерлюдия ' + actKeys[a] : 'Акт ' + actKeys[a];
+      grp.appendChild(gt);
+      var list = byAct[actKeys[a]];
+      for (var j = 0; j < list.length; j++) grp.appendChild(entry(list[j], !isInter && Number(actKeys[a]) === curAct));
+      sec.appendChild(grp);
+    }
+    if (bosses.trials && bosses.trials.length) {
+      var tg = document.createElement('div');
+      tg.className = 'boss-grp';
+      var tt = document.createElement('div');
+      tt.className = 'boss-grp-title';
+      tt.textContent = 'Триалы асценданси';
+      tg.appendChild(tt);
+      for (var x = 0; x < bosses.trials.length; x++) tg.appendChild(entry(bosses.trials[x]));
+      sec.appendChild(tg);
+    }
+    if (bosses.pinnacle && bosses.pinnacle.length) {
+      var pg = document.createElement('div');
+      pg.className = 'boss-grp';
+      var pt = document.createElement('div');
+      pt.className = 'boss-grp-title';
+      pt.textContent = 'Пиннакл (эндгейм)';
+      pg.appendChild(pt);
+      for (var y = 0; y < bosses.pinnacle.length; y++) pg.appendChild(entry(bosses.pinnacle[y]));
+      sec.appendChild(pg);
+    }
+    wrap.appendChild(sec);
   }
 
   /** №103: автообновление контекста прокачки, пока вкладка видима. */

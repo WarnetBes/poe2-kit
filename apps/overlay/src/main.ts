@@ -2865,6 +2865,12 @@ async function runLevelingContext(): Promise<unknown> {
         rewards: z.rewardList,
       })),
       camp, // №103: { act, actName, actNote, level, currentIndex, rows[], done, total }
+      // №104: бестиарий боссов (те же данные, что в core.bosses)
+      bosses: {
+        story: core.bosses.CAMPAIGN_BOSSES,
+        trials: core.bosses.ASC_TRIAL_BOSSES,
+        pinnacle: core.bosses.PINNACLE_BOSSES,
+      },
     };
     await overlayWindow?.webContents.send('level:result', payload);
     return payload;
