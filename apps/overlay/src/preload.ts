@@ -9,6 +9,10 @@ export interface OverlayAPI {
   onPriceBatch(cb: (payload: unknown) => void): () => void;
   onPriceBusy(cb: (busy: boolean) => void): () => void;
   onLevelResult(cb: (level: unknown) => void): () => void;
+  /** №108: отметить квест-награду «забрал» (персист claimedRewards). */
+  levelClaim(key: string): Promise<{ ok: boolean }>;
+  /** №111: результат чекапа перед пиннаклом (Ctrl+F7). */
+  onPinnacleResult(cb: (payload: unknown) => void): () => void;
   setLeague(league: string): Promise<string>;
   /** Список действующих лиг для селекта настроек: { current, leagues: [{name, isCurrent}] }. */
   leaguesList(): Promise<unknown>;
@@ -70,6 +74,14 @@ const api: OverlayAPI = {
     const listener = (_evt: unknown, data: unknown) => cb(data);
     ipcRenderer.on('level:result', listener);
     return () => ipcRenderer.removeListener('level:result', listener);
+  },
+
+  levelClaim: (key) => ipcRenderer.invoke('level:claim', key),
+
+  onPinnacleResult: (cb) => {
+    const listener = (_evt: unknown, data: unknown) => cb(data);
+    ipcRenderer.on('pinnacle:result', listener);
+    return () => ipcRenderer.removeListener('pinnacle:result', listener);
   },
 
   onPriceBatch: (cb) => {

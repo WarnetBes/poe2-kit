@@ -138,6 +138,8 @@ const MOVE_HOTKEY = 'Control+F5';
 const BUILD_IMPORT_HOTKEY = 'Control+F3';
 const BUILD_PANEL_HOTKEY = 'Control+F2';
 const SETTINGS_HOTKEY = 'Control+F6';
+// №111: чекап перед пиннаклом — F7 свободна (заняты F1–F6, F5-варианты не пересекаются).
+const PINNACLE_HOTKEY = 'Control+F7';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 /** Смещение оверлея относительно «закреплённой» позиции (угол окна игры). */
@@ -197,7 +199,8 @@ type HotkeyAction =
   | 'move'
   | 'buildImport'
   | 'buildPanel'
-  | 'settings';
+  | 'settings'
+  | 'pinnacle';
 
 const DEFAULT_SETTINGS: OverlaySettings = {
   corner: 'top-right',
@@ -221,6 +224,7 @@ const DEFAULT_HOTKEYS: Record<HotkeyAction, string> = {
   buildImport: BUILD_IMPORT_HOTKEY,
   buildPanel: BUILD_PANEL_HOTKEY,
   settings: SETTINGS_HOTKEY,
+  pinnacle: PINNACLE_HOTKEY,
 };
 
 /** Активные настройки оверлея. */
@@ -600,6 +604,9 @@ interface BuildSummaryState {
   weapon: string | null;
   weaponDps: number | null;
   notes: string[];
+  /** №108: суммы резистов из клир-текста гира (без PoB-верификации),
+   *  для подсветки квестов «резист < 75%». null = оценка не считалась. */
+  resists?: { fire: number; cold: number; lightning: number; chaos: number } | null;
 }
 
 interface BuildState {
@@ -2199,6 +2206,13 @@ async function refreshBuildEstimate(): Promise<void> {
       weapon: est.weapon?.weapon ?? null,
       weaponDps: est.weapon ? Math.round(est.weapon.totalDps) : null,
       notes: est.notes.slice(0, 2),
+      // №108: резисты гира — для панели квестов («молния < 75% → Spires of Deshar»).
+      resists: {
+        fire: Math.round(est.defenses.fireRes),
+        cold: Math.round(est.defenses.coldRes),
+        lightning: Math.round(est.defenses.lightningRes),
+        chaos: Math.round(est.defenses.chaosRes),
+      },
     };
     // №85: мост core.advice → панель билда. adviseBuild(est) берёт те же оценки,
     // что и summary, поэтому считаем в одном месте; приоритеты сортирует ядро.
@@ -2609,13 +2623,24 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
   const gem = parseGemText(itemText);
   if (gem) return handleGemCheck(gem, itemText);
 
+  // №110: руна/soul core — помимо цены возвращаем эффект аугмента (тир/вид).
+  // Источник — core.runes (base_items.json): там только тиры lesser/regular/
+  // greater/perfect и вид rune/soul core; заявлений об одномом вставке НЕТ —
+  // предупреждение «вставляется навсегда» НЕ добавляем (не выдумываем).
+  let parsedAugment: ReturnType<typeof core.parse.parseItemText> | null = null;
+  try {
+    parsedAugment = core.parse.parseItemText(itemText);
+  } catch {
+    parsedAugment = null;
+  }
+
   // Русский клиент: trade2/poe2scout принимают только английские имена/базы.
   // Моды остаются ru — их trade2 по базе статов не сопоставит, сработает fallback «по базовому типу».
   let nameOverride: string | undefined;
   let baseTypeOverride: string | undefined;
-  if (/[а-яё]/i.test(itemText)) {
+  if (/[а-яё]/i.test(itemText) && parsedAugment) {
     try {
-      const parsed0 = core.parse.parseItemText(itemText);
+      const parsed0 = parsedAugment;
       if (parsed0.name && /[а-яё]/i.test(parsed0.name)) {
         const en = toEn('unique', parsed0.name);
         if (en !== parsed0.name) nameOverride = en;
@@ -2634,12 +2659,44 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
     }
   }
 
+  // №110: матчинг с аугментами core.runes — по эффективному EN-имени/базе.
+  let augmentInfo: Record<string, unknown> | null = null;
+  if (parsedAugment) {
+    const effName = (nameOverride ?? parsedAugment.name ?? '').trim().toLowerCase();
+    const effBase = (baseTypeOverride ?? parsedAugment.baseType ?? '').trim().toLowerCase();
+    try {
+      const aug = core.runes
+        .getAugments()
+        .find((a) => a.name.toLowerCase() === effName || a.name.toLowerCase() === effBase);
+      if (aug) {
+        const tierRu: Record<string, string> = {
+          lesser: 'малый',
+          regular: 'обычный',
+          greater: 'великий',
+          perfect: 'совершенный',
+        };
+        augmentInfo = {
+          name: aug.name,
+          tier: aug.tier,
+          tierRu: tierRu[aug.tier] ?? aug.tier,
+          kindRu: aug.kind === 'soul core' ? 'ядро души' : 'руна',
+        };
+      }
+    } catch {
+      /* датасет аугментов недоступен — просто без эффекта в строке */
+    }
+  }
+
   try {
     const result = await withTimeout(
       core.trade.priceCheck(itemText, { nameOverride, baseTypeOverride }),
       HOTKEY_TIMEOUT_MS,
       'priceCheck',
     );
+    if (augmentInfo) {
+      (result as unknown as Record<string, unknown>).augment = augmentInfo;
+      console.log(`[overlay] augment detected: ${JSON.stringify(augmentInfo)}`);
+    }
     const itemName = (result as { itemName?: string } | undefined)?.itemName ?? '?';
     const estimateObj = (result as { estimate?: { median?: number } | null } | undefined)?.estimate ?? null;
     const listingsCount = (result as { listings?: unknown[] } | undefined)?.listings?.length ?? 0;
@@ -2667,6 +2724,7 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
       parseOnly: true,
       parseError: err instanceof Error ? err.message : String(err),
       itemText,
+      ...(augmentInfo ? { augment: augmentInfo } : {}),
     };
   }
 }
@@ -2829,6 +2887,8 @@ interface LevelingProgressFile {
   index: number;
   /** ISO-метка времени записи. */
   ts: string;
+  /** №108: ключи квест-наград, отмеченных «забрал» (core.questRewards key). */
+  claimedRewards?: string[];
 }
 function readLevelingProgress(): { act: number; index: number } | null {
   try {
@@ -2842,9 +2902,95 @@ function readLevelingProgress(): { act: number; index: number } | null {
 }
 function writeLevelingProgress(p: LevelingProgressFile): void {
   try {
-    fs.writeFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), JSON.stringify(p, null, 2));
+    // №108: claimedRewards переживают запись furthest (merge с файлом).
+    let prev: LevelingProgressFile | null = null;
+    try {
+      prev = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8')) as LevelingProgressFile;
+    } catch {
+      prev = null;
+    }
+    const merged: LevelingProgressFile = {
+      ...p,
+      claimedRewards: Array.from(new Set([...(prev?.claimedRewards ?? []), ...(p.claimedRewards ?? [])])),
+    };
+    fs.writeFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), JSON.stringify(merged, null, 2));
   } catch (e) {
     console.log(`[overlay] leveling-progress.json не записан: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+/** №108: прочитанные «забрал»-ключи квест-наград. */
+function readClaimedRewards(): string[] {
+  try {
+    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
+    const p = JSON.parse(raw) as LevelingProgressFile;
+    return Array.isArray(p.claimedRewards) ? p.claimedRewards.filter((k) => typeof k === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** №108: отметить квест-награду «забрал» (исчезает из чек-листа навсегда). */
+function claimQuestReward(key: string): boolean {
+  if (typeof key !== 'string' || !key.includes('|')) return false;
+  const cur = readLevelingProgress();
+  if (cur == null) return false;
+  const claimed = Array.from(new Set([...readClaimedRewards(), key]));
+  writeLevelingProgress({ act: cur.act, index: cur.index, ts: new Date().toISOString(), claimedRewards: claimed });
+  return true;
+}
+
+/**
+ * №111 «Чекап перед пиннаклом» (Ctrl+F7): core.optimize.pinnacleChecklist
+ * поверх текущего build state (гир-слоты → estimateBuild). Проверки, для
+ * которых данных нет, приходят verdict='unknown' — рендерер честно показывает
+ * частичность; в лог пишем N/M доступных проверок.
+ */
+async function runPinnacleCheck(): Promise<unknown> {
+  if (busy) {
+    console.warn('[overlay] pinnacle check skipped: busy=true');
+    return null;
+  }
+  const payload = (() => {
+    if (!buildState || !buildState.slots.length) {
+      return { available: false, error: 'Билд не импортирован — сначала Ctrl+F3 (импорт PoB-кода).' };
+    }
+    return null;
+  })();
+  if (payload) {
+    await overlayWindow?.webContents.send('pinnacle:result', payload);
+    return payload;
+  }
+  busy = true;
+  try {
+    const est = await withTimeout(
+      core.estimate.estimateBuild(buildState!.slots.map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText }))),
+      30_000,
+      'estimateBuild',
+    );
+    const res = core.optimize.pinnacleChecklist(est, {
+      enemyLevel: buildState?.level != null && buildState.level > 84 ? buildState.level : undefined,
+    });
+    const total = res.checks.length;
+    const avail = res.checks.filter((c) => c.verdict !== 'unknown').length;
+    console.log(`[overlay] pinnacle checklist: ${avail}/${total} проверок доступно`);
+    statEvent('pinnacleCheck', `${avail}/${total} ok`);
+    const out = {
+      available: true,
+      checks: res.checks,
+      enemy: res.enemy,
+      availableChecks: avail,
+      totalChecks: total,
+    };
+    await overlayWindow?.webContents.send('pinnacle:result', out);
+    return out;
+  } catch (err) {
+    console.warn('[overlay] pinnacle check failed:', err instanceof Error ? err.message : err);
+    const out = { available: false, error: `Не удалось посчитать чек-лист: ${err instanceof Error ? err.message : String(err)}` };
+    await overlayWindow?.webContents.send('pinnacle:result', out);
+    return out;
+  } finally {
+    busy = false;
   }
 }
 
@@ -2888,7 +3034,32 @@ async function runLevelingContext(): Promise<unknown> {
       bosses: {
         story: core.bosses.CAMPAIGN_BOSSES,
         trials: core.bosses.ASC_TRIAL_BOSSES,
+        sekhemas: core.bosses.SEKHEMAS_BOSSES,
         pinnacle: core.bosses.PINNACLE_BOSSES,
+      },
+      // №108: неполученные важные квесты текущего и прошлых актов
+      quests: {
+        list: core.questRewards.unclaimedQuests({
+          act: camp.act,
+          furthest,
+          visitedCodes,
+          claimed: readClaimedRewards(),
+        }),
+        // Резисты из build state (гир-оценка core.estimate): только если реально
+        // посчитаны — для подсветки «резист < 75% → квест». Иначе null.
+        resists: buildState?.summary?.resists ?? null,
+        coverage: core.questRewards.QUEST_REWARDS_COVERAGE_RU,
+      },
+      // №112-lite: обзор эндгейм-механик атласа + этажность Sekhemas по уровню.
+      endgame: {
+        overview: core.endgame.mechanicsOverview(),
+        waystoneTips: core.endgame.waystoneTips(),
+        sekhemasFloors:
+          buildState?.level != null
+            ? core.endgame.sekhemasFloorsForLevel(buildState.level)
+            : camp.level != null
+              ? core.endgame.sekhemasFloorsForLevel(camp.level)
+              : null,
       },
     };
     await overlayWindow?.webContents.send('level:result', payload);
@@ -2929,6 +3100,11 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: панель настроек');
     toggleSettingsPanel();
   });
+  // №111: чекап перед пиннаклом (Ctrl+F7) — core.optimize.pinnacleChecklist.
+  const okP = globalShortcut.register(hotkeyFor('pinnacle'), () => {
+    console.log('[overlay] hotkey fired: чекап перед пиннаклом');
+    void runPinnacleCheck();
+  });
   console.log(`[overlay] hotkey ${hotkeyFor('price')} registered=${ok}`);
   console.log(`[overlay] hotkey ${hotkeyFor('leveling')} registered=${okL}`);
   console.log(`[overlay] hotkey ${hotkeyFor('move')} registered=${okM}`);
@@ -2936,6 +3112,7 @@ function registerHotkeys(): void {
   console.log(`[overlay] hotkey ${hotkeyFor('buildImport')} registered=${okBI}`);
   console.log(`[overlay] hotkey ${hotkeyFor('buildPanel')} registered=${okBP}`);
   console.log(`[overlay] hotkey ${hotkeyFor('settings')} registered=${okS}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('pinnacle')} registered=${okP}`);
 }
 
 // ─── Диагностика (кнопка «Отправить диагностику» в панели настроек) ──────────
@@ -3026,6 +3203,17 @@ function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
   ipcMain.handle('level:check', () => runLevelingContext());
+
+  // №108: «забрал» квест-награду — персист в leveling-progress.json claimedRewards,
+  // после — пересобрать панель прокачки (квест исчезает из чек-листа).
+  ipcMain.handle('level:claim', (_evt, key: unknown) => {
+    const k = typeof key === 'string' ? key : '';
+    const claimed = claimQuestReward(k);
+    console.log(`[overlay] quest claim: ${JSON.stringify(k)} → ${claimed ? 'записан' : 'НЕ записан (нет прогресс-файла?)'}`);
+    statEvent('questClaim', claimed ? k : 'invalid');
+    if (claimed) void runLevelingContext();
+    return { ok: claimed };
+  });
 
   // №85: мёртвые ipc-хэндлеры league:get / hotkey:get удалены — рендерер их никогда
   // не вызывал (текущая лига приезжает через leagues:list, хоткеи — через settings:get).
@@ -3177,6 +3365,11 @@ function setupIPC(): void {
       case 'settings':
         console.log('[overlay] tab: настройки (Ctrl+F6)');
         toggleSettingsPanel();
+        break;
+      // №111: тот же чек-лист по клику таба, что и по Ctrl+F7.
+      case 'pinnacle':
+        console.log('[overlay] tab: чекап перед пиннаклом (Ctrl+F7)');
+        void runPinnacleCheck();
         break;
       default:
         return { ok: false, error: 'unknown action' };

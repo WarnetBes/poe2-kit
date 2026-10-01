@@ -28,6 +28,8 @@ export * from './advice.js';
 export * from './runes.js';
 export * from './starterBuilds.js';
 export * from './ssf.js';
+export * from './endgame.js';
+export * from './questRewards.js';
 export * from './cache.js';
 export * from './gameConfig.js';
 // ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
@@ -83,6 +85,8 @@ import * as learnmod from './learnlog.js';
 import * as learnedStatsMod from './learnedStats.js';
 import * as runesMod from './runes.js';
 import * as starterBuildsMod from './starterBuilds.js';
+import * as endgameMod from './endgame.js';
+import * as questRewardsMod from './questRewards.js';
 
 export const core = {
   trade,
@@ -121,6 +125,8 @@ export const core = {
   sources: sourcesmod,
   runes: runesMod,
   starterBuilds: starterBuildsMod,
+  endgame: endgameMod,
+  questRewards: questRewardsMod,
 };
 
 export default core;

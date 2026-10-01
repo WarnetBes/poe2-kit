@@ -196,6 +196,28 @@ export const rendererHtml = `<!doctype html>
   .boss-sub { font-size: 11px; color: var(--dim); line-height: 1.4; }
   .boss-tip { font-size: 11px; color: var(--dim); line-height: 1.45; }
 
+  /* №109: неподтверждённые записи — приглушённо */
+  .boss-entry.boss-unverified { opacity: 0.55; border-left-color: rgba(160,160,160,0.35); }
+  .boss-unv-mark { display: inline-block; font-size: 10px; padding: 0 5px; margin-left: 4px;
+    border-radius: 6px; background: rgba(160,160,160,0.18); color: var(--dim); }
+
+  /* №108: чек-лист квестовых наград */
+  .quest-row { padding: 3px 6px 4px; border-radius: 6px; background: rgba(255,255,255,0.04);
+    border-left: 3px solid rgba(120,170,255,0.45); margin-bottom: 4px; }
+  .quest-row.quest-missed { border-left-color: rgba(230,160,60,0.6); }
+  .quest-claim { display: inline-block; font-size: 10px; padding: 1px 6px; margin-left: 4px;
+    border-radius: 6px; background: rgba(120,170,255,0.18); color: #a8c8ff; cursor: pointer;
+    border: 0; }
+  .quest-warn { font-size: 11px; color: #e8b45a; line-height: 1.4; }
+
+  /* №111: чек-лист пиннакла */
+  .pin-row { padding: 3px 6px 4px; border-radius: 6px; background: rgba(255,255,255,0.04);
+    margin-bottom: 4px; font-size: 12px; }
+  .pin-pass { color: #7fd18c; }
+  .pin-fail { color: #e08585; }
+  .pin-unknown { color: var(--dim); }
+  .pin-detail { font-size: 11px; color: var(--dim); line-height: 1.4; }
+
   #hint { font-size: 11px; color: var(--dim); margin-top: auto; padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.08); }
 
@@ -350,6 +372,7 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
       <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
       <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
+      <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
     </div>
     <div id="grab" class="hide">
@@ -366,6 +389,7 @@ export const rendererHtml = `<!doctype html>
         <div class="item-name" id="itemName"></div>
       </div>
       <div id="est" class="est hide"></div>
+      <div id="augLine" class="meta hide"></div>
       <div id="buildNote" class="hide"></div>
       <div id="busy" class="status-busy hide">Оценка цены…</div>
       <div id="err" class="err-box hide"></div>
@@ -392,6 +416,9 @@ export const rendererHtml = `<!doctype html>
       <div id="mapsWrap" class="hide">
         <div id="mapsContent"></div>
       </div>
+      <div id="pinnacleWrap" class="hide">
+        <div id="pinnacleContent"></div>
+      </div>
       <div id="buildWrap" class="hide">
         <div id="buildHead"></div>
         <div id="buildBudget"></div>
@@ -403,7 +430,7 @@ export const rendererHtml = `<!doctype html>
       <div id="importWrap" class="hide">
         <div id="importContent"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6</div>
+      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6 · Пиннакл: Ctrl+F7</div>
     </div>
     <div id="settingsPanel" class="hide">
       <h3>⚙ Настройки
@@ -728,8 +755,9 @@ export const rendererHtml = `<!doctype html>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' | 'build' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'import' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
+    $('augLine').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
     $('buildNote').classList.toggle('hide', mode !== 'price');
     $('meta').classList.toggle('hide', mode !== 'price');
@@ -738,6 +766,7 @@ export const rendererHtml = `<!doctype html>
     $('buildWrap').classList.toggle('hide', mode !== 'build');
     $('gemsWrap').classList.toggle('hide', mode !== 'gems');
     $('mapsWrap').classList.toggle('hide', mode !== 'maps');
+    $('pinnacleWrap').classList.toggle('hide', mode !== 'pinnacle');
     $('importWrap').classList.toggle('hide', mode !== 'import');
   }
 
@@ -1210,6 +1239,10 @@ export const rendererHtml = `<!doctype html>
     renderCamp(lvl.camp);
     // №104: бестиарий боссов
     renderBosses(lvl.bosses, lvl.camp);
+    // №108: чек-лист неполученных квестовых наград
+    renderQuests(lvl.quests);
+    // №112-lite: обзор эндгейм-механик + этажность Sekhemas
+    renderEndgame(lvl.endgame);
 
     var hints = $('lvlHints');
     hints.innerHTML = '';
@@ -1316,10 +1349,20 @@ export const rendererHtml = `<!doctype html>
 
     function entry(b, cur) {
       var e = document.createElement('div');
-      e.className = 'boss-entry' + (cur ? ' boss-cur' : '');
+      e.className = 'boss-entry' + (cur ? ' boss-cur' : '') + (b.verified === false ? ' boss-unverified' : '');
       var nm = document.createElement('div');
       nm.className = 'boss-name';
-      nm.textContent = b.name;
+      // №109: двойное имя, если RU-локализация подтверждена (name_ru задан).
+      nm.textContent = (b.floor ? 'Этаж ' + b.floor + ' · ' : '') + b.name +
+        (b.name_ru ? ' (' + b.name_ru + ')' : '');
+      if (b.verified === false) {
+        // №109: ничего не выдумываем — запись из источников, но не подтверждена.
+        var unv = document.createElement('span');
+        unv.className = 'boss-unv-mark';
+        unv.textContent = 'не подтверждено';
+        unv.title = b.unverifiedNote || 'Запись не верифицирована по живым источникам — проверить в игре.';
+        nm.appendChild(unv);
+      }
       e.appendChild(nm);
       var sub = document.createElement('div');
       sub.className = 'boss-sub';
@@ -1375,6 +1418,18 @@ export const rendererHtml = `<!doctype html>
       for (var x = 0; x < bosses.trials.length; x++) tg.appendChild(entry(bosses.trials[x]));
       sec.appendChild(tg);
     }
+    if (bosses.sekhemas && bosses.sekhemas.length) {
+      var sg = document.createElement('div');
+      sg.className = 'boss-grp';
+      var st = document.createElement('div');
+      st.className = 'boss-grp-title';
+      st.textContent = 'Trial of the Sekhemas (лестница)'
+      sg.appendChild(st);
+      // №109: лестница этажей — сортировка по floor, вход через Djorn Barya (act 2).
+      var sk = bosses.sekhemas.slice().sort(function (a, b3) { return (a.floor || 0) - (b3.floor || 0); });
+      for (var s = 0; s < sk.length; s++) sg.appendChild(entry(sk[s]));
+      sec.appendChild(sg);
+    }
     if (bosses.pinnacle && bosses.pinnacle.length) {
       var pg = document.createElement('div');
       pg.className = 'boss-grp';
@@ -1384,6 +1439,135 @@ export const rendererHtml = `<!doctype html>
       pg.appendChild(pt);
       for (var y = 0; y < bosses.pinnacle.length; y++) pg.appendChild(entry(bosses.pinnacle[y]));
       sec.appendChild(pg);
+    }
+    wrap.appendChild(sec);
+  }
+
+  /** №108: чек-лист неполученных квестовых наград (Spirit/резисты/асц/пассивки). */
+  function renderQuests(quests) {
+    var wrap = $('campWrap');
+    var sec = document.createElement('div');
+    sec.className = 'boss-sec';
+    var list = (quests && quests.list) || [];
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    head.textContent = '🎖 Неполученные квесты' + (list.length ? ' · ' + list.length : '');
+    sec.appendChild(head);
+    if (!list.length) {
+      var okRow = document.createElement('div');
+      okRow.className = 'boss-tip';
+      okRow.textContent = 'Все важные награды собраны или отмечены «забрал».';
+      sec.appendChild(okRow);
+    } else if (quests && quests.coverage) {
+      var cov = document.createElement('div');
+      cov.className = 'boss-tip';
+      cov.textContent = quests.coverage;
+      sec.appendChild(cov);
+    }
+    var res = quests ? quests.resists : null;
+    for (var i = 0; i < list.length; i++) {
+      var q = list[i];
+      var row = document.createElement('div');
+      row.className = 'quest-row' + (q.status === 'missed' ? ' quest-missed' : '');
+      var t = document.createElement('div');
+      t.className = 'boss-sub';
+      t.textContent = (q.status === 'missed' ? '⚠ упущено · ' : '◻ впереди · ') +
+        'Акт ' + q.act + ' · ' + q.zone + ' — ' + q.rewardRu +
+        (q.boss ? ' (за ' + q.boss + ')' : '');
+      row.appendChild(t);
+      // №108: подсветка — у персонажа этот резист < 75%, награда закрывает дыру.
+      if (q.kind === 'resist' && res) {
+        var low = q.resistKind === 'all'
+          ? Math.min(res.fire, res.cold, res.lightning)
+          : res[q.resistKind];
+        if (low != null && low < 75) {
+          var w = document.createElement('div');
+          w.className = 'quest-warn';
+          w.textContent = q.resistKind === 'all'
+            ? 'Ваш худший элем. резист ' + low + '% (меньше 75%) — награда очень желательна'
+            : 'Резист сейчас ' + low + '% (меньше 75%) — взять в первую очередь';
+          row.appendChild(w);
+        }
+      }
+      var btn = document.createElement('button');
+      btn.className = 'quest-claim';
+      btn.textContent = '✔ забрал';
+      btn.title = 'Отметить награду полученной — уйдёт из чек-листа навсегда';
+      btn.addEventListener('click', (function (rowEl, key) {
+        return function () {
+          rowEl.style.opacity = '0.4';
+          rowEl.querySelector('.quest-claim').disabled = true;
+          window.poe2k.levelClaim(key).then(function (r) {
+            if (r && r.ok) {
+              rowEl.remove();
+            } else {
+              rowEl.style.opacity = '';
+              rowEl.querySelector('.quest-claim').disabled = false;
+              showToast('Не удалось отметить награду — прогресс прокачки ещё не создан. Побывайте в любой зоне и попробуйте снова.');
+            }
+          }).catch(function () { rowEl.style.opacity = ''; });
+        };
+      })(row, q.key));
+      row.appendChild(btn);
+      sec.appendChild(row);
+    }
+    wrap.appendChild(sec);
+  }
+
+  /** №112-lite: обзор эндгейм-механик атласа + этажность Sekhemas по уровню. */
+  function renderEndgame(endgame) {
+    var wrap = $('campWrap');
+    var sec = document.createElement('div');
+    sec.className = 'boss-sec';
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    head.textContent = '🗺 Эндгейм';
+    sec.appendChild(head);
+    if (!endgame) { wrap.appendChild(sec); return; }
+
+    if (endgame.sekhemasFloors != null) {
+      var fl = document.createElement('div');
+      fl.className = 'boss-sub';
+      fl.style.marginBottom = '4px';
+      fl.textContent = '💒 Trial of the Sekhemas на вашем уровне: этажей до финала — ' + endgame.sekhemasFloors +
+        ' (лестница боссов — раздел «⚔ Боссы» выше).';
+      sec.appendChild(fl);
+    }
+    var rows = endgame.overview || [];
+    for (var i = 0; i < rows.length; i++) {
+      var m = rows[i];
+      var r = document.createElement('div');
+      r.className = 'boss-entry boss-cur';
+      var nm = document.createElement('div');
+      nm.className = 'boss-sub';
+      nm.textContent = (m.name_ru || m.name) +
+        (m.region ? ' · ' + (m.region === 'SE' ? 'ЮВ' : m.region === 'S' ? 'Ю' : m.region === 'W' ? 'З' : m.region === 'N' ? 'С' : m.region === 'E' ? 'В' : m.region) : '') +
+        (m.kind === 'trial' ? ' · триал' : m.kind === 'citadel' ? ' · цитадель' : '');
+      r.appendChild(nm);
+      var sh = document.createElement('div');
+      sh.className = 'boss-tip';
+      sh.textContent = m.short_ru || '';
+      r.appendChild(sh);
+      if (m.access_ru) {
+        var ac2 = document.createElement('div');
+        ac2.className = 'boss-tip';
+        ac2.textContent = '🔑 ' + m.access_ru;
+        r.appendChild(ac2);
+      }
+      sec.appendChild(r);
+    }
+    var tips = endgame.waystoneTips || [];
+    if (tips.length) {
+      var wt = document.createElement('div');
+      wt.className = 'boss-grp-title';
+      wt.textContent = 'Плитки смотрителя (Waystones)';
+      sec.appendChild(wt);
+      for (var w2 = 0; w2 < tips.length; w2++) {
+        var tr2 = document.createElement('div');
+        tr2.className = 'boss-tip';
+        tr2.textContent = '• ' + tips[w2].text_ru + (tips[w2].verified === false ? ' (цифры не верифицированы — проверить в игре)' : '');
+        sec.appendChild(tr2);
+      }
     }
     wrap.appendChild(sec);
   }
@@ -1415,6 +1599,7 @@ export const rendererHtml = `<!doctype html>
     var h = $('priceHead');
     if (h) h.classList.add('hide');
     $('est').classList.add('hide');
+    $('augLine').classList.add('hide');
     $('buildNote').classList.add('hide');
     $('meta').classList.add('hide');
     $('listWrap').classList.add('hide');
@@ -1457,6 +1642,19 @@ export const rendererHtml = `<!doctype html>
       est.querySelector('.range').textContent = '';
     } else {
       est.classList.add('hide');
+    }
+
+    // №110: руна/ядро души в предмете — тир и вид (эффект НЕ выдумываем).
+    var augEl = $('augLine');
+    if (res.augment && res.augment.kindRu) {
+      augEl.classList.remove('hide');
+      augEl.innerHTML = '⇗ эффект: <b>' + esc(res.augment.kindRu) + '</b> · тир <b>' +
+        esc(res.augment.tierRu || res.augment.tier || '?') + '</b>' +
+        (res.augment.name ? ' · ' + esc(res.augment.name) : '');
+      augEl.title = 'Руна/ядро души: тир и вид из core.runes. Точный эффект смотрите в игре — в датасете его нет.';
+    } else {
+      augEl.classList.add('hide');
+      augEl.innerHTML = '';
     }
 
     // Ошибка (если только парсинг).
@@ -1618,6 +1816,68 @@ export const rendererHtml = `<!doctype html>
       renderBatchPrice(payload);
     }
   });
+
+  // №111 «Чекап перед пиннаклом» (Ctrl+F7 / таб «🛡 Пиннакл»).
+  window.poe2k.onPinnacleResult(function (p) {
+    if (!p) return;
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    renderPinnacle(p);
+    showMode('pinnacle');
+    setActiveTab('pinnacle');
+  });
+
+  /** №111: отрисовать чек-лист готовности к пиннаклу. */
+  function renderPinnacle(p) {
+    var wrap = $('pinnacleContent');
+    wrap.innerHTML = '';
+    var sec = document.createElement('div');
+    sec.className = 'boss-sec';
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    sec.appendChild(head);
+
+    if (p.available === false) {
+      head.textContent = '🛡 Чекап перед пиннаклом';
+      var errRow = document.createElement('div');
+      errRow.className = 'boss-entry boss-unverified';
+      var et = document.createElement('div');
+      et.className = 'boss-sub';
+      et.textContent = '⚠ ' + (p.error || 'Чек-лист недоступен.');
+      errRow.appendChild(et);
+      sec.appendChild(errRow);
+      wrap.appendChild(sec);
+      return;
+    }
+
+    head.textContent = '🛡 Чекап перед пиннаклом · доступно проверок: ' +
+      (p.availableChecks != null ? p.availableChecks + '/' + p.totalChecks : '?');
+
+    if (p.enemy) {
+      var en = document.createElement('div');
+      en.className = 'boss-tip';
+      en.style.marginBottom = '4px';
+      en.textContent = 'Модель врага: уровень ' + p.enemy.level + ' · режим ' + p.enemy.boss +
+        ' · пенетрация элем-резистов ' + p.enemy.elementalPenetration + '%';
+      sec.appendChild(en);
+    }
+    var checks = p.checks || [];
+    for (var i = 0; i < checks.length; i++) {
+      var c = checks[i];
+      var row = document.createElement('div');
+      row.className = 'pin-row pin-' + (c.verdict || 'unknown');
+      var mark = c.verdict === 'pass' ? '✔' : (c.verdict === 'fail' ? '✖' : '—');
+      row.textContent = mark + ' ' + c.item + (c.detail ? ' · ' + c.detail : '');
+      row.title = 'Источник: ' + (c.kind === 'computed' ? 'вычислено по правилу' : 'оценка из гира (может отличаться от игры)');
+      sec.appendChild(row);
+    }
+    var note = document.createElement('div');
+    note.className = 'boss-tip';
+    note.textContent = '«—» = данных для проверки нет (импортируйте билд Ctrl+F3). ⚠ Оценки из гира — перед пиннаклом сверьтесь в игре.';
+    sec.appendChild(note);
+    wrap.appendChild(sec);
+  }
 // ─── Панель настроек (Ctrl+F6) ─────────────────────────────────────────────
   var setDirty = {};
   var HK_ACTIONS = [
@@ -1626,6 +1886,7 @@ export const rendererHtml = `<!doctype html>
     ['move', 'Перемещение'],
     ['buildImport', 'Импорт билда'],
     ['buildPanel', 'Панель билда'],
+    ['pinnacle', 'Чекап перед пиннаклом'],
     ['settings', 'Настройки']
   ];
   var hkInputs = {};

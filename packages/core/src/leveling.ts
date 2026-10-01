@@ -21,7 +21,8 @@ interface QuestReward {
 }
 
 // Награды по актам (порядок кампании, сверено с зонными заметками).
-const ACT_REWARDS: QuestReward[] = [
+// №108: экспортируется — источник квестовых наград для questRewards.ts.
+export const ACT_REWARDS: QuestReward[] = [
   // Act 1
   { zone: 'Clearfell', boss: 'Beira', reward: '10% Cold Res' },
   { zone: 'Hunting Grounds', boss: 'Crowbell', reward: '2 Passive Points' },
