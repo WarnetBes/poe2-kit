@@ -197,7 +197,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -3527,6 +3527,57 @@ function setupIPC(): void {
     } catch (err) {
       console.warn('[overlay] craft:plan failed:', (err as Error).message);
       return { ok: false, error: `Не удалось разобрать предмет: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №135: курсы валют по лигам (💰 → «💱 Курс») ───────────────────────────
+  // core.trade.fetchBestCurrencyRates/fetchLeagues/fetchCurrencyHistory — те же
+  // источники, что в MCP-тулах poe2_currency_* (poe2scout + poe.ninja, общие
+  // кэши ядра). Кэш ответа в main 10 мин/лига — чипсы лиг не спамят API.
+  const currencyRatesCache = new Map<string, { at: number; payload: unknown }>();
+  const CURRENCY_TTL_MS = 10 * 60 * 1000;
+  ipcMain.handle('currency:rates', async (_evt, league?: string) => {
+    try {
+      const leagues = await core.trade.fetchLeagues();
+      if (!leagues.length) return { ok: false, error: 'Список лиг недоступен (сеть?).' };
+      const wanted = String(league ?? '').trim();
+      const found = wanted
+        ? leagues.find((l) => l.name.toLowerCase() === wanted.toLowerCase() || l.id?.toLowerCase() === wanted.toLowerCase())
+        : undefined;
+      const L = (found ?? leagues.find((l) => l.isCurrent) ?? leagues[0]).name;
+      const cached = currencyRatesCache.get(L);
+      if (cached && Date.now() - cached.at < CURRENCY_TTL_MS) {
+        return { ok: true, ...(cached.payload as object), cached: true };
+      }
+      core.trade.setLeague(L);
+      const [rates, hist] = await Promise.all([
+        core.trade.fetchBestCurrencyRates(L),
+        core.trade.fetchCurrencyHistory(L).catch(() => []),
+      ]);
+      const trend = new Map<string, number | null>();
+      for (const h of hist) if (h.totalChange != null) trend.set(h.name.toLowerCase(), h.totalChange);
+      const rows = rates
+        .filter((r) => r.chaosValue != null)
+        .sort((a, b) => (b.chaosValue ?? 0) - (a.chaosValue ?? 0))
+        .map((r) => ({
+          name: r.name,
+          chaos: r.chaosValue as number,
+          divine: r.divineValue,
+          trend: trend.get(r.name.toLowerCase()) ?? null,
+          source: r.source,
+        }));
+      const payload = {
+        league: L,
+        leagues: leagues.map((l) => ({ name: l.name, isCurrent: !!l.isCurrent })),
+        rates: rows,
+        updatedAt: Date.now(),
+      };
+      currencyRatesCache.set(L, { at: Date.now(), payload });
+      console.log(`[overlay] currency:rates: ${L} — ${rows.length} валют (кэш 10 мин)`);
+      return { ok: true, ...payload };
+    } catch (err) {
+      console.warn('[overlay] currency:rates failed:', (err as Error).message);
+      return { ok: false, error: `Не удалось получить курсы: ${(err as Error).message}` };
     }
   });
 

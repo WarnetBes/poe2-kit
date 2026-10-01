@@ -279,7 +279,7 @@ export const rendererHtml = `<!doctype html>
   #gemsWrap { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
   /* №113d: эти три врапа вообще не имели скролла (Плитки — большая таблица):
      низ срезался #body{overflow:hidden}. Единый паттерн как у #buildWrap. */
-  #mapsWrap, #pinnacleWrap, #importWrap, #slangWrap, #craftWrap {
+  #mapsWrap, #pinnacleWrap, #importWrap, #slangWrap, #craftWrap, #ratesWrap {
     display: flex; flex-direction: column; gap: 4px;
     min-height: 0; flex: 1 1 auto; overflow-y: auto; padding-right: 4px; }
   /* №67: полоска сравнения цены с максимумом группы (внутри td, % от ширины). */
@@ -294,12 +294,13 @@ export const rendererHtml = `<!doctype html>
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
   #gemsWrap::-webkit-scrollbar, #mapsWrap::-webkit-scrollbar,
   #pinnacleWrap::-webkit-scrollbar, #importWrap::-webkit-scrollbar,
-  #slangWrap::-webkit-scrollbar, #craftWrap::-webkit-scrollbar,
+  #slangWrap::-webkit-scrollbar, #craftWrap::-webkit-scrollbar, #ratesWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
   #buildWrap::-webkit-scrollbar-thumb, #listWrap::-webkit-scrollbar-thumb,
   #gemsWrap::-webkit-scrollbar-thumb, #mapsWrap::-webkit-scrollbar-thumb,
   #pinnacleWrap::-webkit-scrollbar-thumb, #importWrap::-webkit-scrollbar-thumb,
   #slangWrap::-webkit-scrollbar-thumb, #craftWrap::-webkit-scrollbar-thumb,
+  #ratesWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
     background: rgba(198,154,82,0.45); border-radius: 3px; }
 
@@ -426,6 +427,7 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
       <button data-tab="slang" title="Словарь игрового слэнга PoE2: сокращения и жаргон — по-человечески">📖 Слэнг</button>
       <button data-tab="craft" title="Окно крафта: план по предмету (Ctrl+C в игре), все рецепты 0.5.5, эссенции и омены">⚒ Крафт</button>
+      <button data-tab="rates" title="Курсы валют по лигам: сколько стоит валюта в chaos (poe2scout + poe.ninja)">💱 Курс</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
       <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
@@ -478,6 +480,9 @@ export const rendererHtml = `<!doctype html>
       </div>
       <div id="craftWrap" class="hide">
         <div id="craftContent"></div>
+      </div>
+      <div id="ratesWrap" class="hide">
+        <div id="ratesContent"></div>
       </div>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
@@ -831,7 +836,7 @@ export const rendererHtml = `<!doctype html>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'import' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'import' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('augLine').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
@@ -845,6 +850,7 @@ export const rendererHtml = `<!doctype html>
     $('pinnacleWrap').classList.toggle('hide', mode !== 'pinnacle');
     $('slangWrap').classList.toggle('hide', mode !== 'slang');
     $('craftWrap').classList.toggle('hide', mode !== 'craft');
+    $('ratesWrap').classList.toggle('hide', mode !== 'rates');
     $('importWrap').classList.toggle('hide', mode !== 'import');
     updateScrollCtl();
   }
@@ -853,7 +859,7 @@ export const rendererHtml = `<!doctype html>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'importWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'importWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -1236,6 +1242,77 @@ export const rendererHtml = `<!doctype html>
         console.warn('[overlay] renderer: craft:catalog failed: ' + err);
       });
     }
+  }
+
+  // ─── Вкладка «💱 Курс» (№135): курсы валют по лигам ────────────────────────
+  // IPC currency:rates (main): лиги чипсами (✦ — актуальная), таблица
+  // валюта → chaos (+divine и тренд ▲/▼, если poe.ninja отдаёт sparkline).
+  // Кэш main 10 мин; в renderer держим последний ответ для мгновенного рендера.
+  var ratesData = null;   // последний ответ currency:rates
+  var ratesLeague = null; // выбранная лига (чипс)
+  function fmtChaos(v) {
+    if (v == null) return '—';
+    if (v >= 100) return v.toFixed(0);
+    if (v >= 1) return v.toFixed(2);
+    if (v >= 0.01) return v.toFixed(2);
+    return '<0.01';
+  }
+  function renderRatesView() {
+    var host = $('ratesContent');
+    if (!host) return;
+    if (!ratesData || !ratesData.ok) {
+      host.innerHTML = '<div class="lvl-hint">' +
+        (ratesData && ratesData.error ? ratesData.error : 'Загружаю курсы валют…') + '</div>';
+      return;
+    }
+    var leagues = ratesData.leagues || [];
+    var chips = '<div class="tree-chips">' + leagues.map(function (l) {
+      return '<button class="tree-chip' + (ratesLeague === l.name ? ' on' : '') +
+        '" data-league="' + esc(l.name) + '">' + (l.isCurrent ? '✦ ' : '') + esc(l.name) + '</button>';
+    }).join('') + '</div>';
+    var rows = (ratesData.rates || []).map(function (r) {
+      var tr = r.trend == null ? '' :
+        ' <span style="color:' + (r.trend > 0 ? '#e08080' : '#7fc97f') + '">' +
+        (r.trend > 0 ? '▲+' : r.trend < 0 ? '▼' : '') + r.trend.toFixed(1) + '%</span>';
+      var dv = r.divine != null ? ' <span style="color:var(--dim)">' + r.divine.toFixed(1) + ' div</span>' : '';
+      return '<div class="slang-row"><div class="slang-term">' + esc(r.name) + '</div>' +
+        '<div class="slang-def">' + fmtChaos(r.chaos) + ' chaos' + dv + tr + '</div></div>';
+    }).join('');
+    host.innerHTML = chips +
+      '<div class="slang-hint">Лига: <b>' + esc(ratesData.league) + '</b> · ' +
+      (ratesData.cached ? 'кэш' : 'свежие данные') + ' · источник: poe2scout + poe.ninja</div>' +
+      (rows || '<div class="lvl-hint">Для этой лиги нет данных о валютах.</div>');
+    var btns = host.querySelectorAll('[data-league]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function () {
+        ratesLeague = this.getAttribute('data-league');
+        loadRates();
+      });
+    }
+  }
+  function loadRates() {
+    var host = $('ratesContent');
+    if (host) host.innerHTML = '<div class="lvl-hint">Загружаю курсы (' + (ratesLeague || 'актуальная лига') + ')…</div>';
+    window.poe2k.currencyRates(ratesLeague || undefined).then(function (res) {
+      ratesData = res;
+      if (res && res.ok && !ratesLeague) ratesLeague = res.league;
+      renderRatesView();
+    }).catch(function (err) {
+      ratesData = { ok: false, error: 'IPC error: ' + err };
+      renderRatesView();
+    });
+  }
+  function showRatesView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '💱 Курсы валют по лигам';
+    showMode('rates');
+    // Первый вход: грузим; повторный (другая вкладка → назад) — рисуем кэш.
+    if (ratesData) renderRatesView();
+    else loadRates();
+    requestSize();
   }
 
   // ─── Вкладка «💎 Камни» (№66): сетапы камней билда — отдельная панель ──────
@@ -2353,6 +2430,7 @@ export const rendererHtml = `<!doctype html>
     ['maps', '🧭 Плитки'],
     ['slang', '📖 Слэнг'],
     ['craft', '⚒ Крафт'],
+    ['rates', '💱 Курс'],
     ['pinnacle', '🛡 Пиннакл'],
     ['settings', '⚙ Настройки'],
   ];
@@ -2768,6 +2846,8 @@ export const rendererHtml = `<!doctype html>
           showSlangView(); // №133: локальный словарь слэнга, IPC не нужен
         } else if (tab === 'craft') {
           showCraftView(); // №134: локальный вью; план/каталог тянутся по IPC
+        } else if (tab === 'rates') {
+          showRatesView(); // №135: курсы валют по лигам (IPC currency:rates)
         } else if (tab === 'import') {
           showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
         } else {
@@ -2867,6 +2947,10 @@ export const rendererHtml = `<!doctype html>
       '<b>План</b>: Ctrl+C по предмету в игре → кнопка «План по предмету» — пошаговый крафт «двух якорей» под этот слот (эссенции/омены/руны).',
       '<b>Рецепты</b>: все системы 0.5.5 (валюта, эссенции, омены, руны, качество, верстаки, Дезекрация, плитки) — фильтр чипсами.',
       '<b>Эссенции/Омены</b>: таблицы с гарантированными модами и поведением.' ] },
+    rates: { t: '💱 Курс', h: '—', b: [
+      'Курсы валют по лигам: сколько стоит каждая валюта в chaos-эквиваленте.',
+      'Лига выбирается чипсами (✦ — актуальная); тренд ▲/▼ — движение цены за окно poe.ninja.',
+      'Источник: poe2scout + poe.ninja; кэш 10 минут, чтобы не спамить API.' ] },
     pinnacle: { t: '🛡 Пиннакл', h: 'Ctrl+F7', b: [
       'Чекап перед боссом-пиннаклом: резисты, EHP, стан-порог — честные «—» при неизвестных данных.',
       'Что фармить до попытки: weakest-звенья билда по эталону.' ] },

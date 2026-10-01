@@ -71,6 +71,8 @@ export interface OverlayAPI {
   craftCatalog(): Promise<unknown>;
   /** №134: персональный крафт-план по предмету из буфера (Ctrl+C в игре → вызов). */
   craftPlanBuffer(): Promise<unknown>;
+  /** №135: курсы валют по лигам ({ league, leagues, rates: [{name, chaos, divine, trend, source}] }). */
+  currencyRates(league?: string): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -197,6 +199,8 @@ const api: OverlayAPI = {
   craftCatalog: () => ipcRenderer.invoke('craft:catalog'),
 
   craftPlanBuffer: () => ipcRenderer.invoke('craft:plan'),
+
+  currencyRates: (league) => ipcRenderer.invoke('currency:rates', league),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);
