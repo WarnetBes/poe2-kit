@@ -159,10 +159,20 @@ function parseBuildXml2(xml: string): Partial<BuildImport> {
   let gm: RegExpExecArray | null;
   while ((gm = groupRe.exec(xml))) {
     const gAttrs = _attrs(gm[1]!);
+    // №106: привязка к оружейному набору — зеркало логики PoB2 SkillsTab.lua
+    // (reader 302-303 строгий: attrib=="true"; label-функция 1408-1416:
+    // оба → Both, set2 → Set 2, иначе Set 1). Атрибуты отсутствуют только в
+    // легаси/ручных XML — тогда не показываем бейдж вовсе (не угадываем).
+    const hasSet1 = gAttrs.set1 !== undefined;
+    const set1 = gAttrs.set1 === 'true';
+    const set2 = gAttrs.set2 === 'true';
+    const weaponSet: BuildSkillGroup['weaponSet'] =
+      hasSet1 || gAttrs.set2 !== undefined ? (set1 && set2 ? 'both' : set2 ? '2' : '1') : undefined;
     const group: BuildSkillGroup = {
       label: _unescape(gAttrs.label ?? '') || _unescape(gAttrs.slot ?? ''),
       enabled: gAttrs.enabled !== 'false' && gAttrs.active !== 'false',
       source: gAttrs.source ? _unescape(gAttrs.source) : undefined,
+      weaponSet,
       gems: [],
     };
     const gemRe = /<Gem\b([^>]*?)\/?>/g;
@@ -597,6 +607,14 @@ export interface GemSetup {
   source: 'socket' | 'passive';
   /** Подсказка, в какой слот снаряжения вставлять. */
   where: string;
+  /**
+   * №106: привязка группы камней к оружейному набору (атрибуты PoB2
+   * set1/set2, зеркалит PoB2 SkillsTab.lua). 'both' = любой набор;
+   * '1'/'2' = только этот набор; undefined = в XML данных нет (легаси).
+   * Если камень вставлен в предмет набора II, а активен I — игра пишет
+   * «нельзя использовать с текущими настройками оружия».
+   */
+  weaponSet?: 'both' | '1' | '2';
 }
 
 /**
@@ -611,8 +629,23 @@ export async function buildGemSetups(input: string): Promise<GemSetup[]> {
   const setups: GemSetup[] = [];
   const groups = xml.match(/<Skill\b[\s\S]*?<\/Skill>/g) ?? [];
   for (const g of groups) {
-    if (!/\benabled="true"/.test(g.match(/<Skill\b[^>]*>/)?.[0] ?? '')) continue;
+    const gTag = g.match(/<Skill\b[^>]*>/)?.[0] ?? '';
+    if (!/\benabled="true"/.test(gTag)) continue;
     const treeSource = /\bsource="Tree:[^"]*"/.test(g);
+    // №106: привязка к оружейному набору — set1/set2 (см. GemSetup.weaponSet).
+    // Явное 'false' у обоих и невозможность (кнопки PoB не снимают оба) не
+    // обрабатываем — логика PoB: оба true → 'both', set2 → '2', иначе '1'.
+    // Отсутствие обоих атрибутов (легаси/ручной XML) → undefined.
+    const ws1 = /\bset1="([^"]*)"/.exec(gTag)?.[1];
+    const ws2 = /\bset2="([^"]*)"/.exec(gTag)?.[1];
+    const weaponSet: GemSetup['weaponSet'] =
+      ws1 === undefined && ws2 === undefined
+        ? undefined
+        : ws1 === 'true' && ws2 === 'true'
+          ? 'both'
+          : ws2 === 'true'
+            ? '2'
+            : '1';
     const gemRe = /<Gem\b([^>]*?)\/?>/g;
     let m: RegExpExecArray | null;
     const gems: Array<{ name: string; level: number | null; gemId: string; variant: string; count: string | null }> = [];
@@ -679,13 +712,25 @@ export async function buildGemSetups(input: string): Promise<GemSetup[]> {
     } else if (detTypes.includes('Spell')) {
       where = 'куда угодно (напр., Body Armour)';
     }
-    if (setups.some((s) => s.active === activeGem.name)) continue;
+    // №106: группа привязана к оружейному набору — камень нельзя вставлять
+    // в предмет другого набора; предупреждаем прямо в подсказке.
+    if (weaponSet === '1' || weaponSet === '2') {
+      where += `; только набор оружия ${weaponSet === '1' ? 'I' : 'II'} (set${weaponSet} в PoB) — вне набора игра блокирует: «нельзя использовать с текущими настройками оружия»`;
+    }
+    const existing = setups.find((s) => s.active === activeGem.name);
+    if (existing) {
+      // №106: тот же камень в нескольких группах — доносим привязку, если
+      // она строже уже записанной (например, '2' вместо отсутствия).
+      if (weaponSet && (!existing.weaponSet || existing.weaponSet === 'both')) existing.weaponSet = weaponSet;
+      continue;
+    }
     setups.push({
       active: activeGem.name,
       activeLevel: activeGem.level,
       supports: [...otherActives.map((n) => `${n} (активный!)`), ...supports],
       source: 'socket',
       where,
+      weaponSet,
     });
   }
   return setups;

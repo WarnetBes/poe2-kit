@@ -627,6 +627,10 @@ interface BuildState {
     supports: string[];
     source: 'socket' | 'passive';
     where: string;
+    /** №106: привязка группы к оружейному набору (set1/set2 из PoB).
+     *  '1'/'2' — только этот набор (вне его игра блокирует умение),
+     *  'both' — любой, undefined — в билде данных нет. */
+    weaponSet?: 'both' | '1' | '2';
   }> | null;
   /** Показана ли панель билда в виджете. */
   panelVisible: boolean;

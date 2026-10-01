@@ -259,6 +259,9 @@ export const rendererHtml = `<!doctype html>
   .grp { color: #9aa4b0; font-size: 11px; font-weight: normal; }
   .grp b { color: var(--accent); }
   .grp td, td.grp { padding-top: 5px; }
+  /* №106: бейдж привязки к оружейному набору */
+  .wset-badge { font-size: 10px; font-weight: 700; color: var(--warn);
+    border: 1px solid var(--warn); border-radius: 6px; padding: 1px 5px; cursor: help; }
   #buildWrap::-webkit-scrollbar, #listWrap::-webkit-scrollbar,
   #gemsWrap::-webkit-scrollbar,
   #lvlWrap::-webkit-scrollbar, #priceBatchList::-webkit-scrollbar { width: 6px; }
@@ -838,8 +841,15 @@ export const rendererHtml = `<!doctype html>
     el.innerHTML = '<div class="lvl-hint">Куда вставлять. Ctrl+C по камню в игре отметит его ✅.</div>' +
       '<table class="bld">' + b.gemSetups.map(function (g) {
         var lvl = g.activeLevel != null ? (' <span class="sub">ур. ' + g.activeLevel + '</span>') : '';
+        // №106: бейдж привязки к оружейному набору (set1/set2 из PoB).
+        var wset = '';
+        if (g.weaponSet === '1' || g.weaponSet === '2') {
+          wset = ' <span class="wset-badge" title="Камень привязан к набору оружия — вне набора игра пишет «нельзя использовать с текущими настройками оружия». В игре: окно умения → привязка набора, или переключите набор (X).">⚔ набор ' + (g.weaponSet === '1' ? 'I' : 'II') + '</span>';
+        } else if (g.weaponSet === 'both') {
+          wset = ' <span class="sub" title="Работает в любом наборе оружия (set1+set2 в PoB)">· любой набор</span>';
+        }
         var html = '<tr><td>' + gemMarkSh(b, g.active, g.activeLevel) + '</td>' +
-          '<td class="slot" colspan="3">' + gemDotSh(b, g.active) + '<b>' + esc(g.active) + '</b>' + lvl +
+          '<td class="slot" colspan="3">' + gemDotSh(b, g.active) + '<b>' + esc(g.active) + '</b>' + lvl + wset +
           ' <span class="sub">→ ' + esc(g.where) + '</span></td></tr>';
         if (g.supports && g.supports.length) {
           var sup = g.supports.map(function (s) {

@@ -104,6 +104,15 @@ export interface BuildSkillGroup {
   source?: string;
   /** Главная группа сокетов билда (mainSocketGroup, 1-based). */
   main?: boolean;
+  /**
+   * №106: привязка группы к оружейному набору (PoE2). Из атрибутов PoB2
+   * set1/set2 (SkillsTab.lua:302-303 reader, 488-489 writer): оба true →
+   * 'both'; set2 → '2'; иначе → '1'. 'both' = работает в любом наборе.
+   * Если группа НЕ 'both', а в игре активен другой набор — игра блокирует
+   * умение: «нельзя использовать с текущими настройками оружия».
+   * Отсутствие атрибутов (легаси-билды) распознаётся как 'both'.
+   */
+  weaponSet?: 'both' | '1' | '2';
   /** Гемы группы (name, level, quality). */
   gems: Array<{ name: string; level: number | null; quality: number | null }>;
 }
