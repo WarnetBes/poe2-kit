@@ -47,8 +47,10 @@ export const rendererHtml = `<!doctype html>
       0 6px 24px rgba(0,0,0,.6);
     border-radius: 4px;
     padding: 10px 12px;
-    display: flex; flex-direction: column;
-    gap: 6px;
+    /* №113: кнопки-вкладки — вертикальная колонка сбоку (была сверху — 8 кнопок
+       перестали влезать в ширину). #panel теперь row: слева .tabrow, справа #content. */
+    display: flex; flex-direction: row;
+    gap: 8px;
   }
   /* Ромбы-заклёпки по углам, как на рамках диалогов/панелей игры. */
   #panel::before, #panel::after {
@@ -338,13 +340,22 @@ export const rendererHtml = `<!doctype html>
   .color-row button { font-size: 10px; padding: 3px 8px; cursor: pointer; background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.15); color: var(--dim); border-radius: 6px; }
   /* №64: вкладки-кнопки — открывают кликом то же, что хоткеи. */
-  .tabrow { display: flex; gap: 4px; }
-  .tabrow button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
+  /* №113: боковая колонка вкладок — вертикальный ряд кнопок во всю высоту. */
+  .tabrow { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto;
+    justify-content: flex-start; width: 88px; }
+  .tabrow button { font-size: 10px; padding: 5px 4px; cursor: pointer; white-space: nowrap;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; white-space: nowrap; }
   .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
   .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  /* №113: правая часть панели — бывшие прямые потомки #panel (grab/idle/body/settings). */
+  #content { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
+  /* №113b: чекбоксы видимости вкладок. */
+  .tabs-grid { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+  .tabs-grid label { display: flex; align-items: center; gap: 5px; font-size: 11px;
+    font-weight: 400; cursor: pointer; color: var(--fg); }
+  .tabs-grid input { width: auto; }
   .hk-grid .hk { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; }
   .hk-grid .hk input { font-size: 11px; font-family: Consolas, monospace; padding: 2px 4px;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
@@ -375,6 +386,7 @@ export const rendererHtml = `<!doctype html>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
     </div>
+    <div id="content">
     <div id="grab" class="hide">
       ⠿ Тащи меня мышью · <span class="reset" id="resetOffset">сброс</span> · Ctrl+F5 — закрепить
     </div>
@@ -476,6 +488,14 @@ export const rendererHtml = `<!doctype html>
           <button data-corner="bottom-left">Н·л</button>
           <button data-corner="bottom-right">Н·п</button>
         </div>
+      </div>
+
+      <div class="set-row" id="tabsSection">
+        <div class="lbl">
+          <span>Вкладки панели <small>— скрыть неиспользуемые кнопки из боковой колонки</small></span>
+          <div class="tabs-grid" id="tabsGrid"></div>
+        </div>
+        <div class="tip">Как у аналогов: отмечено = кнопка видна, снято = скрыта (сама функция остаётся доступной по хоткею). «⚙ Настройки» скрыть нельзя — иначе теряется управление.</div>
       </div>
 
       <div class="set-row">
@@ -587,6 +607,7 @@ export const rendererHtml = `<!doctype html>
         <button id="settingsSave">Сохранить</button>
       </div>
     </div>
+    </div><!-- /#content №113 -->
   </div>
 <script>
 (function () {
@@ -1891,6 +1912,51 @@ export const rendererHtml = `<!doctype html>
   ];
   var hkInputs = {};
 
+  // №113b: видимость вкладок боковой колонки. id синхронны с data-tab в HTML.
+  var TABS_META = [
+    ['price', '💰 Прайс'],
+    ['build', '🛒 Билд'],
+    ['gems', '💎 Камни'],
+    ['import', '📥 Импорт'],
+    ['level', '📈 Прокачка'],
+    ['maps', '🧭 Плитки'],
+    ['pinnacle', '🛡 Пиннакл'],
+    ['settings', '⚙ Настройки'],
+  ];
+  function applyTabVisibility(hidden) {
+    var hid = Array.isArray(hidden) ? hidden : [];
+    TABS_META.forEach(function (t) {
+      var btn = document.querySelector('#tabRow button[data-tab="' + t[0] + '"]');
+      if (btn) btn.classList.toggle('hide', hid.indexOf(t[0]) >= 0);
+    });
+    if (activeTab && hid.indexOf(activeTab) >= 0) setActiveTab('');
+  }
+  function collectHiddenTabs() {
+    var out = [];
+    TABS_META.forEach(function (t) {
+      if (t[0] === 'settings') return; // встроенно: настройки не прячем
+      var cb = document.querySelector('#tabsGrid input[data-tab="' + t[0] + '"]');
+      if (cb && !cb.checked) out.push(t[0]);
+    });
+    return out;
+  }
+  function buildTabsGrid(s) {
+    var hidden = (s && Array.isArray(s.hiddenTabs)) ? s.hiddenTabs : [];
+    var grid = $('tabsGrid');
+    grid.innerHTML = '';
+    TABS_META.forEach(function (t) {
+      var lab = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.setAttribute('data-tab', t[0]);
+      cb.checked = hidden.indexOf(t[0]) < 0;
+      if (t[0] === 'settings') { cb.checked = true; cb.disabled = true; cb.title = 'Настройки нельзя скрыть'; }
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(t[1]));
+      grid.appendChild(lab);
+    });
+  }
+
   function currentDraft() {
     var themeBtn = document.querySelector('#themeRow .on');
     var draftTheme = themeBtn ? themeBtn.getAttribute('data-theme') : 'default';
@@ -1913,6 +1979,7 @@ export const rendererHtml = `<!doctype html>
         dim: $('setColDim').value,
         accent: $('setColAccent').value,
       } : {},
+      hiddenTabs: collectHiddenTabs(),
       hotkeys: {}
     };
   }
@@ -1947,6 +2014,7 @@ export const rendererHtml = `<!doctype html>
       if (s.colors.accent) $('setColAccent').value = s.colors.accent;
     }
     setDirty.opacity = true; setDirty.scale = true; setDirty.width = true; setDirty.height = true;
+    buildTabsGrid(s); // №113b: чекбоксы видимости вкладок
     window.poe2k.learnInfo().then(function (li) {
       if (!li) return;
       $('learnRecords').textContent = li.enabled
@@ -2055,6 +2123,7 @@ export const rendererHtml = `<!doctype html>
     draft.hotkeys = collectHotkeys();
     window.poe2k.settingsApply(draft).then(function (res) {
       if (res && res.ok) {
+        applyTabVisibility(res.settings && res.settings.hiddenTabs); // №113b
         closeSettings();
       } else {
         var msg = (res && res.error) || 'Не удалось сохранить';
@@ -2280,6 +2349,7 @@ export const rendererHtml = `<!doctype html>
       s.colors || null,
       typeof s.opacity === 'number' ? s.opacity : 0.86
     );
+    applyTabVisibility(s.hiddenTabs); // №113b: скрытые вкладки убираем при старте
   }).catch(function () {});
   // №65: клики по оверлею. Окно по умолчанию click-through
   // (setIgnoreMouseEvents(true,{forward:true}), main.ts) — ВСЕ кнопки UI

@@ -191,7 +191,13 @@ interface OverlaySettings {
   /** №105: свои цвета (hex '#rrggbb'), применяются при theme='custom'
    *  (частично — поверх дефолтной темы). */
   colors?: { bg?: string; fg?: string; dim?: string; accent?: string };
+  /** №113b: id вкладок, скрытых из боковой колонки кнопок (панель остаётся
+   *  доступной по хоткею и из настроек). 'settings' скрыть нельзя — управление. */
+  hiddenTabs?: string[];
 }
+
+/** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -214,6 +220,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   gemLang: 'ru',
   theme: 'default',
   colors: {},
+  hiddenTabs: [],
 };
 
 /** Стандартные хоткеи для действия (если пользователь не переопределил). */
@@ -1103,6 +1110,19 @@ function normalizeSettings(input: unknown): OverlaySettings {
       if (typeof v === 'string' && HEX_RE.test(v)) dst[key] = v.toLowerCase();
     }
     if (Object.keys(dst).length) next.colors = dst;
+  }
+  // №113b: видимость вкладок — только известные id, без 'settings', без дублей.
+  if (Array.isArray(raw.hiddenTabs)) {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const v of raw.hiddenTabs) {
+      if (typeof v === 'string' && v !== 'settings'
+        && (PANEL_TABS as readonly string[]).includes(v) && !seen.has(v)) {
+        seen.add(v);
+        ids.push(v);
+      }
+    }
+    next.hiddenTabs = ids;
   }
   next.hotkeys = {};
   if (raw.hotkeys && typeof raw.hotkeys === 'object') {
@@ -3269,6 +3289,7 @@ function setupIPC(): void {
     autoClipboard: settings.autoClipboard ?? false,
     hotkeys: { ...settings.hotkeys },
     defaultHotkeys: { ...DEFAULT_HOTKEYS },
+    hiddenTabs: [...(settings.hiddenTabs ?? [])],
   }));
 
   ipcMain.handle('settings:apply', (_evt, next) => {
