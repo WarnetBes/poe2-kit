@@ -357,11 +357,15 @@ export const rendererHtml = `<!doctype html>
     border: 1px solid rgba(255,255,255,0.15); color: var(--dim); border-radius: 6px; }
   /* №64: вкладки-кнопки — открывают кликом то же, что хоткеи. */
   /* №113: боковая колонка вкладок — вертикальный ряд кнопок во всю высоту. */
+  /* №144: 11+ вкладок — колонка сама скроллится при нехватке высоты панели,
+     а длинные подписи обрезаются многоточием вместо выпирания поверх контента. */
   .tabrow { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto;
-    justify-content: flex-start; width: 88px; }
+    justify-content: flex-start; width: 88px; min-height: 0;
+    overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
   .tabrow button { font-size: 10px; padding: 5px 4px; cursor: pointer; white-space: nowrap;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
-    color: var(--dim); border-radius: 6px; white-space: nowrap; }
+    color: var(--dim); border-radius: 6px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
   .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
   .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
   .tabrow button.info-btn { margin-top: 6px; border-style: dashed; color: #9aa4b0; }
