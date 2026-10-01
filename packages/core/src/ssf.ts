@@ -16,6 +16,7 @@
 import { LEVELING_ZONES } from './leveling.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import type { ParsedItem, ItemMod } from './parse.js';
+import { craftPlan } from './craftGuide.js';
 
 /** Оценка фрактуред-мода: сохранить при крафте или можно перебросить. */
 export interface SsfFracturedMod {
@@ -96,13 +97,13 @@ function classifyFractured(text: string): SsfFracturedMod {
 
 // ─── План крафта по классу базы ───────────────────────────────────────────
 
-const WEAPON_CLASSES = /quarterstaff|staff|sceptre|bow|crossbow|wand|mace|sword|axe|claw|dagger|spear|flail/i;
-const ARMOUR_CLASSES = /body armour|helmet|boots|gloves|shield|quiver/i;
+const WEAPON_CLASSES = /quarterstaff|quarterstave|staff|sceptre|bow|crossbow|wand|mace|sword|axe|claw|dagger|spear|flail/i;
+const ARMOUR_CLASSES = /body armour|helmet|boots|gloves|shield|quiver|доспех/i;
 const ACC_CLASSES = /ring|amulet|belt|focus/i;
 const GEM_CLASSES = /gem|stackable currency/i;
 const FLASK_CLASSES = /flask/i;
 
-function craftingFor(itemClass: string, isGear: boolean): SsfCraftingStep[] {
+function craftingFor(itemClass: string, isGear: boolean, ilvl: number | null): SsfCraftingStep[] {
   if (GEM_CLASSES.test(itemClass)) {
     return [
       {
@@ -112,52 +113,10 @@ function craftingFor(itemClass: string, isGear: boolean): SsfCraftingStep[] {
       },
     ];
   }
-  if (WEAPON_CLASSES.test(itemClass)) {
-    return [
-      {
-        step: 'Выбрать белую базу подходящего ilvl',
-        detail:
-          'Лучший базовый тир оружия под ilvl предмета. В SSF добывается дропом/вендором; на высокий ilvl — карты уровня ≥ предмета.',
-      },
-      {
-        step: 'Задать физ-базу и крит',
-        detail:
-          'Фокус на физический урон (база плюсится орбами к физ-урону) и крит/атак-спид. Фрактуред-мод сохраняется — строй план вокруг него.',
-      },
-      {
-        step: 'Докрафтить недостающее',
-        detail:
-          'После бейс/крит добавь урон или полезный аффикс через крафт-станок/орбы. Не обязательные моды можно перебросить.',
-      },
-    ];
-  }
-  if (ARMOUR_CLASSES.test(itemClass)) {
-    return [
-      {
-        step: 'Выбрать базу с нужной защитой',
-        detail: `Слот ${itemClass}: база с приоритетной защитой (armour/evasion/energy shield) под задумку билда.`,
-      },
-      {
-        step: 'Накинуть основную защиту',
-        detail: 'Увеличь основную защиту слота (орбы к броне/уклонению/ES).',
-      },
-      {
-        step: 'Докрафтить резист/мод',
-        detail: 'Разбей недобор элементов (резист/жизнь/ES) мастеркрафтом; фрактуред-мод сохраняй если важен.',
-      },
-    ];
-  }
-  if (ACC_CLASSES.test(itemClass)) {
-    return [
-      {
-        step: 'Закрыть резисты и пул',
-        detail: `Слот ${itemClass}: приоритет — недостающие резисты, жизнь / энергосщит / урон под билд.`,
-      },
-      {
-        step: 'Докрафтить под стиль',
-        detail: 'Собери нужные аффиксы крафт-станком/орбами. Фрактуред-мод с резистом/жизнью — придержи.',
-      },
-    ];
+  // №126: оружие/бижутерия/броня — целевой план «двух якорей» (0.5-мета,
+  // верифицировано: docs/crafting_knowledge_base.md) вместо общих «накинь орбы».
+  if (WEAPON_CLASSES.test(itemClass) || ARMOUR_CLASSES.test(itemClass) || ACC_CLASSES.test(itemClass)) {
+    return craftPlan({ itemClass, baseType: itemClass, itemLevel: ilvl }).map((s) => ({ step: s.step, detail: s.detail }));
   }
   if (FLASK_CLASSES.test(itemClass)) {
     return [
@@ -219,7 +178,7 @@ export function ssfAssessment(parsed: ParsedItem): SsfAssessment {
   // Категорию берём из itemClass ИЛИ baseType — в реальном клир-тексте строки
   // "Item Class:" может не быть, но baseType сам несёт категорию ("Expert Claw").
   const catSubject = [parsed.itemClass, parsed.baseType].filter(Boolean).join(' ');
-  let crafting = craftingFor(catSubject, true);
+  let crafting = craftingFor(catSubject, true, ilvl);
   if (fractured.length) {
     const kept = fractured.some((f) => f.keep);
     if (kept) {

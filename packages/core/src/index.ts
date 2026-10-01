@@ -28,6 +28,7 @@ export * from './advice.js';
 export * from './runes.js';
 export * from './starterBuilds.js';
 export * from './ssf.js';
+export * from './craftGuide.js';
 export * from './endgame.js';
 export * from './questRewards.js';
 export * from './cache.js';
