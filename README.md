@@ -49,12 +49,14 @@ poe2-kit/
 
 Готового установщика .exe нет — распространяется исходником, но запуск автоматизирован.
 
-1. **Скачать**: страница репозитория → **Releases** → последний релиз (v1.0.18):
-   - **`poe2-kit-portable-…-win64.zip`** (36 МБ) — рекомендую: распаковать →
+1. **Скачать**: **GitHub Releases** (зеркало, прямой анонимный доступ):
+   [github.com/WarnetBes/poe2-kit/releases/latest](https://github.com/WarnetBes/poe2-kit/releases/latest)
+   → последний релиз (v1.0.18):
+   - **`poe2-kit-portable-…-win64.zip`** (37 МБ) — рекомендую: распаковать →
      запустить `start-overlay.bat`. Node.js и npm не нужны; при первом запуске
      скрипт один раз скачает движок Electron (~110 МБ), дальше — офлайн.
-   - (Либо **«Source code (zip)»** — вариант «собери сам»: нужен Node.js ≥ 20
-     и интернет для первого запуска. Либо с git:
+   - (Либо «Source code (zip)» на любой из площадок — вариант «собери
+     сам»: нужен Node.js ≥ 20 и интернет для первого запуска. Либо с git:
      `git clone https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit.git`)
 2. **Для варианта «Source code»**: если Node.js не установлен — один раз
    запустите `install-tools-minimal.bat` (скачает и поставит Node.js сам),
@@ -125,7 +127,7 @@ npm run start -w @poe2-kit/mcp -- --smoke
 
 ---
 
-## MCP-инструменты (51)
+## MCP-инструменты (59)
 
 Все инструменты — префикс `poe2_*`, данные только из бесплатных публичных API
 и локальной базы RePoE (кроме `poe2_log_state`/`poe2_game_config` — читают локальные

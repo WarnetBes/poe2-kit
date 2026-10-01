@@ -58,11 +58,13 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 | 🧠 MCP server for AI | `apps/mcp` | 59 `poe2_*` tools for AI assistants (stdio) |
 | 🌐 Web app | `apps/web` | Browser dashboard: currency rates, price check, leveling guide, build import |
 
-> **Note**: the overlay UI is currently Russian-first (it grew out of an
-> SSF campaign on the RU client); all price/lookup data is English, and the
-> built-in RU⇄EN dictionaries translate items and gems on the fly. Full EN
-> localization is on the roadmap. The screenshots above are real usage
-> data — an English item name price-checked from a Russian client.
+> **Note**: since v1.0.18 the overlay panel UI is switchable to English
+> (Settings → language chips RU / Auto / EN). Guide content inside the
+> panels (boss tips, levelling-route notes, slang glossary, craft recipes)
+> is still Russian for now; gem/currency names follow the separate
+> `gemLang` setting, and the built-in RU⇄EN dictionaries translate items
+> and gems on the fly. The screenshots above are real usage data — an
+> English item name price-checked from a Russian client.
 
 ## Quick start (non-programmer)
 

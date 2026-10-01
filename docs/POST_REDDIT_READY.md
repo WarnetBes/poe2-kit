@@ -30,7 +30,7 @@ Hey everyone! I came to Path of Exile 2 as a complete newcomer to this genre —
 
 I got tired of playing the game in one window and the wiki in four others, so over the last few weeks I built **PoE2 Kit** — a free companion overlay for Path of Exile 2. Sharing it in case it helps other new players survive their first league, and I'd genuinely like feedback on what to build next.
 
-Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. Panel UI is Russian-first for now; EN data everywhere, full EN UI is on the roadmap.
+Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); one honest caveat: guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
 
 **What it does** (everything works from hotkeys, noisy bits are opt-in):
 
@@ -52,11 +52,11 @@ Screenshots (overlay over the game): [build shopping list](https://github.com/Wa
 * Clipboard watching is opt-in and off by default. No data about you is sent anywhere — network calls go to public APIs only (trade2, poe.ninja, poe2scout).
 * Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does not endorse this project.
 
-* **Download** (portable, ~37 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-1.0.17-win64.zip` — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
+* **Download** (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-1.0.18-win64.zip` — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
 * **Source:** [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit) — full source code and version history. I'm not asking anyone to trust a binary they can't read.
 * **Canonical repo** (RU docs, development, issues): [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
 
-**Ask**: if you tried it — what's missing for your league start? I'm specifically unsure whether the combo-import code PoB2 accepts cleanly on all setups, and whether non-RU players want a full translation of the panel UI (it's currently RU with EN item data). Bug reports and ideas → issues on GitHub or SourceCraft. Thanks for reading!
+**Ask**: if you tried it — what's missing for your league start? I'm specifically unsure whether the combo-import code PoB2 accepts cleanly on all setups, and how far to take the English translation next (panel chrome is EN since v1.0.18; guide content inside the panels is still RU — would a full content translation help you?). Bug reports and ideas → issues on GitHub or SourceCraft. Thanks for reading!
 
 The project is completely free. If you find it useful, there's an entirely optional support link at the bottom of the README — no pressure either way.
 P.S. I'm getting married on October 22 — so that support link is, let's say, seasonally relevant this month 🙂

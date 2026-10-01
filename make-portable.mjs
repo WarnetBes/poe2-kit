@@ -31,8 +31,9 @@ const STAGE = path.join(OUT_DIR, STAGE_NAME);
 const ZIP = path.join(OUT_DIR, `${STAGE_NAME}.zip`);
 
 // Каталоги, которые в публичный архив не идут (deploy/ — 60 MB офлайн-инсталляторов
-// для своих игровых ПК; electron dist — см. lite-режим выше).
-const EXCLUDE_DIRS = ['.git', '_portable', 'logs', '_research', '.vite', '.cache', 'node_modules'];
+// для своих игровых ПК; electron dist — см. lite-режим выше; scripts/ и _archive/ —
+// дев-утилиты и история, не для пользователя).
+const EXCLUDE_DIRS = ['.git', '_portable', 'logs', '_research', '.vite', '.cache', 'node_modules', '_archive', 'scripts'];
 if (!FULL) EXCLUDE_DIRS.push('deploy');
 // robocopy /XD матчит имена каталогов на любом уровне — node_modules/.cache и т.п.
 const skip = (d) => EXCLUDE_DIRS.includes(d);
@@ -63,6 +64,8 @@ function copyDir(src, dst) {
     if (ent.isFile()) {
       if (/\.(log|zip)$/i.test(ent.name)) continue;
       if (ent.name === 'WORK_LOG.md' || ent.name === 'README-netfix.md') continue; // внутренние
+      // чек-листы публикации владельца + разовый мусор истории — не для публичного архива
+      if (/^(POST_REDDIT|attach_resp|e2e_code|portable_out|HANDOFF)/i.test(ent.name)) continue;
       fs.copyFileSync(path.join(src, ent.name), path.join(dst, ent.name));
     } else if (ent.isDirectory()) {
       copyDir(path.join(src, ent.name), path.join(dst, ent.name));

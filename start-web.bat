@@ -21,7 +21,7 @@ if exist .portable (
 )
 
 echo Starting PoE2 Kit web preview on http://0.0.0.0:5173 (LAN)
-echo From the game PC (192.168.0.200) open: http://192.168.0.196:5173
+echo Open http://localhost:5173 on this PC, or http://%COMPUTERNAME%:5173 from another PC in LAN.
 echo.
 npm run preview -w @poe2-kit/web -- --port 5173 --host 0.0.0.0
 endlocal

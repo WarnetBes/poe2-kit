@@ -1,6 +1,6 @@
 # Reddit post draft — r/PathOfExile2 (EN)
 
-> Готовый к публикации текст. Факты сверены с CHANGELOG 1.0.17 и кодом
+> Черновик с вариантами. Факты сверены с CHANGELOG 1.0.18 и кодом
 > (win32.ts: три read-only user32-функции; main.ts: Client.txt, clipboard opt-in).
 > Ссылки верифицированы анонимным curl 01.10.2026: GitHub zip качается
 > анонимно (SHA совпадает с эталоном), страница репо/релизов 200.
@@ -13,7 +13,7 @@
 
 1. PoE2 Kit — a free companion overlay I built as a genre newcomer to survive Path of Exile 2: price check, boss timers, craft plans, PoB2 import (full RU-client support)
 2. I kept alt-tabbing to price-check my drops on the RU client — so I built a full-Russian overlay, and it does boss timers too
-3. PoE2 Kit v1.0.17 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
+3. PoE2 Kit v1.0.18 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
 
 ## Body
 
@@ -35,7 +35,7 @@ so over the last few weeks I built **PoE2 Kit** — a free companion overlay
 for Path of Exile 2. Sharing it in case it helps other new players survive
 their first league, and I'd genuinely like feedback on what to build next.
 
-Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. Panel UI is Russian-first for now; EN data everywhere, full EN UI is on the roadmap.
+Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price.png) — note the RU item resolving to its English name for pricing. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
 
 **What it does** (everything works from hotkeys, noisy bits are opt-in):
 
@@ -82,8 +82,8 @@ tool post):
 * Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does
   not endorse this project.
 
-* Download (portable, ~37 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-  `poe2-kit-portable-1.0.17-win64.zip` — unzip → run `start-overlay.bat`
+* Download (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
+  `poe2-kit-portable-1.0.18-win64.zip` — unzip → run `start-overlay.bat`
   (it downloads the Electron runtime once, ~110 MB, then works offline).
   No admin rights, no installer, no Node.js needed.
 * Source: [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit)
@@ -125,7 +125,8 @@ seasonally relevant this month 🙂
 4. **Время**: постить в прайм NA/EU (18:00–21:00 UTC), не в выходной поток
    лутеров — иначе bury без чтения.
 5. **После поста**: не отвечать на каждое сообщение шаблоном; отвечать по
-   делу, критику про «RU panel» принимать как roadmap-факт.
+   делу; критику про RU-гайд-контент (боссы/маршрут/слэнг) принимать
+   как честный known-limitation, не спорить.
 6. **Не кросспостить** тот же текст в другие сабреддиты в один день —
    анти-спам-фильтр reddit помечает одинаковое содержимое как
    скоординированный спам.
