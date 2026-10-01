@@ -158,3 +158,17 @@ npm run portable     # build the portable zip release asset
   (this GitHub repo mirrors releases and accepts issues here too)
 - Version history: [CHANGELOG.md](CHANGELOG.md)
 - Roadmap & build diary: [WORK_LOG.md](WORK_LOG.md) (Russian)
+
+## ☕ Support
+
+The kit is free and will stay free — no ads, no premium, no telemetry.
+Support is entirely optional; a thank-you in the issues is already great.
+
+<details>
+<summary>☕ Optional support (RU payment rails)</summary>
+
+- **SBP / Russian bank transfer (Alfa-Bank / Rosselkhozbank)** — by phone
+  `+7 981 760-60-27` (any Russian banking app: “SBP transfer” → phone → pick bank).
+- **WebMoney** — WMID `649044135447`.
+
+</details>

@@ -84,6 +84,9 @@ all setups, and whether non-RU players want a full translation of the panel
 UI (it's currently RU with EN item data). Bug reports and ideas → issues on
 GitHub or SourceCraft. Thanks for reading!
 
+The project is completely free. If you find it useful, there's an entirely
+optional support link at the bottom of the README — no pressure either way.
+
 ## Publish checklist (r/PathOfExile2)
 
 1. **Rules — верифицированы 01.10.2026 (владелец прислал текст)**. Ключевые:
