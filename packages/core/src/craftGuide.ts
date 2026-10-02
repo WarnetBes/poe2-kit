@@ -117,6 +117,12 @@ export interface OmenInfo {
  * Активируется правым кликом; меняет поведение СЛЕДУЮЩЕЙ валюты; после
  * срабатывания расходуется. Связанные омены стакаются, несовместимые —
  * деактивируют прежний (poe2wiki «Omen»).
+ *
+ * Патчноуты 0.5.0 (pathofexile.com/forum/view-thread/3932540, проверено 02.10.2026):
+ * Omen of Recombination УДАЛЁН; Omen of Corruption — unobtainable; Catalysts больше
+ * не дропаются (только Genesis Tree); Abyss-омены не дропаются ниже monster level 65;
+ * все награды эндгейм-Ritual — только Unique или Omens; новый Omen of Chaotic
+ * Effectiveness (до 3 одновременно).
  */
 export const CRAFT_OMENS: OmenInfo[] = [
   // Chaos Orb
@@ -155,7 +161,7 @@ export const CRAFT_OMENS: OmenInfo[] = [
   // Divine / Vaal / Chance
   { en: 'Omen of the Blessed', purpose: 'Divine Orb рероллит только ИМПЛИЦИТЫ' },
   { en: 'Omen of Sanctification', purpose: 'Divine Orb на Rare — Sanctify (без негатива)' },
-  { en: 'Omen of Corruption', purpose: 'Vaal Orb ВСЕГДА изменит предмет (без исхода «ничего»)' },
+  { en: 'Omen of Corruption', purpose: 'Vaal Orb ВСЕГДА изменит предмет (без исхода «ничего»)', drop: '⚠️ unobtainable с 0.5.0 (патчноут); существующие работают' },
   { en: 'Omen of Chance', purpose: 'Orb of Chance НЕ уничтожит предмет при провале' },
   { en: 'Omen of the Ancients', purpose: 'Orb of Chance апгрейдит до случайного уника того же класса' },
   // Waystone-плитки

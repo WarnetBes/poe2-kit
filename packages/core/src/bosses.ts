@@ -65,14 +65,14 @@ export interface BossInfo {
 /** Сюжетные боссы кампании (акты 1–4) + интерлюдии. */
 export const CAMPAIGN_BOSSES: BossInfo[] = [
   // ─── Акт 1 ───
-  { name: 'Хиллока', kind: 'story', act: 1, zone: 'The Riverbank', zoneCode: 'G1_1', reward: 'выход в город (старт кампании)', tips: ['Убейте и выходите в город.'] },
+  { name: 'Хиллока', kind: 'story', act: 1, zone: 'The Riverbank', zoneCode: 'G1_1', reward: 'выход в город (старт кампании)', tips: ['Убейте и выходите в город.'], verified: false, unverifiedNote: '02.10.2026: poe2db /us/Hillock = 404 — Hillock известен как босс PoE1; источник записи — RU zoneNotes. Не удалять до in-game проверки RU-клиента.' },
   { name: 'Беира', kind: 'story', act: 1, zone: 'Clearfell', zoneCode: 'G1_2', reward: '+10% к сопротивлению холоду', tips: ['Основной босс акта-стартера; после неё опционально Mud Burrow.'], strengths: ['Типы урона: физический + холод.', 'Веер ледяных шипов; роющиеся под игроком руны-шипы.', 'Фаза 2 (~80% HP): воскрешает волков (Feeding Frenzy), руны по всей арене (Rotting Chill), кольцо осколков (Frost Swell).'], weaknesses: ['Frost Swell: осколки появляются в кольце вокруг неё ДО разлёта — стойте между ними.'] },
   { name: 'Девор', kind: 'story', act: 1, zone: 'Mud Burrow', zoneCode: 'G1_3', reward: 'камень навыка 2 ур. + поддержка 1 ур.', tips: ['Пропускаемая зона, босс прямо от входа.'], strengths: ['Типы урона: физический + хаос.', 'Погружается под землю и вырывается токсичным взрывом с насекомыми.', '~75% HP: в бой вступает хвост — свипы и слэмы с призывом насекомых.', 'Зеленеет перед регургитацией яда; перед Poison Barrage вспыхивает красным — перекат (i-frames).'] },
   { name: 'Бремблегаст', kind: 'story', act: 1, zone: 'The Grelwood', zoneCode: 'G1_4', reward: 'камень навыка 1 ур.', tips: ['4 локации ромбом; по пути хата Арене — зелья + камень 1 ур.'], strengths: ['Типы урона: физический + холод.', 'Вращающаяся сфера-орб с снарядами; лозы из-под земли.', 'Volatile Slam — очень тяжёлый удар, потенциально ваншот при малом HP на вещах.'] },
   { name: 'Гнилой Друид', kind: 'story', act: 1, zone: 'The Grim Tangle', zoneCode: 'G1_6', reward: 'поддержка 1 ур.', tips: ['Опционально; идите вверх и влево (компоновка может быть отзеркалена).'], strengths: ['Типы урона: физический + хаос.', 'Телепорты через лозы, залпы снопов, Fungal Slam по каналу.', 'Rock Smash: звук-подсказка «избегание» + булыжник — перекат в момент броска руки.', 'Summon Vines: канал призыва лоз — обрывается уроном по боссу.'] },
   { name: 'Кроубэлл', kind: 'story', act: 1, zone: 'Hunting Grounds', zoneCode: 'G1_11', reward: '+2 очка пассивок', tips: ['Рядом с гигантской ямой; идти по краю по часовой стрелке.'], strengths: ['Типы урона: физический.', 'Почти все атаки идут со звуковой подсказкой «избегание»: слэмы, прыжки, размахи колоколом, серии ударов по земле.'], weaknesses: ['Тест на перекаты: играйте defensively и бейте только в окна после его атак, по подсказке.'] },
   { name: 'Король в Туманах', kind: 'story', act: 1, zone: 'Freythorn', zoneCode: 'G1_12', reward: '+30 Духа и камень Духа 4 ур.', tips: ['Сложная компоновка. Виспы укажут на оставшиеся ритуалы.', 'В 0.5 King in the Mist — только страж Ritual-цепочки, НЕ пиннакл (см. The Bodach).'], strengths: ['Типы урона: физический + хаос.', 'Один из самых сложных боёв акта 1.', 'На 25% HP становится неуязвимым и переходит в фазу 2 (по умолчанию стреляет 3 снарядами вместо 1).', 'Ritual of Dance (фиолетовый круг) — двигайтесь или будете укоренены; Ritual of Meditation (красный) — стойте на месте.', 'Affliction Totem: урон растёт, пока тотем жив; споры-пустулы детонируют под ногами.'], weaknesses: ['Тотемы Affliction имеют очень мало HP — сразу берсите.', 'Thorngrip объявляется голосовой строкой — перекат в сторону за спину.', 'Споры сбивайте к краям арены (пустулы там не мешают).', 'Maxroll совет: возьмите Ruby Charm — боссы акта 2 бьют много огнём.'] },
-  { name: 'Лютня Уны', kind: 'story', act: 1, zone: 'Ogham Farmlands', zoneCode: 'G1_13_1', reward: '+2 очка пассивок', tips: ['За разбитыми караванами; вниз и влево.'] },
+  { name: 'Лютня Уны', kind: 'story', act: 1, zone: 'Ogham Farmlands', zoneCode: 'G1_13_1', reward: '+2 очка пассивок', tips: ['За разбитыми караванами; вниз и влево.'], verified: false, unverifiedNote: '02.10.2026 (ZiggyD 0.5.5): Una\'s Lute — сайд-квест с permanent +2 пассивки, НЕ лут-босс; в 0.5-источниках как босс не существует. Запись сохранена для маршрут-прогресса.' },
   { name: 'Палач', kind: 'story', act: 1, zone: 'Ogham Village', zoneCode: 'G1_13_2', reward: 'выход в The Manor Ramparts', tips: ['Идите по краю на север; если босс раньше инструментов Ренли — вернитесь и на юг.'], strengths: ['Типы урона: физический + огонь.', 'Всюду бегут солдаты — не дайте себя окружить.', 'Sunder линией; Execution Sentence: раскалённый топор → большой взрыв; гильотина с неба; Leap Slam с двойным слэмом.'] },
   { name: 'Канделмасс', kind: 'story', act: 1, zone: 'Ogham Manor', zoneCode: 'G1_15', reward: '+20 к жизни', tips: ['На каждом этаже мост в середине; 2-й и 3-й этажи — в противоположную от прошлого сторону.', 'Финал акта 1 — не он, а Граф Геонор (см. след. запись; уточняет данные №104).'], strengths: ['Типы урона: физический + огонь.', 'Flame Slash: финт-обманка и фаербол; дыхание огнём следит за игроком.', 'Candle Mortar: залпы фаерболов из спины.'] },
   {
@@ -101,7 +101,7 @@ export const CAMPAIGN_BOSSES: BossInfo[] = [
   { name: 'Рэтбрейкер', kind: 'story', act: 2, zone: 'Vastiri Outskirts', zoneCode: 'G2_1', reward: 'проход к каравану', tips: ['Стойте на краю утёса, чтобы избежать копий.'], strengths: ['Типы урона: физический.', 'Drive By: рывок с дождём копий по линии; Forcewave: слэм + волна ветра.', 'Ниже ~60% зовёт стаи гиен — убивайте быстро.', 'После смерти босса с утёсов спрыгивают копейщики и атакуют.'], weaknesses: ['Перед боем наденьте броню (физическая митьигация) и держите почти полный HP.'] },
   { name: 'Балбала, Предательница', name_en: 'Balbala, the Traitor', kind: 'story', act: 2, zone: "Traitor's Passage", zoneCode: 'G2_2', reward: "Balbala's Barya — вход в Trial of the Sekhemas (асценданси!)", tips: ['Следуйте за страницами на стене; Шесть Сестёр указывают верный путь.'], strengths: ['Типы урона: физический + огонь + хаос.', 'Flicker Strike; Blazing Dagger Barrage: туча огненных кинжалов следит за вами.', 'Hide and Seek: исчезает, ядовитый газ расползается от центра — найдите её, чтобы развеять; при находке слэм под ней.', 'Golden Barya: монета-руна — не тронете, спавнится Тень Балбалы.'], weaknesses: ['Maxroll: перелевельтесь перед боем — очень много урона хаосом.', 'Golden Barya: наступите на руну (гаснет, тень не появится) и сразу перекат из-под слэма.', 'Spinning Glaive: клинки уходят и ВОЗВРАЩАЮТСЯ на место — не стойте на их пути дважды.'] },
   { name: 'Кабала', name_en: 'Kabala, Constrictor Queen', kind: 'story', act: 2, zone: 'Keth', zoneCode: 'G2_4_1', reward: '+2 очка пассивок', tips: ['Головоподобная плитка у босса; обход по часовой стрелке. Хороший опыт.'], strengths: ['Типы урона: физический.', 'Мечет взрывные циановые снаряды; Death Nova — нова снарядов с детонацией.', 'Змеи-призывы из канеф; Tail Whip растёт с потерей HP.', 'Bone Cage: уходит в песок, закрывает костями все входы, кроме одного, и готовит детонацию по всей арене + Vulnerability на 20 с.'], weaknesses: ['Bone Cage: найдите единственный проход или сломайте костяную стену бурстом.'] },
-  { name: 'Сёстры Гарухан', kind: 'story', act: 2, zone: 'The Spires of Deshar', zoneCode: 'G2_9_2', reward: '+10% к сопротивлению молнии', tips: ['G-образная плитка, метод исключения (опционально).'] },
+  { name: 'Сёстры Гарухан', kind: 'story', act: 2, zone: 'The Spires of Deshar', zoneCode: 'G2_9_2', reward: '+10% к сопротивлению молнии', tips: ['G-образная плитка, метод исключения (опционально).', '02.10.2026 (ZiggyD 0.5.5): это шрин-POI, не лут-босс — permanent +10% Lightning Res за сайд-квест; один из обязательных сайд-баффов кампании.'] },
   { name: 'Тор Гул', name_en: 'Tor Gul, the Defiler', kind: 'story', act: 2, zone: 'The Spires of Deshar', zoneCode: 'G2_9_2', reward: 'Караван → The Dreadnought (прогресс акта)', strengths: ['Типы урона: физический + огонь + хаос.', 'Toxic Spew: яд на пол + призыв скелетов; взрывы рун; Ribcage Barrage — залп фаерболов из грудной клетки.', 'Flame Breath: дыхание огнём на треть арены.', 'Ниже 50% (empowered): руны рождают огненные торнадо; Barrage — черепа, гонящиеся за игроком.'], weaknesses: ['Flame Breath: направление (по/против часовой) зависит от ВАШЕЙ позиции — займите безопасную треть заранее.'] },
   // ─── Акт 3 ───
   { name: 'Рутредж', name_en: 'Rootdredge', kind: 'story', act: 3, zone: 'Sandswept Marsh', zoneCode: 'G3_1', reward: 'камень навыка 9 ур.', tips: ['Обычно в центре болота; в траве Кемп Орока даёт Малый Jeweller’s.'], strengths: ['Типы урона: физический + огонь.', 'Detonate Dead: слэм + корни детонируют трупы вокруг.', 'Corpse Missile: зомби превращается в самонаводящийся труп-снаряд — детонирует с задержкой, успеете перекат.', 'Volatile Curse: ВСЕ зомби помечены и взрываются через пару секунд.', 'Hindering Winds: торнадо замедляют, чем дольше стоите внутри.'] },
@@ -232,11 +232,12 @@ export const PINNACLE_BOSSES: BossInfo[] = [
   {
     name: 'The Arbiter of Divinity',
     kind: 'pinnacle',
-    zone: 'The Precursor Fortress (центр атласа)',
-    access: 'Origin Core (quest и non-quest версии)',
+    zone: 'The Origin Tower, центр Precursor Fortress',
+    access:
+      'Origin Spark + Origin Cradle (Matriarch/Patriarch Halls) → собрать Origin Core → вершина Origin Tower; требует пройденного Arbiter of Ash (0.5, verified poe2wiki/timesaver через maxroll Boss Loot Table Cheat Sheet 0.5)',
     reward: 'уники; атлас-очки (сумма за 4 сложности механики, точные цифры 0.5 не верифицированы — проверить в игре)',
     atlasPoints: null,
-    tips: ['Главный пиннакл патча 0.5 (verified maxroll 0.5.4 endgame-activities).'],
+    tips: ['Главный пиннакл патча 0.5; быстрый aggression-based босс (детальные механики — UNVERIFIED, гайд-страницы не собирались).'],
   },
   {
     name: 'The Raven Trickster',
@@ -245,7 +246,7 @@ export const PINNACLE_BOSSES: BossInfo[] = [
     access: "Способ доступа НЕ верифицирован (см. unverifiedNote)",
     reward: 'уники',
     verified: false,
-    unverifiedNote: 'Подтверждён как босс 0.5 патчноутом 0.5.5: «Raven Trickster no longer has All Elemental Resistances»; связан со стаффом The Raven’s Flock. Способ доступа НЕ верифицирован.',
+    unverifiedNote: 'Подтверждён как босс 0.5 патчноутом 0.5.5: «Raven Trickster no longer has All Elemental Resistances»; связан со стаффом The Raven’s Flock. Способ доступа НЕ верифицирован. 02.10.2026: maxroll cheat sheet 0.5 называет вход «Raven\'s Reflection из Simulacrum» (Withered Willow) — вероятно, ДУБЛЬ записи Tang\'Mazu ниже; до in-game проверки записи не сливать.',
   },
   {
     name: "Tang'Mazu",
@@ -258,9 +259,15 @@ export const PINNACLE_BOSSES: BossInfo[] = [
   {
     name: 'Xesht, We That Are One',
     kind: 'pinnacle',
-    zone: 'Breach — Hiveborn Strongholds',
-    access: 'Breachstone (Genesis Tree); в Hive Fortress — Breachlords Tul и Esh (подчинённые, не пиннаклы)',
-    reward: 'уники',
+    zone: 'Breach — Twisted Domain (через Realmgate)',
+    access: 'Breachstone (из Breach Splinters) → Realmgate → Twisted Domain; в Hive Fortress — Breachlords Tul и Esh (подчинённые, не пиннаклы)',
+    reward: 'уники (Beyond Reach, Hand of Wisdom and Action, Xoph\'s Blood, Choir of the Storm, The Pandemonius, Skin of the Loyal, Controlled Metamorphosis — maxroll cheat sheet 0.5)',
+    // Механики — maxroll Xesht-гайд (0.1-эра, механики могли меняться; заголовок версии обязателен).
+    strengths: [
+      'Tul-фаза: сосульки + chill; Esh-фаза: lightning shockwave; Finger Gun; Burrow (нырок под землю); Triple Blast.',
+      'Hand Smash — самый тяжёлый удар; фазовый переход на 50% HP.',
+    ],
+    weaknesses: ['Перекаты от Finger Gun/Hand Smash; в Esh-фазе держите дистанцию; 4 Breach Atlas-пассивки — на урон Xesht.'],
   },
   {
     name: 'The Bodach',
@@ -278,16 +285,24 @@ export const PINNACLE_BOSSES: BossInfo[] = [
     reward: 'уники',
     verified: false,
     // Обратная совместимость: запись НЕ удалена, но в 0.5-источниках не найдена.
-    unverifiedNote: 'НЕ найден в 0.5-источниках (maxroll 0.5.4 endgame-activities, патчноуты 0.5.2/0.5.5); кандидат на удаление после проверки в игре. Expedition-пиннакл 0.5 — см. запись Olroth ниже.',
+    // 02.10.2026 (research-проход): доступ подтверждён poe2wiki/timesaver (DDG-срезы) —
+    // Ruins of Kingsmarch → Uhtred → Olroth's Logbook → kill Olroth → Shattered
+    // Triskelion → reforge на Verisium Anvil → Triskelion Reforged; дроп — Twisted
+    // Empyrean (пinnacle-лут в cheat sheet 0.5: Verisium Crater). Механики — UNVERIFIED.
+    unverifiedNote: 'Запись как босс Expedition-пиннакл 0.5: доступ подтверждён (Kingsmarch-цепочка, Triskelion Reforged → Verisium Crater), дроп — Twisted Empyrean; боевые механики НЕ верифицированы (гайд-страницы таймаутят из этой среды).',
   },
   {
-    name: 'Olroth (имя не верифицировано)',
+    name: 'Olroth',
+    name_en: 'Olroth, Origin of the Fall',
     kind: 'pinnacle',
-    zone: 'Tomb of Olroth / Triskalion Flame',
+    zone: 'Tomb of Olroth / Obscure Island',
     access: 'Expedition Ocean-квест: Tomb of Uhtred → Tomb of Olroth → Triskalion Flame',
     reward: 'уники',
     verified: false,
-    unverifiedNote: 'unverifiable-name: Expedition-пиннакл 0.5 (Tomb of Uhtred → Tomb of Olroth → Triskalion Flame, метеорит Verisium — «гигантский паук в метеорите»); точное имя финального босса НЕ верифицировано, кандидат — Olroth (verified maxroll 0.5.4 endgame-activities).',
+    // 02.10.2026: канон-имя подтверждено (maxroll Boss Loot Table Cheat Sheet 0.5 +
+    // timesaver: «Olroth, Origin of the Fall», Obscure Island, 0.5.4 ocean-контент);
+    // боевые механики NOT verified — гайд-страницы таймаутят.
+    unverifiedNote: 'Имя подтверждено 0.5-источниками («Olroth, Origin of the Fall», Expedition Ocean-босс 0.5.4); боевые механики НЕ верифицированы.', tips: ['Сайд-боссы Expedition 0.5.4: Uhtred the Stardrinker, Styrn Fallen Knight of Aldur, Medved, Vorana (Ocean-зоны).'],
   },
   {
     name: 'Vessel of Kulemak',
