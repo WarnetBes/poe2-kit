@@ -204,6 +204,9 @@ export interface LevelingZone {
   monsterLevel: number;
   /** Есть ли в зоне вояпоинт (быстрый телепорт). undefined — неизвестно. */
   hasWaypoint?: boolean;
+  /** Сайд-зона вне mainline («Optional Area!» по PoL-2): не предлагается как
+   *  «следующая зона» сюжета, monsterLevel может быть ниже хвоста акта. */
+  optional?: boolean;
   /** Ключевые задачи/заметки */
   steps: string[];
   /** Квестовые награды: скил-пойнты, буст духа и т.п. */

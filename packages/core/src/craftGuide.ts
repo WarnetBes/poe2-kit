@@ -11,10 +11,9 @@
  *  - ВЕСА модов нами НЕ известны офлайн — вероятности не считаем и цифры
  *    шансов не выдумываем; вместо этого честная отсылка к poe2db (Weight)
  *    и Craft of Exile (?game=poe2);
- *  - RU-имена эссенций даём только верифицированные (из логов живого
- *    RU-клиента: «сущность заземления»); остальные — канонические EN
- *    (по ним матчатся poe2db/CoE), с пометкой искать в игре по слову
- *    «сущность».
+ *  - RU-имена эссенций верифицированы по poe2db.tw/ru/Essence (02.10.2026):
+ *    RU-локаль — «Сущность X» (не «Эссенция»); Lesser = «Малая …»,
+ *    Greater = «Большая …», Perfect = «Совершенная …».
  */
 
 import type { ParsedItem } from './parse.js';
@@ -27,7 +26,7 @@ export type EssenceAction = 'magicToRare' | 'rareReplace';
 export interface EssenceInfo {
   /** Каноническое EN-имя (матчится poe2db/CoE). */
   en: string;
-  /** RU-имя, если верифицировано живым клиентом; иначе null. */
+  /** RU-имя, если верифицировано (poe2db.tw/ru/Essence); иначе null. */
   ru: string | null;
   /** Гарантированный мод (кратко, русским; диапазон Lesser→Greater). */
   guaranteed: string;
@@ -48,27 +47,27 @@ export interface EssenceInfo {
 export const CRAFT_ESSENCES: EssenceInfo[] = [
   // Резисты (Armour/Belt/Jewellery: 11-15 → 21-25 → 31-35%)
   { en: 'Essence of Grounding', ru: 'сущность заземления', guaranteed: '+(11-15)% … +(31-35)% к сопротивлению молнии', perfect: 'Перчатки: (26-30)% урона молнией, полученного при ударах, восполняется жизнью (Recoup)', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Thawing', ru: null, guaranteed: '+% к сопротивлению холоду (11-15 … 31-35%)', perfect: 'Шлем: (26-30)% урона холодом Recoup жизнью', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Insulation', ru: null, guaranteed: '+% к сопротивлению огню (11-15 … 31-35%)', perfect: 'Пояс: (26-30)% урона огнём Recoup жизнью', action: 'magicToRare', slots: 'any' },
-  { en: 'Essence of Ruin', ru: null, guaranteed: '+(4-7)% … +(16-19)% к сопротивлению хаосу — самый ценный резист', perfect: 'Броня: (10-15)% физ. урона от ударов принимается как хаос', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Thawing', ru: 'сущность таяния', guaranteed: '+% к сопротивлению холоду (11-15 … 31-35%)', perfect: 'Шлем: (26-30)% урона холодом Recoup жизнью', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Insulation', ru: 'сущность изоляции', guaranteed: '+% к сопротивлению огню (11-15 … 31-35%)', perfect: 'Пояс: (26-30)% урона огнём Recoup жизнью', action: 'magicToRare', slots: 'any' },
+  { en: 'Essence of Ruin', ru: 'сущность гибели', guaranteed: '+(4-7)% … +(16-19)% к сопротивлению хаосу — самый ценный резист', perfect: 'Броня: (10-15)% физ. урона от ударов принимается как хаос', action: 'magicToRare', slots: 'any' },
   // Жизнь/мана/защита
-  { en: 'Essence of the Body', ru: null, guaranteed: '+(30-39) … +(100-119) к жизни (броня/пояс выше, бижутерия ниже)', perfect: 'Броня: +(8-10)% к максимуму жизни', action: 'magicToRare', slots: 'armour' },
-  { en: 'Essence of the Mind', ru: null, guaranteed: '+(25-34) … +(90-104) к мане', perfect: 'Кольцо: +(4-6)% к максимуму маны', action: 'magicToRare', slots: 'jewellery' },
-  { en: 'Essence of Enhancement', ru: null, guaranteed: '(27-42) … (68-79)% брони/уклонения/ЭС', perfect: 'Амулет: (20-30)% глобальной брони/уклонения/ЭС', action: 'magicToRare', slots: 'armour' },
+  { en: 'Essence of the Body', ru: 'сущность тела', guaranteed: '+(30-39) … +(100-119) к жизни (броня/пояс выше, бижутерия ниже)', perfect: 'Броня: +(8-10)% к максимуму жизни', action: 'magicToRare', slots: 'armour' },
+  { en: 'Essence of the Mind', ru: 'сущность разума', guaranteed: '+(25-34) … +(90-104) к мане', perfect: 'Кольцо: +(4-6)% к максимуму маны', action: 'magicToRare', slots: 'jewellery' },
+  { en: 'Essence of Enhancement', ru: 'сущность улучшения', guaranteed: '(27-42) … (68-79)% брони/уклонения/ЭС', perfect: 'Амулет: (20-30)% глобальной брони/уклонения/ЭС', action: 'magicToRare', slots: 'armour' },
   // Урон оружию (Lesser→Greater: 1H/Bow и 2H/Crossbow разные диапазоны)
-  { en: 'Essence of Abrasion', ru: null, guaranteed: '+физ. урон оружию (1H 4-6d7-11 … 16-24d28-42; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Physical (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Flames', ru: null, guaranteed: '+урон огнём оружию (1H 4-6d7-10 … 35-44d56-71; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Fire (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Ice', ru: null, guaranteed: '+урон холодом оружию (1H 3-5d6-9 … 31-38d47-59; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Cold (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Electricity', ru: null, guaranteed: '+урон молнией оружию (1H 1d13-19 … 1-6d85-107; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Lightning (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Sorcery', ru: null, guaranteed: '+% урона чарам (Focus/Wand 35-44% … 75-89%; Staff 69-88% … 149-188%)', perfect: 'Wand: +3 / Staff: +5 к уровню всех чар', action: 'magicToRare', slots: 'caster' },
-  { en: 'Essence of Battle', ru: null, guaranteed: '+точность (Martial 61-84 … 237-346; Greater — также перчатки/колчан)', perfect: '1H/Bow: +2 к уровню всех атакующих умений (2H: +3)', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Haste', ru: null, guaranteed: '+% скорости атаки (Melee 11-13% … 23-25%; Bow/Crossbow ниже)', perfect: 'Оружие: (20-25)% шанс Onslaught при убийстве ударом', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Seeking', ru: null, guaranteed: '+шанс крита (Martial +1.5-2.1% … +3.1-3.8%; чары: Focus/Wand/Staff — increased)', perfect: 'Броня: удары по тебе — (40-50)% сниженный крит-бонус', action: 'magicToRare', slots: 'weapon' },
-  { en: 'Essence of Alacrity', ru: null, guaranteed: '+% скорости каста (Focus/Wand 13-16% … 25-28%; Staff 20-25% … 38-43%)', perfect: 'Focus/Wand: (18-20)% эффективности маны (Staff 28-32%)', action: 'magicToRare', slots: 'caster' },
+  { en: 'Essence of Abrasion', ru: 'сущность разрушения', guaranteed: '+физ. урон оружию (1H 4-6d7-11 … 16-24d28-42; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Physical (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Flames', ru: 'сущность пламени', guaranteed: '+урон огнём оружию (1H 4-6d7-10 … 35-44d56-71; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Fire (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Ice', ru: 'сущность льда', guaranteed: '+урон холодом оружию (1H 3-5d6-9 … 31-38d47-59; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Cold (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Electricity', ru: 'сущность электричества', guaranteed: '+урон молнией оружию (1H 1d13-19 … 1-6d85-107; 2H выше)', perfect: '1H/Bow: +(15-20)% урона как Extra Lightning (2H: 25-33%)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Sorcery', ru: 'сущность колдовства', guaranteed: '+% урона чарам (Focus/Wand 35-44% … 75-89%; Staff 69-88% … 149-188%)', perfect: 'Wand: +3 / Staff: +5 к уровню всех чар', action: 'magicToRare', slots: 'caster' },
+  { en: 'Essence of Battle', ru: 'сущность битвы', guaranteed: '+точность (Martial 61-84 … 237-346; Greater — также перчатки/колчан)', perfect: '1H/Bow: +2 к уровню всех атакующих умений (2H: +3)', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Haste', ru: 'сущность спешки', guaranteed: '+% скорости атаки (Melee 11-13% … 23-25%; Bow/Crossbow ниже)', perfect: 'Оружие: (20-25)% шанс Onslaught при убийстве ударом', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Seeking', ru: 'сущность искания', guaranteed: '+шанс крита (Martial +1.5-2.1% … +3.1-3.8%; чары: Focus/Wand/Staff — increased)', perfect: 'Броня: удары по тебе — (40-50)% сниженный крит-бонус', action: 'magicToRare', slots: 'weapon' },
+  { en: 'Essence of Alacrity', ru: 'сущность живости', guaranteed: '+% скорости каста (Focus/Wand 13-16% … 25-28%; Staff 20-25% … 38-43%)', perfect: 'Focus/Wand: (18-20)% эффективности маны (Staff 28-32%)', action: 'magicToRare', slots: 'caster' },
   // Прочее
-  { en: 'Essence of the Infinite', ru: null, guaranteed: '+СИЛ/ЛОВ/ИНТ (9-12 … 25-27)', perfect: 'Амулет: +(7-10)% СИЛ/ЛОВ/ИНТ', action: 'magicToRare', slots: 'jewellery' },
-  { en: 'Essence of Opulence', ru: null, guaranteed: '+% редкости предметов (боты/перчатки/шлем/бижутерия 6-10 … 15-18%)', perfect: 'Перчатки: +(10-15)% золота с убитых', action: 'magicToRare', slots: 'armour' },
-  { en: 'Essence of Command', ru: null, guaranteed: 'Скипетр: союзники рядом наносят +(35-44 … 75-89)% урона', perfect: 'Скипетр: ауры +(15-20)% силы эффектов', action: 'magicToRare', slots: 'caster' },
+  { en: 'Essence of the Infinite', ru: 'сущность бесконечности', guaranteed: '+СИЛ/ЛОВ/ИНТ (9-12 … 25-27)', perfect: 'Амулет: +(7-10)% СИЛ/ЛОВ/ИНТ', action: 'magicToRare', slots: 'jewellery' },
+  { en: 'Essence of Opulence', ru: 'сущность изобилия', guaranteed: '+% редкости предметов (боты/перчатки/шлем/бижутерия 6-10 … 15-18%)', perfect: 'Перчатки: +(10-15)% золота с убитых', action: 'magicToRare', slots: 'armour' },
+  { en: 'Essence of Command', ru: 'сущность повеления', guaranteed: 'Скипетр: союзники рядом наносят +(35-44 … 75-89)% урона', perfect: 'Скипетр: ауры +(15-20)% силы эффектов', action: 'magicToRare', slots: 'caster' },
 ];
 
 /** Спец-эссенции (действие как Perfect: Rare — удалить случайный мод + гарантированный), poe2db «Removes a random modifier…». */
@@ -289,7 +288,7 @@ export function waystoneCraftPlan(input: CraftPlanInput): CraftPlanStep[] {
         '3 плитки ОДИНАКОВОГО тира и редкости → 1 плитка тиром выше (Act 3, Ziggurat Encampment). ' +
         (ilvl != null ? `ilvl предмета ${ilvl} — влияет на пул модов новой плитки. ` : '') +
         'Основной SSF-путь от Т10 к Т15; неудачные дубликаты — не выбрасывать, копить в тройки. ' +
-        'Числовые пороги тиров НЕ верифицированы — см. WAYSTONE_TIERS_UNVERIFIED (endgame.ts).',
+        'Пороги тиров → уровни зоны верифицированы (WAYSTONE_TIERS, endgame.ts: T1=65 … T16=80, poe2db).',
     },
     {
       step: '3. Т16 — только коррупция Т15 (25% тир±1)',

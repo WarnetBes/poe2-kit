@@ -1,10 +1,19 @@
 /**
- * Гид по прокачке: точные зоны кампании Path of Exile 2 (Акты 1–4 + интерлюдии).
+ * Гид по прокачке: точные зоны кампании Path of Exile 2 (Акты 1–4).
  *
  * Список зон, порядок следования и ключевые квестовые награды сверены с данными
  * проекта Path of Levelling 2 (Kami-Guru). Порядок зон и награды сохранены,
  * текст заметок переформулирован/сокращён (оригинал под своей лицензией в
  * _research/path-of-levelling-2/src/main/profiles/poe2/referenceData/).
+ *
+ * Сайд-зоны вне mainline (PoL-2 «Optional Area!», напр. Plunder's Point G4_13)
+ * помечены `optional: true`: остаются в плане как опциональный контент, но
+ * НЕ предлагаются как «следующая зона» основного сюжета (фикс аудита S3).
+ * Интерлюдии (после Акта 4, порядок P1–P3 по PoL-2) вынесены в INTERLUDES:
+ * это сайд-хабы без сводной monsterLevel-прогрессии кампании, поэтому в
+ * LEVELING_ZONES они не включаются (каждая зона массива требует monsterLevel
+ * и участвует в ilvl-подборе зон). Заметки интерлюдий — data/zoneNotes.json.
+
  */
 
 import type { LevelingZone } from './types.js';
@@ -51,8 +60,10 @@ export const ACT_REWARDS: QuestReward[] = [
   { zone: 'Arastas', boss: 'Evening Bell', reward: '3 Exalted Orbs' },
 ];
 
-/** Перечень точных зон кампании по порядку (Акты 1–4). */
-export const LEVELING_ZONES: { act: number; actName: string; zone: string; monsterLevel: number }[] = [
+/** Перечень точных зон кампании по порядку (Акты 1–4).
+ *  `optional: true` — сайд-зона вне mainline («Optional Area!» в PoL-2):
+ *  monsterLevel в ней может быть ниже хвоста акта, головы mainline не портит. */
+export const LEVELING_ZONES: { act: number; actName: string; zone: string; monsterLevel: number; optional?: boolean }[] = [
   // Act 1 — Пробуждение
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'The Riverbank', monsterLevel: 1 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Clearfell', monsterLevel: 3 },
@@ -121,33 +132,82 @@ export const LEVELING_ZONES: { act: number; actName: string; zone: string; monst
   { act: 4, actName: 'Акт 4: Острова', zone: 'The Excavation', monsterLevel: 62 },
   { act: 4, actName: 'Акт 4: Острова', zone: 'Ngakanu', monsterLevel: 63 },
   { act: 4, actName: 'Акт 4: Острова', zone: 'Heart of the Tribe', monsterLevel: 64 },
-  { act: 4, actName: 'Акт 4: Острова', zone: 'Plunder\'s Point', monsterLevel: 56 },
+  // PoL-2 G4_13: «Optional Area!» — сайд-зона Expedition после финала акта;
+  // уровень 56 ниже финального 64, поэтому она optional и не участвует в
+  // mainline-цепочке «Следующая зона» / nextZones (фикс аудита S3).
+  { act: 4, actName: 'Акт 4: Острова', zone: 'Plunder\'s Point', monsterLevel: 56, optional: true },
+];
+
+/**
+ * Интерлюдии PoE2 (0.5) — опциональные хаб-зоны между кампанией и эндгеймом.
+ * Порядок P1–P3 — по PoL-2 (zoneReferenceData.json: после G4_13 Plunder's Point);
+ * по 055-исследованию (ZiggyD 0.5.5) Curse of Holten указан «после акта 2» —
+ * расхождение позиционирования, приоритет отдан PoL-2 (см. отчёт фикса S3).
+ * Награды — фактические данные PoL-2 (Zone Notes Interludes), уже есть в
+ * data/zoneNotes.json (P1_Town..P3_Town).
+ */
+export const INTERLUDES: { interlude: number; zone: string; zoneCode: string; rewards: string[] }[] = [
+  {
+    interlude: 1,
+    zone: 'Curse of Holten',
+    zoneCode: 'P1_Town',
+    rewards: ['Soul of the Ferryman (Holten) — дешёвые Greater Runes', '+2 Passive Points (Wolvenhold)'],
+  },
+  {
+    interlude: 2,
+    zone: 'The Stolen Barya',
+    zoneCode: 'P2_Town',
+    rewards: ['+5% Max Life (Skullmaw Stairway, The Khari Crossing)', '+2 Passive Points (Worm and Scorpion)', 'Выбор из 7 баффов (Qimah, можно сменить позже)'],
+  },
+  {
+    interlude: 3,
+    zone: "Doriyani's Contingency",
+    zoneCode: 'P3_Town',
+    rewards: ['+40 Max Spirit (Kriar Village)', '+2 Passive Points (Howling Caves)', 'Уникальный предмет (Elder Maddox, Kriar Peaks)'],
+  },
 ];
 
 /**
  * Собрать полный план прокачки с наградами.
  * Порядок — по массиву зон; награды привязываются по имени зоны.
+ * Фикс S3: mainline-цепочка («Следующая зона», финал-босс) строится по
+ * не-optional зонам — сайд-зоны не предлагаются как следующий шаг сюжета.
  */
 export function buildLevelingPlan(): LevelingZone[] {
   const rewardFor = (zone: string): string[] =>
     ACT_REWARDS.filter((r) => r.zone.toLowerCase() === zone.toLowerCase()).map((r) => r.reward);
 
-  return LEVELING_ZONES.map((z, i) => ({
-    act: z.act,
-    actName: z.actName,
-    zone: z.zone,
-    monsterLevel: z.monsterLevel,
-    hasWaypoint: CAMPAIGN_WAYPOINTS[z.zone],
-    steps: [
+  const zones = LEVELING_ZONES;
+  // Индекс следующей mainline-зоны (сайд-зоны пропускаются).
+  const nextMainlineIdx = (i: number): number | null => {
+    for (let j = i + 1; j < zones.length; j++) if (!zones[j]!.optional) return j;
+    return null;
+  };
+
+  return zones.map((z, i) => {
+    const optional = !!z.optional;
+    const steps: string[] = [
       z.zone === 'The Riverbank'
-        ? 'Убить Хиллока и выйти в город'
-        : `Пройдите зону "${z.zone}" (рекомендуемый уровень ${z.monsterLevel})`,
-      ...(i < LEVELING_ZONES.length - 1
-        ? [`Следующая зона: ${LEVELING_ZONES[i + 1]!.zone}`]
-        : ['Финальный босс Акта — Тавакай']),
-    ],
-    rewards: rewardFor(z.zone),
-  }));
+        ? 'Пройдите пролог к первому городу (Hillock — босс PoE1, в PoE2 его нет; первый сюжетный босс — Beira в Clearfell)'
+        : optional
+          ? 'Опциональная зона (сайд-контент, вне сюжетной цепочки акта)'
+          : `Пройдите зону "${z.zone}" (рекомендуемый уровень ${z.monsterLevel})`,
+    ];
+    if (!optional) {
+      const nIdx = nextMainlineIdx(i);
+      steps.push(nIdx != null ? `Следующая зона: ${zones[nIdx]!.zone}` : 'Финальный босс Акта — Тавакай');
+    }
+    return {
+      act: z.act,
+      actName: z.actName,
+      zone: z.zone,
+      monsterLevel: z.monsterLevel,
+      optional: optional || undefined,
+      hasWaypoint: CAMPAIGN_WAYPOINTS[z.zone],
+      steps,
+      rewards: rewardFor(z.zone),
+    };
+  });
 }
 
 /** Кэш плана, чтобы не пересобирать структуру каждый вызов. */
@@ -164,12 +224,19 @@ export function getZonesByAct(act: number): LevelingZone[] {
   return getLevelingPlan().filter((z) => z.act === act);
 }
 
-/** Рекомендуемый "следующий шаг" по текущей зоне. */
+/** Рекомендуемый "следующий шаг" по текущей зоне.
+ *  Фикс S3: в «следующие» попадают только mainline-зоны ТЕКУЩЕГО акта —
+ *  сайд-зоны (напр. Plunder's Point ниже уровнем) и зоны соседних актов
+ *  не подмешиваются как «следующая» для сюжета. */
 export function nextZones(currentAct: number, currentZone?: string): LevelingZone[] {
   const plan = getLevelingPlan();
   const idx = plan.findIndex((z) => z.act === currentAct && (!currentZone || z.zone === currentZone));
   if (idx < 0) return plan.filter((z) => z.act >= currentAct);
-  return plan.slice(idx, idx + 3);
+  const cur = plan[idx]!;
+  const rest = cur.optional
+    ? [] // стоим в сайд-зоне: без mainline-«следующих» внутри неё
+    : plan.slice(idx + 1).filter((z) => z.act === currentAct && !z.optional).slice(0, 2);
+  return [cur, ...rest];
 }
 
 /** Квестовые награды конкретной зоны. */

@@ -237,24 +237,44 @@ export const PINNACLE_BOSSES: BossInfo[] = [
       'Origin Spark + Origin Cradle (Matriarch/Patriarch Halls) → собрать Origin Core → вершина Origin Tower; требует пройденного Arbiter of Ash (0.5, verified poe2wiki/timesaver через maxroll Boss Loot Table Cheat Sheet 0.5)',
     reward: 'уники; атлас-очки (сумма за 4 сложности механики, точные цифры 0.5 не верифицированы — проверить в игре)',
     atlasPoints: null,
-    tips: ['Главный пиннакл патча 0.5; быстрый aggression-based босс (детальные механики — UNVERIFIED, гайд-страницы не собирались).'],
+    // Механики — poe2db (внутриигровые данные, 02.10.2026): https://poe2db.tw/us/The_Arbiter_of_Divinity
+    strengths: [
+      'Копейщик, 2 фазы. P1: WingFlapCombo (30% phys → lightning), SwoopSlam, SpearToss (pierce + деген-поле lightning 15с), OrbitTotem (орбитальные lightning-снаряды), ExtendoSpearCombo (dash-stab + zap-beams 500% shock + volatile 1323–3969 lightning).',
+      'P2: BlinkSlam, StormBlink (860–2580 lightning, shock as 200% more, НЕ дожится), SoulRelease, Triangulate (280%/180% more).',
+    ],
+    weaknesses: [
+      'Резисты: Lightning +45%, но Fire −15% (СЛАБОСТЬ) — брать fire-урон; Cold/Chaos 0. lvl 79, Life 990% + ES 10%. Отвечать перекатами на не-дожимыеся slam-ы (StormBlink, SpearToss-импакт), перемещаться при OrbitTotem.',
+    ],
+    tips: ['Главный пиннакл патча 0.5; механики verified poe2db (The Origin Tower, tier 3, lvl 79).'],
   },
   {
     name: 'The Raven Trickster',
     kind: 'pinnacle',
-    zone: 'Delirium (энкаунтер)',
-    access: "Способ доступа НЕ верифицирован (см. unverifiedNote)",
+    zone: 'The Withered Willow (pinnacle-карта атласа, Delirium-регион)',
+    access: "Grand Mirror → Simulacrum → Mirror of Madness / Raven's Reflection (maxroll cheat sheet 0.5); poe2db: зона The Withered Willow",
     reward: 'уники',
     verified: false,
-    unverifiedNote: 'Подтверждён как босс 0.5 патчноутом 0.5.5: «Raven Trickster no longer has All Elemental Resistances»; связан со стаффом The Raven’s Flock. Способ доступа НЕ верифицирован. 02.10.2026: maxroll cheat sheet 0.5 называет вход «Raven\'s Reflection из Simulacrum» (Withered Willow) — вероятно, ДУБЛЬ записи Tang\'Mazu ниже; до in-game проверки записи не сливать.',
+    unverifiedNote:
+      "02.10.2026 (poe2db): игровое имя The Raven Trickster, но внутренний Metadata = Monsters/DeliriumTangmazu/TangmazuBoss — это ОДИН босс с записью Tang'Mazu ниже (technical duplicate). Патчноут 0.5.5 «Raven Trickster no longer has All Elemental Resistances» подтверждён данными: резисты 0/0/0/0, Life 990% + ES 10%, ES-щит. Связан со стаффом The Raven's Flock. Записи не слиты — см. cross-reference в Tang'Mazu.",
   },
   {
     name: "Tang'Mazu",
+    name_en: 'The Raven Trickster',
     kind: 'pinnacle',
-    zone: 'Mirror of Madness (Delirium)',
+    zone: 'Mirror of Madness (Delirium); pinnacle-карта — The Withered Willow',
     access: 'Grand Mirror → Simulacrum → Mirror of Madness',
     reward: 'уники',
-    tips: ['Omniphobia и Kosis — подчинённые боссы внутри Simulacrum, НЕ пиннаклы.'],
+    unverifiedNote:
+      "02.10.2026 (poe2db): ВНУТРЕННЕЕ ИМЯ Tang'Mazu = Metadata/Monsters/DeliriumTangmazu/TangmazuBoss, та же страница, что и The Raven Trickster (см. запись выше) — это один босс: игровое имя Raven Trickster, внутреннее Tangmazu. Отдельной страницы Tang'Mazu на poe2db нет.",
+    // Механики — poe2db (внутриигровые данные, 02.10.2026): https://poe2db.tw/us/The_Raven_Trickster
+    strengths: [
+      'Зеркальная механика: MirrorActivate (6 позиций), MirrorTeleport, SpawnFloatingMirrors, MirrorBeam (лучи в 5 стихиях) + RefractionBeam с бонсами.',
+      'FrostShards/FrostWall/FrostComet; Fireball/RedirectingFireball; StormCall (886–2659 lightning); VolatileFlame Blast (не дожится, +66% центр); PhaseChangeBlast (+500% центр); RavenWave; PillarSlam.',
+    ],
+    weaknesses: [
+      'Резисты 0/0/0/0 (0.5.5 убрал All Elemental Res — подтверждено данными). Life 990% + ES 10%. Против зеркал — разносить зеркала до RefractionBeam, чистить floating mirrors.',
+    ],
+    tips: ['King in the Mist — страж цепочки Ritual, НЕ этот босс.', 'Omniphobia и Kosis — подчинённые боссы Simulacrum, НЕ пиннаклы.'],
   },
   {
     name: 'Xesht, We That Are One',
@@ -272,9 +292,18 @@ export const PINNACLE_BOSSES: BossInfo[] = [
   {
     name: 'The Bodach',
     kind: 'pinnacle',
-    zone: 'Ritual — цепочка Rite of the Nameless',
+    zone: 'Ritual — цепочка Rite of the Nameless; endgame-зоны: Gone Fishing, Caer Tarth',
     access: '5 карт цепочки Rite of the Nameless (боссы переносятся вперёд)',
     reward: 'уники',
+    // Механики — poe2db (внутриигровые данные, 02.10.2026): https://poe2db.tw/us/The_Bodach
+    strengths: [
+      'lvl 79, Life 1820%, Armour +75%, резисты 0/0/0/0; аура «The Bodach haunts your Presence» (wendigo-манифестация).',
+      'FistSlam; Mothrower (317–1072 phys AoE); HeadGeyser (снаряд, импакт 952–1429 phys); HeadSlam (+120% more, НЕ дожится/НЕ блокится, порождает chaos-поле 1286/с на 20с); Vacuum (35с CD: канал + knockdown → VacuumVomit 2117–3175 phys + caustic-поле).',
+      'P2: телепорт-мили; Bombard (~1588 phys, +25% центр); SlamMeteor (+280%, 180% more, НЕ дожится/НЕ блочится); BackwardsSwipeout; Jumpscare.',
+    ],
+    weaknesses: [
+      'Все резисты 0 — любой элемент. Против не-дожимыхся slams — позиционирование вместо блока; выходить из chaos/caustic-полей HeadSlam/Vacuum; на Vacuum-канале (35с CD) — разрывать дистанцию.',
+    ],
     tips: ['King in the Mist — только страж цепочки, НЕ пиннакл.'],
   },
   {

@@ -42,7 +42,7 @@ Screenshots (overlay over the game): [build shopping list](https://github.com/Wa
 * **Build import** — paste a PoB2 share code: slots, tree progress, DPS estimate, and per-slot price estimates.
 * Currency rates, endgame ("pinnacle") checklists, a crafting-recipe catalogue, and a jargon dictionary for newer players.
 
-**Full Russian-client support** — this was the whole reason I started: RU item names, RU gem names, RU zone names all resolve to their English trade counterparts (a 2,300-entry dictionary built from community data), so price checking works out of the box on a Russian client. English clients work too.
+**Full Russian-client support** — this was the whole reason I started: RU item names, RU gem names, RU zone names all resolve to their English trade counterparts (a ~2,400-entry dictionary built from community data), so price checking works out of the box on a Russian client. English clients work too.
 
 **Safety / legality, stated plainly** (because I'd want to see this in any tool post):
 
@@ -52,11 +52,11 @@ Screenshots (overlay over the game): [build shopping list](https://github.com/Wa
 * Clipboard watching is opt-in and off by default. No data about you is sent anywhere — network calls go to public APIs only (trade2, poe.ninja, poe2scout).
 * Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does not endorse this project.
 
-* **Download** (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-1.0.19-win64.zip` — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
+* **Download** (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) → `poe2-kit-portable-…-win64.zip` (the latest release's zip) — unzip → run `start-overlay.bat` (it downloads the Electron runtime once, ~110 MB, then works offline). No admin rights, no installer, no Node.js needed.
 * **Source:** [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit) — full source code and version history. I'm not asking anyone to trust a binary they can't read.
 * **Canonical repo** (RU docs, development, issues): [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
 
-**Ask**: if you tried it — what's missing for your league start? I'm specifically unsure whether the combo-import code PoB2 accepts cleanly on all setups, and how far to take the English translation next (panel chrome is EN since v1.0.18; guide content inside the panels is still RU — would a full content translation help you?). Bug reports and ideas → issues on GitHub or SourceCraft. Thanks for reading!
+**Ask**: if you tried it — what's missing for your league start? I'm specifically unsure whether the combo-import code PoB2 accepts cleanly on all setups, and whether non-RU players want a full translation of the guide content (boss tips, levelling-route notes, slang glossary, craft recipes) — the panel UI itself has been switchable to EN since v1.0.18, and gem and currency names follow a separate setting. Bug reports and ideas → issues on GitHub or SourceCraft. Thanks for reading!
 
 The project is completely free. If you find it useful, there's an entirely optional support link at the bottom of the README — no pressure either way.
 P.S. I'm getting married on October 22 — so that support link is, let's say, seasonally relevant this month 🙂
@@ -84,7 +84,9 @@ Screenshots for those who don't want to click through to GitHub:
 3. Справа вверху — кнопка **«Create Post»** (или «Создать запись»). Нажимаешь.
 4. **Тип поста: обязательно «Text»** (вкладка «Text» / «Текст» — вторая сверху). НЕ выбирай «Link» и «Image» — иначе не вставится текст, и пост никто не прочитает.
 5. **Поле «Title» (Заголовок):** вставляешь БЛОК 1 (одна строка).
-6. **Большое текстовое поле:** вставляешь БЛОК 2 целиком. Звёздочки (`*`, `**`), стрелки `→` и скобки `[текст](ссылка)` оставляй как есть — reddit сам превратит их в жирный шрифт и кликабельные ссылки. Ничего вручную не правь: каждая ссылка уже в тексте (GitHub Releases, исходники, SourceCraft, два скриншота).
+6. **Большое текстовое поле.** ⚠️ Зависит от редактора:
+   - **Черновик уже готов и красиво размечен** (заголовок, тело, флейр Tool, всё сохранено). Самый лёгкий путь: открой свой черновик `https://www.reddit.com/r/PathOfExile2/submit/?type=TEXT&draft=1bba1324-bdd5-11f1-b379-963f7717406f`, посмотри глазами и жми «Опубликовать» — разметка уже стоит.
+   - Если вставляешь БЛОК 2 руками в новом reddit (Fancy Pants): он **НЕ превращает звёздочки в жирный** — текст останется с голыми `**`. Тогда либо используй кнопки редактора (B, список, ссылка), либо открой `old.reddit.com/r/PathOfExile2/submit` — там markdown парсится как надо, вставь БЛОК 2 как есть (звёздочки, `→`, `[текст](ссылка)` — всё сработает).
 7. Нажимаешь **«Post»**. Пост опубликован.
 8. **Первый комментарий (обязательно, в течение пары минут):** открой свой пост → поле «Add a comment» → вставь БЛОК 3 → под полем нажми иконку **«Image»** → выбери файлы по очереди:
    - `C:\Users\mezhavikiserj\BildPOE2\poe2-kit\docs\screenshots\overlay-build-en.png`

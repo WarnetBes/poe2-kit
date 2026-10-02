@@ -17,11 +17,13 @@
     "live-smoke": "node live-smoke.mjs",
     "contribute-items": "node contribute-items.mjs",
     "merge-contributions": "node merge-contributions.mjs",
-    "test": "npm run build && npm run smoke"
+    "test": "vitest run",
+    "test:full": "npm run build && vitest run && npm run smoke"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

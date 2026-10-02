@@ -1,133 +1,106 @@
-# Reddit post draft — r/PathOfExile2 (EN)
+# Reddit post — FINAL (EN) — r/PathOfExile2
 
-> Черновик с вариантами. Факты сверены с CHANGELOG 1.0.18 и кодом
-> (win32.ts: три read-only user32-функции; main.ts: Client.txt, clipboard opt-in).
-> Ссылки верифицированы анонимным curl 01.10.2026: GitHub zip качается
-> анонимно (SHA совпадает с эталоном), страница репо/релизов 200.
-> Перед постом: сверить rules r/PathOfExile2 в живом браузере (из этой
-> сессии reddit отдаёт Cloudflare-блок; возможны требования к self-promo).
-> 01.10 №159: заголовок №1 и первый абзац Body переписаны под новичковый
-> угол («how hard it is to get into PoE2») — остальное тело без изменений.
+> Готовый к копипасте текст. Факты сверены с README.en.md, README.md, CHANGELOG 1.0.19, apps/overlay/src/main.ts (12 вкладок), git remote (WarnetBes/poe2-kit). Дата подготовки: 02.10.2026.
+> Секции ниже «КОНЕЦ ТЕЛА ПОСТА» — служебные (план крест-постинга, шаблоны ответов), в reddit НЕ копировать.
+> существующие черновики: POST_REDDIT_EN.md (ранний драфт с длинным заголовком) и POST_REDDIT_READY.md (старая версия) — оставлены для истории, этот файл — финал.
 
-## Title (варианты; №1 — новичковый угол, рекомендован)
+---
 
-1. PoE2 Kit — a free companion overlay I built as a genre newcomer to survive Path of Exile 2: price check, boss timers, craft plans, PoB2 import (full RU-client support)
-2. I kept alt-tabbing to price-check my drops on the RU client — so I built a full-Russian overlay, and it does boss timers too
-3. PoE2 Kit v1.0.19 — an external overlay (log-file only, no game memory access): prices, levelling, crafting, builds
+## TITLE (одна строка, 78 символов — лимит reddit ~300, цель ≤90)
 
-## Body
+```
+PoE2 Kit — free open-source overlay + 59-tool MCP server for Path of Exile 2
+```
 
-Hey everyone! I came to Path of Exile 2 as a complete newcomer to this genre
-— no PoE1 muscle memory, none of the knowledge that guides seem to assume
-you already have. Honestly, the first couple of weeks nearly broke me:
+Альтернатива (если хочется личного угла, 79 симв.):
 
-* I'd pick up a rare, alt-tab to a price-check site, paste the item, get
-  nothing useful, alt-tab back — and I'd be dead.
-* Every guide said "just import it into PoB" — which turned out to be a
-  whole second program with its own arcane share codes.
-* Crafting advice assumed I already knew what an essence, an omen or a
-  soul core does. I did not.
-* Global chat spoke pure jargon — I had to google "waystone" to understand
-  what I was even supposed to be farming.
+```
+I built a free open-source PoE2 companion: overlay, web dashboard, 59 AI tools
+```
 
-I got tired of playing the game in one window and the wiki in four others,
-so over the last few weeks I built **PoE2 Kit** — a free companion overlay
-for Path of Exile 2. Sharing it in case it helps other new players survive
-their first league, and I'd genuinely like feedback on what to build next.
+---
 
-Screenshots (overlay over the game): [build shopping list](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-build-en.png) · [price check with the raw market table](https://github.com/WarnetBes/poe2-kit/raw/main/docs/screenshots/overlay-price-en.png) — note a Russian-client clipboard item resolved to its English name ("Uncut Spirit Gem") and priced in chaos. As of v1.0.18 the panel UI itself is switchable to English (Settings → RU/Auto/EN); guide content inside the panels (boss tips, levelling-route notes, slang glossary, craft recipes) is still Russian for now, and gem/currency names follow a separate language setting.
+## BODY (текстовый пост, ~350 слов; markdown-friendly)
 
-**What it does** (everything works from hotkeys, noisy bits are opt-in):
+>>> НАЧАЛО ТЕЛА ПОСТА
 
-* **Price check** — hover an item → Ctrl+C → Ctrl+F1: median estimate in
-  chaos-equivalents (live trade2 + poe.ninja + poe2scout, ~10 listings, per
-  league).
-* **Boss timer + boss cards** — it watches the game log for zone entry and
-  starts a stopwatch at the boss door; «🏆 killed» / «💀 died» buttons track
-  attempts and best times per league. Boss cards show their damage types,
-  strengths and weaknesses (researched against current guides).
-* **Levelling tracker** — reads zone-entry lines from the game log and marks
-  campaign progress, permanently-rewardable zones and quest rewards.
-* **Craft planner** — paste any item → a step-by-step crafting plan with an
-  SSF-friendly estimate of the currency it needs.
-* **Combo builder** — pick an active + compatible supports, get a
-  ready-to-paste import code for PoB2.
-* **Build import** — paste a PoB2 share code: slots, tree progress, DPS
-  estimate, and per-slot price estimates.
-* Currency rates, endgame ("pinnacle") checklists, a crafting-recipe
-  catalogue, and a jargon dictionary for newer players.
+Hey r/PathOfExile2! I've been building **PoE2 Kit** — a free, open-source (MIT) companion for Path of Exile 2. One core, three frontends, data from free public APIs only — no keys, no telemetry:
 
-**Full Russian-client support** — this was the whole reason I started: RU
-item names, RU gem names, RU zone names all resolve to their English trade
-counterparts (a 2,300-entry dictionary built from community data), so price
-checking works out of the box on a Russian client. English clients work too.
+- **Windows overlay** that sits over the game: 12 tabs of helper panels, all driven by hotkeys;
+- **Browser dashboard**: currency rates, price check, build import;
+- **MCP server** — 59 `poe2_*` tools, so your AI assistant (OpenCode, Claude Desktop, …) can price items, decode PoB2 share codes, pull ladders, and compute EHP/Spirit using the PoB2 formulas.
 
-**Safety / legality, stated plainly** (because I'd want to see this in any
-tool post):
+**What the overlay does:**
 
-* The kit **never reads game memory, never injects anything, never simulates
-  input** — no automation of any kind. This is an entirely external tool,
-  the category GGG's policy allows ("It's okay to run things that are
-  entirely external to the game").
-* Its only two data sources are: the standard game log file
-  `logs\LatestClient.txt` (zone-entry lines — the same file every levelling
-  overlay reads) and the clipboard, when you press Ctrl+C on an item.
-* The overlay window calls exactly three **read-only** Win32 functions to
-  stay on top of the game window (`EnumWindows`, `GetWindowRect`,
-  `GetForegroundWindow`). If you want zero of those: one checkbox in
-  settings disables even that.
-* Clipboard watching is opt-in and off by default. No data about you is sent
-  anywhere — network calls go to public APIs only (trade2, poe.ninja,
-  poe2scout).
-* Standard disclaimer: third-party tools are use-at-your-own-risk; GGG does
-  not endorse this project.
+- **Price check on a hotkey** — hover an item → Ctrl+C → Ctrl+F1: a median estimate with a confidence label and the raw market table, from trade2 + poe.ninja + poe2scout.
+- **Build shopping list** — paste a PoB2 share code (Ctrl+F3): per-slot target gear with live prices, tree progress, DPS estimate.
+- **Gem setups** — which support gem goes where, checked off as you socket them.
+- **Leveling guide** that follows your actual zone (reads the standard game log), **boss timer**, **craft planner** with a recipe catalogue, **currency rates**, **pinnacle readiness checklist** (Ctrl+F7).
 
-* Download (portable, ~38 MB zip): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-  `poe2-kit-portable-1.0.19-win64.zip` — unzip → run `start-overlay.bat`
-  (it downloads the Electron runtime once, ~110 MB, then works offline).
-  No admin rights, no installer, no Node.js needed.
-* Source: [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit)
-  — full source code and version history. I'm not asking anyone to trust a
-  binary they can't read.
-* Canonical repo (RU docs, development, issues):
-  [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
+**Safety, stated plainly** — because I'd want to see this in any tool post:
 
-**Ask**: if you tried it — what's missing for your league start? I'm
-specifically unsure whether the combo-import code PoB2 accepts cleanly on
-all setups, and whether non-RU players want a full translation of the panel
-UI (it's currently RU with EN item data). Bug reports and ideas → issues on
-GitHub or SourceCraft. Thanks for reading!
+- It never reads game memory, never injects anything, never simulates input. No automation of any kind.
+- It reads exactly two things: the standard game log the game itself writes to disk, and the clipboard when you press Ctrl+C on an item.
+- Staying on top of the game window uses exactly three read-only Win32 calls (`EnumWindows`, `GetWindowRect`, `GetForegroundWindow`). One checkbox in settings disables even that.
+- Standard disclaimer: third-party tools are use at your own risk; this project is not affiliated with or endorsed by GGG.
 
-The project is completely free. If you find it useful, there's an entirely
-optional support link at the bottom of the README — no pressure either way.
-P.S. I'm getting married on October 22 — so that support link is, let's say,
-seasonally relevant this month 🙂
+The **Russian client works out of the box** — built-in RU⇄EN dictionaries translate item and gem names on the fly — and since v1.0.18 the panel UI itself is switchable to English (.EN translation of the guide content inside panels is a known WIP).
 
-## Publish checklist (r/PathOfExile2)
+[SCREENSHOT 1: приложить в первом комментарии docs/screenshots/overlay-price-en.png — прайс-чек поверх игры; свежий EN-скрин v1.0.19 приветствуется]
 
-1. **Rules — верифицированы 01.10.2026 (владелец прислал текст)**. Ключевые:
-   - **Self-promotion**: максимум 2 промо-поста в неделю; желательно ~10
-     осмысленных комментов в сабреддите на 1 промо; заголовок обязан объяснять,
-     почему незнакомцу это интересно (варианты 1/3 это делают).
-   - **Use English**: пост EN — ок; RU-скрины допустимы, но лучше подписать
-     («RU client, EN item data»), что в теле уже сделано.
-   - **Content must feature PoE**: text-post — ок; скрины с игровым контентом
-     (когда друг пришлёт живые) усиливают соответствие.
-   - **No signup-walls**: GitHub — анонимная скачка, ок. SourceCraft-канон
-     оставить второй ссылкой.
-2. **Аккаунт**: постить с аккаунта с историей участия (не свежая регистрация);
-   если аккаунт новый — сначала прогреть 2–3 недели обычными комментариями;
-   критично для self-promo-правила (10:1). В посте уже есть прозрачность
-   («I built»), это и есть reddit-гигиена.
-3. **Тип поста**: text-post (не link-post) — тело выше, ссылка внутри.
-   Заголовок — вариант 1 или 3 (вариант 2 мягче, но длиннее 220 симв. —
-   reddit режет; проверить лимит при вставке).
-4. **Время**: постить в прайм NA/EU (18:00–21:00 UTC), не в выходной поток
-   лутеров — иначе bury без чтения.
-5. **После поста**: не отвечать на каждое сообщение шаблоном; отвечать по
-   делу; критику про RU-гайд-контент (боссы/маршрут/слэнг) принимать
-   как честный known-limitation, не спорить.
-6. **Не кросспостить** тот же текст в другие сабреддиты в один день —
-   анти-спам-фильтр reddit помечает одинаковое содержимое как
-   скоординированный спам.
+[SCREENSHOT 2: приложить в первом комментарии docs/screenshots/overlay-build-en.png — шопинг-лист билда]
 
+- **Download** (portable zip, ~37 MB — unzip, run `start-overlay.bat`; no installer, no admin rights): [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest)
+- **Source code** (MIT): [github.com/WarnetBes/poe2-kit](https://github.com/WarnetBes/poe2-kit) — full source, I'm not asking anyone to trust a binary they can't read
+- **Canonical repo & issue tracker**: [sourcecraft.dev/volkovpartilaholin/poe2-kit](https://sourcecraft.dev/volkovpartilaholin/poe2-kit)
+
+It's a young solo project — not perfect, and item-stat mappings occasionally lag a GGG patch. Bug reports, ideas and contributions are genuinely welcome (see CONTRIBUTING.md / SECURITY.md — code changes are reviewed manually before merging). If you try it: what's missing for your league start?
+
+>>> КОНЕЦ ТЕЛА ПОСТА
+
+---
+
+## ПЛАН КРЕСТ-ПОСТИНГА (служебное, не постить)
+
+### 1. r/PathOfExile2 — главный сабреддит
+
+- Тип: **text-post** (не Link, не Image), флейр **Tool** (меню «…» → Add flair; если нет списка — пропустить).
+- Первый комментарий сразу после публикации: скриншоты (reddit не показывает превью картинок внутри текстового поста — см. placeholder выше).
+- Аккаунт: обязательна история участия (~10 осмысленных комментов на 1 промо-пост, максимум 2 промо-поста в неделю — правило сабреддита, текст правил сверен владельцем 01.10). Свежая регистрация = автомод пометит как спам.
+
+### 2. r/pathofexile — ТОЛЬКО ПОСЛЕ ПРОВЕРКИ ПРАВИЛ (риск)
+
+- ⚠️ **Риск Rule 9 (self-promo)**: из этой среды reddit недоступен (403/Cloudflare), актуальный текст правил r/pathofexile НЕ проверен. Владелец обязан открыть правила сабреддита вживую перед постом.
+- Если правила допускают tool-showcase — постить **не ранее чем через 2–3 дня** после поста в r/PathOfExile2 и **другим текстом/углом** (иначе анти-спам фильтр reddit помечает дубликат как координированный спам, ср. урок из старого драфта).
+- Если правила жёсткие — альтернатива: не пост, а осмысленный комментарий под чьим-то «help me price-check» тредом со ссылкой на kit. Это не нарушает 9-ку и прогревает аккаунт.
+
+### 3. Тайминг (по патчному циклу 0.5.5)
+
+- Патч 0.5.5 «Forbidden Rites» живёт с 04.09.2026 → сейчас **середина лиги** — окно «контентного затишья», лучший момент: аудитория свободна, конкурентные тулы чинят данные.
+- **НЕ постить**: в день старта следующей лиги/патча (утонет в потоке; плюс наш stat-id-маппинг традиционно ломается на каждом патче GGG — сначала прогнать live-smoke, убедиться, что прайсы живые).
+- День: будний, **18:00–21:00 UTC** (прайм NA+EU).
+- Второй инфоповод (если нужен): 22.10 — свадьба, «seasonal» P.S. уже есть в теле опционально; помнить лимит 2 промо-поста/неделю.
+
+### 4. Ответ-шаблоны на предсказуемые вопросы (первые 5)
+
+**Q1. «Is this bannable?»**
+> Read-only by design. It never touches game memory, never injects code, never simulates input. It reads exactly two channels the game/user produces: the standard log file (the same one every levelling overlay reads — GGG's developer policy explicitly says reading the game's log files is okay as long as the user is aware) and the clipboard when you Ctrl+C an item yourself. The window-binding uses three read-only user32 calls, and even that can be turned off in settings. That said, standard disclaimer: third-party tools are use-at-your-own-risk, and this project is not affiliated with or endorsed by GGG — the final decision is yours.
+
+**Q2. «How is this different from Exiled Exchange 2 / Sidekick?»**
+> EE2 is a great dedicated price-checker — if you only need hotkey pricing, use it. The kit adds the build side: PoB2 share-code import with per-slot prices, gem setup tracking, a leveling guide that follows your zone, a craft planner, a browser dashboard, an MCP server to drive all of it from an AI assistant, and full RU-client support. Different focus, not a replacement.
+
+**Q3. «Why a zip with .bat files instead of an installer?**»**
+> No installer, no admin rights, nothing in the registry. Unzip → run `start-overlay.bat`; on first run it downloads the Electron runtime (~110 MB) once, then works offline. Source-code route (Node.js ≥ 20) is also available if you prefer to build it yourself.
+
+**Q4. «Does it work with a non-English client?»**
+> Russian client is fully supported out of the box — RU⇄EN dictionaries translate item/gem names on the fly (that's how the project started). Since v1.0.18 the panel UI is switchable RU/Auto/EN; the guide content inside panels (boss tips, route notes, recipes) is still being translated — honest known limitation.
+
+**Q5. «Why should I trust a zip from a random dev?»**
+> Full source is on GitHub (MIT) — read it, or build from source yourself. The only network endpoints are public price APIs (trade2, poe.ninja, poe2scout); there's no telemetry and nothing is uploaded about you. Releases are mirrored on GitHub so anyone can download anonymously.
+
+### 5. Чек-лист перед постом (30 секунд, руками владельца)
+
+- [ ] https://github.com/WarnetBes/poe2-kit/releases/latest открывается в инкогнито.
+- [ ] Скриншоты существуют/свежи (docs/screenshots/overlay-*-en.png) — вставить в первый комментарий.
+- [ ] Аккаунт прогрет (10:1 комменты/промо).
+- [ ] Название portable-zip НЕ вписывать дословно в текст (автолинкер reddit делает из него фейковый URL — урок из старого драфта).

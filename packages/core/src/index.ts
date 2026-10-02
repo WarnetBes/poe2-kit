@@ -30,6 +30,8 @@ export * from './starterBuilds.js';
 export * from './ssf.js';
 export * from './craftGuide.js';
 export * from './endgame.js';
+export * from './buildPlanner.js';
+import * as buildPlannerMod from './buildPlanner.js';
 export * from './questRewards.js';
 export * from './cache.js';
 export * from './gameConfig.js';
@@ -132,6 +134,7 @@ export const core = {
   questRewards: questRewardsMod,
   craft: craftMod,
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
+  buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
 };
 
 export default core;

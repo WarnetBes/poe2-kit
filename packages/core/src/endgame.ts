@@ -241,14 +241,24 @@ export const CITADEL_ENCOUNTER: CitadelEncounter = {
 };
 
 /**
- * ⚠️ UNVERIFIED: точные численные пороги Waystone-тиров не верифицированы.
- * Не использовать для логики/автоматизации — только как текст-подсказки.
+ * Waystone-тиры → уровень зоны: T1=area level 65 … T16=80, линейно (+1 за тир).
+ * Verified 02.10.2026: https://poe2db.tw/us/Waystones (EndGame Maps).
+ * Требования «T16 только через коррупцию T15» на этой странице НЕТ — не считать подтверждённым.
  */
-export const WAYSTONE_TIERS_UNVERIFIED: WaystoneTip[] = [
-  { text_ru: 'Точные численные пороги Waystone-тиров НЕ верифицированы (unverified) — не закладывать в логику.', verified: false },
-];
+export const WAYSTONE_TIERS: { tier: number; areaLevel: number }[] = Array.from(
+  { length: 16 },
+  (_, i) => ({ tier: i + 1, areaLevel: 65 + i }),
+);
 
-/** Карта этажности Sekhemas (проверено: maxroll/патчноуты 0.5/0.5.5, журнал №114). */
+/** Уровень зоны по тиру Waystone (T1=65 … T16=80; вне 1–16 → null). Verified poe2db/us/Waystones. */
+export function waystoneAreaLevel(tier: number): number | null {
+  if (!Number.isInteger(tier) || tier < 1 || tier > 16) return null;
+  return 64 + tier;
+}
+
+/** Карта этажности Sekhemas: 24–44 → 1, 45–59 → 2, 60–74 → 3, 75+ → 4.
+ *  Verified 02.10.2026: maxroll.gg/poe2/resources/trial-of-the-sekhemas
+ *  («Area level 24 to 44 — 1 Floor … 75+ — 4 Floors»). */
 export const SEKHEMAS_FLOOR_TABLE: { minLevel: number; floors: 1 | 2 | 3 | 4 }[] = [
   { minLevel: 24, floors: 1 },
   { minLevel: 45, floors: 2 },
@@ -305,13 +315,13 @@ export function mechanicsOverview(): MechanicsOverviewRow[] {
 
 /**
  * Подсказки по Waystone-крафту для панели. Верифицированное — из ТЗ №112;
- * численные пороги тиров — отдельно, см. WAYSTONE_TIERS_UNVERIFIED.
+ * тиры → уровни зоны — см. WAYSTONE_TIERS / waystoneAreaLevel (verified poe2db).
  */
 export function waystoneTips(): WaystoneTip[] {
   return [
     { text_ru: 'Крафтите Waystone на difficulty-стат или на drop-шанс — модификаторы «Waystone Drop Chance» влияют на качество фрагментов Citadel.', verified: true },
     { text_ru: 'Precursor-планшеты (0.5) заменили старую систему: дроп с монстров активностей, явные моды, стаки.', verified: true },
     { text_ru: 'Планшет «of Champions» (0.5.5): 2–3 rare-планшета вместо 1–2.', verified: true },
-    ...WAYSTONE_TIERS_UNVERIFIED,
+    { text_ru: 'Тир → уровень зоны: T1=65 … T16=80 (level = 64+тир), verified poe2db/us/Waystones.', verified: true },
   ];
 }

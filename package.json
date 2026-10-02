@@ -16,6 +16,8 @@
     "overlay": "npm run dev -w @poe2-kit/overlay",
     "mcp": "npm run start -w @poe2-kit/mcp",
     "test": "npm run test -w @poe2-kit/core",
+    "smoke": "node tests/smoke/run-all.mjs",
+    "smoke:renderer": "node tests/smoke/smoke_renderer.mjs",
     "live-smoke": "npm run build -w @poe2-kit/core && npm run live-smoke -w @poe2-kit/core",
     "portable": "node make-portable.mjs"
   },
