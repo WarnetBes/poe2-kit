@@ -17,6 +17,7 @@ export const OVERLAY_SHELL = `<body>
       <button data-tab="price" title="Прайс предмета из буфера (Ctrl+F1)">💰 Прайс</button>
       <button data-tab="build" title="Панель билда (Ctrl+F2)">🛒 Билд</button>
       <button data-tab="gems" title="Камни навыков билда: сетапы и чек-лист">💎 Камни</button>
+      <button data-tab="suppadv" title="Советчик саппортов: приоритетные камни поддержки под активный навык (отдельно от конструктора)">🧩 Саппорты</button>
       <button data-tab="import" title="Импорт PoB-кода из буфера (Ctrl+F3)">📥 Импорт</button>
       <button data-tab="level" title="Прокачка: контекст уровня (Ctrl+F4)">📈 Прокачка</button>
       <button data-tab="maps" title="Крафт плиток смотрителя (Waystones): рецепты и таблица">🧭 Плитки</button>
@@ -82,6 +83,9 @@ export const OVERLAY_SHELL = `<body>
       </div>
       <div id="genWrap" class="hide">
         <div id="genContent"></div>
+      </div>
+      <div id="suppadvWrap" class="hide">
+        <div id="suppadvContent"></div>
       </div>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>

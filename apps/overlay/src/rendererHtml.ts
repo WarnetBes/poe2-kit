@@ -267,6 +267,7 @@ ${OVERLAY_SHELL}<script>
     $('ratesWrap').classList.toggle('hide', mode !== 'rates');
     $('genWrap').classList.toggle('hide', mode !== 'gen');
     $('importWrap').classList.toggle('hide', mode !== 'import');
+    $('suppadvWrap').classList.toggle('hide', mode !== 'suppadv');
     updateScrollCtl();
   }
 
@@ -274,7 +275,7 @@ ${OVERLAY_SHELL}<script>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -762,6 +763,7 @@ ${OVERLAY_SHELL}<script>
   var genMode = 'meta';          // 'meta' | 'combo'
   var comboData = null;          // ответ buildgen:gemdata (офлайн, на сессию)
   var comboTags = [];            // выбранные EN-теги (AND-фильтр)
+  var comboStyle = null;         // №192: выбранный вид атаки (один; null = все)
   var comboSel = [];             // EN-имена выбранных активных (макс 5)
   var comboSups = {};            // EN(актив) -> [EN(саппорт), …]
   var COMBO_TAGS = [
@@ -770,11 +772,33 @@ ${OVERLAY_SHELL}<script>
     ['Холод', 'Cold'], ['Огонь', 'Fire'], ['Хаос', 'Chaos'],
     ['Физический', 'Physical'], ['Длительность', 'Duration'],
   ];
+  // №192: «зоопарк атак» — виды из style, назначенном в main (приоритет
+  // специфичное→общее: лук/арбалет/копьё раньше снарядов, melee последним).
+  var STYLE_LABELS = [
+    ['Melee', 'Ближний бой'], ['Projectile', 'Снаряды'], ['Bow', 'Лук'],
+    ['Crossbow', 'Арбалет'], ['Spear', 'Копьё'], ['Slam', 'Слэм'],
+    ['Nova', 'Нова'], ['Totem', 'Тотем'], ['Minion', 'Приспешники'],
+    ['Movement', 'Движение'], ['Spell', 'Чары'],
+  ];
+  var STYLE_EMOJI = {
+    Melee: '⚔', Projectile: '🏹', Bow: '🏹', Crossbow: '🔫', Spear: '🔱',
+    Slam: '🔨', Nova: '💥', Totem: '🗿', Minion: '👹', Movement: '💨', Spell: '✨',
+  };
   function comboName(x) {
     var ru = x.ru ? esc(x.ru) : esc(x.en);
     return x.ru && x.ru.toLowerCase() !== String(x.en).toLowerCase()
       ? ru + ' <span style="color:#9aa4b0">' + esc(x.en) + '</span>'
       : ru;
+  }
+  // №194: точки цветов гема (№56, hex как в gem-check): синий=Инт / красный=Сила / зелёный=Ловк.
+  var GEM_HEX = { blue: '#7f8cff', red: '#e0574f', green: '#57d980' };
+  function gemDots(colors) {
+    if (!colors || !colors.length) return '';
+    var out = '';
+    for (var i = 0; i < colors.length; i++) {
+      out += '<span style="color:' + (GEM_HEX[colors[i]] || '#9aa4b0') + '">●</span>';
+    }
+    return out + ' ';
   }
   function bindGenMode(host) {
     var m = host.querySelectorAll('[data-genmode]');
@@ -811,6 +835,9 @@ ${OVERLAY_SHELL}<script>
         if (res.done || (total && got >= total)) {
           comboData = { ok: true, actives: acts, supports: sups, nActive: nA, nSupport: nS };
           renderGenView();
+          // №193: если открыт советчик саппортов — он ждёт этот же датасет.
+          var sw = $('suppadvWrap');
+          if (sw && !sw.classList.contains('hide')) renderSuppadvView();
         } else {
           return pull(offset + items.length);
         }
@@ -833,20 +860,44 @@ ${OVERLAY_SHELL}<script>
     }
     var A = comboData.actives || [];
     var S = comboData.supports || [];
+    // №192: ряд «Вид» — один стиль за раз (клик по другому = замена, повтор = снять).
+    var styleCounts = {};
+    for (var ai = 0; ai < A.length; ai++) {
+      var st = A[ai].style;
+      if (st) styleCounts[st] = (styleCounts[st] || 0) + 1;
+    }
+    var styleChips = STYLE_LABELS.filter(function (x) { return styleCounts[x[0]]; }).map(function (x) {
+      return '<button class="tree-chip' + (comboStyle === x[0] ? ' on' : '') +
+        '" data-cmbstyle="' + x[0] + '">' + (STYLE_EMOJI[x[0]] || '') + ' ' + x[1] +
+        ' <span style="color:var(--dim)">' + styleCounts[x[0]] + '</span></button>';
+    }).join('');
     var tc = COMBO_TAGS.map(function (t) {
       return '<button class="tree-chip' + (comboTags.indexOf(t[1]) >= 0 ? ' on' : '') +
         '" data-cmbtag="' + t[1] + '">' + t[0] + '</button>';
     }).join('');
     var filtered = A.filter(function (a) {
+      if (comboStyle && a.style !== comboStyle) return false;
       return comboTags.every(function (t) { return (a.types || []).indexOf(t) >= 0; });
     }).sort(function (a, b) { return (a.unlock || 0) - (b.unlock || 0); });
+    // №192: подсказка зоопарка в списке — у активов, чей вид уже в связке.
+    function dupStyleMark(a) {
+      if (!a.style) return '';
+      var inCombo = comboSel.some(function (en2) {
+        var o = A.find(function (x) { return x.en === en2; });
+        return o && o !== a && o.style === a.style;
+      });
+      if (!inCombo) return '';
+      var lb = '';
+      for (var si2 = 0; si2 < STYLE_LABELS.length; si2++) if (STYLE_LABELS[si2][0] === a.style) lb = STYLE_LABELS[si2][1];
+      return ' <span style="color:#e0b060">⚠ вид «' + lb + '» уже в связке</span>';
+    }
     var MAX_SHOW = 60;
     var shown = filtered.slice(0, MAX_SHOW);
     var actRows = shown.map(function (a) {
       var ix = comboSel.indexOf(a.en);
       return '<div class="slang-row" data-cmben="' + esc(a.en) + '"><div class="slang-term">' +
         (ix >= 0 ? '<span style="color:#7fc97f">№' + (ix + 1) + '</span> ' : '') + comboName(a) +
-        '</div><div class="slang-def">ур.' + (a.unlock || 0) +
+        '</div><div class="slang-def">ур.' + (a.unlock || 0) + dupStyleMark(a) +
         (ix >= 0 ? ' · <span style="color:var(--dim)">тап — убрать из связки</span>' : '') +
         '</div></div>';
     }).join('');
@@ -856,31 +907,55 @@ ${OVERLAY_SHELL}<script>
         ? '<div class="lvl-hint">Показаны первые ' + MAX_SHOW + ' из ' + filtered.length + ' — уточни фильтром выше.</div>'
         : '') +
       '<div data-cmblist>' + (actRows || '<div class="lvl-hint">Ничего не найдено — сними часть фильтров.</div>') + '</div></div>';
-    // Блоки выбранных активов + их совместимые саппорты.
+    // Блоки выбранных активов + их саппорты.
+    // №192: приоритет — рекомендации (reco: эталон меты / poe2db-ранги);
+    // только при их отсутствии — compat-fallback по attack/spell (как раньше).
     var supBlocks = comboSel.map(function (en) {
       var a = A.find(function (x) { return x.en === en; });
       if (!a) return '';
-      var lo = (a.types || []).map(function (t) { return String(t).toLowerCase(); });
-      var comp = S.filter(function (sp) {
-        return (sp.compat || []).some(function (c) { return lo.indexOf(String(c)) >= 0; });
-      });
-      if (!comp.length) comp = S; // редкий случай: unknown compat — показываем все
       var picked = comboSups[en] || [];
-      var MAX_SP = 24;
-      var spChips = comp.slice(0, MAX_SP).map(function (sp) {
-        var on = picked.indexOf(sp.en) >= 0;
-        return '<button class="tree-chip' + (on ? ' on' : '') +
-          '" data-cmbsup="' + esc(en) + '||' + esc(sp.en) + '">' +
-          (on ? '✔ ' : '') + comboName(sp) + '</button>';
-      }).join('');
-      var supNote = (comp.length > MAX_SP ? '<div class="lvl-hint">Показаны ' + MAX_SP + ' из ' + comp.length + ' саппортов (сортировка датасета).</div>' : '');
+      var supChips = '';
+      var supNote = '';
+      var recoLabel = '';
+      if ((a.reco || []).length) {
+        var MAX_RC = 20;
+        recoLabel = (a.reco[0] && a.reco[0].note) ? a.reco[0].note : 'базово: poe2db Recommended Support Gems (ранг = приоритет)';
+        var rshown = a.reco.slice(0, MAX_RC);
+        supChips = rshown.map(function (r) {
+          var sp = S.find(function (x) { return x.en === r.en; });
+          var nm = sp ? gemDots(sp.colors) + comboName(sp) : esc(r.en);
+          var on = picked.indexOf(r.en) >= 0;
+          var badge = r.tier === 'meta'
+            ? '<span style="color:#e8c667">★</span> '
+            : (r.rank ? '<span style="color:var(--dim)">' + r.rank + '</span> ' : '');
+          return '<button class="tree-chip' + (on ? ' on' : '') +
+            '" data-cmbsup="' + esc(en) + '||' + esc(r.en) + '">' +
+            (on ? '✔ ' : '') + badge + nm + '</button>';
+        }).join('');
+        if (a.reco.length > MAX_RC) supNote = '<div class="lvl-hint">Показаны ' + MAX_RC + ' из ' + a.reco.length + ' рекомендованных.</div>';
+      } else {
+        var lo = (a.types || []).map(function (t) { return String(t).toLowerCase(); });
+        var comp = S.filter(function (sp) {
+          return (sp.compat || []).some(function (c) { return lo.indexOf(String(c)) >= 0; });
+        });
+        if (!comp.length) comp = S; // редкий случай: unknown compat — показываем все
+        var MAX_SP = 24;
+        supChips = comp.slice(0, MAX_SP).map(function (sp) {
+          var on = picked.indexOf(sp.en) >= 0;
+          return '<button class="tree-chip' + (on ? ' on' : '') +
+            '" data-cmbsup="' + esc(en) + '||' + esc(sp.en) + '">' +
+            (on ? '✔ ' : '') + gemDots(sp.colors) + comboName(sp) + '</button>';
+        }).join('');
+        supNote = comp.length > MAX_SP ? '<div class="lvl-hint">Показаны ' + MAX_SP + ' из ' + comp.length + ' (без рекомендаций — уточнение только attack/spell).</div>' : '';
+      }
       var pickedList = picked.length
         ? '<div class="lvl-hint" style="margin-top:3px"> В связке: <b>' +
           picked.map(function (p) { return esc(p); }).join('</b>, <b>') + '</b></div>'
         : '';
       return '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#7fc97f">' +
-        comboName(a) + ' · ур.' + (a.unlock || 0) + ' · ' + (a.types || []).slice(0, 6).join(', ') +
-        '</div><div class="tree-chips">' + spChips + '</div>' + supNote + pickedList + '</div>';
+        gemDots(a.colors) + comboName(a) + ' · ур.' + (a.unlock || 0) + ' · ' + (a.types || []).slice(0, 6).join(', ') +
+        (recoLabel ? '<div class="lvl-hint" style="color:#e8c667">' + recoLabel + '</div>' : '') +
+        '</div><div class="tree-chips">' + supChips + '</div>' + supNote + pickedList + '</div>';
     }).join('');
     // №142: шаговые слоты — связка собирается ПО ПОРЯДКУ: 5 пронумерованных
     // строк, следующий пустой слот подсвечен «← в списке ниже». Друг живет
@@ -892,8 +967,15 @@ ${OVERLAY_SHELL}<script>
       if (en !== undefined) {
         var a = A.find(function (x) { return x.en === en; });
         var ps = (comboSups[en] || []);
-        rows += '<div class="slang-row"><div class="slang-term"><span style="color:#7fc97f">' + (si + 1) + '.</span> ' + comboName(a) +
-          '</div><div class="slang-def">Uncut Skill Gem ур.' + (a ? (a.unlock || 0) : 0) +
+        var stl = '';
+        if (a && a.style) {
+          for (var sl = 0; sl < STYLE_LABELS.length; sl++) {
+            if (STYLE_LABELS[sl][0] === a.style) stl = ' <span style="color:var(--dim)">· ' + STYLE_LABELS[sl][1] + '</span>';
+          }
+        }
+        rows += '<div class="slang-row"><div class="slang-term"><span style="color:#7fc97f">' + (si + 1) + '.</span> ' +
+          (a && a.style ? (STYLE_EMOJI[a.style] || '') + ' ' : '') + (a ? gemDots(a.colors) : '') + comboName(a) +
+          '</div><div class="slang-def">Uncut Skill Gem ур.' + (a ? (a.unlock || 0) : 0) + stl +
           (ps.length ? ' <span style="color:var(--dim)">+ ' + ps.length + ' сапп.</span>' : '') +
           '</div></div>';
       } else {
@@ -916,7 +998,8 @@ ${OVERLAY_SHELL}<script>
       '<button class="tree-chip" data-cmbcode="1">📋 Код импорта (в буфер)</button></div>' +
       '<div class="lvl-hint" data-cmbcodemsg style="min-height:14px"></div>';
     host.innerHTML = genModeChips() +
-      '<div class="lvl-hint">Связка — по порядку: тапни первый навык, потом второй и так далее (до 5).</div>' +
+      '<div class="lvl-hint">Связка — по порядку: тапни первый навык, потом второй и так далее (до 5). Вид атаки — один чипс за раз.</div>' +
+      (styleChips ? '<div class="lvl-group" style="margin:2px 0"><div class="lvl-title">Вид (зоопарк атак)</div><div class="tree-chips">' + styleChips + '</div></div>' : '') +
       (tc ? '<div class="tree-chips">' + tc + '</div>' : '') +
       slotsUi + actList + supBlocks + comboCodeUi;
     bindGenMode(host);
@@ -957,6 +1040,15 @@ ${OVERLAY_SHELL}<script>
         renderComboView();
       });
     }
+    // №192: чипс вида — одиночный выбор (замена/снятие), не AND-стек.
+    var sc = host.querySelectorAll('[data-cmbstyle]');
+    for (var i2 = 0; i2 < sc.length; i2++) {
+      sc[i2].addEventListener('click', function () {
+        var s2 = this.getAttribute('data-cmbstyle');
+        comboStyle = (comboStyle === s2) ? null : s2;
+        renderComboView();
+      });
+    }
     var ll = host.querySelectorAll('[data-cmblist] .slang-row');
     for (var k = 0; k < ll.length; k++) {
       ll[k].addEventListener('click', function () {
@@ -980,6 +1072,177 @@ ${OVERLAY_SHELL}<script>
         renderComboView();
       });
     }
+  }
+  // ─── Вкладка «🧩 Саппорты» (№193): советчик камней поддержки ────────────────
+  // Репорт друга: «советчик по камням умений перестал работать» — саппорты
+  // жили ТОЛЬКО в конструкторе связок и в прайс-вью гема (Ctrl+F1). Здесь —
+  // отдельная вкладка, не конфликтующая с конструктором: под выбранный
+  // активный навык — ПРИОРИТЕТНЫЙ список саппортов. Движок тот же (№40/№192):
+  // reco (★ эталон меты → poe2db-ранги) → при их отсутствии compat-fallback.
+  // Данные — comboData (buildgen:gemdata, офлайн, чанками по 400).
+  var suppadvQuery = '';
+  var suppadvStyle = null; // вид атаки (один; null = все)
+  var suppadvSel = null;   // EN активного навыка, для которого показываем саппорты
+  function suppadvBuildNames() {
+    // Ключи камней текущего билда (RU-имена из build:update) — метка «✅ в билде».
+    var out = {};
+    var b = lastBuildState;
+    if (b && b.gemSetups) {
+      for (var i = 0; i < b.gemSetups.length; i++) {
+        var g = b.gemSetups[i];
+        if (g.active) out[gemKeySh(g.active)] = 1;
+        var sp = g.supports || [];
+        for (var j = 0; j < sp.length; j++) out[gemKeySh(sp[j])] = 1;
+      }
+    }
+    return out;
+  }
+  function renderSuppadvView() {
+    var host = $('suppadvContent');
+    if (!host) return;
+    if (!comboData) {
+      host.innerHTML = '<div class="lvl-hint">Загружаю датасет гемов…</div>';
+      return;
+    }
+    if (!comboData.ok) {
+      host.innerHTML = '<div class="lvl-hint">' +
+        (comboData.error ? comboData.error : 'Датасет гемов недоступен.') + '</div>';
+      return;
+    }
+    var A = comboData.actives || [];
+    var S = comboData.supports || [];
+    var q = suppadvQuery.trim().toLowerCase();
+    var styleCounts = {};
+    for (var ai = 0; ai < A.length; ai++) {
+      var st = A[ai].style;
+      if (st) styleCounts[st] = (styleCounts[st] || 0) + 1;
+    }
+    var sysChips = STYLE_LABELS.filter(function (x) { return styleCounts[x[0]]; }).map(function (x) {
+      return '<button class="tree-chip' + (suppadvStyle === x[0] ? ' on' : '') +
+        '" data-sastyle="' + x[0] + '">' + (STYLE_EMOJI[x[0]] || '') + ' ' + x[1] +
+        ' <span style="color:var(--dim)">' + styleCounts[x[0]] + '</span></button>';
+    }).join('');
+    var html = '<div class="sub-h sub">🧩 Советчик саппортов: приоритет для активного навыка</div>' +
+      '<input id="suppadvQ" placeholder="Найти навык: имя RU/EN или ур. (например: ice, ладонь, 12)"' +
+      ' style="width:100%;box-sizing:border-box;margin:4px 0 3px;padding:3px 6px;border:1px solid #2a3344;border-radius:4px;background:rgba(0,0,0,0.35);color:var(--fg);font-size:11px" value="' + esc(suppadvQuery) + '"/>' +
+      '<div class="tree-chips">' + sysChips + '</div>';
+    var sel = suppadvSel ? A.find(function (x) { return x.en === suppadvSel; }) : null;
+    if (sel) {
+      var stl = '';
+      var emo = sel.style ? (STYLE_EMOJI[sel.style] || '') : '';
+      for (var sl2 = 0; sl2 < STYLE_LABELS.length; sl2++) {
+        if (sel.style && STYLE_LABELS[sl2][0] === sel.style) stl = ' · ' + STYLE_LABELS[sl2][1];
+      }
+      html += '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#e8c667">' +
+        (emo ? emo + ' ' : '') + gemDots(sel.colors) + comboName(sel) + ' · ур.' + (sel.unlock || 0) + esc(stl) +
+        ' <span style="color:var(--dim);cursor:pointer" data-saoff>✕</span></div>' +
+        '<div class="lvl-hint">' + (sel.types || []).slice(0, 8).join(', ') + '</div></div>';
+      var inBuild = suppadvBuildNames();
+      var supRows = '';
+      // №194: ранги — цветные бейджи (1-3 призовые, далее приглушённые),
+      // мета-эталон — золотая полоса; точки ● = атрибуты гема.
+      var RANK_BG = { '1': 'background:rgba(232,198,103,0.18);color:#e8c667', '2': 'background:rgba(176,190,210,0.16);color:#c8d2e0', '3': 'background:rgba(205,127,50,0.18);color:#e0a068' };
+      function rankBadge(r, ix2) {
+        if (r.tier === 'meta') return '<span style="color:#e8c667;font-size:13px">★</span>';
+        var rn = r.rank != null ? String(r.rank) : String(ix2 + 1);
+        return '<span style="' + (RANK_BG[rn] || 'background:rgba(255,255,255,0.06);color:#9aa4b0') +
+          ';border-radius:8px;padding:0 6px;font-size:10px" title="' +
+          (r.rank ? 'ранг poe2db ' + r.rank : 'приоритет №' + (ix2 + 1)) + '">' + rn + '</span>';
+      }
+      if ((sel.reco || []).length) {
+        var rl = (sel.reco[0] && sel.reco[0].note) ? sel.reco[0].note
+          : 'базово: poe2db Recommended Support Gems (ранг = приоритет)';
+        var hasMeta = sel.reco.some(function (r2) { return r2.tier === 'meta'; });
+        html += '<div class="lvl-hint" style="color:#e8c667">' + (hasMeta ? '★ ' : '') + rl + '</div>';
+        supRows = sel.reco.map(function (r, ix2) {
+          var sp2 = S.find(function (x) { return x.en === r.en; });
+          var nm = sp2 ? gemDots(sp2.colors) + comboName(sp2) : esc(r.en);
+          var key = sp2 && sp2.ru ? gemKeySh(sp2.ru) : gemKeySh(r.en);
+          var have = inBuild[key] ? ' <span style="color:#7fc97f">✅ в билде</span>' : '';
+          var metaRow = r.tier === 'meta'
+            ? 'background:rgba(232,198,103,0.08);border-left:3px solid #e8c667;' : '';
+          return '<div class="slang-row" style="' + metaRow + 'padding:3px 6px"><div class="slang-term">' +
+            rankBadge(r, ix2) + ' ' + nm + have + '</div></div>';
+        }).join('');
+      } else {
+        var lo = (sel.types || []).map(function (t) { return String(t).toLowerCase(); });
+        var comp = S.filter(function (sp3) {
+          return (sp3.compat || []).some(function (c2) { return lo.indexOf(String(c2)) >= 0; });
+        });
+        if (!comp.length) comp = S;
+        supRows = comp.slice(0, 24).map(function (sp4) {
+          var key2 = sp4.ru ? gemKeySh(sp4.ru) : gemKeySh(sp4.en);
+          var have2 = inBuild[key2] ? ' <span style="color:#7fc97f">✅ в билде</span>' : '';
+          return '<div class="slang-row" style="padding:3px 6px"><div class="slang-term">· ' +
+            gemDots(sp4.colors) + comboName(sp4) + have2 + '</div></div>';
+        }).join('');
+        html += '<div class="lvl-hint">Без рекомендаций (датасеты 0.5.5 знают только attack/spell) — список без приоритета.</div>';
+      }
+      html += '<div class="lvl-title" style="color:#c88;margin-top:2px">Саппорты по приоритету</div>' +
+        (supRows || '<div class="lvl-hint">Не найдено.</div>');
+    } else {
+      var filtered = A.filter(function (a) {
+        if (suppadvStyle && a.style !== suppadvStyle) return false;
+        if (!q) return true;
+        return ((a.ru || '').toLowerCase().indexOf(q) >= 0) ||
+          ((a.en || '').toLowerCase().indexOf(q) >= 0) ||
+          (String(a.unlock || 0) === q);
+      }).sort(function (a, b) { return (a.unlock || 0) - (b.unlock || 0); });
+      var MAX_SA = 30;
+      var rows = filtered.slice(0, MAX_SA).map(function (a) {
+        var stl3 = '';
+        for (var sl3 = 0; sl3 < STYLE_LABELS.length; sl3++) {
+          if (a.style && STYLE_LABELS[sl3][0] === a.style) stl3 = ' · ' + STYLE_LABELS[sl3][1];
+        }
+        return '<div class="slang-row" data-saen="' + esc(a.en) + '" style="cursor:pointer"><div class="slang-term">' +
+          (a.style ? (STYLE_EMOJI[a.style] || '') + ' ' : '') + gemDots(a.colors) + comboName(a) +
+          '</div><div class="slang-def">ур.' + (a.unlock || 0) + esc(stl3) +
+          ' · <span style="color:var(--dim)">саппорты →</span></div></div>';
+      }).join('');
+      html += '<div class="lvl-hint">' + (q || suppadvStyle
+        ? 'Найдено: ' + filtered.length + (filtered.length > MAX_SA ? ' (первые ' + MAX_SA + ')' : '')
+        : 'Все активные: ' + A.length + ' — уточни поиском/чипсом вида. Тап по навыку — приоритет саппортов.') + '</div>' +
+        '<div data-salist>' + (rows || '<div class="lvl-hint">Ничего не найдено.</div>') + '</div>';
+    }
+    host.innerHTML = html;
+    bindSuppadvView(host);
+  }
+  function bindSuppadvView(host) {
+    var inp = host.querySelector('#suppadvQ');
+    if (inp) inp.addEventListener('input', function () {
+      suppadvQuery = this.value;
+      renderSuppadvView();
+      // Поле пересобирается — возвращаем фокус и каретку в конец.
+      var n = $('suppadvQ');
+      if (n) { n.focus(); try { n.setSelectionRange(n.value.length, n.value.length); } catch (e2) {} }
+    });
+    var chips = host.querySelectorAll('[data-sastyle]');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].addEventListener('click', function () {
+        var s2 = this.getAttribute('data-sastyle');
+        suppadvStyle = (suppadvStyle === s2) ? null : s2;
+        renderSuppadvView();
+      });
+    }
+    var off = host.querySelector('[data-saoff]');
+    if (off) off.addEventListener('click', function () { suppadvSel = null; renderSuppadvView(); });
+    var rows = host.querySelectorAll('[data-saen]');
+    for (var k = 0; k < rows.length; k++) {
+      rows[k].addEventListener('click', function () {
+        suppadvSel = this.getAttribute('data-saen');
+        renderSuppadvView();
+      });
+    }
+  }
+  function showSuppadvView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '🧩 Советчик саппортов (PoE2)';
+    showMode('suppadv');
+    if (!comboData) loadCombo();
+    renderSuppadvView();
   }
   function loadGen() {
     var host = $('genContent');
@@ -2252,6 +2515,7 @@ ${OVERLAY_SHELL}<script>
     ['price', '💰 Прайс'],
     ['build', '🛒 Билд'],
     ['gems', '💎 Камни'],
+    ['suppadv', '🧩 Саппорты'],
     ['import', '📥 Импорт'],
     ['level', '📈 Прокачка'],
     ['maps', '🧭 Плитки'],
@@ -2689,6 +2953,8 @@ ${OVERLAY_SHELL}<script>
         setActiveTab(tab);
         if (tab === 'gems') {
           showGemsView(); // локальная панель, IPC не нужен
+        } else if (tab === 'suppadv') {
+          showSuppadvView(); // №193: советчик саппортов, датасет gemdata офлайн
         } else if (tab === 'maps') {
           showMapsView(); // №85: статический справочник крафта плиток, IPC не нужен
         } else if (tab === 'slang') {

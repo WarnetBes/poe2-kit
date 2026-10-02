@@ -1467,6 +1467,10 @@ function loadRuEnDict(): boolean {
     for (const [k, v] of Object.entries(data.bases ?? {})) ruEnBases.set(normName(k), v);
     for (const [k, v] of Object.entries(data.uniques ?? {})) ruEnUniques.set(normName(k), v);
     if (!ruEnBases.size && !ruEnUniques.size) return false;
+    // №193-fix: полный кэш = словарь ГОТОВ — иначе первый же Ctrl+F1 запускал
+    // полную перестройку (~2 мин, 21 стр. poe2db) и вешал каждый чек на
+    // withTimeout(ensureRuEnDict, 10_000) → лог-факт друга: 10 015 мс ×4 подряд.
+    if (complete) ruEnDictLoaded = true;
     console.log(`[overlay] ru-en dict loaded: ${ruEnBases.size} bases, ${ruEnUniques.size} uniques${complete ? '' : ' (неполный, достраиваем)'}`);
     return complete;
   } catch {
@@ -3925,6 +3929,12 @@ function setupIPC(): void {
   // (structured-clone всего массива за один тик) — теперь ЧАНКАМИ:
   // {offset,limit} → срез, рендерер тянет последовательными короткими
   // запросами. Вызов без параметра = полный пейлоад (обратная совместимость).
+  interface GemSupportRecoLite {
+    en: string;
+    tier: 'meta' | 'base';
+    rank: number | null;
+    note: string | null; // «эталон меты: <билд>» | null
+  }
   interface GemdataItem {
     kind: 'active' | 'support';
     en: string;
@@ -3933,6 +3943,49 @@ function setupIPC(): void {
     unlock?: number;
     cost?: unknown | null;
     compat?: string[];
+    // №192: стиль атаки для «зоопарка» (Melee/Projectile/Bow/Crossbow/Spear/Slam/Nova/Totem/Minion/Movement/Spell)
+    style?: string | null;
+    // №192: рекомендации саппортов — трёхслойный движок gem-check (meta_supports → recommended → нет)
+    reco?: GemSupportRecoLite[];
+    // №194: цвета требования атрибутов гема (№56: blue=Инт / red=Сила / green=Ловк) — точки ● в UI
+    colors?: string[];
+  }
+  // №192: главный стиль атаки по skillTypes (первое совпадение по приоритету
+  // «специфичное → общее»: лук/арбалет/копьё раньше снарядов, melee последним).
+  const STYLE_PRIORITY: Array<[string, string]> = [
+    ['Bow', 'Bow'], ['CrossbowSkill', 'Crossbow'], ['Spear', 'Spear'],
+    ['Slam', 'Slam'], ['Nova', 'Nova'], ['SummonsTotem', 'Totem'],
+    ['Minion', 'Minion'], ['Movement', 'Movement'],
+    ['Projectile', 'Projectile'], ['Melee', 'Melee'], ['Spell', 'Spell'],
+  ];
+  function primaryStyle(types: string[]): string | null {
+    for (const [tag, style] of STYLE_PRIORITY) if (types.indexOf(tag) >= 0) return style;
+    return null;
+  }
+  // №192: рекомендации саппортов для актива (движок = gem-check №40/1805):
+  // 1) meta_supports.json (эталон меты 0.5.5, первый = Min-Max-вариант),
+  // 2) recommended_supports.json (poe2db, ранги). Промах обоих — null (UI
+  // покажет compat-fallback, как раньше).
+  let metaSupportsCache: Record<string, { supports: string[]; build: string; date?: string }[]> | null = null;
+  let recoSupportsCache: Record<string, Array<{ rank: number; ru: string; en: string }>> | null = null;
+  function supportsForActive(en: string): GemSupportRecoLite[] {
+    metaSupportsCache ??= core.dataset.getMetaSupports()?.entries ?? {};
+    recoSupportsCache ??= core.dataset.getRecommendedSupports()?.map ?? {};
+    const key = normName(en);
+    const meta = metaSupportsCache[key];
+    if (meta?.length) {
+      const m = meta[0]!;
+      const note = `эталон меты: ${m.build}${m.date ? ` (${m.date})` : ''}`;
+      return m.supports.map((s) => ({ en: s, tier: 'meta' as const, rank: null, note }));
+    }
+    const base = recoSupportsCache[key];
+    if (base?.length) {
+      return base
+        .slice()
+        .sort((a, b) => a.rank - b.rank)
+        .map((r) => ({ en: r.en, tier: 'base' as const, rank: r.rank, note: null }));
+    }
+    return [];
   }
   let gemdataCache: GemdataItem[] | null = null;
   function buildGemdata(): GemdataItem[] {
@@ -3949,6 +4002,9 @@ function setupIPC(): void {
         types: (g.skillTypes ?? []).filter((t: string) => t !== 'Invokable'),
         unlock: g.source?.unlockLevel ?? 0,
         cost: g.firstLevelCost ?? null,
+        style: primaryStyle((g.skillTypes ?? []).filter((t: string) => t !== 'Invokable')),
+        reco: supportsForActive(g.name),
+        colors: (core.dataset.supportGemColors(g.name) ?? []) as string[],
       }));
     const supports: GemdataItem[] = supportsAll
       .filter((s) => s.name && Array.isArray(s.compatible_with))
@@ -3957,6 +4013,7 @@ function setupIPC(): void {
         en: s.name,
         ru: gemEnRu.get(normName(s.name)) ?? null,
         compat: s.compatible_with,
+        colors: (core.dataset.supportGemColors(s.name) ?? []) as string[],
       }));
     gemdataCache = [...actives, ...supports];
     console.log(`[overlay] buildgen:gemdata: ${actives.length} активных, ${supports.length} саппортов (офлайн-датасет, чанки по запросу)`);
