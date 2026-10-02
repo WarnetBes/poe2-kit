@@ -1,6 +1,7 @@
 # poe2-kit
 
 [![English](https://img.shields.io/badge/README-English-blue)](README.en.md)
+[![CI](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml)
 
 Единый помощник для **Path of Exile 2**: гид по прокачке, AI-советы, универсальная торговля, анализ билдов и прайс-чек предметов.
 

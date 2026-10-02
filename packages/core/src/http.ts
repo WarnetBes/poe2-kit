@@ -11,6 +11,62 @@
  * Это важно для массовых прайс-чеков — не сыпем ошибки, а мягко растасовываем во времени.
  */
 
+import { classifyError, type ResultError } from './result.js';
+
+// ── Лента сетевых ошибок (S9, аудит №175) ───────────────────────────────────
+// httpJson/httpText/httpBytes глотают ничего, но ВЫШЕ по стеку ошибки часто
+// проглатываются (cache stale-if-error, trade searchTrade → return []). Эта
+// лента — единственный честный сигнал «сеть падала» для ...Result-обёрток:
+// каждая ФИНАЛЬНО упавшая сетевая ошибка (после ретраев) попадает сюда.
+// Transient-5xx, которые вылечил ретрай №145, в ленту НЕ пишутся.
+
+export interface HttpErrorRecord extends ResultError {
+  /** Хост, на котором упал запрос. */
+  host: string;
+  /** Epoch-ms момента ошибки. */
+  at: number;
+}
+
+const HTTP_ERROR_TAPE_MAX = 64;
+const httpErrorTape: HttpErrorRecord[] = [];
+
+/** Записать финальную сетевую ошибку хоста в ленту (защищено: лог не бросает). */
+function recordHttpError(host: string, e: unknown): void {
+  try {
+    const c = classifyError(e);
+    httpErrorTape.push({ host, at: Date.now(), kind: c.kind, message: c.message, retryable: c.retryable });
+    while (httpErrorTape.length > HTTP_ERROR_TAPE_MAX) httpErrorTape.shift();
+  } catch {
+    /* никогда не ломаем запрос из-за телеметрии */
+  }
+}
+
+/**
+ * Ошибки хостов с момента `since` (epoch-ms). Необязательный фильтр —
+ * подстрока хоста (как в HOST_LIMITS: 'poe2scout.com' ловит 'api.poe2scout.com').
+ * Служебный read-only API для ...Result-обёрток и диагностики; экспортирован
+ * наружу (overlay/web) для самопроверки сети.
+ */
+export function httpErrorsSince(since: number, hostSub?: string): HttpErrorRecord[] {
+  return httpErrorTape.filter(
+    (r) => r.at >= since && (!hostSub || r.host.includes(hostSub)),
+  );
+}
+
+/** Очистить ленту (только для тестов/самодиагностики). */
+export function clearHttpErrorTape(): void {
+  httpErrorTape.length = 0;
+}
+
+/** Полный сброс http-состояния: лимитеры, очереди хостов, лента ошибок.
+ *  Для юнит-тестов (изоляция прогонов) и самодиагностики; в рантайме приложения
+ *  НЕ вызывать — очередь хостов защищает живые запросы от пиковой нагрузки. */
+export function resetHttpState(): void {
+  limiters.clear();
+  queues.clear();
+  clearHttpErrorTape();
+}
+
 /** Reйт-лимитер: не более `maxRequests` запросов за `windowMs`.
  * Если лимит исчерпан — ждём до освобождения окна.
  */
@@ -318,12 +374,21 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
     });
 
   // №145: один ретрай transient-5xx с паузой (повтор через ту же очередь/лимитер).
+  // Вылеченный ретраем в ленту НЕ пишем — сеть в итоге ответила.
   try {
     return await once();
   } catch (err) {
-    if (!isTransient5xx(err)) throw err;
+    if (!isTransient5xx(err)) {
+      recordHttpError(host, err);
+      throw err;
+    }
     await new Promise((r) => setTimeout(r, 1500));
-    return await once();
+    try {
+      return await once();
+    } catch (err2) {
+      recordHttpError(host, err2);
+      throw err2;
+    }
   }
 }
 
@@ -355,6 +420,9 @@ export async function httpText(url: string, opts: HttpOptions = {}): Promise<str
         throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
       }
       return res.text();
+    } catch (e) {
+      recordHttpError(host, e);
+      throw e;
     } finally {
       clearTimeout(timer);
     }
@@ -389,6 +457,9 @@ export async function httpBytes(url: string, opts: HttpOptions = {}): Promise<Ui
         throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
       }
       return new Uint8Array(await res.arrayBuffer());
+    } catch (e) {
+      recordHttpError(host, e);
+      throw e;
     } finally {
       clearTimeout(timer);
     }

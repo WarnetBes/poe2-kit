@@ -11,8 +11,13 @@
  *    DamageScale (Misc.lua:49-66): HeavyStun 0.58, Freeze 2.1, Electrocute 1.7, Pin 4.2;
  *  - CalcOffence.lua:5614-5624 — шанс айлмента: hitDmg/threshold × ChanceMultiplier + base;
  *    ChanceMultiplier (Misc.lua:72-74): Shock 25, Ignite 20, прочие 25;
- *  - CalcOffence.lua:5550-5552 — Chill: threshold = EnemyAilmentThreshold / ChillEffectMultiplier(100),
- *    кап эффекта 50% (Misc.lua:77-78); Shock magnitude база 20 (Misc.lua:75).
+ *  - CalcOffence.lua:5550-5552 — Chill: threshold = EnemyAilmentThreshold / ChillEffectMultiplier(100);
+ *    кап эффекта 50% (Misc.lua:78), Chill default/min 30 (Data.lua:415);
+ *  - CalcOffence.lua:5678-5683 — Shock (hit-based): effect = 50·(dmg/threshold)^0.4,
+ *    ramping, min = BaseShockMagnitude 20 (Misc.lua:75, Data.lua:417), max 100.
+ *
+ * Attribution: adapted from Path of Building PoE2 (MIT © David Gowor),
+ * https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
  */
 
 export const AILMENT_CONSTANTS = {
@@ -28,9 +33,11 @@ export const AILMENT_CONSTANTS = {
   SHOCK_CHANCE_MULTIPLIER: 25,
   IGNITE_CHANCE_MULTIPLIER: 20,
   MISC_AILMENT_CHANCE_MULTIPLIER: 25,
-  // ── Chill / Shock (Misc.lua:75-78) ──
+  // ── Chill / Shock (Misc.lua:75-78; Data.lua:415-418) ──
   BASE_SHOCK_MAGNITUDE: 20,
+  SHOCK_MAX_EFFECT: 100,
   CHILL_EFFECT_MULTIPLIER: 100,
+  CHILL_MIN_EFFECT: 30,
   CHILL_MAX_EFFECT: 50,
   // ── Buildup-механики (Misc.lua:49-66) ──
   HEAVY_STUN_DAMAGE_SCALE: 0.58,
@@ -224,22 +231,40 @@ export function ailmentChance(args: {
   const chance =
     Math.min(100,
       scaled * (1 + (args.increasedChancePercent ?? 0) / 100) * (args.moreChanceMultiplier ?? 1));
-  // Минимальный удар для guarantees 100%: mult×hit/threshold = 100
+  // Минимальный удар для гарантии 100%: mult×hit/threshold = 100.
   const minHit = (100 / mult) * threshold;
+  // Примечание: donor НЕ режет шанс в 0 ниже порога (CalcOffence.lua:5622-5625,
+  // только кап сверху 100); aboveThreshold — наша эвристика «удар значим»
+  // (scaled-часть ≥ 1), не канон PoB2.
   return { chancePercent: chance, minimumHitDamage: minHit, aboveThreshold: args.hitDamage >= threshold / mult };
 }
 
 /**
  * Порог срабатывания Chill: EnemyAilmentThreshold / ChillEffectMultiplier,
- * кап эффекта 50% (CalcOffence.lua:5550-5552, Misc.lua:76-78).
+ * т.е. /100 (CalcOffence.lua:5550-5551: `enemyThreshold / ChillEffectMultiplier`).
  */
 export function chillThreshold(enemyAilmentThreshold: number): number {
-  return enemyAilmentThreshold / (AILMENT_CONSTANTS.CHILL_EFFECT_MULTIPLIER / 100);
+  return enemyAilmentThreshold / AILMENT_CONSTANTS.CHILL_EFFECT_MULTIPLIER;
 }
 
-/** Shock magnitude от урона: база 20, растёт с превышением порога (Misc.lua:75; CalcOffence.lua). */
+/**
+ * Эффект Chill от удара (CalcOffence.lua:5672-5675):
+ *   effect = ChillEffectMultiplier × (dmg / enemyAilmentThreshold),
+ *   кламп [min 30 .. max 50] (Data.lua:415, Misc.lua:78).
+ */
+export function chillEffect(hitDamage: number, enemyAilmentThreshold: number): number {
+  const t = Math.max(1, enemyAilmentThreshold);
+  const raw = AILMENT_CONSTANTS.CHILL_EFFECT_MULTIPLIER * (hitDamage / t);
+  return Math.min(Math.max(raw, AILMENT_CONSTANTS.CHILL_MIN_EFFECT), AILMENT_CONSTANTS.CHILL_MAX_EFFECT);
+}
+
+/**
+ * Shock magnitude от удара (CalcOffence.lua:5678-5683, нелинейный «ramping»):
+ *   effect = 50 · (dmg в порогах) ^ 0.4, кламп [BaseShockMagnitude 20 .. 100]
+ *   (min/max: Data.lua:417, Misc.lua:75).
+ */
 export function shockMagnitude(hitDamage: number, enemyAilmentThreshold: number): number {
   const t = Math.max(1, enemyAilmentThreshold);
-  const over = Math.max(0, hitDamage / t - 1);
-  return AILMENT_CONSTANTS.BASE_SHOCK_MAGNITUDE * (1 + over);
+  const raw = 50 * Math.pow(Math.max(0, hitDamage / t), 0.4);
+  return Math.min(Math.max(raw, AILMENT_CONSTANTS.BASE_SHOCK_MAGNITUDE), AILMENT_CONSTANTS.SHOCK_MAX_EFFECT);
 }

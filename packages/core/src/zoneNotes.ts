@@ -102,7 +102,7 @@ export interface LevelingContext {
  */
 /** №103 Campaign Companion: одна зона маршрута акта со статусом прохождения. */
 export interface CampaignPlanRow {
-  /** Каноническое EN-имя зоны (как в LEVELING_PLAN). */
+  /** Каноническое EN-имя зоны (как в getLevelingPlan()). */
   zone: string;
   /** Код зоны из zoneNotes (для матчинга с Client.txt areaCode). */
   zoneCode: string | null;

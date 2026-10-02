@@ -10,14 +10,15 @@
  * кэшируется с TTL и используется для переключения между лигами.
  */
 
-import { httpJson } from './http.js';
+import { httpJson, httpErrorsSince } from './http.js';
+import { ok as okResult, err as errResult, classifyError, selectWorstError, type Result } from './result.js';
 import { cachedJson, cachedPostJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
 import { buildCodeToGear } from './build.js';
 import { scountCategoryForUnique } from './uniques.js';
 import { recordLearnedItem } from './learnlog.js';
 import { getLearnedStatTemplates } from './learnedStats.js';
-import { getTradeStatSnapshot } from './tradeSnapshot.js';
+import { matchStatsBulk, type StatCatalogEntry } from './statMatching.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -805,55 +806,34 @@ export function matchStatFilter(
   return best;
 }
 
-/** explicit-моды предмета → stat-фильтры trade2 по живому каталогу статов
- *  (trade2/data/stats; отличается от tradeQuery.modsToStatFilters — тот sync
- *  и знает только популярные pseudo-статы). + список нераспознанных. */
+/** explicit-моды предмета → stat-фильтры trade2.
+ *  S7 (№183): матчинг через слой statMatching — первый контур свежий
+ *  оффлайн-дамп официального каталога (data/game/trade/trade_stats.json,
+ *  refresh: scripts/fetch-trade-stats.mjs), второй — живой fallback
+ *  /api/trade2/data/stats (один запрос, кэш+мемоизация), learn-библиотека —
+ *  дополнительный офлайн-слой уверенности; жуrnal записи (recordLearnedItem)
+ *  остаются opt-in источником пополнения learned-датасета.
+ *  Протухший дамп (>45 дней) — live-first, дамп как фолбэк. */
 export async function matchModsToStatFilters(
   modTexts: string[],
 ): Promise<{ filters: TradeStatFilter[]; unmatched: string[] }> {
-  let entries: TradeStatEntry[] = [];
-  let entriesSource = 'live';
-  try {
-    entries = await fetchTradeStats();
-  } catch (e) {
-    // Живой каталог статов недоступен (сеть/лимиты trade2) — второй слой:
-    // оффлайн-снапшот каталога (полный набор stat_id ↔ шаблон, поставляется
-    // с пакетом), и только при его отсутствии — learned-библиотека.
-    entries = getTradeStatSnapshot();
-    entriesSource = entries.length ? 'snapshot' : 'learned';
-    if (!entries.length) entries = getLearnedStatTemplates() as TradeStatEntry[];
-    debugLog(
-      'fetchTradeStats failed, using offline fallback:',
-      `${entriesSource}: ${entries.length} entries`,
-      e instanceof Error ? e.message : String(e),
-    );
-  }
+  const learned = getLearnedStatTemplates() as StatCatalogEntry[];
+  const { matches, unknown, offlineMatches, liveMatches } = await matchStatsBulk(modTexts, {
+    extraOfflineEntries: learned,
+  });
   const filters: TradeStatFilter[] = [];
-  let unmatched: string[] = [];
-  for (const t of modTexts) {
-    const f = matchStatFilter(t, entries);
-    if (f) filters.push(f);
-    else unmatched.push(t);
-  }
-  // Второй проход: моды, не найденные в живом каталоге, добираем по
-  // оффлайн-источникам (патч ещё не отразился в /data/stats или каталог
-  // неполон): снапшот + learned. Это дополнение, не замена живому каталогу.
-  if (unmatched.length) {
-    const extraSource = entriesSource === 'live' ? getTradeStatSnapshot() : [];
-    const learned = getLearnedStatTemplates() as TradeStatEntry[];
-    const seen = new Set(filters.map((f) => f.id));
-    const extra = [...extraSource, ...learned].filter((e) => !seen.has(e.id));
-    if (extra.length) {
-      const stillUnmatched: string[] = [];
-      for (const t of unmatched) {
-        const f = matchStatFilter(t, extra);
-        if (f) filters.push(f);
-        else stillUnmatched.push(t);
-      }
-      unmatched = stillUnmatched;
+  for (const m of matches) {
+    if (m.tradeReady && m.match.id) {
+      filters.push({ id: m.match.id, min: m.match.min, text: m.text });
     }
   }
-  return { filters, unmatched };
+  debugLog(
+    'matchModsToStatFilters (statMatching):',
+    `${filters.length} filters (${offlineMatches} offline, ${liveMatches} live), ${unknown.length} unmatched`,
+    filters.map((f) => `${f.id}${f.min != null ? ` min=${f.min}` : ''}`),
+    unknown,
+  );
+  return { filters, unmatched: unknown };
 }
 
 /** Поиск по trade2: базовый тип + stat-фильтры (прайс-чек раров по аффиксам).
@@ -1401,4 +1381,110 @@ export async function priceBuild(
     totalItems: gear.length,
     elapsedMs: Date.now() - started,
   };
+}
+
+// ────────────────────────────────────────────────
+// S9 (аудит №175): ...Result-варианты — null-неоднозначность устранена.
+// Старые функции НЕ тронуты (back-compat): те же сигнатуры, то же поведение.
+// Новые обёртки классифицируют исход: пустой результат + свежая сетевая ошибка
+// в ленте http-слоя = сеть/лимит/таймаут; пустой результат без сетевых ошибок
+// = честное «не найдено на рынке».
+// ────────────────────────────────────────────────
+
+/** Хосты, задействованные прайс-чеком (для чтения ленты ошибок). */
+const PRICE_HOSTS = ['pathofexile.com', 'poe2scout.com', 'poe.ninja'];
+
+/** Главная сетевая ошибка указанных хостов за период [since, сейчас]. */
+function worstNetworkErrorSince(since: number, hosts: string[]): ReturnType<typeof selectWorstError> {
+  const seen = httpErrorsSince(since);
+  const relevant = seen.filter((r) => hosts.some((h) => r.host.includes(h)));
+  return selectWorstError(relevant);
+}
+
+/** Прайс-чек с классификацией исхода (S9). Пустой результат без сетевых
+ *  ошибок → kind:'notfound' («нет листингов»); с сетевыми — их kind. */
+export async function priceCheckResult(
+  itemText: string,
+  opts: {
+    league?: string;
+    nameOverride?: string;
+    baseTypeOverride?: string;
+  } = {},
+): Promise<Result<PriceCheckResult>> {
+  const since = Date.now();
+  let res: PriceCheckResult;
+  try {
+    res = await priceCheck(itemText, opts);
+  } catch (e) {
+    const c = classifyError(e);
+    return errResult<PriceCheckResult>(c.kind, c.message, c.retryable);
+  }
+  if (!res.estimate && !res.listings.length) {
+    const net = worstNetworkErrorSince(since, PRICE_HOSTS);
+    if (net) return errResult(net.kind, net.message, net.retryable);
+    return errResult('notfound', 'Предмет не найден на рынке: листингов нет', false);
+  }
+  return okResult(res);
+}
+
+/** searchTrade с классификацией: [] без причин = «не найдено», [] из-за
+ *  429/таймаута/сети = honest error (лента видит то, что searchTrade глотает). */
+export async function searchTradeResult(
+  query: { type?: string; name?: string },
+  opts: { limit?: number; league?: string } = {},
+): Promise<Result<TradeListing[]>> {
+  const since = Date.now();
+  let listings: TradeListing[];
+  try {
+    listings = await searchTrade(query, opts);
+  } catch (e) {
+    const c = classifyError(e);
+    return errResult(c.kind, c.message, c.retryable);
+  }
+  if (!listings.length) {
+    const net = worstNetworkErrorSince(since, ['pathofexile.com']);
+    if (net) return errResult(net.kind, net.message, net.retryable);
+    return errResult('notfound', 'Листинги не найдены', false);
+  }
+  return okResult(listings);
+}
+
+/** Список лиг с классификацией: fetchLeagues глотает ошибки в FALLBACK_LEAGUES
+ *  (trade.ts:99-126) — обёртка честно сообщает, когда это был именно fallback. */
+export async function fetchLeaguesResult(league?: string): Promise<Result<League[]>> {
+  const since = Date.now();
+  let leagues: League[];
+  try {
+    // league игнорируется fetchLeagues (аргументов нет) — оставлен для
+    // симметрии сигнатур будущих вариантов; читаем текущее состояние.
+    leagues = await fetchLeagues();
+  } catch (e) {
+    const c = classifyError(e);
+    return errResult(c.kind, c.message, c.retryable);
+  }
+  const net = worstNetworkErrorSince(since, ['poe2scout.com']);
+  if (net && leagues === FALLBACK_LEAGUES) {
+    // Сеть падала и список = стейтик → это fallback, а не живые данные.
+    return errResult(net.kind, net.message, net.retryable);
+  }
+  return okResult(leagues);
+}
+
+/** Курсы валют с классификацией: пустой список из-за сети ≠ «в лиге нет валют». */
+export async function fetchBestCurrencyRatesResult(league?: string): Promise<Result<CurrencyRate[]>> {
+  const since = Date.now();
+  let rates: CurrencyRate[];
+  try {
+    rates = await fetchBestCurrencyRates(league);
+  } catch (e) {
+    const c = classifyError(e);
+    return errResult(c.kind, c.message, c.retryable);
+  }
+  if (!rates.length) {
+    const net = worstNetworkErrorSince(since, ['poe2scout.com', 'poe.ninja']);
+    if (net) return errResult(net.kind, net.message, net.retryable);
+  }
+  // Пустой список без сетевых ошибок — легитимный результат (молодая лига):
+  // отдаём ok, UI решает сам.
+  return okResult(rates);
 }

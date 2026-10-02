@@ -16,8 +16,11 @@ const mn = cl('apps/overlay/src/main.ts');
 const mnDist = cl('apps/overlay/dist/main.js');
 const pre = cl('apps/overlay/src/preload.ts');
 const preDist = cl('apps/overlay/dist/preload.cjs');
-const ren = cl('apps/overlay/src/rendererHtml.ts');
-const renDist = cl('apps/overlay/dist/rendererHtml.js');
+// S1-этап-2 (№179): CSS .boss-timer — в rendererCss, карточки — в rendererHtml.
+const ren = ['rendererHtml.ts', 'rendererShell.ts', 'rendererCss.ts']
+  .map(f => cl(`apps/overlay/src/${f}`)).join('\n');
+const renDist = ['rendererHtml.js', 'rendererShell.js', 'rendererCss.js']
+  .map(f => cl(`apps/overlay/dist/${f}`)).join('\n');
 
 // ── core: схема ──
 ok(/strengths\?: string\[\]/.test(bs) && /weaknesses\?: string\[\]/.test(bs) && /farm\?: string\[\]/.test(bs), 'core: поля strengths/weaknesses/farm в BossInfo');

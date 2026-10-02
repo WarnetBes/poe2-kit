@@ -1,0 +1,92 @@
+# CI (S4): настоящий CI исполняется ТОЛЬКО на GitHub-зеркале WarnetBes/poe2-kit.
+# SourceCraft Actions инертны (git.sourcecraft.dev не исполняет workflows —
+# см. live-smoke.yml, проверено 2026-09-25), этот файл живёт на GitHub-раннерах.
+# Джобы: core (build+vitest) / overlay (build) / smoke (build core+overlay + tests/smoke).
+# Все смоки existence-only/offline: сети не требуют (grep fetch/http по tests/smoke пуст),
+# абсолютных путей C:\ нет, fs-пути через path.join — linux-safe.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core (build + vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # electron-бинарник (~100 МБ) для build/test не нужен — только типы из пакета.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (npm ci, workspaces)
+        run: npm ci
+
+      - name: Build @poe2-kit/core
+        run: npm run build -w @poe2-kit/core
+
+      - name: Vitest (packages/core)
+        run: npm run test -w @poe2-kit/core
+
+  overlay:
+    name: overlay (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (npm ci, workspaces)
+        run: npm ci
+
+      - name: Build @poe2-kit/overlay (tsc + preload rename)
+        run: npm run build -w @poe2-kit/overlay
+
+  smoke:
+    name: smoke (tests/smoke, offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (npm ci, workspaces)
+        run: npm ci
+
+      # Смоки читают packages/core/dist и apps/overlay/dist — нужны оба build.
+      - name: Build core + overlay
+        run: |
+          npm run build -w @poe2-kit/core
+          npm run build -w @poe2-kit/overlay
+
+      - name: Smoke run-all (offline, existence-only)
+        run: node tests/smoke/run-all.mjs

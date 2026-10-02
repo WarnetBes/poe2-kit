@@ -9,6 +9,9 @@
  *
  * Отличие от PoE1: у PoE2 свои таблицы (там уровни до 110, иные значения);
  * числа PathOfBuilding-PoE2-v2 (pre-EA форк) использовать нельзя.
+ *
+ * Attribution: adapted from Path of Building PoE2 (MIT © David Gowor),
+ * https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
  */
 
 // ─── Таблицы монстров (Misc.lua:6-14; индекс = уровень 1..100) ────────────────

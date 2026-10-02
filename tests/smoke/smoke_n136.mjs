@@ -4,7 +4,9 @@ import fs from 'node:fs';
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'OK  ' : 'FAIL') + ' ' + msg); if (!cond) fails++; };
 
-const render = fs.readFileSync('apps/overlay/dist/rendererHtml.js', 'utf8');
+// S1-этап-2 (№179): кнопки — в rendererShell.js, скроллбары — в rendererCss.js.
+const render = ['rendererHtml', 'rendererShell', 'rendererCss']
+  .map(f => fs.readFileSync(`apps/overlay/dist/${f}.js`, 'utf8')).join('\n');
 const main = fs.readFileSync('apps/overlay/src/main.ts', 'utf8');
 const preloadSrc = fs.readFileSync('apps/overlay/src/preload.ts', 'utf8');
 const preload = fs.readFileSync('apps/overlay/dist/preload.cjs', 'utf8');

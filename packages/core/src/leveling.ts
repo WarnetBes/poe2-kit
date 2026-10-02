@@ -249,13 +249,6 @@ export function levelDiff(currentLevel: number, zone: LevelingZone): number {
   return currentLevel - zone.monsterLevel;
 }
 
-// ─── Обратная совместимость ─────────────────────────────────────────────
-// Старое имя LEVELING_PLAN и getZoneByActAct сохранены, чтобы не ломать
-// уже существующие вызовы из оверлея/приложений.
-export const LEVELING_PLAN: LevelingZone[] = buildLevelingPlan();
-export function getZoneByActAct(act: number): LevelingZone[] {
-  return getZonesByAct(act);
-}
 
 // ════════════════════════════════════════════════════════════════════════
 // Билд-специфичные гиды прокачки — все 8 базовых классов PoE2
@@ -887,17 +880,20 @@ export function validateGuideGems(): Record<string, string[]> {
 
 // ─── Совместимость: старые Monk-функции делегируют новым generic ────────────
 
-/** Полный набор советов Ice Strike Monk по порядку кампании (deprecated: getClassLevelingTips). */
+/** Полный набор советов Ice Strike Monk по порядку кампании.
+ * @deprecated Используйте getClassLevelingTips('Monk', level). Оставлена для внешних потребителей public API. */
 export function getMonkLevelingTips(level?: number): ClassLevelingTip[] {
   return getClassLevelingTips('Monk', level);
 }
 
-/** Совет Ice Strike Monk, подходящий текущему уровню (deprecated: getClassLevelingHint). */
+/** Совет Ice Strike Monk, подходящий текущему уровню.
+ * @deprecated Используйте getClassLevelingHint('Monk', level). Оставлена для внешних потребителей public API. */
 export function getMonkLevelingHint(level?: number): string {
   return getClassLevelingHint('Monk', level);
 }
 
-/** План прокачки с советами Ice Strike Monk (deprecated: getClassLevelingPlan). */
+/** План прокачки с советами Ice Strike Monk.
+ * @deprecated Используйте getClassLevelingPlan('Monk'). Оставлена для внешних потребителей public API. */
 export function getMonkLevelingPlan(): LevelingZone[] {
   return getClassLevelingPlan('Monk');
 }

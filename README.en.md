@@ -12,6 +12,7 @@ yourself. No automation, no memory reading.
 [Download the latest release »](https://github.com/WarnetBes/poe2-kit/releases/latest)
 
 [![GitHub Release](https://img.shields.io/github/v/release/WarnetBes/poe2-kit)](https://github.com/WarnetBes/poe2-kit/releases)
+[![CI](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml)
 [![GitHub Downloads (latest release)](https://img.shields.io/github/downloads/WarnetBes/poe2-kit/latest/total)](https://github.com/WarnetBes/poe2-kit/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ru readme](https://img.shields.io/badge/README-Русский-blue)](README.md)

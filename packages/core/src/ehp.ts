@@ -15,6 +15,9 @@
  *  - ward поглощается ДО Life (CalcDefence.lua:524-525);
  *  - хаос снимает ES с коэффициентом 2 (CalcDefence.lua:592);
  *  - ES реберзит 12.5%/с после задержки 4с (400/(100+faster_start)%).
+ *
+ * Attribution: adapted from Path of Building PoE2 (MIT © David Gowor),
+ * https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
  */
 
 // ─── Константы PoE2 ────────────────────────────────────────────────────────
@@ -154,7 +157,8 @@ export interface EvasionResult {
 
 /**
  * Уклонение PoE2 — сторона ЗАЩИЩАЮЩЕГОСЯ (монстр бьёт игрока; для EHP).
- * Hit% = (1 − 0.95·Ev/(Ev + 4·Acc)) · 100, кламп [5..100] (CalcDefence.lua:41-47).
+ * Hit% = round((1 − 0.95·Ev/(Ev + 4·Acc)) · 100), кламп [5..100]
+ * (CalcDefence.lua:41-46 — PoB округляет шанс до целого, как в игре).
  * Увернуться можно максимум на 95% (DefaultMaxEvadeChancePercent).
  */
 export function evasionChance(evasion: number, attackerAccuracy: number): EvasionResult {
@@ -165,21 +169,21 @@ export function evasionChance(evasion: number, attackerAccuracy: number): Evasio
   }
   const raw =
     (1 - (DEFENSE_CONSTANTS.MONSTER_EVASION_FACTOR * eva) / (eva + DEFENSE_CONSTANTS.MONSTER_EVASION_ACCURACY_FACTOR * acc)) * 100;
-  const hit = Math.min(Math.max(raw, DEFENSE_CONSTANTS.MONSTER_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
+  const hit = Math.min(Math.max(Math.round(raw), DEFENSE_CONSTANTS.MONSTER_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
   return {
     evasion: eva,
     accuracy: acc,
     hitChancePercent: hit,
     evadeChancePercent: Math.min(100 - hit, DEFENSE_CONSTANTS.EVADE_MAX_CHANCE),
-    isCapped: raw !== hit,
+    isCapped: Math.round(raw) !== hit,
     side: 'defender',
   };
 }
 
 /**
- * Шанс ИГРОКА попасть по монстру с уклонением Ev (CalcDefence.lua:33-39):
- * Hit% = 1.25·Acc / (Acc + 0.3·Ev) · 100, кламп [5..100].
- * Это ДРУГАЯ формула — не для расчёта собственной защиты!
+ * Шанс ИГРОКА попасть по монстру с уклонением Ev (CalcDefence.lua:33-38):
+ * Hit% = round(1.25·Acc / (Acc + 0.3·Ev)) · 100, кламп [5..100]
+ * (PoB округляет до целого). Это ДРУГАЯ формула — не для расчёта собственной защиты!
  */
 export function attackerHitChance(attackerAccuracy: number, defenderEvasion: number): EvasionResult {
   const eva = Math.max(0, defenderEvasion);
@@ -188,13 +192,13 @@ export function attackerHitChance(attackerAccuracy: number, defenderEvasion: num
     return { evasion: eva, accuracy: acc, hitChancePercent: 0, evadeChancePercent: 100, isCapped: false, side: 'attacker' };
   }
   const raw = (acc * DEFENSE_CONSTANTS.EVASION_ACCURACY_MULTIPLIER * 100) / (acc + eva * DEFENSE_CONSTANTS.EVASION_DIVISOR);
-  const hit = Math.min(Math.max(raw, DEFENSE_CONSTANTS.EVASION_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
+  const hit = Math.min(Math.max(Math.round(raw), DEFENSE_CONSTANTS.EVASION_MIN_HIT_CHANCE), DEFENSE_CONSTANTS.EVASION_MAX_HIT_CHANCE);
   return {
     evasion: eva,
     accuracy: acc,
     hitChancePercent: hit,
     evadeChancePercent: 100 - hit,
-    isCapped: raw !== hit,
+    isCapped: Math.round(raw) !== hit,
     side: 'attacker',
   };
 }

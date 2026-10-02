@@ -3472,7 +3472,6 @@ let ascPickLogSig: string | null = null;
 function setupIPC(): void {
   ipcMain.handle('price:check', () => runPriceCheck());
 
-  ipcMain.handle('level:check', () => runLevelingContext());
   // №143: фиксация попытки босса. Время = Date.now() − ts входа в зону по
   // ЖИВОМУ логу на момент клика (не по возрасту payload). Лог не пишет смерть
   // босса → «Убит»/«Смерть» жмёт друг мышью, это часть дизайна.
@@ -3600,12 +3599,8 @@ function setupIPC(): void {
     }
   });
 
-  // Перемещение оверлея: переключение режима и сброс смещения из рендерера.
-  ipcMain.handle('move:toggle', () => {
-    toggleMoveMode();
-    return moveUnlocked;
-  });
-
+  // Перемещение оверлея: режим переключается глобальным хоткеем (registerHotkeys),
+  // из рендерера доступен только сброс смещения.
   ipcMain.handle('move:reset', () => {
     resetOverlayOffset();
     return true;
