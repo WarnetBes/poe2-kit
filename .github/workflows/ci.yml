@@ -62,6 +62,11 @@ jobs:
       - name: Install (npm ci, workspaces)
         run: npm ci
 
+      # №195: overlay/main.ts импортирует '@poe2-kit/core' — для типов нужен
+      # собранный packages/core/dist (TS2307 на чистом npm ci, f6bf6b4).
+      - name: Build @poe2-kit/core
+        run: npm run build -w @poe2-kit/core
+
       - name: Build @poe2-kit/overlay (tsc + preload rename)
         run: npm run build -w @poe2-kit/overlay
 
