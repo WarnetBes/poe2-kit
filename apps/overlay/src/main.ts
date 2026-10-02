@@ -2826,6 +2826,8 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
     statEvent('priceCheck:failed', msg);
     // Если priceCheck упал (сетевой/API) — пытаемся хотя бы распарсить локально.
     const parsed = core.parse.parseItemText(itemText);
+    // №196 (S9-UI): kind-строка вместо голого stack-текста ошибки.
+    const kes = core.result.classifyError(err);
     return {
       itemName: core.parse.itemDisplayName(parsed) || 'Неизвестный предмет',
       rarity: parsed.rarity.toLowerCase(),
@@ -2835,6 +2837,7 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
       updatedAt: Date.now(),
       parseOnly: true,
       parseError: err instanceof Error ? err.message : String(err),
+      errorKind: kes.kind, // №196 (S9-UI): человекочитаемая причина в рендерере
       itemText,
       ...(augmentInfo ? { augment: augmentInfo } : {}),
     };
@@ -2894,29 +2897,34 @@ async function runPriceCheck(): Promise<unknown> {
     // статуса…») жёг 10 014 мс ожидания ensureRuEnDict и блокировал Ctrl+F1 busy.
     // Предмет из игры ВСЕГДА содержит «Редкость:»/«Rarity:» («Класс предмета:»),
     // PoB-код — base64-алфавит (для него ниже отдельная подсказка №98/101).
-    if (raw.trim() && !looksLikeItemText(raw) && !/^[A-Za-z0-9+/=\s._-]+$/.test(raw.trim())) {
-      const startedFast = Date.now();
-      console.log('[overlay] pricecheck: буфер — не предмет и не PoB-код, быстрый отказ (№101)');
-      statEvent('priceCheck:rejected:nonItem', `${raw.trim().length} chars`);
-      const fastPayload = {
-        items: [
-          {
-            itemName: 'Не предмет',
-            estimate: null,
-            listings: 0,
-            buildCodeHint:
-              'В буфере не текст предмета. Наведите на предмет в игре и нажмите Ctrl+C, затем Ctrl+F1 (прайс). PoB-код билда — Ctrl+F3 (импорт).',
-          },
-        ],
-        count: 1,
-        totalEstimate: null,
-        elapsedMs: Date.now() - startedFast,
-      };
-      await overlayWindow?.webContents.send('price:batch', fastPayload);
-      console.log(
-        `[overlay] price batch: items=1 totalEstimate=null elapsedMs=${fastPayload.elapsedMs}`,
-      );
-      return fastPayload;
+    // №196: digits-only (число «649044135447» в буфере друга) проходило b64-фильтр
+    // и доезжало до «Неизвестного предмета» — отрезаем раньше тем же payload.
+    if (raw.trim() && !looksLikeItemText(raw)) {
+      const onlyDigits = /^[\d\s.,:+\-]+$/.test(raw.trim());
+      if (onlyDigits || !/^[A-Za-z0-9+/=\s._-]+$/.test(raw.trim())) {
+        const startedFast = Date.now();
+        console.log(`[overlay] pricecheck: буфер — не предмет${onlyDigits ? ' (только цифры)' : ''}, быстрый отказ (№101/№196)`);
+        statEvent('priceCheck:rejected:nonItem', `${raw.trim().length} chars${onlyDigits ? ':digits' : ''}`);
+        const fastPayload = {
+          items: [
+            {
+              itemName: 'Не предмет',
+              estimate: null,
+              listings: 0,
+              buildCodeHint:
+                'В буфере не текст предмета. Наведите на предмет в игре и нажмите Ctrl+C, затем Ctrl+F1 (прайс). PoB-код билда — Ctrl+F3 (импорт).',
+            },
+          ],
+          count: 1,
+          totalEstimate: null,
+          elapsedMs: Date.now() - startedFast,
+        };
+        await overlayWindow?.webContents.send('price:batch', fastPayload);
+        console.log(
+          `[overlay] price batch: items=1 totalEstimate=null elapsedMs=${fastPayload.elapsedMs}`,
+        );
+        return fastPayload;
+      }
     }
     await overlayWindow?.webContents.send('price:busy', true);
 

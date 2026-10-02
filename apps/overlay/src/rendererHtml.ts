@@ -800,6 +800,24 @@ ${OVERLAY_SHELL}<script>
     }
     return out + ' ';
   }
+  // №196 (S9-UI): kind-строки — человекочитаемая причина вместо сырого текста
+  // ошибки (kinds = core.result: network/notfound/ratelimit/parse/timeout).
+  var KIND_TEXT = {
+    network: 'нет соединения с источником (проверьте сеть, повтор позже)',
+    ratelimit: 'источник ограничил запросы — подождите около минуты',
+    timeout: 'источник не ответил (таймаут)',
+    parse: 'источник вернул некорректный ответ (проблема на его стороне)',
+    notfound: 'не найдено в источниках',
+  };
+  function priceErrText(res) {
+    var k = res && res.errorKind ? String(res.errorKind) : '';
+    var t = KIND_TEXT[k];
+    if (t) {
+      var src = res && res.parseError ? String(res.parseError).slice(0, 140) : '';
+      return t + (src ? ' [' + src + ']' : '');
+    }
+    return String(res && res.parseError ? res.parseError : '');
+  }
   function bindGenMode(host) {
     var m = host.querySelectorAll('[data-genmode]');
     for (var i = 0; i < m.length; i++) {
@@ -2283,7 +2301,7 @@ ${OVERLAY_SHELL}<script>
       err.textContent = res.buildCodeHint;
     } else if (res.parseError) {
       err.classList.remove('hide');
-      err.textContent = 'Оценка: ' + res.parseError;
+      err.textContent = 'Оценка: ' + priceErrText(res);
     } else if (res.gemCheck) {
       // Гем: не предмет рынка — «не найдено в источниках» не показываем.
       err.classList.add('hide');
@@ -2404,7 +2422,7 @@ ${OVERLAY_SHELL}<script>
       } else if (res.buildCodeHint) {
         note = '<span class="err-inline">' + esc(res.buildCodeHint) + '</span>';
       } else if (res.parseError) {
-        note = '<span class="err-inline">' + esc('Оценка: ' + res.parseError) + '</span>';
+        note = '<span class="err-inline">' + esc('Оценка: ' + priceErrText(res)) + '</span>';
       } else if (!res.estimate) {
         note = '<span class="muted">не найдено в бесплатных источниках</span>';
       }

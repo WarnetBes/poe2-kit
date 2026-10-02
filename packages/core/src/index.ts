@@ -95,6 +95,7 @@ import * as endgameMod from './endgame.js';
 import * as questRewardsMod from './questRewards.js';
 import * as craftMod from './craftGuide.js';
 import * as pobcodeMod from './pobcode.js';
+import * as resultMod from './result.js';
 
 export const core = {
   trade,
@@ -139,6 +140,7 @@ export const core = {
   craft: craftMod,
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
   buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
+  result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
 };
 
 export default core;
