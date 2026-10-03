@@ -322,30 +322,33 @@ export async function searchTradeQuery(
       return { queryId: null, listings: [], error: search ? (search as { error?: string }).error ?? 'нет результатов' : 'нет ответа' };
     }
     // fetch принимает ХЭШИ результатов (не id поиска), максимум 10 за раз.
-    const hashes = (search.result ?? []).slice(0, Math.min(limit, 10)).join(',');
-    if (!hashes) return { queryId: search.id, total: search.total, listings: [] };
-    const fetchRes = await httpJson<{
-      result?: Array<{
-        item?: { name?: string; typeLine?: string };
-        listing?: {
-          indexed?: string;
-          account?: { name?: string };
-          whisper?: string;
-          price?: { amount?: number; currency?: string; type?: string };
-        };
-      } | null>;
-    }>(`https://www.pathofexile.com/api/trade2/fetch/${hashes}?query=${search.id}`);
+    // №197: чанками по 10 — limit > 10 больше не режется молча.
+    const hashListAll = (search.result ?? []).slice(0, limit);
     const listings: TradeQueryListing[] = [];
-    for (const entry of fetchRes?.result ?? []) {
-      if (!entry) continue;
-      const p = entry.listing?.price;
-      listings.push({
-        item: entry.item ? { name: entry.item.typeLine ?? entry.item.name, typeLine: entry.item.typeLine } : null,
-        price: p && typeof p.amount === 'number' ? { amount: p.amount, currency: p.currency ?? p.type ?? 'chaos' } : null,
-        whisper: entry.listing?.whisper,
-        accountName: entry.listing?.account?.name,
-        indexed: entry.listing?.indexed,
-      });
+    for (let i = 0; i < hashListAll.length; i += 10) {
+      const hashes = hashListAll.slice(i, i + 10).join(',');
+      const fetchRes = await httpJson<{
+        result?: Array<{
+          item?: { name?: string; typeLine?: string };
+          listing?: {
+            indexed?: string;
+            account?: { name?: string };
+            whisper?: string;
+            price?: { amount?: number; currency?: string; type?: string };
+          };
+        } | null>;
+      }>(`https://www.pathofexile.com/api/trade2/fetch/${hashes}?query=${search.id}`);
+      for (const entry of fetchRes?.result ?? []) {
+        if (!entry) continue;
+        const p = entry.listing?.price;
+        listings.push({
+          item: entry.item ? { name: entry.item.typeLine ?? entry.item.name, typeLine: entry.item.typeLine } : null,
+          price: p && typeof p.amount === 'number' ? { amount: p.amount, currency: p.currency ?? p.type ?? 'chaos' } : null,
+          whisper: entry.listing?.whisper,
+          accountName: entry.listing?.account?.name,
+          indexed: entry.listing?.indexed,
+        });
+      }
     }
     return { queryId: search.id, total: search.total, listings };
   } catch (error) {

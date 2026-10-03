@@ -944,20 +944,27 @@ async function postTradeSearchUncached(
     // Валидация типа (searchTypes) не требует цен — пропускаем fetch (экономит
     // отдельную жёсткую квоту fetch; на fetch trade2 отдаёт 429 при concurrency).
     if (opts.searchTypes) return [{ price: 0, currency: 'chaos' }];
-    // fetch принимает ХЭШИ результатов (не id поиска): берём первые limit хэшей.
-    const hashes = search.result.slice(0, Math.min(limit, 10)).join(',');
-    const { data: fetchRes } = await cachedJson<{
-      result?: Array<{
-        listing?: { price?: { amount?: number; currency?: string; type?: string } };
-      } | null>;
-    }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000, timeoutMs: 30000 });
+    // fetch принимает ХЭШИ результатов (не id поиска) и максимум 10 хэшей
+    // за запрос (25.09 проверено живым POST /fetch). №197: чанками по 10 —
+    // limit > 10 больше не режется молча, каждый чанк — отдельный cachedJson
+    // (30 мин TTL, пустые ответы не вытесняют рабочий чанк).
+    const TRADE_FETCH_CHUNK = 10;
+    const hashList = search.result.slice(0, limit);
     const listings: TradeListing[] = [];
-    for (const entry of fetchRes?.result ?? []) {
-      if (!entry) continue;
-      const p = entry?.listing?.price;
-      if (p && typeof p.amount === 'number') {
-        // p.currency = валюта ('exalted'/'divine'/'chaos'...), p.type = вид цены ('~price'/'~b/o')
-        listings.push({ price: p.amount, currency: p.currency ?? p.type ?? 'chaos' });
+    for (let i = 0; i < hashList.length; i += TRADE_FETCH_CHUNK) {
+      const hashes = hashList.slice(i, i + TRADE_FETCH_CHUNK).join(',');
+      const { data: fetchRes } = await cachedJson<{
+        result?: Array<{
+          listing?: { price?: { amount?: number; currency?: string; type?: string } };
+        } | null>;
+      }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000, timeoutMs: 30000 });
+      for (const entry of fetchRes?.result ?? []) {
+        if (!entry) continue;
+        const p = entry?.listing?.price;
+        if (p && typeof p.amount === 'number') {
+          // p.currency = валюта ('exalted'/'divine'/'chaos'...), p.type = вид цены ('~price'/'~b/o')
+          listings.push({ price: p.amount, currency: p.currency ?? p.type ?? 'chaos' });
+        }
       }
     }
     return listings;
@@ -1063,6 +1070,47 @@ async function attachListingChaos(listings: TradeListing[], league?: string): Pr
       return; // сеть недоступна — остальное не пробуем
     }
   }
+}
+
+/** №197 (S10): локальные эвристики подозрительных листингов (скам-флаги).
+ *  Чистая функция без сети. ПОМЕЧАЕМ, не вырезаем — решение за игроком.
+ *  Пороги относительно медианы оценки:
+ *   - 'too-cheap'  : chaos-цена <= 25% медианы — классический price-bait
+ *                    («слишком хорошо, чтобы быть правдой»);
+ *   - 'overpriced' : chaos-цена >= 4× медианы — завышенный листинг,
+ *                    тянет медиану вверх и портит оценку.
+ *  Границы применимости (что лечит ЛОЖНЫЕ срабатывания):
+ *   - нужна уверенная оценка: confidence exact/approx (low = медиана из 3-4
+ *     шумных цен, не основание);
+ *   - медиана >= 5 chaos (на дешёвых предметах разброс %-ов — норма рынка);
+ *   - флагуем только листинги с известным chaos-эквивалентом (l.chaos != null)
+ *     — валюта без курса скорее экзотика, чем скам. */
+export const SUSPICIOUS_CHEAP_REL = 0.25;
+export const SUSPICIOUS_EXPENSIVE_REL = 4;
+const SUSPICIOUS_MIN_MEDIAN = 5;
+
+export function flagSuspiciousListings(
+  listings: TradeListing[],
+  estimate: PriceEstimate | null,
+): number {
+  if (!estimate || (estimate.confidence !== 'exact' && estimate.confidence !== 'approx')) return 0;
+  const median = estimate.median;
+  if (!(median >= SUSPICIOUS_MIN_MEDIAN)) return 0;
+  let flagged = 0;
+  for (const l of listings) {
+    const flags: string[] = [];
+    if (l.chaos != null && l.chaos > 0) {
+      if (l.chaos <= median * SUSPICIOUS_CHEAP_REL) flags.push('too-cheap');
+      if (l.chaos >= median * SUSPICIOUS_EXPENSIVE_REL) flags.push('overpriced');
+    }
+    if (flags.length) {
+      l.flags = flags;
+      flagged++;
+    } else {
+      delete l.flags;
+    }
+  }
+  return flagged;
 }
 
 /** Медианная оценка из массива цен (в Chaos). Нужно > 2 валидных цен. */
@@ -1197,7 +1245,9 @@ export async function priceCheck(
         if (!resolvedType) {
           debugLog('resolveTradeBaseType: no valid type for', parsed.baseType);
         } else {
-          const searchOpts = { league, limit: 10 };
+          // №197: 20 листингов (2 fetch-чанка) — медиана по 10 слишком шумная
+          // для скам-эвристик и оценки раров; квота fetch отдельно от search.
+          const searchOpts = { league, limit: 20 };
           const pause = () => new Promise((r) => setTimeout(r, 300));
           // Лестница ослабления: точное попадание всех целевых аффиксов редко,
           // ищем ближайшие аналоги.
@@ -1273,6 +1323,11 @@ export async function priceCheck(
 
   // №67: per-listing chaos-эквивалент для сравнения в рендерере.
   await attachListingChaos(listings, league).catch(() => {});
+
+  // №197 (S10): скам-флаги по листингам — чистая локальная эвристика
+  // относительно оценки (без сети, без скрытых фильтраций: только пометки).
+  const flaggedCount = flagSuspiciousListings(listings, estimate);
+  if (flaggedCount) debugLog('scam flags:', `${flaggedCount}/${listings.length} листингов помечено`);
 
   // Журнал обучения (opt-in, PRIVACY: только структура предмета — см. learnlog.ts)
   recordLearnedItem({

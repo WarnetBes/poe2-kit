@@ -294,6 +294,9 @@ export const OVERLAY_CSS = `
   .grp { color: #9aa4b0; font-size: 11px; font-weight: normal; }
   .grp b { color: var(--accent); }
   .grp td, td.grp { padding-top: 5px; }
+  /* №197 (S10): скам-пометки листингов — предупреждение, не фильтр. */
+  .scam-flag { font-size: 10px; font-weight: 700; color: var(--warn); cursor: help; }
+  .scam-flag-over { color: #d08770; }
   /* №106: бейдж привязки к оружейному набору */
   .wset-badge { font-size: 10px; font-weight: 700; color: var(--warn);
     border: 1px solid var(--warn); border-radius: 6px; padding: 1px 5px; cursor: help; }

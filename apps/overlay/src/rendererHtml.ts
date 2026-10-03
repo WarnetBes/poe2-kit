@@ -2405,8 +2405,21 @@ ${OVERLAY_SHELL}<script>
         for (var gj = 0; gj < g.length; gj++) {
           var l = g[gj];
           var w = Math.max(2, Math.round(((l.price || 0) / gmax) * 100));
+          // №197 (S10): скам-флаги от core — предупреждающая пометка, не фильтр
+          // (сообщение продавцу отправляет сам игрок своим решением).
+          var flagHtml = '';
+          if (l.flags && l.flags.length) {
+            for (var fij = 0; fij < l.flags.length; fij++) {
+              if (l.flags[fij] === 'too-cheap') {
+                flagHtml += ' <span class="scam-flag" title="Цена сильно ниже рыночной медианы — типичный price-bait. Проверяйте предмет и продавца вручную.">⚠ подозрительно дёшево</span>';
+              } else if (l.flags[fij] === 'overpriced') {
+                flagHtml += ' <span class="scam-flag scam-flag-over" title="Цена сильно выше рыночной медианы — завышенный листинг.">✖ дороже рынка</span>';
+              }
+            }
+          }
           rows += '<tr><td class="num">' + esc(String(l.price)) + '</td>' +
             '<td colspan="2"><span class="cmpbar" style="display:inline-block;width:' + w + '%"></span>' +
+            flagHtml +
             (l.whisper ? ' <span class="sub">' + esc(l.whisper) + '</span>' : '') + '</td></tr>';
         }
       }

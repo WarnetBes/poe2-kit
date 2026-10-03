@@ -94,6 +94,9 @@ export interface TradeListing {
   itemName?: string;
   /** №67: эквивалент в Chaos Orbs (курс poe2scout/poe.ninja); null/нет — курс неизвестен. */
   chaos?: number | null;
+  /** №197 (S10): локальные скам-эвристики ('too-cheap' | 'overpriced') —
+   *  помечаем, НЕ вырезаем; ставятся только при уверенной оценке (estimate). */
+  flags?: string[];
 }
 
 /**
