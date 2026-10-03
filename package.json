@@ -1,6 +1,6 @@
 {
   "name": "poe2-kit",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "private": true,
   "description": "Бесплатный набор инструментов для Path of Exile 2: веб-приложение, Windows-оверлей и MCP-сервер на едином ядре",
   "type": "module",
