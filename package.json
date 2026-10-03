@@ -18,6 +18,8 @@
     "test": "npm run test -w @poe2-kit/core",
     "smoke": "node tests/smoke/run-all.mjs",
     "smoke:renderer": "node tests/smoke/smoke_renderer.mjs",
+    "deploy:share": "node scripts/deploy-share.mjs",
+    "refresh-data": "node scripts/refresh-data.mjs",
     "live-smoke": "npm run build -w @poe2-kit/core && npm run live-smoke -w @poe2-kit/core",
     "portable": "node make-portable.mjs"
   },

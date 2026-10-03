@@ -4155,6 +4155,26 @@ function setupIPC(): void {
     }
   });
 
+  // ─── №196-bis (S7-UI): Reload trade-каталога статов ───────────────────────
+  // Кнопка в баннере «N модов не распознано»: сброс кэшей statMatching
+  // (live-мемоизация + negative-memo 5 мин + оффлайн-индекс дампа) и сводка
+  // свежести. Живой каталог подтянется лениво при следующем прайс-чеке.
+  ipcMain.handle('trade:reloadStats', () => {
+    try {
+      const before = core.statMatching.statMatchingInfo();
+      core.statMatching.resetStatMatchingCaches();
+      const after = core.statMatching.statMatchingInfo();
+      console.log(
+        `[overlay] trade:reloadStats: offlineEntries=${after.offlineEntries} ` +
+          `dumpFetchedAt=${after.dumpFetchedAt ?? '—'} dumpStale=${after.dumpStale}`,
+      );
+      return { ok: true, before, after };
+    } catch (e) {
+      console.warn('[overlay] trade:reloadStats failed:', e instanceof Error ? e.message : e);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ─── Журнал обучения (opt-in): сводка + вклад в библиотеку предметов ──────
   ipcMain.handle('learn:info', () => {
     try {

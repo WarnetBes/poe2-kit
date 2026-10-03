@@ -253,6 +253,7 @@ ${OVERLAY_SHELL}<script>
     // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'gen' | 'import' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('augLine').classList.toggle('hide', mode !== 'price');
+    $('statBanner').classList.toggle('hide', mode !== 'price');
     $('listWrap').classList.toggle('hide', mode !== 'price');
     $('buildNote').classList.toggle('hide', mode !== 'price');
     $('meta').classList.toggle('hide', mode !== 'price');
@@ -2313,6 +2314,39 @@ ${OVERLAY_SHELL}<script>
       err.classList.add('hide');
     }
 
+    // №196-bis (S7-UI): баннер «N модов не распознано» — сигнал деградации
+    // оценки (search по статам построен не на всех explicit-модах).
+    var sb = $('statBanner');
+    if (res.unmatchedMods && res.unmatchedMods.length) {
+      var unm = res.unmatchedMods;
+      sb.classList.remove('hide');
+      sb.innerHTML = '⚠ Не распознано модов: <b>' + unm.length + '</b>' +
+        (res.statMatch ? ' из ' + res.statMatch.total : '') +
+        ' — оценка может идти по базовому типу.' +
+        '<div class="sb-list" title="' + esc(unm.join(' | ')) + '">' +
+          esc(unm.slice(0, 3).join('; ') + (unm.length > 3 ? '; …' : '')) + '</div>' +
+        '<button id="statReloadBtn" class="batch-ww" title="Сбросить кэш каталога статов trade2 и повторить поиск живым каталогом (после патча GGG)">🔄 Обновить каталог</button>';
+      var rb = $('statReloadBtn');
+      if (rb) {
+        rb.onclick = function () {
+          rb.disabled = true;
+          rb.textContent = '⏳ Обновляю…';
+          window.poe2k.reloadTradeStats().then(function (r) {
+            if (r && r.ok) {
+              sb.innerHTML = '✔ Каталог статов сброшен (' +
+                (r.after && r.after.offlineEntries != null ? r.after.offlineEntries + ' записей' : '') +
+                '). Нажмите Ctrl+F1 — прайс пойдёт по свежим данным.';
+            } else {
+              sb.innerHTML = '✖ Не удалось сбросить каталог. Повторите позже.';
+            }
+          });
+        };
+      }
+    } else {
+      sb.classList.add('hide');
+      sb.innerHTML = '';
+    }
+
     // Мета-источники.
     var meta = $('meta');
     if (res.sources && res.sources.length) {
@@ -2425,6 +2459,10 @@ ${OVERLAY_SHELL}<script>
         note = '<span class="err-inline">' + esc('Оценка: ' + priceErrText(res)) + '</span>';
       } else if (!res.estimate) {
         note = '<span class="muted">не найдено в бесплатных источниках</span>';
+      }
+      // №196-bis: сокращённый сигнал распознавания в батч-вью (полный баннер — в одиночном).
+      if (res.unmatchedMods && res.unmatchedMods.length) {
+        note += '<span class="muted"> · ⚠ не распознано модов: ' + res.unmatchedMods.length + '</span>';
       }
       batchWatchTargets.push(
         res.itemText ? { itemText: res.itemText, label: res.itemName || ('Предмет ' + (i + 1)), rarity: res.rarity } : null,

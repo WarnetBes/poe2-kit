@@ -816,7 +816,7 @@ export function matchStatFilter(
  *  Протухший дамп (>45 дней) — live-first, дамп как фолбэк. */
 export async function matchModsToStatFilters(
   modTexts: string[],
-): Promise<{ filters: TradeStatFilter[]; unmatched: string[] }> {
+): Promise<{ filters: TradeStatFilter[]; unmatched: string[]; liveMatches: number }> {
   const learned = getLearnedStatTemplates() as StatCatalogEntry[];
   const { matches, unknown, offlineMatches, liveMatches } = await matchStatsBulk(modTexts, {
     extraOfflineEntries: learned,
@@ -833,7 +833,7 @@ export async function matchModsToStatFilters(
     filters.map((f) => `${f.id}${f.min != null ? ` min=${f.min}` : ''}`),
     unknown,
   );
-  return { filters, unmatched: unknown };
+  return { filters, unmatched: unknown, liveMatches };
 }
 
 /** Поиск по trade2: базовый тип + stat-фильтры (прайс-чек раров по аффиксам).
@@ -1127,6 +1127,10 @@ export async function priceCheck(
   let estimate: PriceEstimate | null = null;
   let listings: TradeListing[] = [];
   let note: string | undefined;
+  // №196-bis (S7-UI): нераспознанные моды и сводка матчинга — в результат
+  // (оверлей строит баннер «N модов не распознано» + кнопку Reload каталога).
+  let unmatchedMods: string[] | undefined;
+  let statMatch: { matched: number; total: number; live: number } | undefined;
   // stat-id, сматченные по explicit-модам (для журнала обучения — см. learnlog.ts)
   let learnedStatIds: string[] = [];
 
@@ -1174,8 +1178,12 @@ export async function priceCheck(
     parsed.baseType
   ) {
     try {
-      const { filters, unmatched } = await matchModsToStatFilters(explicitMods);
+      const { filters, unmatched, liveMatches } = await matchModsToStatFilters(explicitMods);
       learnedStatIds = filters.map((f) => f.id);
+      // №196-bis: сигнал UI — сколько модов рынок не понял (оценка может
+      // деградировать до базового типа, пользователь должен это видеть).
+      statMatch = { matched: filters.length, total: explicitMods.length, live: liveMatches };
+      if (unmatched.length) unmatchedMods = unmatched;
       debugLog(
         'matchModsToStatFilters:',
         `${filters.length} filters, ${unmatched.length} unmatched`,
@@ -1296,6 +1304,9 @@ export async function priceCheck(
     estimate,
     listings,
     note,
+    // №196-bis (S7-UI): только когда матчинг вообще запускался (Rare с explicit-модами).
+    ...(unmatchedMods ? { unmatchedMods } : {}),
+    ...(statMatch ? { statMatch } : {}),
     sources: Array.from(
       new Set([
         ...(parsed.rarity === 'Unique' && estimate ? ['poe2scout'] : []),

@@ -5,7 +5,21 @@
 
 ## [Unreleased]
 
-(пусто)
+- added (№196-bis, S7-UI): баннер «⚠ N модов не распознано» в прайс-вью —
+  core пробрасывает `unmatchedMods`/`statMatch` в `PriceCheckResult`;
+  кнопка «🔄 Обновить каталог» (IPC `trade:reloadStats`) сбрасывает кэши
+  stat-матчинга (live-мемоизация + negative-memo) после патча GGG.
+- changed (№196-bis): консолидация trade-дампов — `stats_snapshot.json`
+  (853 КБ) удалён, единый источник `trade_stats.json` (8300 записей,
+  сверено: строгое супер-множество старого снапшота).
+- added: `scripts/deploy-share.mjs` (`npm run deploy:share`) — деплой на
+  шару игрового ПК без зависаний: preflight-доступность с таймаутом,
+  SHA256-сверка каждой записи, честные exit-коды (0 OK / 1 сбой / 2 шара
+  недоступна). Лечит «robocopy висит на выключенной шаре».
+- added: `scripts/refresh-data.mjs` (`npm run refresh-data`) — конвейер
+  обновления офлайн-датасетов + отчёт свежести (порог 45 дней, паритет
+  STALE_AFTER_MS statMatching).
+- dev: `matchModsToStatFilters` возвращает `liveMatches` (диагностика UI).
 
 ## [1.0.19] — 2026-10-02
 

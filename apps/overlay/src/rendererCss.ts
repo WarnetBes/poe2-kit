@@ -102,6 +102,7 @@ export const OVERLAY_CSS = `
   .err-box { color: var(--warn); font-size: 12px; }
 
   .meta { font-size: 11px; color: var(--dim); }
+  .sb-list { font-size: 11px; color: var(--dim); margin: 2px 0 4px; font-style: italic; }
   .meta .src { color: var(--accent); }
 
   table.list { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 2px; }

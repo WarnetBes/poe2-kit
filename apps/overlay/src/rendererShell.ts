@@ -49,6 +49,7 @@ export const OVERLAY_SHELL = `<body>
       <div id="buildNote" class="hide"></div>
       <div id="busy" class="status-busy hide">Оценка цены…</div>
       <div id="err" class="err-box hide"></div>
+      <div id="statBanner" class="meta hide"></div>
       <div id="meta" class="meta hide"></div>
       <div id="priceBatchWrap" class="hide">
         <div id="priceBatchHead"></div>

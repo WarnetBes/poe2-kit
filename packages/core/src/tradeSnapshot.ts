@@ -1,19 +1,18 @@
 /**
  * Оффлайн-снапшот каталога статов официального trade2 (trade/data/stats).
  *
- * Файл: `data/game/trade/stats_snapshot.json` — нетронутый ответ
- * `https://www.pathofexile.com/api/trade2/data/stats` (853 КБ, ~8.3k записей).
- * Назначение: второй слой фолбэка матчинга статов (live каталог → снапшот →
- * learned), чинит «сеть лежит / trade2 недоступен» без потери качества: в
- * снапшоте — полный набор stat_id ↔ шаблон, а не подмножество из learned.
+ * Файл: `data/game/trade/trade_stats.json` — свежий слепок официального
+ * каталога (refresh: `node scripts/fetch-trade-stats.mjs`; там же _meta с
+ * датой). №196-bis: старый `stats_snapshot.json` удалён как дубль (~853 КБ)
+ * — единый источник правды один файл, второй контур фолбэка матчинга статов
+ * (live каталог → снапшот → learned), чинит «сеть лежит / trade2 недоступен»
+ * без потери качества: в снапшоте — полный набор stat_id ↔ шаблон.
  *
- * ⚠️ Протухание: снапшот снимается вручную (см. scripts/ — скрипт обновления
- * ниже в файле). GGG меняет хэши stat_id патчами — после крупного патча файл
- * нужно перезалить: `curl -o stats_snapshot.json
- * https://www.pathofexile.com/api/trade2/data/stats`. матчинг по ТЕКСТУ при
- * этом остаётся валидным (тексты меняются редко) — устаревший снапшот хуже
- * живого каталога, но лучше пустоты. Источник данных © Grinding Gear Games,
- * публичный API торгового сайта.
+ * ⚠️ Протухание: GGG меняет хэши stat_id патчами — после крупного патча файл
+ * нужно перезалить (`node scripts/fetch-trade-stats.mjs`). матчинг по ТЕКСТУ
+ * при этом остаётся валидным (тексты меняются редко) — устаревший снапшот
+ * хуже живого каталога, но лучше пустоты. Источник данных © Grinding Gear
+ * Games, публичный API торгового сайта.
  */
 
 import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
@@ -26,11 +25,12 @@ function snapshotPath(): string {
     'data',
     'game',
     'trade',
-    'stats_snapshot.json',
+    'trade_stats.json',
   );
 }
 
 interface SnapshotFile {
+  _meta?: { source?: string; fetchedAt?: string; entries?: number };
   result?: Array<{ id?: string; entries?: TradeStatEntry[] }>;
 }
 

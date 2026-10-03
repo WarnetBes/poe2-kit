@@ -70,6 +70,11 @@ export interface PriceCheckResult {
   sources: string[];
   /** Лига, для которой выполнялся прайс-чек (или null, если активная не выбрана). */
   league?: string | null;
+  /** №196-bis (S7-UI): explicit-моды, не распознанные trade-каталогом статов
+   *  (материал баннера «N модов не распознано» в оверлее). Только для Rare. */
+  unmatchedMods?: string[];
+  /** №196-bis (S7-UI): сводка stat-id матчинга (диагностика баннера/кнопки Reload). */
+  statMatch?: { matched: number; total: number; live: number };
   /** Обновлено */
   updatedAt: number;
 }
