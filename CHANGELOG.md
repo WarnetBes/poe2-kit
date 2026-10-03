@@ -5,21 +5,36 @@
 
 ## [Unreleased]
 
-- added (№196-bis, S7-UI): баннер «⚠ N модов не распознано» в прайс-вью —
-  core пробрасывает `unmatchedMods`/`statMatch` в `PriceCheckResult`;
-  кнопка «🔄 Обновить каталог» (IPC `trade:reloadStats`) сбрасывает кэши
-  stat-матчинга (live-мемоизация + negative-memo) после патча GGG.
-- changed (№196-bis): консолидация trade-дампов — `stats_snapshot.json`
-  (853 КБ) удалён, единый источник `trade_stats.json` (8300 записей,
-  сверено: строгое супер-множество старого снапшота).
-- added: `scripts/deploy-share.mjs` (`npm run deploy:share`) — деплой на
-  шару игрового ПК без зависаний: preflight-доступность с таймаутом,
-  SHA256-сверка каждой записи, честные exit-коды (0 OK / 1 сбой / 2 шара
-  недоступна). Лечит «robocopy висит на выключенной шаре».
-- added: `scripts/refresh-data.mjs` (`npm run refresh-data`) — конвейер
-  обновления офлайн-датасетов + отчёт свежести (порог 45 дней, паритет
+(пусто)
+
+## [1.0.20] — 2026-10-03
+
+Фокус релиза: **S7-UI и стабильность данных** — прозрачность матчинга статов.
+
+### Added
+- **Баннер «⚠ N модов не распознано» в прайс-вью** (`58dca77`, №196-bis,
+  S7-UI): core пробрасывает `unmatchedMods`/`statMatch` в
+  `PriceCheckResult`; кнопка **«🔄 Обновить каталог»** (IPC
+  `trade:reloadStats`) сбрасывает кэши stat-матчинга (live-мемоизация +
+  negative-memo 5 мин) — свежий патч GGG лечится без релиза, следующий
+  Ctrl+F1 идёт по живому каталогу. Батч-вью — сокращённый маркер.
+- `scripts/deploy-share.mjs` (`npm run deploy:share`): деплой на шару
+  игрового ПК без зависаний — preflight-доступность с таймаутом, копии
+  под таймаутом, SHA256-сверка каждой записи; exit-коды 0/1/2
+  (2 = шара недоступна, ничего не трогаем).
+- `scripts/refresh-data.mjs` (`npm run refresh-data`): конвейер обновления
+  офлайн-датасетов + отчёт свежести (порог 45 дней, паритет
   STALE_AFTER_MS statMatching).
-- dev: `matchModsToStatFilters` возвращает `liveMatches` (диагностика UI).
+
+### Changed
+- Консолидация trade-дампов: `stats_snapshot.json` (853 КБ дубль) удалён,
+  единый источник — `trade_stats.json` (8300 записей; сверено: строгое
+  супер-множество старого снапшота).
+
+### Fixed
+- dev: `matchModsToStatFilters` возвращает `liveMatches` (диагностика UI);
+  новых тестов +3 (vitest 153/153), смок `smoke_n196b` +9 проверок
+  (22 смока ALL OK); CI зелёный на all-jobs.
 
 ## [1.0.19] — 2026-10-02
 
