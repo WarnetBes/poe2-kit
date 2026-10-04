@@ -199,6 +199,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       <button type="button" class="btn-fit btn-fit-svg" title="Вписать SVG-карту в окно">⟳ Вписать</button>
       <button type="button" class="btn-fit btn-build" title="Подсветить пассивки последнего разобранного билда (вкладка «Импорт билда») прямо на игровом дереве">⭐ Билд</button>
       <button type="button" class="btn-fit btn-game" title="Режим по умолчанию — игровой WebGL (PixiJS, официальный экспорт GGG). Тумблер переключает на лёгкий SVG.">🧭 Лёгкий вид (SVG)</button>
+      <span class="plan-badge" id="plan-badge" hidden title="Взятые узлы: клик по узлу в игровом виде берёт/снимает очко (кратчайший путь, отсечение осиротевших ветвей — как PoB)">План: <b>0</b></span>
+      <button type="button" class="btn-fit btn-plan-link" hidden title="Скопировать ссылку с планом — открывающий увидит ту же раскладку узлов">🔗 Ссылка</button>
+      <button type="button" class="btn-fit btn-plan-reset" hidden title="Полностью снять все взятые узлы плана">🧹 Сброс</button>
       <a class="btn-fit" href="https://poe2db.tw/us/passive-skill-tree/" target="_blank" rel="noopener noreferrer" title="Внешний планировщик с игровым видом карты (poe2db)">🗺 poe2db-планировщик ↗</a>
     </div>
     <details class="tree-legend" open>
@@ -625,6 +628,16 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     const stats = info.stats.length
       ? `<ul class="tstats">${info.stats.map((s) => `<li>${escAttr(s)}</li>`).join('')}</ul>`
       : '<p class="dim">Статы не указаны.</p>';
+    // План-статус узла: green («взято кликом»), PoB — золотой, отказ — серый hint.
+    const inPlan = planIds.includes(skill);
+    const inBuild = buildShown && buildAllocation(readLastBuild()!).allocated.includes(skill);
+    const planLine = inPlan
+      ? '<p class="plan-mark ok">✅ Взято в плане — клик снимет (с orphan-отсечением)</p>'
+      : inBuild
+        ? '<p class="plan-mark pob">⭐ Есть в билде PoB (read-only, берётся импортом)</p>'
+        : planHint
+          ? `<p class="plan-mark hint">ℹ️ ${escAttr(planHint)}</p>`
+          : '<p class="plan-mark hint">Клик по узлу возьмёт его в план (кратчайший путь от старта класса)</p>';
     detail.innerHTML = `
       <div class="tname">${escAttr(info.name)}</div>
       <div class="tbadges">
@@ -633,7 +646,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         ${info.isAscendancyStart ? '<span class="pill">стартовая точка</span>' : ''}
         <span class="pill mono">#${skill}</span>
       </div>
-      ${stats}`;
+      ${stats}
+      ${planLine}`;
   };
 
   /** (Пере)заполняет селектор асценданси; из GGG — optgroup'ами по классам. */
@@ -728,12 +742,25 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       svgMarked.push(raw);
     }
   };
-  const setBuildShown = (on: boolean): void => {
+  /** Единый апдейтер сцены WebGL: merger ПЛАНа пользователя и подсветки PoB-билда.
+   *  Оба набора — числовые GGG skill ids, потому merge — это union множеств;
+   *  asc-ветка приоритетнее у плана (он редактируется, билд — read-only). */
+  const applyAllocation = (): void => {
     const b = readLastBuild();
-    buildShown = on && !!b;
+    const buildAlloc = buildShown && b ? buildAllocation(b) : null;
     applySvgBuild(buildShown, b);
+    applySvgPlan();
     if (game) {
-      game.setBuild(buildShown && b ? buildAllocation(b) : null);
+      const merged = new Set<number>([...(buildAlloc?.allocated ?? []), ...planIds]);
+      game.setBuild(
+        merged.size
+          ? {
+              allocated: [...merged],
+              // ascendId в buildAllocation — display-имя.
+              ascendId: planAsc || buildAlloc?.ascendId || undefined,
+            }
+          : null,
+      );
       if (buildShown && b) {
         // Кольцо класса и диск асценданси — от билда, селекторы синхронизируем.
         if (b.class && [...classSel.options].some((o) => o.value === b.class)) classSel.value = b.class;
@@ -748,10 +775,160 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         applyClassFilter(classSel.value, ascSel.value);
       }
     }
+    refreshPlanUI();
+  };
+  const setBuildShown = (on: boolean): void => {
+    const b = readLastBuild();
+    buildShown = on && !!b;
+    applyAllocation();
     applyBuildButtonState();
   };
   buildBtn.addEventListener('click', () => setBuildShown(!buildShown));
   applyBuildButtonState();
+
+  // ── Планировщик (№209): клик по узлу = взять/снять очко, path-валидация ────
+  // Логика (кратчайший путь от старта класса + текущих узлов, отсечение
+  // осиротевших ветвей) — tree-core toggleAllocation/toggleAscendancyAllocation,
+  // PoB-семантика.Этот слой держит только persist/URL/UI.
+  const planBadge = wrap.querySelector<HTMLElement>('#plan-badge')!;
+  const planBadgeCount = planBadge.querySelector('b')!;
+  const planLinkBtn = wrap.querySelector<HTMLButtonElement>('.btn-plan-link')!;
+  const planResetBtn = wrap.querySelector<HTMLButtonElement>('.btn-plan-reset')!;
+  const PLAN_STORE = 'poe2k.plan';
+  type StoredPlan = { c: string; a?: string; n: number[] };
+  /** Зеркало плана (для SVG-меток, бейджей detail, persist/URL). */
+  let planIds: number[] = [];
+  let planClass = '';
+  let planAsc = '';
+  let planHint = '';
+
+  const parsePlanHash = (): StoredPlan | null => {
+    const m = /#p=([^&]+)/.exec(location.hash);
+    if (!m) return null;
+    const [c = '', a = '', n = ''] = decodeURIComponent(m[1]!).split(':');
+    const ids = n.split('.').map(Number).filter(Number.isInteger);
+    return c && ids.length ? { c, a: a || undefined, n: ids } : null;
+  };
+  const readStoredPlan = (): StoredPlan | null => {
+    try {
+      const p = JSON.parse(localStorage.getItem(PLAN_STORE) ?? 'null') as StoredPlan | null;
+      return p && p.c && Array.isArray(p.n) && p.n.length ? p : null;
+    } catch {
+      return null;
+    }
+  };
+  const persistPlan = (p: StoredPlan | null): void => {
+    if (p) localStorage.setItem(PLAN_STORE, JSON.stringify(p));
+    else localStorage.removeItem(PLAN_STORE);
+  };
+  const syncPlanHash = (): void => {
+    // Вкладки не используют hash (проверено), конфликтов нет.
+    const base = `${location.pathname}${location.search}`;
+    history.replaceState(
+      null,
+      '',
+      planIds.length ? `${base}#p=${encodeURIComponent(`${planClass}:${planAsc}:${planIds.join('.')}`)}` : base,
+    );
+  };
+
+  /** SVG-метки плана (лёгкий вид): класс mplan — синий контур. */
+  let svgPlanMarked: string[] = [];
+  const applySvgPlan = (): void => {
+    for (const id of svgPlanMarked) nodeEls[id]?.classList.remove('mplan');
+    svgPlanMarked = [];
+    for (const num of planIds) {
+      const id = String(num);
+      nodeEls[id]?.classList.add('mplan');
+      svgPlanMarked.push(id);
+    }
+  };
+
+  const refreshPlanUI = (): void => {
+    const n = planIds.length;
+    planBadge.hidden = n === 0 && !planClass;
+    planBadgeCount.textContent = String(n);
+    if (planClass) planBadge.title = `План от класса ${planClass}${planAsc ? ` / ${planAsc}` : ''}: клик по узлу в игровом виде берёт/снимает очко`;
+    planLinkBtn.hidden = n === 0;
+    planResetBtn.hidden = n === 0;
+  };
+
+  /** Клик по узлу плана (только игровой вид: логика в treeGame-чанке). */
+  const handlePlanClick = (
+    info: import('./treeGame/mount').GameNodeInfo | null,
+    skill: number,
+  ): void => {
+    if (!game) {
+      if (!gameMode) planHint = 'план редактируется в игровом виде (кнопка «🎮 Игровой вид»)';
+      return;
+    }
+    if (!info) {
+      planHint = 'структурный узел без имени — не аллоцируется';
+      return;
+    }
+    if (info.isMastery) {
+      planHint = 'мастерство — не отдельное очко';
+      return;
+    }
+    if (info.ascendancy && info.ascendancy !== (planAsc || undefined) && planIds.length === 0) {
+      // Первый клик по asc-узлу: автостартуем план от его асценданси, чтобы не
+      // заставлять выбирать её в селекторе руками.
+      const seedClass = baseOf(info.ascendancy) || classSel.value || readLastBuild()?.class || 'Monk';
+      game.initPlan(seedClass, info.ascendancy);
+      planClass = seedClass;
+      planAsc = info.ascendancy;
+    } else if (!planClass) {
+      const seedClass = classSel.value || readLastBuild()?.class || 'Monk';
+      game.initPlan(seedClass, ascSel.value || readLastBuild()?.ascendancy || undefined);
+      planClass = seedClass;
+      planAsc = ascSel.value || readLastBuild()?.ascendancy || '';
+    }
+    const r = game.toggleNode(skill);
+    if (r.ok && r.plan) {
+      planIds = r.plan.allocated;
+      planAsc = r.plan.ascendancy ?? '';
+      planHint = '';
+      persistPlan({ c: planClass, a: planAsc || undefined, n: planIds });
+      syncPlanHash();
+      applyAllocation();
+      showGameDetail(info, skill); // перепоказать карточку: узел уже «в плане»
+    } else {
+      planHint = r.hint ?? 'не удалось изменить план';
+    }
+  };
+
+  planResetBtn.addEventListener('click', () => {
+    game?.resetPlan();
+    planIds = [];
+    planClass = '';
+    planAsc = '';
+    planHint = '';
+    persistPlan(null);
+    syncPlanHash();
+    applyAllocation();
+  });
+  planLinkBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      planLinkBtn.textContent = '✓ Скопировано';
+      setTimeout(() => { planLinkBtn.textContent = '🔗 Ссылка'; }, 2000);
+    } catch {
+      // clipboard заблокирован — выделяем адрес в hash напрямую
+      planLinkBtn.textContent = 'адрес в строке браузера';
+      setTimeout(() => { planLinkBtn.textContent = '🔗 Ссылка'; }, 2500);
+    }
+  });
+
+  // Restore: hash важнее localStorage (расшаренная раскладка всегда выигрывает).
+  {
+    const p = parsePlanHash() ?? readStoredPlan();
+    if (p) {
+      planClass = p.c;
+      planAsc = p.a ?? '';
+      planIds = p.n;
+      applySvgPlan();
+      refreshPlanUI();
+    }
+  }
 
   const enableGame = async (): Promise<void> => {
     gameMode = true;
@@ -766,12 +943,25 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       }
       const mod = await import('./treeGame/mount');
       game = await mod.mountGameTree(host, {
-        onNodeClick: (info, skill) => { showGameDetail(info, skill); },
+        onNodeClick: (info, skill) => {
+          showGameDetail(info, skill);
+          handlePlanClick(info, skill);
+        },
       });
       canvas.style.display = 'none';
       game.setClass(classSel.value || undefined);
       if (ascSel.value) game.setAscendancy(ascSel.value);
       populateAsc(game.ascByClass);
+      // Восстановить план (hash/localStorage) до применения подсветки билда —
+      // applyAllocation мерджит оба набора в одну сцену.
+      if (planIds.length && game.getPlan() === null) {
+        if (game.restorePlan({ className: planClass, allocated: planIds, ascendancy: planAsc || undefined })) {
+          if (planAsc && planAsc !== ascSel.value && [...ascSel.options].some((o) => o.value === planAsc)) {
+            ascSel.value = planAsc;
+            game.setAscendancy(planAsc);
+          }
+        }
+      }
       // Билд: при первом открытии подсвечиваем автоматически, дальше —
       // последнее решение пользователя сохраняется между переключениями вида.
       if (buildAuto) {
@@ -807,9 +997,20 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     game?.setClass(classSel.value || undefined);
   });
   // Выбор асценданси: SVG — фильтр, WebGL — переносит его диск в хаб.
+  // План (если начат) следует за выбором: узлы прежней ветки снимаются
+  // (clearAscendancyAllocation внутри mount), зеркало обновляем отсюда.
   ascSel.addEventListener('change', () => {
     applyClassFilter(classSel.value, ascSel.value);
     game?.setAscendancy(ascSel.value || undefined);
+    if (game && game.getPlan()) {
+      game.planSetAscendancy(ascSel.value || undefined);
+      planAsc = ascSel.value;
+      const p = game.getPlan();
+      planIds = p ? p.allocated : [];
+      persistPlan({ c: planClass, a: planAsc || undefined, n: planIds });
+      syncPlanHash();
+      applyAllocation();
+    }
   });
   applyClassFilter('');
 

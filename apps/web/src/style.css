@@ -585,6 +585,16 @@ a { color: var(--gold); }
 .tree-svg .tnode.mbuild { filter: drop-shadow(0 0 2.5px #ffd76a) drop-shadow(0 0 5px #ffb400); }
 .tree-svg .mnode.mbuild { stroke: #ffcf4d; stroke-width: 2px; }
 .tree-svg .mnode-under[data-build] { stroke: #ffcf4d; stroke-width: 2.4px; }
+/* №209: план пользователя (клик-аллокация) — голубой контур, отличим от
+   золотого PoB-билда; в игровом виде план виден allocated-фреймами tree-core. */
+.tree-svg .tnode.mplan { filter: drop-shadow(0 0 2.5px #7fd0ff) drop-shadow(0 0 5px #1f9bff); }
+.tree-svg .mnode.mplan { stroke: #5cc0ff; stroke-width: 2px; }
+.plan-badge { font-size: 0.8rem; padding: 0.1rem 0.5rem; border: 1px solid var(--border, #3a4a66);
+  border-radius: 999px; color: var(--dim, #8fa3c0); }
+.plan-mark { margin: 0.4rem 0 0; font-size: 0.78rem; line-height: 1.35; }
+.plan-mark.ok { color: #7ff0a8; }
+.plan-mark.pob { color: #ffd76a; }
+.plan-mark.hint { color: var(--dim, #8fa3c0); }
 .tree-svg .mhit { pointer-events: all; stroke: none; }
 .tree-svg .mring { pointer-events: none; }
 .tree-svg .mclassbg { pointer-events: none; opacity: 0.5; }
