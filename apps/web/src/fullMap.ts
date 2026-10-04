@@ -925,6 +925,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       planClass = p.c;
       planAsc = p.a ?? '';
       planIds = p.n;
+      persistPlan(p); // расшаренная ссылка обязана пережить и localStorage тоже
       applySvgPlan();
       refreshPlanUI();
     }
