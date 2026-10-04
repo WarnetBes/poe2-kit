@@ -40,6 +40,7 @@
 - **poe2_build_estimate** — приближённая оценка EHP/DPS без PoB-движка.
 - **poe2_build_advice** — «следующий апгрейд»: приоритеты «чини → потом» + референс меты.
 - **poe2_build_compare** — свой билд vs топ-лестница класса (перцентиль DPS/EHP).
+- **poe2_export_build_planner** — конвертация билда PoB в официальный *.build (Build Planner PoE2, schema v1) для импорта в игре.
 - **poe2_build_guide** — скелет 9-секционного гайда по шаблону (данные подставлены, текст — заглушки).
 - **poe2_evaluate_build** — билд против числовых целей (DPS/EHP/резисты/Spirit): verdict + разрыв, computed:/estimated:.
 - **poe2_rank_levers** — ранжирование рычагов апгрейда по ΔEHP (computed) и ΔDPS-оценке (estimated).

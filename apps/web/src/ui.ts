@@ -383,7 +383,9 @@ export async function showBuildImport(code: string): Promise<void> {
   el.innerHTML = '<em>Декодирование…</em>';
   setStatus('Декод PoB…');
   try {
-    const xml = core.build.decodeShareCode(code.trim());
+    // toXml принимает И share-код, И ссылку (pobb.in → /raw, poe.ninja-pob),
+    // с анти-HTML и таймаутом — раньше ссылки умирали на decodeShareCode (№208).
+    const xml = await core.build.toXml(code.trim());
     const b = await core.build.importBuild(xml);
     _lastBuildNodes = Array.isArray(b.passiveNodes) ? b.passiveNodes.map((n) => String(n)) : [];
     const ls: string[] = ['<h3>Билд</h3>', '<ul class="kv">'];

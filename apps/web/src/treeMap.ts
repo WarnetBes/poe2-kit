@@ -39,10 +39,10 @@ type Db = { nodes: Map<string, NumericEntry>; pos: Map<string, [number, number]>
 
 let dbPromise: Promise<Db> | null = null;
 
-/** Лениво загрузить numeric_ids + positions (казется кэшем). */
+/** Лениво загрузить numeric_ids + positions (кэшем; сбой не прилипает — №208). */
 async function loadDb(): Promise<Db> {
   if (!dbPromise) {
-    dbPromise = (async () => {
+    const p = (async () => {
       const [layRaw, nodesRaw, posRaw] = await Promise.all([
         // Основной источник (актуальный layout 0_5 из PoB2 — координаты «как в игре»).
         fetch(layoutUrl).then((r) => {
@@ -84,6 +84,12 @@ async function loadDb(): Promise<Db> {
       }
       return { nodes, pos };
     })();
+    dbPromise = p;
+    // Сбой загрузки (сеть) не должен прилипать в кэше навсегда — ретрай на
+    // следующем «Показать дерево» вместо «вкладка мертва до F5» (№208).
+    p.catch(() => {
+      if (dbPromise === p) dbPromise = null;
+    });
   }
   return dbPromise;
 }
@@ -321,7 +327,12 @@ export async function renderTreeMap(host: HTMLElement, ids: string[]): Promise<v
   });
 
   fitBtn.addEventListener('click', fit);
-  window.addEventListener('resize', fit);
+  // resize-листенер live ровно у одного рендера: прошлый снимается (раньше
+  // копился на каждый «Показать дерево», утягивая detached-DOM — №208).
+  resizeAbort?.abort();
+  resizeAbort = new AbortController();
+  window.addEventListener('resize', fit, { signal: resizeAbort.signal });
 
   fit();
 }
+let resizeAbort: AbortController | null = null;

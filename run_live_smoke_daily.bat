@@ -35,6 +35,16 @@ if exist "%POE2_KIT_CACHE_DIR%" rmdir /s /q "%POE2_KIT_CACHE_DIR%"
 node packages/core/live-smoke.mjs >> "%LOG%" 2>&1
 set "RC=%ERRORLEVEL%"
 
+REM --- Data freshness pipeline (No. 208): refresh trade_stats + report on
+REM --- the staleness of all offline datasets. Does not block the smoke result. ---
+echo [%date% %time%] refresh-data: >> "%LOG%"
+node scripts/refresh-data.mjs >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [%date% %time%] refresh-data: STALE/FAILED ^(see above^) >> "%LOG%"
+) else (
+  echo [%date% %time%] refresh-data: OK >> "%LOG%"
+)
+
 echo [%date% %time%] exit=%RC% >> "%LOG%"
 if %RC%==0 ( echo OK > logs\live-smoke-LAST.txt ) else ( echo FAIL_%RC% > logs\live-smoke-LAST.txt )
 

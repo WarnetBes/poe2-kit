@@ -516,7 +516,66 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 6;
+  // ── Экспорт в официальный Build Planner (*.build, schema v1) ─────────────
+  server.registerTool(
+    'poe2_export_build_planner',
+    {
+      title: 'PoE2 Export Build Planner (*.build)',
+      description: `Конвертировать билд PoB в официальный формат Build Planner PoE2 (*.build, JSON schema v1) — файл можно импортировать прямо в игру (Настройки → Импорт билда).
+
+Аргументы:
+  - code (string): PoB share-код ИЛИ ссылка (pobb.in, poe.ninja/poe2/pob/...).
+  - name (string, опц.): имя билда (по умолчанию «Класс — Асценданси»; игра режет ~40 символов).
+  - author (string, опц.): автор.
+  - link (string, опц.): ссылка-источник (попадает в link билда).
+  - description (string, опц.): заметка/описание.
+
+Возвращает: JSON-содержимое *.build в код-блоке, имя файла и предупреждения конвертации
+(что НЕ попало: неизвестные скиллы/узлы, гир без клир-текста). Гир экспортируется
+только из полных item-текстов (уники — по имени, рарники — additional_text).
+`,
+      inputSchema: {
+        code: z.string().min(5).describe('PoB share-код или ссылка'),
+        name: z.string().optional().describe('Имя билда'),
+        author: z.string().optional().describe('Автор'),
+        link: z.string().optional().describe('Ссылка-источник'),
+        description: z.string().optional().describe('Описание'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ code, name, author, link, description }) => {
+      try {
+        const [imported, gearItems] = await Promise.all([
+          core.build.importBuild(code),
+          core.build.buildCodeToGear(code).catch(() => []),
+        ]);
+        const res = core.buildPlanner.toBuildPlanner(imported, {
+          ...(name ? { name } : {}),
+          ...(author ? { author } : {}),
+          ...(link ? { link } : {}),
+          ...(description ? { description } : {}),
+          ...(gearItems.length ? { gearItems } : {}),
+        });
+        const lines = [
+          `## *.build экспорт — ${res.filename}`,
+          '',
+          ...res.warnings.map((w) => `- ⚠ ${w}`),
+          ...(res.warnings.length ? [''] : []),
+          '```json',
+          res.json,
+          '```',
+          '',
+          `_Сохранить как «${res.filename}» (UTF-8) и импортировать в игре. Формат: pathofexile.com/developer/docs/game#buildplanner._`,
+        ];
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка экспорта: ${msg}` }] };
+      }
+    },
+  );
+
+  return 7;
 }
 
 /** Отформатировать сравнение с топ-лестницей класса (P1) в читаемый markdown. */

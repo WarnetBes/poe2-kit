@@ -346,7 +346,11 @@ function convertInventory(items: BuildGearItem[], warnings: string[]): BuildPlan
       .slice(divider >= 0 ? divider + 1 : rarityIdx + 2)
       .filter((l) => l && !NON_MOD_LINE.test(l));
     const first = it.name || (rarityIdx >= 0 ? nameLine : (lines[0] ?? it.slot));
-    const additional = [first, ...modLines.map((l, i) => `${i + 1}. ${l}`)].join('\n');
+    // additional_text — PoE2 Custom Text markup: { } — делимитеры разметки
+    // (<bold>{ … } и т.п.), посторонние скобы в тексте мода ломают парсер игры.
+    // Донор: PoB2 BuildExportPoE2.lua:185-188 (stripBraces).
+    const stripBraces = (s: string): string => s.replace(/[{}]/g, '');
+    const additional = [stripBraces(first), ...modLines.map((l, i) => `${i + 1}. ${stripBraces(l)}`)].join('\n');
     out.push({ inventory_id: inventoryId, additional_text: additional });
   }
   return out;

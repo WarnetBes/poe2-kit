@@ -143,7 +143,14 @@ export async function mountGameTree(host: HTMLElement, opts: MountOpts): Promise
     throw new Error('WebGL2 недоступен в этом браузере');
   }
 
-  if (!loaded) loaded = loadAll();
+  // Сбой загрузки (сеть и т.п.) не должен прилипать в кэше: иначе «Игровой вид»
+  // мёртв до перезагрузки страницы (отклонённый promise не ретраится) — №208.
+  if (!loaded) {
+    loaded = loadAll().catch((e: unknown) => {
+      loaded = null;
+      throw e;
+    });
+  }
   const L = await loaded;
 
   let activeClassId: number | undefined;

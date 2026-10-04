@@ -6,6 +6,49 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Per-dataset даты (№208): паритет со scripts/refresh-data.mjs freshness. */
+function offlineDatasetDates(): string[] {
+  const targets: Array<[string, string[]]> = [
+    ['trade/trade_stats.json', ['_meta', 'fetchedAt']],
+    ['skill_gems/recommended_supports.json', ['scraped_at']],
+    ['skill_gems/gem_colors.json', ['generated_at']],
+    ['build_planner/map.json', ['metadata', 'extraction_date']],
+    ['passive_tree/layout.json', ['metadata', 'generated_at']],
+    ['hideout/decor.json', ['_meta', 'generated']],
+    ['support_gems/support_gems.json', ['metadata', 'extraction_date']],
+  ];
+  const rows: string[] = [];
+  let dataDir: string;
+  try {
+    // packages/core/dist/index.js → packages/core/data/game.
+    // exports "." у core объявлен только в import-условии, поэтому
+    // import.meta.resolve (createRequire().resolve падает в CJS-контексте).
+    const coreEntry = import.meta.resolve('@poe2-kit/core');
+    dataDir = path.join(path.dirname(fileURLToPath(coreEntry)), '..', 'data', 'game');
+  } catch {
+    return ['| _путь к data/game не разрешён_ | — | — |'];
+  }
+  for (const [rel, keys] of targets) {
+    try {
+      const raw: unknown = JSON.parse(fs.readFileSync(path.join(dataDir, rel), 'utf8'));
+      let cur: unknown = raw;
+      for (const k of keys) cur = (cur as Record<string, unknown> | null)?.[k];
+      if (typeof cur !== 'string') {
+        rows.push(`| ${rel} | ? | ? |`);
+        continue;
+      }
+      const ageDays = Math.floor((Date.now() - Date.parse(cur)) / 86_400_000);
+      rows.push(`| ${rel} | ${cur.slice(0, 10)} | ${Number.isFinite(ageDays) ? `${ageDays} дн` : '?'}${ageDays > 45 ? ' ⚠' : ''} |`);
+    } catch {
+      rows.push(`| ${rel} | — | не читается |`);
+    }
+  }
+  return rows;
+}
 
 export function registerDatasetTools(server: McpServer): number {
   let count = 0;
@@ -385,11 +428,19 @@ export function registerDatasetTools(server: McpServer): number {
       if (clear) cleared = core.cache.clearHttpCache();
       const v = core.dataset.getDatasetVersion();
       const entries = core.cache.httpCacheInfo();
+      // Per-dataset даты (№208): раньше тул был слеп к отдельным _meta
+      // (например support_gems 2025-12-12 выглядел «свежим» на фоне ревизии).
+      const perDs = offlineDatasetDates();
       const lines = [
         '## Свежесть данных poe2-kit',
         '',
         '### Офлайн-датасеты',
         `- Патч: **${v.patch_version} «${v.patch_name}»** (ревизия ${v.data_revision}, ${v.released_as}), извлечено ${v.extracted_at}`,
+        '',
+        '### Даты отдельных датасетов',
+        '| Датасет | Дата | Возраст |',
+        '|---|---|---|',
+        ...perDs,
         '',
         `### Дисковый кэш живых источников — ${entries.length} записей${clear ? ` (очищено ${cleared})` : ''}`,
       ];
