@@ -581,6 +581,10 @@ a { color: var(--gold); }
 .tree-svg .tnode:hover { filter: brightness(1.25); }
 .tree-svg .mnode { stroke-width: 1.2px; }
 .tree-svg .mnode-under { pointer-events: none; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
+/* №207: подсветка билда в лёгком (SVG) виде — свечение и золотой контур. */
+.tree-svg .tnode.mbuild { filter: drop-shadow(0 0 2.5px #ffd76a) drop-shadow(0 0 5px #ffb400); }
+.tree-svg .mnode.mbuild { stroke: #ffcf4d; stroke-width: 2px; }
+.tree-svg .mnode-under[data-build] { stroke: #ffcf4d; stroke-width: 2.4px; }
 .tree-svg .mhit { pointer-events: all; stroke: none; }
 .tree-svg .mring { pointer-events: none; }
 .tree-svg .mclassbg { pointer-events: none; opacity: 0.5; }

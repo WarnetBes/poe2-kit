@@ -679,6 +679,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   let buildShown = false;
   /** Авто-показ билда при первом монтировании WebGL (дальше — выбор пользователя). */
   let buildAuto = true;
+  // SVG-подсветка билда (№207): помеченные узлы — id PoB ≡ GGG skill (см. ниже).
+  let svgMarked: string[] = [];
   const readLastBuild = (): LastBuild | null => {
     try {
       const b = JSON.parse(localStorage.getItem('poe2k.lastBuild') ?? 'null') as LastBuild | null;
@@ -706,9 +708,30 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       ? `★ Билд — скрыть (${b.passiveNodes.length})`
       : `⭐ Билд (${b.passiveNodes.length})`;
   };
+  /** Пометить/снять SVG-узлы билда (lёгкий вид): класс mbuild + контур. */
+  const applySvgBuild = (on: boolean, b: LastBuild | null): void => {
+    for (const id of svgMarked) {
+      nodeEls[id]?.classList.remove('mbuild');
+      underEls[id]?.removeAttribute('data-build');
+    }
+    svgMarked = [];
+    if (!on || !b) return;
+    // PoB Spec nodes — те же числовые id, что GGG skill (148/148 на эталоне 28880),
+    // поэтому после миграции layout.json на official export подсветка работает
+    // и в SVG-фолбэке, без конвертации id.
+    for (const raw of b.passiveNodes) {
+      const el = nodeEls[raw];
+      if (!el) continue;
+      el.classList.add('mbuild');
+      const u = underEls[raw];
+      if (u) u.setAttribute('data-build', '1');
+      svgMarked.push(raw);
+    }
+  };
   const setBuildShown = (on: boolean): void => {
     const b = readLastBuild();
     buildShown = on && !!b;
+    applySvgBuild(buildShown, b);
     if (game) {
       game.setBuild(buildShown && b ? buildAllocation(b) : null);
       if (buildShown && b) {
