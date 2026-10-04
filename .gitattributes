@@ -4,3 +4,8 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+
+# .hideout = game-native JSON+BOM, game writes LF (verified 12/12 live exports).
+# -text: forbid EOL rewrite on checkout (core.autocrlf=true would CRLF-ify
+# working copies and break byte-exact fixture/roundtrip comparisons).
+*.hideout -text
