@@ -1,6 +1,6 @@
 {
   "name": "@poe2-kit/overlay",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "private": true,
   "type": "module",
   "description": "Windows-оверлей PoE2 Kit: прайс-чек по хоткею из буфера обмена, наложение поверх игры на едином ядре",
