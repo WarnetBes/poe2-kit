@@ -198,12 +198,15 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
       <div class="tree-canvas atlas-canvas">
         <div class="atlas-tip" hidden></div>
       </div>
-      <aside class="tree-detail"><em>Клик по узлу — статы; клик берёт/снимает очко атласа.</em></aside>
+      <aside class="tree-detail">
+        <div class="atlas-calc" hidden><div class="atlas-calc-title">Сводка взятых умений <span class="atlas-calc-n"></span></div><ul class="atlas-calc-list"></ul></div>
+        <div class="atlas-node-detail"><em>Клик по узлу — статы; клик берёт/снимает очко атласа.</em></div>
+      </aside>
     </div>`;
   container.appendChild(wrap);
 
   const canvas = wrap.querySelector<HTMLDivElement>('.tree-canvas')!;
-  const detail = wrap.querySelector<HTMLElement>('.tree-detail')!;
+  const detail = wrap.querySelector<HTMLElement>('.atlas-node-detail')!;
   const tip = wrap.querySelector<HTMLElement>('.atlas-tip')!;
   const ptsBadge = wrap.querySelector<HTMLElement>('.atlas-pts')!;
 
@@ -320,11 +323,77 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     ptsBadge.textContent = String(allocated.size);
   };
 
+  // ── калькулятор: суммарные модификаторы взятых узлов ──────────────────
+  const calcBox = wrap.querySelector<HTMLElement>('.atlas-calc')!;
+  const calcList = wrap.querySelector<HTMLUListElement>('.atlas-calc-list')!;
+  const calcN = wrap.querySelector<HTMLElement>('.atlas-calc-n')!;
+
+  /** "[Tag|Text]" → "Text", "[X]" → "X"; \n → пробел. */
+  const cleanStat = (s: string): string =>
+    s.replace(/\[[^\]|]*\|([^\]]+)\]/g, '$1').replace(/\[([^\]|]+)\]/g, '$1').replace(/\s*\n\s*/g, ' ').trim();
+
+  /**
+   * Разбор стата в {tmpl, a, b}: первое число выносится в шаблон "#" или "(#-#)".
+   * a/b — числитель и максимум; у статов без ведущего числа a=null (не суммируется, только счётчик).
+   */
+  const parseStat = (raw: string): { tmpl: string; a: number | null; b: number | null } => {
+    const clean = cleanStat(raw);
+    const rng = clean.match(/^\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)%?\s*/);
+    if (rng) return { tmpl: clean.slice(rng[0].length), a: parseFloat(rng[1]), b: parseFloat(rng[2]) };
+    const one = clean.match(/^(\d+(?:\.\d+)?)%?\s*/);
+    if (one) return { tmpl: clean.slice(one[0].length), a: parseFloat(one[1]), b: null };
+    return { tmpl: clean, a: null, b: null };
+  };
+
+  const updateCalc = (): void => {
+    // группировка по шаблону (текст без ведущего числа): tmpl → суммы/счётчики
+    const rows = new Map<string, { sumA: number; sumB: number; numCount: number; rngCount: number; count: number }>();
+    for (const id of allocated) {
+      const n = nodes.get(id);
+      if (!n) continue;
+      for (const raw of n.stats ?? []) {
+        const { tmpl, a, b } = parseStat(raw);
+        const r = rows.get(tmpl) ?? { sumA: 0, sumB: 0, numCount: 0, rngCount: 0, count: 0 };
+        if (a !== null) {
+          r.numCount++;
+          r.sumA += a;
+          if (b !== null) {
+            r.rngCount++;
+            r.sumB += b;
+          }
+        }
+        r.count++;
+        rows.set(tmpl, r);
+      }
+    }
+    calcN.textContent = `(${allocated.size})`;
+    calcBox.hidden = allocated.size === 0;
+    const sorted = [...rows.entries()].sort((x, y) => {
+      // суммируемые выше, сильнее — выше, остальное по алфавиту
+      const aSum = x[1].numCount === x[1].count && x[1].numCount > 0 ? 0 : 1;
+      const bSum = y[1].numCount === y[1].count && y[1].numCount > 0 ? 0 : 1;
+      if (aSum !== bSum) return aSum - bSum;
+      return y[1].sumA - x[1].sumA || x[0].localeCompare(y[0]);
+    });
+    calcList.innerHTML = sorted
+      .slice(0, 50)
+      .map(([tmpl, r]) => {
+        const summable = r.numCount === r.count && r.numCount > 0;
+        const range = summable && r.rngCount === r.numCount && r.sumB !== r.sumA;
+        const num = summable ? `${range ? `(${r.sumA}–${r.sumB})%` : `${r.sumA}%`} ` : '';
+        const times = r.count > 1 ? ` <span class="dim">×${r.count}</span>` : '';
+        return `<li>${num}${esc(tmpl)}${times}</li>`;
+      })
+      .join('');
+  };
+  updateCalc();
+
   const commit = (): void => {
     const ids = [...allocated];
     persist(ids);
     syncHash(ids);
     applyAllocation();
+    updateCalc();
   };
 
   const reachable = (id: number): boolean => {
@@ -654,6 +723,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
   // ── инициализация ─────────────────────────────────────────────────────────
   restore();
   applyAllocation();
+  updateCalc();
   fit();
 }
 

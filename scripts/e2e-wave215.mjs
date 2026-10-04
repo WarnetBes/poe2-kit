@@ -102,6 +102,21 @@ check('node2-clickable', !!c2);
 if (c2) { await clickXY(c2.x, c2.y); await sleep(300); }
 check('alloc-adjacent', (await ev(`document.querySelector('.atlas-pts')?.textContent`)) === '3');
 
+// ---- 2a) калькулятор: сводка взятых модификаторов ----
+check('calc-visible', !(await ev(`document.querySelector('.atlas-calc')?.hidden`)), 'expected visible with plan');
+const calcHtml = await ev(`document.querySelector('.atlas-calc-list')?.innerHTML ?? ''`);
+check('calc-has-rows', (calcHtml.match(/<li>/g) || []).length === 2, `rows=${(calcHtml.match(/<li>/g) || []).length}`);
+check('calc-shrine-40', calcHtml.includes('40% increased chance of Shrines'), '');
+check('calc-buff-50', calcHtml.includes('50% increased Effect of Buffs granted by Shrines'), '');
+check('calc-plan-size', (await ev(`document.querySelector('.atlas-calc-n')?.textContent`)) === '(3)', '');
+check('calc-all-ok', calcHtml.includes('40%') && calcHtml.includes('50%'));
+// refund снимает и строку
+if (c2) { await clickXY(c2.x, c2.y); await sleep(300); }
+check('calc-row-removed-on-refund', !(await ev(`(document.querySelector('.atlas-calc-list')?.innerHTML ?? '').includes('50%')`)), '');
+// вернём обратно
+if (c2) { await clickXY(c2.x, c2.y); await sleep(300); }
+check('calc-row-restored', (await ev(`(document.querySelector('.atlas-calc-list')?.innerHTML ?? '').includes('50%')`)));
+
 // ---- 3) невалидная: далёкий узел, счётчик не растёт ----
 const cf = await nodeCenter(FAR);
 check('far-node-clickable', !!cf);

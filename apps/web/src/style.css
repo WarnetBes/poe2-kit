@@ -973,3 +973,10 @@ h2::after {
 }
 .atlas-tip-name { font-weight: 700; color: var(--gold-hi, #ffd76a); margin-bottom: 4px; }
 .atlas-tip-stat { color: var(--text, #dbe6f5); }
+
+
+/* calc summary (wave 215) */
+.atlas-calc { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #2c3542; border-radius: 8px; background: rgba(16, 22, 30, 0.6); }
+.atlas-calc-title { font-size: 0.78rem; font-weight: 700; color: var(--gold-hi, #ffd76a); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+.atlas-calc-list { margin: 0; padding-left: 16px; font-size: 0.78rem; line-height: 1.45; color: var(--text, #dbe6f5); max-height: 320px; overflow-y: auto; }
+.atlas-calc-list li { margin-bottom: 3px; }
