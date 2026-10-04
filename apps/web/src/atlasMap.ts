@@ -266,7 +266,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     g.appendChild(c);
 
     if (n.icon) {
-      const s = nodeR(n) * 2.7; // размер иконки в юнитах сцены, пропорционально узлу (раньше был /SCALE — гигантские хиты перекрывали соседей)
+      const s = nodeR(n) * 2.2; // размер иконки в юнитах сцены, пропорционально узлу (раньше был /SCALE — гигантские хиты перекрывали соседей)
       const img = document.createElementNS(SVGNS, 'image');
       img.setAttribute('class', 'anode-img');
       img.setAttribute('x', String(x - s / 2));
