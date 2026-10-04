@@ -980,3 +980,11 @@ h2::after {
 .atlas-calc-title { font-size: 0.78rem; font-weight: 700; color: var(--gold-hi, #ffd76a); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
 .atlas-calc-list { margin: 0; padding-left: 16px; font-size: 0.78rem; line-height: 1.45; color: var(--text, #dbe6f5); max-height: 320px; overflow-y: auto; }
 .atlas-calc-list li { margin-bottom: 3px; }
+
+
+/* calc source dots (wave 215) */
+.atlas-calc-list { list-style: none; padding-left: 2px; }
+.atlas-calc-list li { padding-left: 18px; text-indent: -16px; }
+.calc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.calc-dot-atlas { background: #ffd76a; }
+.calc-dot-passives { background: #5cc0ff; }

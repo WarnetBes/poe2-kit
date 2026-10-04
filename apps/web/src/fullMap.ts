@@ -19,10 +19,11 @@
  */
 
 import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
+import atlasUrl from '../../../packages/core/data/game/atlas/atlas.json?url';
 import skillsUrl from '../../../packages/core/data/game/passive_tree/assets/skills.webp?url';
 import groupBgUrl from '../../../packages/core/data/game/passive_tree/assets/group-background.webp?url';
 import { classBgUrls } from './classBgAssets';
-import { aggregateStats, calcRowToHtml, foreignCalcs, mergeRows, publishCalc, subscribeCalc, type CalcRow } from './calcSummary';
+import { aggregateStats, calcRowToHtml, foreignCalcs, hasCalc, mergeRows, publishCalc, publishCalcIfAbsent, subscribeCalc, tagRows, type CalcRow } from './calcSummary';
 import { initTreeSearch } from './treeSearch';
 
 interface LayoutNode {
@@ -893,7 +894,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       .join('');
   };
   const updateCalc = (): void => {
-    ownPassiveRows = aggregateStats(planIds.map((id) => db.nodes.get(String(id))?.stats));
+    ownPassiveRows = tagRows('passives', aggregateStats(planIds.map((id) => db.nodes.get(String(id))?.stats)));
     publishCalc('passives', ownPassiveRows, `Дерево пассивок: ${planIds.length}`);
     renderCalc();
   };
@@ -901,6 +902,26 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   subscribeCalc((src) => {
     if (src !== 'passives') renderCalc();
   });
+
+  // lazy-bootstrap: атлас ещё не публиковался (вкладка не открывалась) —
+  // агрегируем его план из localStorage (188 KB atlas.json, дёшево).
+  if (!hasCalc('atlas')) {
+    try {
+      const ids = JSON.parse(localStorage.getItem('poe2k.atlasPlan') ?? '[]') as number[];
+      if (Array.isArray(ids) && ids.length) {
+        void fetch(atlasUrl)
+          .then((r) => r.json())
+          .then((data: { nodes?: Record<string, { stats?: string[] }> }) => {
+            if (hasCalc('atlas')) return; // вкладка атласа успела открыться
+            const rows = tagRows('atlas', aggregateStats(ids.map((id) => data.nodes?.[String(id)]?.stats)));
+            if (publishCalcIfAbsent('atlas', rows, `Дерево атласа: ${ids.length}`)) renderCalc();
+          })
+          .catch(() => undefined);
+      }
+    } catch {
+      /* чужой localStorage кривой — игнорируем */
+    }
+  }
 
   const refreshPlanUI = (): void => {
     const n = planIds.length;

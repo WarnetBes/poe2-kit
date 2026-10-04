@@ -19,7 +19,18 @@
  */
 
 import atlasUrl from '../../../packages/core/data/game/atlas/atlas.json?url';
-import { aggregateStats, calcRowToHtml, foreignCalcs, mergeRows, publishCalc, subscribeCalc } from './calcSummary';
+import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json?url';
+import {
+  aggregateStats,
+  calcRowToHtml,
+  foreignCalcs,
+  hasCalc,
+  mergeRows,
+  publishCalc,
+  publishCalcIfAbsent,
+  subscribeCalc,
+  tagRows,
+} from './calcSummary';
 import { setStatus } from './ui';
 
 const STORE_KEY = 'poe2k.atlasPlan';
@@ -346,7 +357,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
   };
 
   const updateCalc = (): void => {
-    ownAtlasRows = aggregateStats([...allocated].map((id) => nodes.get(id)?.stats));
+    ownAtlasRows = tagRows('atlas', aggregateStats([...allocated].map((id) => nodes.get(id)?.stats)));
     publishCalc('atlas', ownAtlasRows, `Дерево атласа: ${allocated.size}`);
     renderCalc();
   };
@@ -355,6 +366,28 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     if (src !== 'atlas') renderCalc();
   });
   updateCalc();
+
+  // lazy-bootstrap: дерево пассивок ещё не публиковалось (вкладка «Карты» не
+  // открывалась) — агрегируем его план из localStorage прямо здесь.
+  if (!hasCalc('passives')) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('poe2k.plan') ?? 'null') as { n?: number[] } | null;
+      const ids = stored?.n ?? [];
+      if (ids.length) {
+        void fetch(layoutUrl)
+          .then((r) => r.json())
+          .then((lay: { nodes?: Record<string, { stats?: string[] }> }) => {
+            // вкладка карт успела открыться и опубликовать точные данные — не спорим
+            if (hasCalc('passives')) return;
+            const rows = tagRows('passives', aggregateStats(ids.map((id) => lay.nodes?.[String(id)]?.stats)));
+            if (publishCalcIfAbsent('passives', rows, `Дерево пассивок: ${ids.length}`)) renderCalc();
+          })
+          .catch(() => undefined);
+      }
+    } catch {
+      /* чужой localStorage кривой — игнорируем */
+    }
+  }
 
   const commit = (): void => {
     const ids = [...allocated];

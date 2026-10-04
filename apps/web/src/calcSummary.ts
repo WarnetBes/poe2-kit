@@ -7,6 +7,8 @@
  * строки без ведущего числа — уникальные эффекты, только счётчик.
  */
 
+export type CalcSource = 'atlas' | 'passives';
+
 export interface CalcRow {
   tmpl: string;
   sumA: number;
@@ -16,7 +18,15 @@ export interface CalcRow {
   plusCount: number;
   pctCount: number;
   count: number;
+  /** Источники, из которых собрана строка (atlas / passives) — для маркеров. */
+  srcs: CalcSource[];
 }
+
+/** Проставить источник рядам (кто агрегировал — тот и владелеет). */
+export const tagRows = (src: CalcSource, rows: CalcRow[]): CalcRow[] => {
+  for (const r of rows) r.srcs = [src];
+  return rows;
+};
 
 /** "[Tag|Text]" → "Text", "[X]" → "X"; \n → пробел. */
 export const cleanStat = (s: string): string =>
@@ -88,16 +98,16 @@ export const aggregateStats = (nodesStats: (string[] | undefined)[]): CalcRow[] 
     }
   }
   // суммируемые выше, сильнее — выше, остальное по алфавиту
-  return [...rows.entries()]
-    .sort((x, y) => {
-      const xs = x[1].numCount === x[1].count && x[1].numCount > 0 ? 0 : 1;
-      const ys = y[1].numCount === y[1].count && y[1].numCount > 0 ? 0 : 1;
-      return xs - ys || y[1].sumA - x[1].sumA || x[0].localeCompare(y[0]);
-    })
-    .map(([tmpl, r]) => ({ tmpl, ...r }));
+  // суммируемые выше, сильнее — выше, остальное по алфавиту
+  const list = ([...rows.entries()] as [string, Omit<CalcRow, 'tmpl' | 'srcs'>][]).map(([tmpl, r]) => ({ tmpl, ...r, srcs: [] as CalcSource[] }));
+  return list.sort((x, y) => {
+    const xs = x.numCount === x.count && x.numCount > 0 ? 0 : 1;
+    const ys = y.numCount === y.count && y.numCount > 0 ? 0 : 1;
+    return xs - ys || y.sumA - x.sumA || x.tmpl.localeCompare(y.tmpl);
+  });
 };
 
-/** Одна строка сводки (номинал + текст + ×N); esc — локальный escapist. */
+/** Одна строка сводки (маркеры источников + номинал + текст + ×N); esc — локальный escapist. */
 export const calcRowToHtml = (r: CalcRow, esc: (s: string) => string): string => {
   const summable = r.numCount === r.count && r.numCount > 0;
   const range = summable && r.rngCount === r.numCount && r.sumB !== r.sumA;
@@ -105,7 +115,10 @@ export const calcRowToHtml = (r: CalcRow, esc: (s: string) => string): string =>
   const pct = summable && r.pctCount === r.numCount ? '%' : '';
   const num = summable ? `${plus}${range ? `(${r.sumA}–${r.sumB})${pct}` : `${r.sumA}${pct}`} ` : '';
   const times = r.count > 1 ? ` <span class="dim">×${r.count}</span>` : '';
-  return `<li>${num}${esc(r.tmpl)}${times}</li>`;
+  const dots = (r.srcs ?? [])
+    .map((s) => `<i class="calc-dot calc-dot-${s}" title="${s === 'atlas' ? 'Атлас' : 'Дерево пассивок'}"></i>`)
+    .join('');
+  return `<li>${dots}${num}${esc(r.tmpl)}${times}</li>`;
 };
 
 /** Слияние рядов разных источников (атлас + дерево): одинаковые шаблоны стакаются. */
@@ -115,7 +128,7 @@ export const mergeRows = (groups: CalcRow[][]): CalcRow[] => {
     for (const r of rows) {
       const m = merged.get(r.tmpl);
       if (!m) {
-        merged.set(r.tmpl, { ...r });
+        merged.set(r.tmpl, { ...r, srcs: [...(r.srcs ?? [])] });
         continue;
       }
       m.sumA += r.sumA;
@@ -125,6 +138,7 @@ export const mergeRows = (groups: CalcRow[][]): CalcRow[] => {
       m.plusCount += r.plusCount;
       m.pctCount += r.pctCount;
       m.count += r.count;
+      for (const s of r.srcs ?? []) if (!m.srcs.includes(s)) m.srcs.push(s);
     }
   }
   return [...merged.values()].sort(
@@ -137,7 +151,6 @@ export const mergeRows = (groups: CalcRow[][]): CalcRow[] => {
 };
 
 // ── кросс-вкладочный стор: суммарная сводка атлас + дерево пассивок ─────────
-export type CalcSource = 'atlas' | 'passives';
 const CALCS: Partial<Record<CalcSource, { rows: CalcRow[]; label: string }>> = {};
 const CALC_EVENT = 'poe2k-calc-changed';
 
@@ -154,6 +167,16 @@ export const subscribeCalc = (cb: (src: CalcSource) => void): void => {
     cb(d.src);
   });
 };
+
+/** Публикация, если источник ещё не публиковался (bootstrap чужого плана при lazy-mount). */
+export const publishCalcIfAbsent = (src: CalcSource, rows: CalcRow[], label: string): boolean => {
+  if (CALCS[src]) return false;
+  CALCS[src] = { rows, label };
+  return true;
+};
+
+/** Есть ли уже опубликованные данные источника. */
+export const hasCalc = (src: CalcSource): boolean => !!CALCS[src];
 
 /** Все активные источники, кроме указанного (свой передаётся отдельно). */
 export const foreignCalcs = (own: CalcSource): { src: CalcSource; rows: CalcRow[]; label: string }[] =>
