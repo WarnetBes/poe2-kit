@@ -727,3 +727,130 @@ button.ghost.mini.danger:hover { color: #ffb3a0; border-color: #d9907a; }
   background: var(--bg); color: var(--fg); padding: 8px 10px; font-size: 14px;
 }
 .ck-add input:focus { border-color: var(--border-hi); outline: none; }
+
+/* ── Хайдоуты (№198, web) ─────────────────────────────────────────────────── */
+.hdrop {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin: 10px 0; padding: 18px 14px;
+  border: 1px dashed var(--border-hi);
+  color: var(--dim); font-style: italic; font-size: 14.5px;
+  background: rgba(120, 96, 48, 0.05);
+}
+.hdrop.drag { border-color: var(--gold-hi); color: var(--gold-hi); background: rgba(214, 179, 106, 0.09); }
+.hdrop .link { color: var(--gold); text-decoration: underline dashed; cursor: pointer; font-style: normal; }
+.hd-error {
+  margin-top: 10px; padding: 12px 14px;
+  border: 1px solid var(--err); color: var(--err);
+  background: rgba(255, 107, 94, 0.06); font-size: 14.5px;
+}
+.hd-warn { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--gold-dim); color: var(--gold); font-size: 13.5px; }
+.hd-head {
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: stretch;
+  margin: 12px 0; padding: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+}
+.hd-base { flex: 1 1 260px; }
+.hd-base h3 { margin: 0 0 6px; color: var(--gold-hi); font-family: 'Cinzel', serif; font-size: 19px; }
+.hd-meta { color: var(--dim); font-size: 13px; }
+.hd-score { flex: 1 1 320px; }
+.hd-progress { height: 16px; background: var(--bg-deep); border: 1px solid var(--border); }
+.hd-progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); }
+.hd-progress-fill.over { background: linear-gradient(90deg, #a33, var(--err)); }
+.hd-progress-num { font-size: 13px; color: var(--dim); margin-top: 4px; }
+.hd-buildable { margin-top: 6px; font-size: 14.5px; }
+.hd-buildable b { color: var(--ok); }
+.hd-cats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.hd-catcount { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--dim); }
+.hd-cat { font-size: 10.5px; }
+.hd-cat-ok { border-color: var(--ok); color: var(--ok); }
+.hd-cat-rare { border-color: var(--rare); color: var(--rare); }
+.hd-cat-magic { border-color: var(--magic); color: var(--magic); }
+.hd-cat-dim { border-color: var(--border); color: var(--dim); }
+.hd-canvas { width: 100%; max-width: 940px; border: 1px solid var(--border); margin-top: 8px; background: #101018; }
+.hd-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14.5px; }
+.hd-table th {
+  text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--gold); padding: 6px 10px; border-bottom: 1px solid var(--border-hi);
+}
+.hd-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.hd-table td:nth-child(2) { color: var(--gold-hi); white-space: nowrap; text-align: right; }
+.hd-table td:nth-child(4) { text-align: center; }
+.hd-own { transform: scale(1.25); accent-color: var(--gold); }
+.hd-toggle { color: var(--dim); font-size: 13.5px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   УЗОРЫ ВЫБОРГА / КАРЕЛИИ — переработка в grimdark-стилистику PoE2.
+   Мотивы: Олафова башня (бренд), ромбо-цепь карельской вышивки (фриза шапки),
+   «ёлочка» tree-of-life под заголовками, слепая аркада ганзейского кирпичного
+   готика Выборгского замка (футер), ромбическая канва на фоне.
+   Всё — inline SVG data-URI, без внешних ассетов и JS.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Олафова башня — силуэт круглой башни с зубцами и арочной дверью,
+   тусклое золото по железу, лёгкая «эрозия» кирпича штрихами */
+.brand-orn {
+  align-self: center;
+  width: 22px;
+  height: 26px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 6px rgba(214, 179, 106, 0.3));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 26'%3E%3Cpath fill='%23d6b36a' fill-opacity='0.92' d='M2 9V2h4v6h3V2h4v6h3V2h4v7h1v17H1V9h1z'/%3E%3Crect x='9' y='16' width='4' height='10' fill='%230a0a0e'/%3E%3Cpath d='M9 17c0-1.2 4-1.2 4 0' fill='none' stroke='%23d6b36a' stroke-opacity='0.6' stroke-width='1'/%3E%3Cpath d='M3.5 12h15M3.5 15h15' stroke='%230a0a0e' stroke-opacity='0.35' stroke-width='0.8'/%3E%3Ccircle cx='5' cy='19.5' r='0.9' fill='%230a0a0e' fill-opacity='0.4'/%3E%3Ccircle cx='17' cy='19.5' r='0.9' fill='%230a0a0e' fill-opacity='0.4'/%3E%3Ccircle cx='5' cy='23' r='0.9' fill='%230a0a0e' fill-opacity='0.4'/%3E%3Ccircle cx='17' cy='23' r='0.9' fill='%230a0a0e' fill-opacity='0.4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Ромбическая канва фона — карельская сетка ромбов, почти шёпотом (0.05) */
+body {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M28 8L48 28 28 48 8 28Z' fill='none' stroke='%23d6b36a' stroke-opacity='0.05'/%3E%3Ccircle cx='28' cy='28' r='1.1' fill='%23d6b36a' fill-opacity='0.05'/%3E%3C/svg%3E"),
+    radial-gradient(1100px 500px at 50% -140px, rgba(120, 96, 48, 0.14), transparent 70%),
+    radial-gradient(900px 600px at 85% 110%, rgba(40, 44, 60, 0.25), transparent 70%),
+    radial-gradient(700px 500px at 8% 90%, rgba(60, 42, 24, 0.18), transparent 70%),
+    linear-gradient(180deg, #0b0b10 0%, #08080c 45%, #060608 100%);
+}
+
+/* Фриза шапки: ромбо-цепь «ромб с кореньем» (käsivyynte) вместо чистой нити.
+   Сохраняет золотую линию, но теперь она — вышитый пояс */
+.topbar::after {
+  height: 12px;
+  bottom: -9px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='12'%3E%3Cpath d='M10 1L17 6 10 11 3 6Z' fill='none' stroke='%23d6b36a' stroke-opacity='0.55' stroke-width='1.1'/%3E%3Ccircle cx='10' cy='6' r='1.1' fill='%23d6b36a' fill-opacity='0.75'/%3E%3Cpath d='M0 6h3m14 0h3' stroke='%23d6b36a' stroke-opacity='0.4'/%3E%3C/svg%3E") repeat-x center / auto 12px,
+    linear-gradient(90deg, transparent, var(--gold-dim) 18%, var(--border-hi) 50%, var(--gold-dim) 82%, transparent);
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* «Ёлочка» (tree of life) — зигзаг карельской вышивки под заголовками панелей,
+   с растворением краёв; заменяет плоскую border-image линию */
+h2 {
+  border-bottom: none;
+  border-image: none;
+  padding-bottom: 0;
+}
+h2::after {
+  content: '';
+  display: block;
+  height: 10px;
+  margin-top: 6px;
+  opacity: 0.55;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M0 8l4-6 4 6 4-6 4 6' fill='none' stroke='%23d6b36a' stroke-width='1.2' stroke-opacity='0.6'/%3E%3C/svg%3E") repeat-x left center / 16px 10px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* Слепая аркада — ганзейский кирпичный пояс Выборгского замка над футером */
+.status {
+  position: relative;
+  padding-top: 22px;
+}
+.status::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='12'%3E%3Cpath d='M2 12V6l6-5 6 5v6z' fill='none' stroke='%238c6f36' stroke-opacity='0.55' stroke-width='1.1'/%3E%3Cpath d='M18 12V6l6-5 6 5v6z' fill='none' stroke='%238c6f36' stroke-opacity='0.55' stroke-width='1.1'/%3E%3Cpath d='M0 11.5h34' stroke='%238c6f36' stroke-opacity='0.35'/%3E%3C/svg%3E") repeat-x left center / auto 12px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}

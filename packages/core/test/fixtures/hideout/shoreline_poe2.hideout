@@ -1,0 +1,708 @@
+﻿{
+  "version": 1,
+  "language": "English",
+  "hideout_name": "Shoreline Hideout",
+  "hideout_hash": 4638,
+  "doodads": {
+    "Stash": {
+      "hash": 3230065491,
+      "x": 533,
+      "y": 460,
+      "r": 63630,
+      "fv": 0
+    },
+    "Guild Stash": {
+      "hash": 139228481,
+      "x": 544,
+      "y": 456,
+      "r": 59870,
+      "fv": 0
+    },
+    "Waypoint": {
+      "hash": 1224707366,
+      "x": 524,
+      "y": 353,
+      "r": 0,
+      "fv": 6
+    },
+    "Ziggurat Map Device": {
+      "hash": 76459657,
+      "x": 536,
+      "y": 423,
+      "r": 0,
+      "fv": 0
+    },
+    "Relic Locker": {
+      "hash": 12969733,
+      "x": 561,
+      "y": 462,
+      "r": 11065,
+      "fv": 0
+    },
+    "Reforging Bench": {
+      "hash": 3263423625,
+      "x": 569,
+      "y": 500,
+      "r": 0,
+      "fv": 0
+    },
+    "Salvage Bench": {
+      "hash": 3734046884,
+      "x": 591,
+      "y": 493,
+      "r": 56022,
+      "fv": 0
+    },
+    "Well": {
+      "hash": 2057229261,
+      "x": 475,
+      "y": 375,
+      "r": 55381,
+      "fv": 0
+    },
+    "Wardrobe Decoration": {
+      "hash": 2914603195,
+      "x": 483,
+      "y": 304,
+      "r": 23700,
+      "fv": 0
+    },
+    "Verisium Anvil": {
+      "hash": 2920892519,
+      "x": 527,
+      "y": 507,
+      "r": 3212,
+      "fv": 0
+    },
+    "Alva": {
+      "hash": 2115859440,
+      "x": 627,
+      "y": 308,
+      "r": 4637,
+      "fv": 0
+    },
+    "Zelina": {
+      "hash": 1023253651,
+      "x": 473,
+      "y": 451,
+      "r": 918,
+      "fv": 0
+    },
+    "Zolin": {
+      "hash": 2204408127,
+      "x": 608,
+      "y": 462,
+      "r": 64188,
+      "fv": 0
+    },
+    "Doryani": {
+      "hash": 3673653565,
+      "x": 578,
+      "y": 376,
+      "r": 19045,
+      "fv": 0
+    },
+    "Ange": {
+      "hash": 2297799330,
+      "x": 522,
+      "y": 468,
+      "r": 65013,
+      "fv": 0
+    },
+    "Hilda": {
+      "hash": 1986775202,
+      "x": 545,
+      "y": 483,
+      "r": 2048,
+      "fv": 0
+    },
+    "Jado": {
+      "hash": 204349116,
+      "x": 502,
+      "y": 495,
+      "r": 65270,
+      "fv": 0
+    },
+    "Farrow": {
+      "hash": 434172762,
+      "x": 592,
+      "y": 377,
+      "r": 47356,
+      "fv": 0
+    },
+    "Encampment Bed": {
+      "hash": 1239282588,
+      "x": 454,
+      "y": 382,
+      "r": 22361,
+      "fv": 1
+    },
+    "Encampment Equipment": {
+      "hash": 412387213,
+      "x": 465,
+      "y": 374,
+      "r": 2596,
+      "fv": 3
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 459,
+      "y": 383,
+      "r": 10089,
+      "fv": 7
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 459,
+      "y": 391,
+      "r": 57134,
+      "fv": 3
+    },
+    "Settlement Buildings": {
+      "hash": 3195881276,
+      "x": 545,
+      "y": 539,
+      "r": 63239,
+      "fv": 0
+    },
+    "Settlement Buildings": {
+      "hash": 3195881276,
+      "x": 278,
+      "y": 555,
+      "r": 13855,
+      "fv": 2
+    },
+    "Encampment Chest": {
+      "hash": 1695295233,
+      "x": 268,
+      "y": 526,
+      "r": 14252,
+      "fv": 1
+    },
+    "Large Shore Rock": {
+      "hash": 877728377,
+      "x": 651,
+      "y": 476,
+      "r": 58888,
+      "fv": 2
+    },
+    "Medium Shore Rock": {
+      "hash": 369950199,
+      "x": 628,
+      "y": 464,
+      "r": 64988,
+      "fv": 8
+    },
+    "Settlement Buildings": {
+      "hash": 3195881276,
+      "x": 307,
+      "y": 796,
+      "r": 4092,
+      "fv": 3
+    },
+    "Maraketh Fire Pot": {
+      "hash": 57228444,
+      "x": 269,
+      "y": 545,
+      "r": 0,
+      "fv": 1
+    },
+    "Encampment Table": {
+      "hash": 3258952743,
+      "x": 539,
+      "y": 471,
+      "r": 29334,
+      "fv": 0
+    },
+    "Encampment Table": {
+      "hash": 3258952743,
+      "x": 483,
+      "y": 331,
+      "r": 48922,
+      "fv": 4
+    },
+    "Encampment Storage Tent": {
+      "hash": 1394397006,
+      "x": 495,
+      "y": 277,
+      "r": 39652,
+      "fv": 0
+    },
+    "Encampment Storage Tent": {
+      "hash": 1394397006,
+      "x": 283,
+      "y": 490,
+      "r": 33168,
+      "fv": 1
+    },
+    "Encampment Equipment": {
+      "hash": 412387213,
+      "x": 329,
+      "y": 513,
+      "r": 53136,
+      "fv": 0
+    },
+    "Encampment Equipment": {
+      "hash": 412387213,
+      "x": 413,
+      "y": 686,
+      "r": 61692,
+      "fv": 1
+    },
+    "Encampment Equipment": {
+      "hash": 412387213,
+      "x": 451,
+      "y": 689,
+      "r": 58691,
+      "fv": 3
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 442,
+      "y": 680,
+      "r": 8943,
+      "fv": 6
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 454,
+      "y": 679,
+      "r": 12377,
+      "fv": 10
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 364,
+      "y": 524,
+      "r": 4229,
+      "fv": 7
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 318,
+      "y": 796,
+      "r": 1363,
+      "fv": 11
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 355,
+      "y": 505,
+      "r": 13994,
+      "fv": 2
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 314,
+      "y": 555,
+      "r": 61880,
+      "fv": 10
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 569,
+      "y": 508,
+      "r": 33966,
+      "fv": 1
+    },
+    "Encampment Chest": {
+      "hash": 1695295233,
+      "x": 370,
+      "y": 514,
+      "r": 44395,
+      "fv": 0
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 602,
+      "y": 479,
+      "r": 12769,
+      "fv": 0
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 666,
+      "y": 287,
+      "r": 63620,
+      "fv": 139
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 515,
+      "y": 294,
+      "r": 29106,
+      "fv": 11
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 529,
+      "y": 278,
+      "r": 52172,
+      "fv": 7
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 490,
+      "y": 697,
+      "r": 4600,
+      "fv": 132
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 283,
+      "y": 758,
+      "r": 15648,
+      "fv": 5
+    },
+    "Encampment Container Cluster": {
+      "hash": 949380850,
+      "x": 374,
+      "y": 660,
+      "r": 53331,
+      "fv": 3
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 300,
+      "y": 542,
+      "r": 6332,
+      "fv": 0
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 534,
+      "y": 469,
+      "r": 19651,
+      "fv": 7
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 530,
+      "y": 515,
+      "r": 46437,
+      "fv": 3
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 478,
+      "y": 373,
+      "r": 13151,
+      "fv": 6
+    },
+    "Settlement Buildings": {
+      "hash": 3195881276,
+      "x": 623,
+      "y": 491,
+      "r": 55660,
+      "fv": 4
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 294,
+      "y": 536,
+      "r": 57684,
+      "fv": 4
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 309,
+      "y": 545,
+      "r": 64650,
+      "fv": 3
+    },
+    "Encampment Table": {
+      "hash": 3258952743,
+      "x": 455,
+      "y": 452,
+      "r": 8281,
+      "fv": 2
+    },
+    "Encampment Crate": {
+      "hash": 2156404357,
+      "x": 520,
+      "y": 509,
+      "r": 10123,
+      "fv": 2
+    },
+    "Medium Shore Rock": {
+      "hash": 369950199,
+      "x": 526,
+      "y": 259,
+      "r": 2476,
+      "fv": 6
+    },
+    "Harakeke": {
+      "hash": 3524827914,
+      "x": 379,
+      "y": 578,
+      "r": 58397,
+      "fv": 0
+    },
+    "Manuka Tree": {
+      "hash": 532751457,
+      "x": 367,
+      "y": 587,
+      "r": 55804,
+      "fv": 3
+    },
+    "Nikau Palm": {
+      "hash": 5397468,
+      "x": 374,
+      "y": 584,
+      "r": 0,
+      "fv": 2
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 364,
+      "y": 577,
+      "r": 57277,
+      "fv": 3
+    },
+    "Pohutukawa": {
+      "hash": 300224117,
+      "x": 377,
+      "y": 523,
+      "r": 0,
+      "fv": 2
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 345,
+      "y": 644,
+      "r": 22095,
+      "fv": 6
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 394,
+      "y": 678,
+      "r": 54691,
+      "fv": 8
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 482,
+      "y": 700,
+      "r": 54476,
+      "fv": 7
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 619,
+      "y": 426,
+      "r": 7597,
+      "fv": 16
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 602,
+      "y": 336,
+      "r": 5472,
+      "fv": 27
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 565,
+      "y": 375,
+      "r": 5731,
+      "fv": 2
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 565,
+      "y": 270,
+      "r": 53513,
+      "fv": 0
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 470,
+      "y": 364,
+      "r": 11111,
+      "fv": 1
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 565,
+      "y": 457,
+      "r": 43895,
+      "fv": 0
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 321,
+      "y": 475,
+      "r": 51168,
+      "fv": 0
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 526,
+      "y": 472,
+      "r": 13228,
+      "fv": 8
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 271,
+      "y": 506,
+      "r": 17294,
+      "fv": 3
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 325,
+      "y": 606,
+      "r": 7365,
+      "fv": 1
+    },
+    "Shoreline Fern": {
+      "hash": 2984478824,
+      "x": 356,
+      "y": 621,
+      "r": 8134,
+      "fv": 0
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 439,
+      "y": 750,
+      "r": 58439,
+      "fv": 21
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 397,
+      "y": 770,
+      "r": 42252,
+      "fv": 7
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 480,
+      "y": 746,
+      "r": 53860,
+      "fv": 4
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 502,
+      "y": 728,
+      "r": 21647,
+      "fv": 25
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 350,
+      "y": 809,
+      "r": 61271,
+      "fv": 3
+    },
+    "Seaweed": {
+      "hash": 1015947674,
+      "x": 352,
+      "y": 795,
+      "r": 60129,
+      "fv": 6
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 390,
+      "y": 668,
+      "r": 53675,
+      "fv": 0
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 403,
+      "y": 677,
+      "r": 3882,
+      "fv": 5
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 329,
+      "y": 712,
+      "r": 52298,
+      "fv": 3
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 332,
+      "y": 702,
+      "r": 6521,
+      "fv": 5
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 331,
+      "y": 726,
+      "r": 57463,
+      "fv": 6
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 319,
+      "y": 728,
+      "r": 6409,
+      "fv": 4
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 288,
+      "y": 764,
+      "r": 27792,
+      "fv": 1
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 310,
+      "y": 773,
+      "r": 4253,
+      "fv": 5
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 322,
+      "y": 778,
+      "r": 4053,
+      "fv": 6
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 583,
+      "y": 502,
+      "r": 0,
+      "fv": 4
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 563,
+      "y": 507,
+      "r": 0,
+      "fv": 6
+    },
+    "Sand Tussock": {
+      "hash": 146816198,
+      "x": 536,
+      "y": 508,
+      "r": 0,
+      "fv": 5
+    },
+    "Manuka Tree": {
+      "hash": 532751457,
+      "x": 472,
+      "y": 359,
+      "r": 7541,
+      "fv": 5
+    },
+    "Shoreline Pebbles": {
+      "hash": 2365064644,
+      "x": 519,
+      "y": 403,
+      "r": 5926,
+      "fv": 0
+    }
+  }
+}

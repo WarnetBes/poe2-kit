@@ -33,7 +33,9 @@ export * from './ssf.js';
 export * from './craftGuide.js';
 export * from './endgame.js';
 export * from './buildPlanner.js';
+export * from './hideout.js';
 import * as buildPlannerMod from './buildPlanner.js';
+import * as hideoutMod from './hideout.js';
 export * from './questRewards.js';
 export * from './cache.js';
 export * from './gameConfig.js';
@@ -140,6 +142,7 @@ export const core = {
   craft: craftMod,
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
   buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
+  hideout: hideoutMod, // №198: офлайн-разбор .hideout (PoE2-вкладка «Хайдоуты»)
   result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
 };
 

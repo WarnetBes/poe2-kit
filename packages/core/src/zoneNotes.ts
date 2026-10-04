@@ -41,12 +41,20 @@ let actCache: RawActNote[] | null = null;
 
 function load(): { zoneNotes: RawZoneNote[]; actNotes: RawActNote[] } {
   if (!zoneCache || !actCache) {
-    const raw = JSON.parse(fsMod!.readFileSync(pathMod!.join(dataDir(), 'zoneNotes.json'), 'utf8')) as {
-      zoneNotes?: RawZoneNote[];
-      actNotes?: RawActNote[];
-    };
-    zoneCache = raw.zoneNotes ?? [];
-    actCache = raw.actNotes ?? [];
+    // Браузер (apps/web): диска нет — zoneNotes.json недоступен, честный пустой
+    // набор (как dataset.ts). Без этого гарда top-level QUEST_REWARDS (№112)
+    // ронял ВЕСЬ web-бандл: questRewards.buildEntries() → getZoneNoteByName → load().
+    if (!HAS_DISK) {
+      zoneCache = [];
+      actCache = [];
+    } else {
+      const raw = JSON.parse(fsMod!.readFileSync(pathMod!.join(dataDir(), 'zoneNotes.json'), 'utf8')) as {
+        zoneNotes?: RawZoneNote[];
+        actNotes?: RawActNote[];
+      };
+      zoneCache = raw.zoneNotes ?? [];
+      actCache = raw.actNotes ?? [];
+    }
   }
   return { zoneNotes: zoneCache, actNotes: actCache };
 }

@@ -23,6 +23,7 @@ import { showChecklist } from './checklist';
 import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
 import { pasteFromClipboard } from './clipboard';
 import { renderFullMap } from './fullMap';
+import { showHideout, copyHideoutShare, copyHideoutMarkdown, initHideoutTab } from './hideout';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -47,7 +48,7 @@ function escAttr(s: string): string {
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="layout">
     <header class="topbar">
-      <div class="brand">⛏ PoE2 <b>Kit</b></div>
+      <div class="brand"><span class="brand-orn" aria-hidden="true"></span>PoE2 <b>Kit</b></div>
       <nav class="tabs">
         <button data-tab="currency" class="tab active">Курсы валют</button>
         <button data-tab="price" class="tab">Прайс-чек</button>
@@ -57,6 +58,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="map" class="tab">Карта</button>
+        <button data-tab="hideout" class="tab">Хайдоуты</button>
         <button data-tab="ai" class="tab">AI-чат</button>
         <span class="tab league-wrap">
           <label class="league-label" for="league-select">Лига</label>
@@ -148,6 +150,25 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>Полная карта дерева пассивок <small>все классы и асценданси</small></h2>
         <p class="hint">Всё общее дерево + деревья асценданси всех классов «как в игре»: панорамирование (перетаскивание), масштаб (колесо), раскраска по асценданси, фильтр по классу, клик по узлу — статы.</p>
         <div id="out-map" class="out"></div>
+      </section>
+
+      <section id="pane-hideout" class="pane">
+        <h2>Хайдоуты <small>.hideout → разбор декора, офлайн</small></h2>
+        <p class="hint">Перетащи файл .hideout (или выбери его) — разбор без сервера: база, полный список декора до импорта (как обещает POH), MTX-часть, лимит 750, мини-карта размещения. Принимает и share-код PoE2 Kit (начинается не с «{»). Отметь галочками свой MTX — увидишь, соберёшь ли хайдоут.</p>
+        <div id="hideout-drop" class="hdrop">Перетащи .hideout сюда или
+          <label class="link">выбери файл <input id="hideout-file" type="file" accept=".hideout,.json,application/json" hidden /></label>
+        </div>
+        <textarea id="hideout-input" rows="6" placeholder='{"version":1, "hideout_name":"…", "doodads":{…}} — или share-код PoE2 Kit'></textarea>
+        <div class="aitools">
+          <button id="btn-hideout" class="primary">Разобрать</button>
+          <button id="btn-hideout-copy" class="ghost">⇄ Копировать share-код</button>
+          <button id="btn-hideout-md" class="ghost">📋 Markdown для форума</button>
+        </div>
+        <div class="lvset">
+          <input id="hideout-filter" type="text" placeholder="фильтр по имени декора…" />
+          <label class="hd-toggle"><input id="hideout-owned-only" type="checkbox" /> скрыть доступное (free/купленное)</label>
+        </div>
+        <div id="out-hideout" class="out"></div>
       </section>
 
       <section id="pane-ai" class="pane">
@@ -264,6 +285,15 @@ document.querySelector('#btn-tree')!.addEventListener('click', () =>
   showBuildTreeFromText((document.querySelector('#tree-input') as HTMLTextAreaElement).value),
 );
 document.querySelector('#btn-tree-last')!.addEventListener('click', () => showBuildTreeFromLast());
+
+// ── Хайдоуты ───────────────────────────────────────────
+document.querySelector('#btn-hideout')!.addEventListener('click', () =>
+  void showHideout((document.querySelector('#hideout-input') as HTMLTextAreaElement).value),
+);
+document.querySelector('#btn-hideout-copy')!.addEventListener('click', () => copyHideoutShare());
+document.querySelector('#btn-hideout-md')!.addEventListener('click', () => copyHideoutMarkdown());
+initHideoutTab();
+
 document.querySelector('#btn-compare')!.addEventListener('click', () =>
   void showBuildCompare(
     (document.querySelector('#compare-input') as HTMLTextAreaElement).value,

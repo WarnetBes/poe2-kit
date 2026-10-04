@@ -1,0 +1,4335 @@
+{
+ "_meta": {
+  "generated": "2026-10-03",
+  "source": "POH public downloads (5 samples: PoE1 id 126 + PoE2 id 30/31/41/69); файлы - публичные скачивания pathofhideouts.com /hideout/N/download/ + 12 нативных экспортов PoE2 (владелец, 04.10.2026: Titan Apex, Beacon of Salvation, Bloodreaver Manor, Arcane Isle, Felled×2, Sovereign×3, Limestone, Vastiri Racecourse, Shoreline) + 12 native game exports (Runes of Aldur era, owner-provided)",
+  "note": "categories: free|store-mtx|exclusive-mtx|pet|unknown. unknown = classифицировать по магазину pathofexile2.com/shop",
+  "updated": "2026-10-04"
+ },
+ "hideout_bases": {
+  "382": {
+   "name": "Vastiri Racecourse Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 79,
+    "x": [
+     155,
+     556
+    ],
+    "y": [
+     135,
+     470
+    ]
+   }
+  },
+  "3422": {
+   "name": "Bloodreaver Manor Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 53,
+    "x": [
+     393,
+     756
+    ],
+    "y": [
+     668,
+     2477
+    ]
+   }
+  },
+  "4638": {
+   "name": "Shoreline Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 37,
+    "x": [
+     269,
+     651
+    ],
+    "y": [
+     259,
+     795
+    ]
+   }
+  },
+  "6697": {
+   "name": "Titan Apex Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 47,
+    "x": [
+     234,
+     546
+    ],
+    "y": [
+     156,
+     531
+    ]
+   }
+  },
+  "12394": {
+   "name": "Limestone Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 55,
+    "x": [
+     203,
+     513
+    ],
+    "y": [
+     184,
+     570
+    ]
+   }
+  },
+  "13526": {
+   "name": "Felled Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 2,
+    "maxDoodads": 55,
+    "x": [
+     141,
+     442
+    ],
+    "y": [
+     168,
+     650
+    ]
+   }
+  },
+  "15656": {
+   "name": "Beacon of Salvation Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 103,
+    "x": [
+     302,
+     934
+    ],
+    "y": [
+     186,
+     1295
+    ]
+   }
+  },
+  "23536": {
+   "name": "Arcane Isle Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 70,
+    "x": [
+     195,
+     429
+    ],
+    "y": [
+     116,
+     327
+    ]
+   }
+  },
+  "47588": {
+   "name": "The Sovereign Hideout",
+   "game": "poe1",
+   "music": false,
+   "observed": {
+    "files": 3,
+    "maxDoodads": 59,
+    "x": [
+     109,
+     422
+    ],
+    "y": [
+     83,
+     507
+    ]
+   }
+  }
+ },
+ "decor": {
+  "stash": {
+   "name": "Stash",
+   "hashes": [
+    3230065491
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "guild stash": {
+   "name": "Guild Stash",
+   "hashes": [
+    139228481
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "waypoint": {
+   "name": "Waypoint",
+   "hashes": [
+    1224707366
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "ziggurat map device": {
+   "name": "Ziggurat Map Device",
+   "hashes": [
+    76459657
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "relic locker": {
+   "name": "Relic Locker",
+   "hashes": [
+    12969733
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "reforging bench": {
+   "name": "Reforging Bench",
+   "hashes": [
+    3263423625
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "salvage bench": {
+   "name": "Salvage Bench",
+   "hashes": [
+    3734046884
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "well": {
+   "name": "Well",
+   "hashes": [
+    2057229261
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "free",
+   "category_source": "base-game functional (seed)"
+  },
+  "wardrobe decoration": {
+   "name": "Wardrobe Decoration",
+   "hashes": [
+    2914603195
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "verisium anvil": {
+   "name": "Verisium Anvil",
+   "hashes": [
+    2920892519
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "alva": {
+   "name": "Alva",
+   "hashes": [
+    2115859440
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "zelina": {
+   "name": "Zelina",
+   "hashes": [
+    1023253651
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "zolin": {
+   "name": "Zolin",
+   "hashes": [
+    2204408127
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "doryani": {
+   "name": "Doryani",
+   "hashes": [
+    3673653565
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ange": {
+   "name": "Ange",
+   "hashes": [
+    2297799330
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "hilda": {
+   "name": "Hilda",
+   "hashes": [
+    1986775202
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "jado": {
+   "name": "Jado",
+   "hashes": [
+    204349116
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "farrow": {
+   "name": "Farrow",
+   "hashes": [
+    434172762
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "beech tree": {
+   "name": "Beech Tree",
+   "hashes": [
+    2796444611
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh fire pot": {
+   "name": "Maraketh Fire Pot",
+   "hashes": [
+    57228444
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "sample_poe2_41",
+    "1dhideout.hideout",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship rug": {
+   "name": "Ship Rug",
+   "hashes": [
+    1007110838
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "summit brazier": {
+   "name": "Summit Brazier",
+   "hashes": [
+    2623109233
+   ],
+   "seen_in": [
+    "sample_126",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh decor": {
+   "name": "Maraketh Decor",
+   "hashes": [
+    2125171205
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship ropes": {
+   "name": "Ship Ropes",
+   "hashes": [
+    4036145979
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship sack": {
+   "name": "Ship Sack",
+   "hashes": [
+    4016149685
+   ],
+   "seen_in": [
+    "sample_126",
+    "Growth_TheSovereign_0826.hideout",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship tank": {
+   "name": "Ship Tank",
+   "hashes": [
+    3235676625
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh rhoa": {
+   "name": "Maraketh Rhoa",
+   "hashes": [
+    187118194
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship containers": {
+   "name": "Ship Containers",
+   "hashes": [
+    2032491390
+   ],
+   "seen_in": [
+    "sample_126",
+    "Growth_TheSovereign_0826.hideout",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "scattered fruit": {
+   "name": "Scattered Fruit",
+   "hashes": [
+    1726653252
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal potted plants": {
+   "name": "Vaal Potted Plants",
+   "hashes": [
+    733910357
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal chair": {
+   "name": "Vaal Chair",
+   "hashes": [
+    2788084160
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_31",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment table": {
+   "name": "Encampment Table",
+   "hashes": [
+    3258952743
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Lighted_up_boat.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment equipment": {
+   "name": "Encampment Equipment",
+   "hashes": [
+    412387213
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "native/1dhideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal bench": {
+   "name": "Vaal Bench",
+   "hashes": [
+    4228440226
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship valve": {
+   "name": "Ship Valve",
+   "hashes": [
+    3146776755
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship cluster": {
+   "name": "Ship Cluster",
+   "hashes": [
+    186126072
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment storage tent": {
+   "name": "Encampment Storage Tent",
+   "hashes": [
+    1394397006
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Lighted_up_boat.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment bed": {
+   "name": "Encampment Bed",
+   "hashes": [
+    1239282588
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal small market table": {
+   "name": "Vaal Small Market Table",
+   "hashes": [
+    1869371556
+   ],
+   "seen_in": [
+    "sample_126",
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Lighted_up_boat.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship pipe": {
+   "name": "Ship Pipe",
+   "hashes": [
+    1050824622
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship tank rusted": {
+   "name": "Ship Tank Rusted",
+   "hashes": [
+    3225303447
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship pipe rusted": {
+   "name": "Ship Pipe Rusted",
+   "hashes": [
+    250328551
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ship valve rusted": {
+   "name": "Ship Valve Rusted",
+   "hashes": [
+    2646321868
+   ],
+   "seen_in": [
+    "sample_126",
+    "Lighted_up_boat.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Lighted_up_boat.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment crate": {
+   "name": "Encampment Crate",
+   "hashes": [
+    2156404357
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "native/1dhideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "settlement buildings": {
+   "name": "Settlement Buildings",
+   "hashes": [
+    3195881276
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment chest": {
+   "name": "Encampment Chest",
+   "hashes": [
+    1695295233
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "native/1dhideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "large shore rock": {
+   "name": "Large Shore Rock",
+   "hashes": [
+    877728377
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/1dhideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "medium shore rock": {
+   "name": "Medium Shore Rock",
+   "hashes": [
+    369950199
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/1dhideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "encampment container cluster": {
+   "name": "Encampment Container Cluster",
+   "hashes": [
+    949380850
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "native/1dhideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "harakeke": {
+   "name": "Harakeke",
+   "hashes": [
+    3524827914
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "manuka tree": {
+   "name": "Manuka Tree",
+   "hashes": [
+    532751457
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "nikau palm": {
+   "name": "Nikau Palm",
+   "hashes": [
+    5397468
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shoreline fern": {
+   "name": "Shoreline Fern",
+   "hashes": [
+    2984478824
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "native/1dhideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "pohutukawa": {
+   "name": "Pohutukawa",
+   "hashes": [
+    300224117
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shoreline pebbles": {
+   "name": "Shoreline Pebbles",
+   "hashes": [
+    2365064644
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "sample_poe2_30",
+    "1dhideout.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/1dhideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "seaweed": {
+   "name": "Seaweed",
+   "hashes": [
+    1015947674
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "native/1dhideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sand tussock": {
+   "name": "Sand Tussock",
+   "hashes": [
+    146816198
+   ],
+   "seen_in": [
+    "sample_poe2_69",
+    "1dhideout.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/1dhideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh barricade": {
+   "name": "Maraketh Barricade",
+   "hashes": [
+    2022098958
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh ballista": {
+   "name": "Maraketh Ballista",
+   "hashes": [
+    52470943
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "native/Clearfell_Clearing.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh pavilion": {
+   "name": "Maraketh Pavilion",
+   "hashes": [
+    3608052754
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh incense burner": {
+   "name": "Maraketh Incense Burner",
+   "hashes": [
+    279768580
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal market fish": {
+   "name": "Vaal Market Fish",
+   "hashes": [
+    2488661481
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal market clusters": {
+   "name": "Vaal Market Clusters",
+   "hashes": [
+    3294019434
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh chest": {
+   "name": "Maraketh Chest",
+   "hashes": [
+    3521191973
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "large forest trees": {
+   "name": "Large Forest Trees",
+   "hashes": [
+    3674073527
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh spire": {
+   "name": "Maraketh Spire",
+   "hashes": [
+    563484177
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight market stall": {
+   "name": "Twilight Market Stall",
+   "hashes": [
+    307499307
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight tree": {
+   "name": "Twilight Tree",
+   "hashes": [
+    1437195902
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "atziri statue": {
+   "name": "Atziri Statue",
+   "hashes": [
+    3375587104
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal market table": {
+   "name": "Vaal Market Table",
+   "hashes": [
+    2451235076
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal market stalls cover": {
+   "name": "Vaal Market Stalls Cover",
+   "hashes": [
+    2554923649
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh guard": {
+   "name": "Maraketh Guard",
+   "hashes": [
+    1668795113
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh pillar": {
+   "name": "Maraketh Pillar",
+   "hashes": [
+    202305270
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "forest fern": {
+   "name": "Forest Fern",
+   "hashes": [
+    145306441
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "fringe moss": {
+   "name": "Fringe Moss",
+   "hashes": [
+    1459723677
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "leaf pile": {
+   "name": "Leaf Pile",
+   "hashes": [
+    4294658310
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "long grass": {
+   "name": "Long Grass",
+   "hashes": [
+    2219637749
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rog": {
+   "name": "Rog",
+   "hashes": [
+    408811958
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "tujen": {
+   "name": "Tujen",
+   "hashes": [
+    1188734792
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "dannig": {
+   "name": "Dannig",
+   "hashes": [
+    2939302567
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "gwennen": {
+   "name": "Gwennen",
+   "hashes": [
+    2230709308
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rugged wood pile": {
+   "name": "Rugged Wood Pile",
+   "hashes": [
+    404122671
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight potted tree": {
+   "name": "Twilight Potted Tree",
+   "hashes": [
+    3259897844
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight telescope": {
+   "name": "Twilight Telescope",
+   "hashes": [
+    2729450162
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh treasure": {
+   "name": "Maraketh Treasure",
+   "hashes": [
+    1078696835
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun lights": {
+   "name": "Faridun Lights",
+   "hashes": [
+    3954940097
+   ],
+   "seen_in": [
+    "sample_poe2_41",
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Clearfell_Clearing.hideout",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Clearfell_Clearing.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "divine tinker's waypoint": {
+   "name": "Divine Tinker's Waypoint",
+   "hashes": [
+    1431168746
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "store-mtx",
+   "category_source": "heuristic possessive-name"
+  },
+  "bronze timekeeper's map device": {
+   "name": "Bronze Timekeeper's Map Device",
+   "hashes": [
+    2349553377
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "store-mtx",
+   "category_source": "heuristic possessive-name"
+  },
+  "rhoa race flag (cyan)": {
+   "name": "Rhoa Race Flag (Cyan)",
+   "hashes": [
+    394161879
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race flag (purple)": {
+   "name": "Rhoa Race Flag (Purple)",
+   "hashes": [
+    3184408734
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race flag (yellow)": {
+   "name": "Rhoa Race Flag (Yellow)",
+   "hashes": [
+    1128037565
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race flag (red)": {
+   "name": "Rhoa Race Flag (Red)",
+   "hashes": [
+    430252397
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race flag (green)": {
+   "name": "Rhoa Race Flag (Green)",
+   "hashes": [
+    1404259477
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race flag (blue)": {
+   "name": "Rhoa Race Flag (Blue)",
+   "hashes": [
+    2254824640
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race controller": {
+   "name": "Rhoa Race Controller",
+   "hashes": [
+    1955680390
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "rhoa race spectate": {
+   "name": "Rhoa Race Spectate",
+   "hashes": [
+    564962118
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "heritage environmental effect": {
+   "name": "Heritage Environmental Effect",
+   "hashes": [
+    2776123971
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "DefiledForest_Felled0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun cargo": {
+   "name": "Faridun Cargo",
+   "hashes": [
+    3225797304
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Growth_TheSovereign_0826.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "maraketh rubble": {
+   "name": "Maraketh Rubble",
+   "hashes": [
+    3012657298
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "log pile": {
+   "name": "Log Pile",
+   "hashes": [
+    4062375304
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight planter": {
+   "name": "Twilight Planter",
+   "hashes": [
+    3597157905
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight potted plant": {
+   "name": "Twilight Potted Plant",
+   "hashes": [
+    612222906
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight carpet": {
+   "name": "Twilight Carpet",
+   "hashes": [
+    2060445277
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun cloth": {
+   "name": "Faridun Cloth",
+   "hashes": [
+    3972091508
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert pavilion": {
+   "name": "Desert Pavilion",
+   "hashes": [
+    4049389251
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert tent": {
+   "name": "Desert Tent",
+   "hashes": [
+    820079219
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "DefiledForest_Felled0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "comfortable cushions": {
+   "name": "Comfortable Cushions",
+   "hashes": [
+    1030197866
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight stockpile": {
+   "name": "Twilight Stockpile",
+   "hashes": [
+    4197893750
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight container": {
+   "name": "Twilight Container",
+   "hashes": [
+    2462607797
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun barricade": {
+   "name": "Faridun Barricade",
+   "hashes": [
+    1242587291
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun gazebo": {
+   "name": "Faridun Gazebo",
+   "hashes": [
+    840948425
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun chains": {
+   "name": "Faridun Chains",
+   "hashes": [
+    3148939699
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun tools": {
+   "name": "Faridun Tools",
+   "hashes": [
+    2233574719
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun ropes": {
+   "name": "Faridun Ropes",
+   "hashes": [
+    1675705915
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "pitch burner": {
+   "name": "Pitch Burner",
+   "hashes": [
+    1098125754
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight outdoor chair": {
+   "name": "Twilight Outdoor Chair",
+   "hashes": [
+    2614044548
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight indoor chair": {
+   "name": "Twilight Indoor Chair",
+   "hashes": [
+    2425870968
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "single log": {
+   "name": "Single Log",
+   "hashes": [
+    2780985165
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "DefiledForest_Felled0726.hideout",
+    "Growth_TheSovereign_0826.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun weapons": {
+   "name": "Faridun Weapons",
+   "hashes": [
+    2061030970
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "trialmaster hideout decoration": {
+   "name": "Trialmaster Hideout Decoration",
+   "hashes": [
+    1398651980
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shady merchant": {
+   "name": "Shady Merchant",
+   "hashes": [
+    3017169821
+   ],
+   "seen_in": [
+    "sample_poe2_31",
+    "sample_poe2_30",
+    "Growth_TheSovereign_0826.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "VastiriMarkets_VastRacecourse0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/VastiriMarkets_VastRacecourse0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "relic of the precursors map device": {
+   "name": "Relic of the Precursors Map Device",
+   "hashes": [
+    1544179028
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "runestone stash": {
+   "name": "Runestone Stash",
+   "hashes": [
+    3956618432
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "burdenback billy goat pet": {
+   "name": "Burdenback Billy Goat Pet",
+   "hashes": [
+    1207856485
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "exile's treasurer hideout decoration": {
+   "name": "Exile's Treasurer Hideout Decoration",
+   "hashes": [
+    1995005829
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "Limestone_Retreat_Helios.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sphinx mystic hideout decoration": {
+   "name": "Sphinx Mystic Hideout Decoration",
+   "hashes": [
+    1768805880
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "warp rune": {
+   "name": "Warp Rune",
+   "hashes": [
+    2186298170
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "chaos crawling leaves": {
+   "name": "Chaos Crawling Leaves",
+   "hashes": [
+    3826371609
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "canopy hut": {
+   "name": "Canopy Hut",
+   "hashes": [
+    2312208992
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "chaos sprout": {
+   "name": "Chaos Sprout",
+   "hashes": [
+    3417655219
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "root bound statue": {
+   "name": "Root Bound Statue",
+   "hashes": [
+    3234524067
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal crates small": {
+   "name": "Vaal Crates Small",
+   "hashes": [
+    546024165
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "tree stump": {
+   "name": "Tree Stump",
+   "hashes": [
+    1438358646
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "DefiledForest_Felled0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sanctum wisp": {
+   "name": "Sanctum Wisp",
+   "hashes": [
+    1166245371
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "warp destination": {
+   "name": "Warp Destination",
+   "hashes": [
+    4166598242
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Islands_BeaconofSalv0726.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "canopy base": {
+   "name": "Canopy Base",
+   "hashes": [
+    3539957646
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "chaos stone blocks": {
+   "name": "Chaos Stone Blocks",
+   "hashes": [
+    1901393962
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane overgrown post": {
+   "name": "Arcane Overgrown Post",
+   "hashes": [
+    2688168908
+   ],
+   "seen_in": [
+    "sample_poe2_30",
+    "Growth_TheSovereign_0826.hideout",
+    "NaturesVeil_BloodreaverManor_0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/NaturesVeil_BloodreaverManor_0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "the defiler map device": {
+   "name": "The Defiler Map Device",
+   "hashes": [
+    3175778902
+   ],
+   "seen_in": [
+    "DefiledForest_Felled0726.hideout",
+    "native/DefiledForest_Felled0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "withered tree": {
+   "name": "Withered Tree",
+   "hashes": [
+    3150090526
+   ],
+   "seen_in": [
+    "DefiledForest_Felled0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "heritage curios": {
+   "name": "Heritage Curios",
+   "hashes": [
+    3301147309
+   ],
+   "seen_in": [
+    "DefiledForest_Felled0726.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "native/DefiledForest_Felled0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "kraken guild stash skin": {
+   "name": "Kraken Guild Stash Skin",
+   "hashes": [
+    2852238516
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sacred archives map device": {
+   "name": "Sacred Archives Map Device",
+   "hashes": [
+    558077313
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "reservoir of benediction well": {
+   "name": "Reservoir of Benediction Well",
+   "hashes": [
+    141535625
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "jungle plant cluster": {
+   "name": "Jungle Plant Cluster",
+   "hashes": [
+    2420583666
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck barrels": {
+   "name": "Shipwreck Barrels",
+   "hashes": [
+    872296190
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane broken plant pot": {
+   "name": "Arcane Broken Plant Pot",
+   "hashes": [
+    2269387741
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "overgrown vaal artifact trim": {
+   "name": "Overgrown Vaal Artifact Trim",
+   "hashes": [
+    507625393
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "overgrown vaal artifact trim corner": {
+   "name": "Overgrown Vaal Artifact Trim Corner",
+   "hashes": [
+    1265001785
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "vaal crates large": {
+   "name": "Vaal Crates Large",
+   "hashes": [
+    698231741
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane research material": {
+   "name": "Arcane Research Material",
+   "hashes": [
+    3874641661
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane astronomy tool": {
+   "name": "Arcane Astronomy Tool",
+   "hashes": [
+    1639315040
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "fishing supplies": {
+   "name": "Fishing Supplies",
+   "hashes": [
+    3573722123
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck crates": {
+   "name": "Shipwreck Crates",
+   "hashes": [
+    3723841918
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck table": {
+   "name": "Shipwreck Table",
+   "hashes": [
+    2806835304
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck lanterns": {
+   "name": "Shipwreck Lanterns",
+   "hashes": [
+    4010199968
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "fish storage": {
+   "name": "Fish Storage",
+   "hashes": [
+    279324330
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck seat": {
+   "name": "Shipwreck Seat",
+   "hashes": [
+    3770824213
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "hammock": {
+   "name": "Hammock",
+   "hashes": [
+    3646493357
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "fishermans display": {
+   "name": "Fishermans Display",
+   "hashes": [
+    737936947
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "marine frames": {
+   "name": "Marine Frames",
+   "hashes": [
+    955914068
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Growth_TheSovereign_0826.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "enthusiastic exiled squire": {
+   "name": "Enthusiastic Exiled Squire",
+   "hashes": [
+    405294589
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "insulting exiled squire": {
+   "name": "Insulting Exiled Squire",
+   "hashes": [
+    1369054631
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "pessimistic exiled squire": {
+   "name": "Pessimistic Exiled Squire",
+   "hashes": [
+    3688959505
+   ],
+   "seen_in": [
+    "Growth_TheSovereign_0826.hideout",
+    "native/Growth_TheSovereign_0826.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "goblin gamblers hideout decoration": {
+   "name": "Goblin Gamblers Hideout Decoration",
+   "hashes": [
+    144221594
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "backalley trader": {
+   "name": "Backalley Trader",
+   "hashes": [
+    2208874294
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert gate": {
+   "name": "Desert Gate",
+   "hashes": [
+    2314949342
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "slicer wall": {
+   "name": "Slicer Wall",
+   "hashes": [
+    1373927940
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert pillar": {
+   "name": "Desert Pillar",
+   "hashes": [
+    3767877971
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert wall": {
+   "name": "Desert Wall",
+   "hashes": [
+    2423074060
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert altar": {
+   "name": "Desert Altar",
+   "hashes": [
+    3215264076
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "surgical lights": {
+   "name": "Surgical Lights",
+   "hashes": [
+    228340661
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "experiment pot": {
+   "name": "Experiment Pot",
+   "hashes": [
+    88605908
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "small cactus": {
+   "name": "Small Cactus",
+   "hashes": [
+    3656595490
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "aloe vera": {
+   "name": "Aloe Vera",
+   "hashes": [
+    551638625
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "clothesline": {
+   "name": "Clothesline",
+   "hashes": [
+    1570724924
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "mutineers tree": {
+   "name": "Mutineers Tree",
+   "hashes": [
+    2440215747
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck crate cluster": {
+   "name": "Shipwreck Crate Cluster",
+   "hashes": [
+    3434916654
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "heritage building supplies": {
+   "name": "Heritage Building Supplies",
+   "hashes": [
+    1981812224
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "shipwreck storage cluster": {
+   "name": "Shipwreck Storage Cluster",
+   "hashes": [
+    3810956003
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sanctum medallion": {
+   "name": "Sanctum Medallion",
+   "hashes": [
+    351994312
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert oasis": {
+   "name": "Desert Oasis",
+   "hashes": [
+    2570740515
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "desert tree": {
+   "name": "Desert Tree",
+   "hashes": [
+    1564433234
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "My_Hideout.hideout",
+    "native/Islands_BeaconofSalv0726.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "dissection table": {
+   "name": "Dissection Table",
+   "hashes": [
+    1006635807
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "doryanis test subject": {
+   "name": "Doryanis Test Subject",
+   "hashes": [
+    215550708
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "goddess statue": {
+   "name": "Goddess Statue",
+   "hashes": [
+    2499465805
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "falling sand": {
+   "name": "Falling Sand",
+   "hashes": [
+    3853073345
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sanctum suspension trap": {
+   "name": "Sanctum Suspension Trap",
+   "hashes": [
+    317467896
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "toad idol of chaos hideout decoration": {
+   "name": "Toad Idol of Chaos Hideout Decoration",
+   "hashes": [
+    340713231
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "toad idol of alchemy hideout decoration": {
+   "name": "Toad Idol of Alchemy Hideout Decoration",
+   "hashes": [
+    930660710
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun ballista": {
+   "name": "Faridun Ballista",
+   "hashes": [
+    920858563
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "canopy stool": {
+   "name": "Canopy Stool",
+   "hashes": [
+    377193851
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "canopy container": {
+   "name": "Canopy Container",
+   "hashes": [
+    113989991
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "canopy rack": {
+   "name": "Canopy Rack",
+   "hashes": [
+    390389598
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "chaos remains": {
+   "name": "Chaos Remains",
+   "hashes": [
+    2919762504
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "atziri's royal cache stash (unique)": {
+   "name": "Atziri's Royal Cache Stash (Unique)",
+   "hashes": [
+    922663978
+   ],
+   "seen_in": [
+    "Islands_BeaconofSalv0726.hideout",
+    "native/Islands_BeaconofSalv0726.hideout"
+   ],
+   "category": "store-mtx",
+   "category_source": "heuristic possessive-name"
+  },
+  "azmeri noble deer pet": {
+   "name": "Azmeri Noble Deer Pet",
+   "hashes": [
+    321336380
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "runes of aldur challenger statue": {
+   "name": "Runes of Aldur Challenger Statue",
+   "hashes": [
+    1806432596
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "My_Hideout.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "tree planter": {
+   "name": "Tree Planter",
+   "hashes": [
+    233559769
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "marble walls": {
+   "name": "Marble Walls",
+   "hashes": [
+    1380152311
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "marble pillar": {
+   "name": "Marble Pillar",
+   "hashes": [
+    2550037247
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "cabbage tree": {
+   "name": "Cabbage Tree",
+   "hashes": [
+    1082688452
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ornate gazebo": {
+   "name": "Ornate Gazebo",
+   "hashes": [
+    2486808514
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "ornate statue": {
+   "name": "Ornate Statue",
+   "hashes": [
+    1278964619
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "marble fountain": {
+   "name": "Marble Fountain",
+   "hashes": [
+    525963527
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "native/Limestone_Retreat_Helios.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "punga": {
+   "name": "Punga",
+   "hashes": [
+    1019188141
+   ],
+   "seen_in": [
+    "Limestone_Retreat_Helios.hideout",
+    "Tower_of_the_Arcane.hideout",
+    "native/Limestone_Retreat_Helios.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "atziri's royal cache stash": {
+   "name": "Atziri's Royal Cache Stash",
+   "hashes": [
+    3361703871
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "store-mtx",
+   "category_source": "heuristic possessive-name"
+  },
+  "atziri's royal cache guild stash": {
+   "name": "Atziri's Royal Cache Guild Stash",
+   "hashes": [
+    3521457160
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "store-mtx",
+   "category_source": "heuristic possessive-name"
+  },
+  "plaguewraith map device": {
+   "name": "Plaguewraith Map Device",
+   "hashes": [
+    1850948538
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "assassin's etched beetle pet": {
+   "name": "Assassin's Etched Beetle Pet",
+   "hashes": [
+    1083203327
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "chronomancer's etched beetle pet": {
+   "name": "Chronomancer's Etched Beetle Pet",
+   "hashes": [
+    1040221096
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "commemorative dominus statue hideout decoration": {
+   "name": "Commemorative Dominus Statue Hideout Decoration",
+   "hashes": [
+    99228286
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "faridun's etched beetle pet": {
+   "name": "Faridun's Etched Beetle Pet",
+   "hashes": [
+    2867239792
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "commemorative malachai statue hideout decoration": {
+   "name": "Commemorative Malachai Statue Hideout Decoration",
+   "hashes": [
+    2525701763
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "commemorative vaal oversoul statue hideout decoration": {
+   "name": "Commemorative Vaal Oversoul Statue Hideout Decoration",
+   "hashes": [
+    1072124116
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "commemorative hillock statue hideout decoration": {
+   "name": "Commemorative Hillock Statue Hideout Decoration",
+   "hashes": [
+    437057711
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "large cactus": {
+   "name": "Large Cactus",
+   "hashes": [
+    3634570565
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sacrificial zealot": {
+   "name": "Sacrificial Zealot",
+   "hashes": [
+    1688633482
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "sacrifice bench": {
+   "name": "Sacrifice Bench",
+   "hashes": [
+    2347581179
+   ],
+   "seen_in": [
+    "My_Hideout.hideout",
+    "native/My_Hideout.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane ruin walls": {
+   "name": "Arcane Ruin Walls",
+   "hashes": [
+    87878348
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "decorative rhoa race spectate": {
+   "name": "Decorative Rhoa Race Spectate",
+   "hashes": [
+    1516848454
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane plant pot": {
+   "name": "Arcane Plant Pot",
+   "hashes": [
+    3751405049
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane ruin structures": {
+   "name": "Arcane Ruin Structures",
+   "hashes": [
+    1234695307
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "decorative rhoa race controller": {
+   "name": "Decorative Rhoa Race Controller",
+   "hashes": [
+    1922960812
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane research table": {
+   "name": "Arcane Research Table",
+   "hashes": [
+    269474854
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane shelf": {
+   "name": "Arcane Shelf",
+   "hashes": [
+    3201256402
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane research board": {
+   "name": "Arcane Research Board",
+   "hashes": [
+    1422632360
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane ruin stairs": {
+   "name": "Arcane Ruin Stairs",
+   "hashes": [
+    2876437927
+   ],
+   "seen_in": [
+    "Tower_of_the_Arcane.hideout",
+    "native/Tower_of_the_Arcane.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "fire waypoint": {
+   "name": "Fire Waypoint",
+   "hashes": [
+    1453387172
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "divergence environmental effect": {
+   "name": "Divergence Environmental Effect",
+   "hashes": [
+    3746035602
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "kraken stash skin (currency)": {
+   "name": "Kraken Stash Skin (Currency)",
+   "hashes": [
+    1540450749
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "arcane cabinet": {
+   "name": "Arcane Cabinet",
+   "hashes": [
+    2447562530
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "twilight table": {
+   "name": "Twilight Table",
+   "hashes": [
+    2207778579
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  },
+  "mutineers cages": {
+   "name": "Mutineers Cages",
+   "hashes": [
+    2429860138
+   ],
+   "seen_in": [
+    "sovereign-shanty-v1.1.hideout",
+    "native/sovereign-shanty-v1.1.hideout"
+   ],
+   "category": "unknown",
+   "category_source": "unclassified"
+  }
+ },
+ "bases": {
+  "382": {
+   "name": "Vastiri Racecourse Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 79,
+    "x": [
+     155,
+     556
+    ],
+    "y": [
+     135,
+     470
+    ]
+   }
+  },
+  "3422": {
+   "name": "Bloodreaver Manor Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 53,
+    "x": [
+     393,
+     756
+    ],
+    "y": [
+     668,
+     2477
+    ]
+   }
+  },
+  "4638": {
+   "name": "Shoreline Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 37,
+    "x": [
+     269,
+     651
+    ],
+    "y": [
+     259,
+     795
+    ]
+   }
+  },
+  "6697": {
+   "name": "Titan Apex Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 47,
+    "x": [
+     234,
+     546
+    ],
+    "y": [
+     156,
+     531
+    ]
+   }
+  },
+  "12394": {
+   "name": "Limestone Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 55,
+    "x": [
+     203,
+     513
+    ],
+    "y": [
+     184,
+     570
+    ]
+   }
+  },
+  "13526": {
+   "name": "Felled Hideout",
+   "game": "poe2",
+   "music": false,
+   "observed": {
+    "files": 2,
+    "maxDoodads": 55,
+    "x": [
+     141,
+     442
+    ],
+    "y": [
+     168,
+     650
+    ]
+   }
+  },
+  "15656": {
+   "name": "Beacon of Salvation Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 103,
+    "x": [
+     302,
+     934
+    ],
+    "y": [
+     186,
+     1295
+    ]
+   }
+  },
+  "23536": {
+   "name": "Arcane Isle Hideout",
+   "game": "poe2",
+   "music": true,
+   "observed": {
+    "files": 1,
+    "maxDoodads": 70,
+    "x": [
+     195,
+     429
+    ],
+    "y": [
+     116,
+     327
+    ]
+   }
+  },
+  "47588": {
+   "name": "The Sovereign Hideout",
+   "game": "poe1",
+   "music": false,
+   "observed": {
+    "files": 3,
+    "maxDoodads": 59,
+    "x": [
+     109,
+     422
+    ],
+    "y": [
+     83,
+     507
+    ]
+   }
+  }
+ }
+}
