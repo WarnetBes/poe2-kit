@@ -107,6 +107,16 @@ const svgMarks = await ev(`document.querySelectorAll('.tree-svg .mplan').length`
 check('restore-svg-marks', svgMarks === RESTORE_IDS.length, `marks=${svgMarks}`);
 check('hash-kept', (await ev('location.hash')).includes('p=Monk'), await ev('location.hash'));
 
+// ── 2a) Калькулятор плана: сводка модификаторов (№215b) ──────────────────────
+const calcVisible = !(await ev(`document.querySelector('#pane-map .atlas-calc')?.hidden ?? true`));
+check('calc-shown', calcVisible === true, `hidden=${await ev(`document.querySelector('#pane-map .atlas-calc')?.hidden`)}`);
+const calcRows = (await ev(`document.querySelectorAll('#pane-map .atlas-calc-list li').length`)) ?? 0;
+check('calc-rows-2', calcRows === 2, `rows=${calcRows} (expect: +10 to any Attribute x2, 4% Skill Speed)`);
+const calcHtml = await ev(`document.querySelector('#pane-map .atlas-calc-list')?.innerHTML ?? ''`);
+check('calc-attr-stack', calcHtml.includes('+10 to any Attribute'), '');
+check('calc-skill-speed', calcHtml.includes('4% increased Skill Speed'), '');
+check('calc-size', (await ev(`document.querySelector('#pane-map .atlas-calc-n')?.textContent`)) === '(3)', '');
+
 // в”Ђв”Ђ 3) Р–РёРІРѕР№ РєР»РёРє = path-Р°Р»Р»РѕРєР°С†РёСЏ в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 // РџРѕРІС‚РѕСЂСЏРµРј centreViewport (viewport.js:28): scale = min(w,h)/(windowRadius*2),
 // windowRadius = max(ring.artRadius*1.6, 2000), С†РµРЅС‚СЂ = scene.centre.centre.

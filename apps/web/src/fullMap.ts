@@ -22,6 +22,7 @@ import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json
 import skillsUrl from '../../../packages/core/data/game/passive_tree/assets/skills.webp?url';
 import groupBgUrl from '../../../packages/core/data/game/passive_tree/assets/group-background.webp?url';
 import { classBgUrls } from './classBgAssets';
+import { aggregateStats, calcRowToHtml, foreignCalcs, mergeRows, publishCalc, subscribeCalc, type CalcRow } from './calcSummary';
 import { initTreeSearch } from './treeSearch';
 
 interface LayoutNode {
@@ -219,12 +220,12 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     </details>
     <div class="tree-body">
       <div class="tree-canvas map-canvas"></div>
-      <aside class="tree-detail"><em>Кликни по узлу на карте, чтобы увидеть статы.</em></aside>
+      <aside class="tree-detail"><div class="atlas-calc" hidden><div class="atlas-calc-title">Сводка плана <span class="atlas-calc-n"></span></div><ul class="atlas-calc-list"></ul></div><div class="atlas-node-detail"><em>Кликни по узлу на карте, чтобы увидеть статы.</em></div></aside>
     </div>`;
   host.appendChild(wrap);
 
   const canvas = wrap.querySelector<HTMLDivElement>('.tree-canvas')!;
-  const detail = wrap.querySelector<HTMLElement>('.tree-detail')!;
+  const detail = wrap.querySelector<HTMLElement>('.atlas-node-detail')!;
   const fitBtn = wrap.querySelector<HTMLButtonElement>('.btn-fit')!;
   const classSel = wrap.querySelector<HTMLSelectElement>('#map-class')!;
 
@@ -873,6 +874,34 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     }
   };
 
+  // ── калькулятор плана (№215b): сводка модификаторов взятых узлов ──────────
+  const calcBox = wrap.querySelector<HTMLElement>('.atlas-calc')!;
+  const calcList = wrap.querySelector<HTMLUListElement>('.atlas-calc-list')!;
+  const calcN = wrap.querySelector<HTMLElement>('.atlas-calc-n')!;
+  /** Свои (план дерева) агрегированные ряды — кэш для перерисовки на чужое событие. */
+  let ownPassiveRows: CalcRow[] = [];
+  const renderCalc = (): void => {
+    const rest = foreignCalcs('passives');
+    const all = mergeRows([ownPassiveRows, ...rest.map((x) => x.rows)]);
+    calcN.textContent = rest.length
+      ? `(${[`Дерево: ${planIds.length}`, ...rest.map((x) => x.label)].join(' + ')})`
+      : `(${planIds.length})`;
+    calcBox.hidden = all.length === 0;
+    calcList.innerHTML = all
+      .slice(0, 50)
+      .map((r) => calcRowToHtml(r, escAttr))
+      .join('');
+  };
+  const updateCalc = (): void => {
+    ownPassiveRows = aggregateStats(planIds.map((id) => db.nodes.get(String(id))?.stats));
+    publishCalc('passives', ownPassiveRows, `Дерево пассивок: ${planIds.length}`);
+    renderCalc();
+  };
+  // чужой калькулятор (атлас) обновился — перерисовать объединённую сводку
+  subscribeCalc((src) => {
+    if (src !== 'passives') renderCalc();
+  });
+
   const refreshPlanUI = (): void => {
     const n = planIds.length;
     planBadge.hidden = n === 0 && !planClass;
@@ -881,6 +910,7 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     planLinkBtn.hidden = n === 0;
     planResetBtn.hidden = n === 0;
     refreshDiffUI();
+    updateCalc();
   };
 
   // ── Diff vs PoB (№210): расхождения план ↔ билд в два цвета ────────────────

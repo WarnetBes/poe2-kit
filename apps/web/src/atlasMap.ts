@@ -19,6 +19,7 @@
  */
 
 import atlasUrl from '../../../packages/core/data/game/atlas/atlas.json?url';
+import { aggregateStats, calcRowToHtml, foreignCalcs, mergeRows, publishCalc, subscribeCalc } from './calcSummary';
 import { setStatus } from './ui';
 
 const STORE_KEY = 'poe2k.atlasPlan';
@@ -323,69 +324,36 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     ptsBadge.textContent = String(allocated.size);
   };
 
-  // ── калькулятор: суммарные модификаторы взятых узлов ──────────────────
+  // ── калькулятор: суммарные модификаторы взятых узлов (общий модуль) ─────
   const calcBox = wrap.querySelector<HTMLElement>('.atlas-calc')!;
   const calcList = wrap.querySelector<HTMLUListElement>('.atlas-calc-list')!;
   const calcN = wrap.querySelector<HTMLElement>('.atlas-calc-n')!;
 
-  /** "[Tag|Text]" → "Text", "[X]" → "X"; \n → пробел. */
-  const cleanStat = (s: string): string =>
-    s.replace(/\[[^\]|]*\|([^\]]+)\]/g, '$1').replace(/\[([^\]|]+)\]/g, '$1').replace(/\s*\n\s*/g, ' ').trim();
+  /** Свои (атласные) агрегированные ряды — кэш, чтобы не пересчитывать на чужое событие. */
+  let ownAtlasRows = aggregateStats([...allocated].map((id) => nodes.get(id)?.stats));
 
-  /**
-   * Разбор стата в {tmpl, a, b}: первое число выносится в шаблон "#" или "(#-#)".
-   * a/b — числитель и максимум; у статов без ведущего числа a=null (не суммируется, только счётчик).
-   */
-  const parseStat = (raw: string): { tmpl: string; a: number | null; b: number | null } => {
-    const clean = cleanStat(raw);
-    const rng = clean.match(/^\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)%?\s*/);
-    if (rng) return { tmpl: clean.slice(rng[0].length), a: parseFloat(rng[1]), b: parseFloat(rng[2]) };
-    const one = clean.match(/^(\d+(?:\.\d+)?)%?\s*/);
-    if (one) return { tmpl: clean.slice(one[0].length), a: parseFloat(one[1]), b: null };
-    return { tmpl: clean, a: null, b: null };
+  const renderCalc = (): void => {
+    const rest = foreignCalcs('atlas');
+    const all = mergeRows([ownAtlasRows, ...rest.map((x) => x.rows)]);
+    calcN.textContent = rest.length
+      ? `(${[`Атлас: ${allocated.size}`, ...rest.map((x) => x.label)].join(' + ')})`
+      : `(${allocated.size})`;
+    calcBox.hidden = all.length === 0;
+    calcList.innerHTML = all
+      .slice(0, 50)
+      .map((r) => calcRowToHtml(r, esc))
+      .join('');
   };
 
   const updateCalc = (): void => {
-    // группировка по шаблону (текст без ведущего числа): tmpl → суммы/счётчики
-    const rows = new Map<string, { sumA: number; sumB: number; numCount: number; rngCount: number; count: number }>();
-    for (const id of allocated) {
-      const n = nodes.get(id);
-      if (!n) continue;
-      for (const raw of n.stats ?? []) {
-        const { tmpl, a, b } = parseStat(raw);
-        const r = rows.get(tmpl) ?? { sumA: 0, sumB: 0, numCount: 0, rngCount: 0, count: 0 };
-        if (a !== null) {
-          r.numCount++;
-          r.sumA += a;
-          if (b !== null) {
-            r.rngCount++;
-            r.sumB += b;
-          }
-        }
-        r.count++;
-        rows.set(tmpl, r);
-      }
-    }
-    calcN.textContent = `(${allocated.size})`;
-    calcBox.hidden = allocated.size === 0;
-    const sorted = [...rows.entries()].sort((x, y) => {
-      // суммируемые выше, сильнее — выше, остальное по алфавиту
-      const aSum = x[1].numCount === x[1].count && x[1].numCount > 0 ? 0 : 1;
-      const bSum = y[1].numCount === y[1].count && y[1].numCount > 0 ? 0 : 1;
-      if (aSum !== bSum) return aSum - bSum;
-      return y[1].sumA - x[1].sumA || x[0].localeCompare(y[0]);
-    });
-    calcList.innerHTML = sorted
-      .slice(0, 50)
-      .map(([tmpl, r]) => {
-        const summable = r.numCount === r.count && r.numCount > 0;
-        const range = summable && r.rngCount === r.numCount && r.sumB !== r.sumA;
-        const num = summable ? `${range ? `(${r.sumA}–${r.sumB})%` : `${r.sumA}%`} ` : '';
-        const times = r.count > 1 ? ` <span class="dim">×${r.count}</span>` : '';
-        return `<li>${num}${esc(tmpl)}${times}</li>`;
-      })
-      .join('');
+    ownAtlasRows = aggregateStats([...allocated].map((id) => nodes.get(id)?.stats));
+    publishCalc('atlas', ownAtlasRows, `Дерево атласа: ${allocated.size}`);
+    renderCalc();
   };
+  // чужой калькулятор (дерево пассивок) обновился — перерисовать объединённую сводку
+  subscribeCalc((src) => {
+    if (src !== 'atlas') renderCalc();
+  });
   updateCalc();
 
   const commit = (): void => {
