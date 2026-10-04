@@ -210,7 +210,7 @@ export interface LevelingZone {
   zone: string;
   /** Рекомендуемый уровень монстров */
   monsterLevel: number;
-  /** Есть ли в зоне вояпоинт (быстрый телепорт). undefined — неизвестно. */
+  /** Есть ли в зоне вайпоинт (быстрый телепорт). undefined — неизвестно. */
   hasWaypoint?: boolean;
   /** Сайд-зона вне mainline («Optional Area!» по PoL-2): не предлагается как
    *  «следующая зона» сюжета, monsterLevel может быть ниже хвоста акта. */

@@ -1,8 +1,8 @@
 /**
- * Карта наличия вояпоинта в зонах кампании (Акт 1–4).
+ * Карта наличия вайпоинта в зонах кампании (Акт 1–4).
  * Сгенерировано экстрактором _extract_waypoints.mjs из
  * repoe-fork world_areas.json (patch 0.5.5). Ключи — точные имена зон из leveling.ts.
- * Значение true = в зоне есть вояпоинт (быстрый телепорт).
+ * Значение true = в зоне есть вайпоинт (быстрый телепорт).
  */
 export const CAMPAIGN_WAYPOINTS: Record<string, boolean> = {
   'The Riverbank': false,

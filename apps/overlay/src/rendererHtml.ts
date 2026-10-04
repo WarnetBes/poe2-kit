@@ -1470,7 +1470,7 @@ ${OVERLAY_SHELL}<script>
     } else if (notables.length) {
       html += notables.map(treeNodeRow).join('');
     }
-    html += '<input id="treeSearch" placeholder="Поиск нод: имя или стат (напр. cold damage)">' +
+    html += '<input id="treeSearch" placeholder="Поиск узлов: имя или стат (напр. cold damage)">' +
       // №129: кликабельный фильтр по нодам — ввод текста у друга не гарантирован
       // (окно зависит от focus-режимов), popular-запросы должны работать мышью.
       '<div id="treeChips" class="tree-chips"></div>' +
@@ -1490,7 +1490,7 @@ ${OVERLAY_SHELL}<script>
     if (chipsBox) {
       chipsBox.innerHTML = QUICK_TREE.map(function (q, i) {
         var label = LANG === 'en' ? q[2] : q[0];
-        return '<button class="chip" data-q="' + esc(q[1]) + '" title="Показать ноды: ' + esc(q[1]) + '">' + esc(label) + '</button>';
+        return '<button class="chip" data-q="' + esc(q[1]) + '" title="Показать узлы: ' + esc(q[1]) + '">' + esc(label) + '</button>';
       }).join('');
     }
     function runTreeSearch(q) {
@@ -1838,7 +1838,7 @@ ${OVERLAY_SHELL}<script>
       if (r.hasWaypoint) {
         var wp = document.createElement('span');
         wp.className = 'camp-wp';
-        wp.title = 'В зоне есть вэпоинт (быстрый телепорт)';
+        wp.title = 'В зоне есть вайпоинт (быстрый телепорт)';
         wp.textContent = '⌖WP';
         name.appendChild(wp);
       }
@@ -2061,7 +2061,7 @@ ${OVERLAY_SHELL}<script>
       sg.className = 'boss-grp';
       var st = document.createElement('div');
       st.className = 'boss-grp-title';
-      st.textContent = 'Trial of the Sekhemas (лестница)'
+      st.textContent = 'Trial of the Sekhemas (лестница этажей)'
       sg.appendChild(st);
       // №109: лестница этажей — сортировка по floor, вход через Djorn Barya (act 2).
       var sk = bosses.sekhemas.slice().sort(function (a, b3) { return (a.floor || 0) - (b3.floor || 0); });
@@ -2320,7 +2320,7 @@ ${OVERLAY_SHELL}<script>
     if (res.unmatchedMods && res.unmatchedMods.length) {
       var unm = res.unmatchedMods;
       sb.classList.remove('hide');
-      sb.innerHTML = '⚠ Не распознано модов: <b>' + unm.length + '</b>' +
+      sb.innerHTML = '⚠ Не распознаны моды: <b>' + unm.length + '</b>' +
         (res.statMatch ? ' из ' + res.statMatch.total : '') +
         ' — оценка может идти по базовому типу.' +
         '<div class="sb-list" title="' + esc(unm.join(' | ')) + '">' +

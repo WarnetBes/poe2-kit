@@ -55,7 +55,7 @@ export function registerLevelingTools(server: McpServer): number {
         for (const z of plan) {
           const steps = z.steps.length ? z.steps.map((s) => `    - ${s}`).join('\n') : '';
           const rewards = z.rewards.length ? ` *(награда: ${z.rewards.join('; ')})*` : '';
-          const wp = z.hasWaypoint ? ' ⚑вояпоинт' : '';
+          const wp = z.hasWaypoint ? ' ⚑вайпоинт' : '';
           lines.push(`**Акт ${z.act} · ${z.zone}** (уровень ${z.monsterLevel})${wp}${rewards}`);
           if (steps) lines.push(steps);
           lines.push('');

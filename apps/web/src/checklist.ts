@@ -160,7 +160,7 @@ function render(): HTMLElement {
           `<input type="checkbox" data-typ="zone" data-key="${esc(k)}" ${checked ? 'checked' : ''}>` +
           `<span class="ck-box"></span>` +
           `<span class="ck-txt"><b>${esc(z.zone)}</b> <span class="dim">(ур. ${z.monsterLevel})</span>` +
-          (z.hasWaypoint ? ` <span class="wp" title="Есть вояпоинт">⚑</span>` : '') +
+          (z.hasWaypoint ? ` <span class="wp" title="Есть вайпоинт">⚑</span>` : '') +
           (zRewards ? ` <span class="reward">🏆 ${esc(zRewards)}</span>` : '') +
           `</span></label>`
         );
