@@ -24,6 +24,7 @@ import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
 import { pasteFromClipboard } from './clipboard';
 import { renderFullMap } from './fullMap';
 import { showHideout, copyHideoutShare, copyHideoutMarkdown, initHideoutTab } from './hideout';
+import { initAtlasTab } from './atlasMap';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -57,6 +58,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="build" class="tab">Импорт билда</button>
         <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
+        <button data-tab="atlas" class="tab">Атлас</button>
         <button data-tab="map" class="tab">Карта</button>
         <button data-tab="hideout" class="tab">Хайдоуты</button>
         <button data-tab="ai" class="tab">AI-чат</button>
@@ -144,6 +146,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-tree-last" class="ghost">Из последнего билда</button>
         </div>
         <div id="out-tree" class="out"></div>
+      </section>
+
+      <section id="pane-atlas" class="pane">
+        <h2>Карта Атласа <small>40 очков · ветки механик</small></h2>
+        <p class="hint">Древо атласа (atlas skills): клик по узлу берёт/снимает очко (только рядом со стартом или взятым узлом — как в игре, с refund), счётчик в тулбаре. Панорамирование (перетаскивание), масштаб (колесо), поиск по имени/статах, ссылка с планом (#a=) и авто-сохранение в браузере.</p>
+        <div id="out-atlas" class="out"></div>
       </section>
 
       <section id="pane-map" class="pane">
@@ -293,6 +301,7 @@ document.querySelector('#btn-hideout')!.addEventListener('click', () =>
 document.querySelector('#btn-hideout-copy')!.addEventListener('click', () => copyHideoutShare());
 document.querySelector('#btn-hideout-md')!.addEventListener('click', () => copyHideoutMarkdown());
 initHideoutTab();
+initAtlasTab();
 
 document.querySelector('#btn-compare')!.addEventListener('click', () =>
   void showBuildCompare(
