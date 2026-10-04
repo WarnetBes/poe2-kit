@@ -907,13 +907,37 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     applyAllocation();
   });
   planLinkBtn.addEventListener('click', async () => {
+    const url = location.href;
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(url);
+      ok = true;
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      // clipboard API заблокирован (нет фокуса/политика) — копируем highlight-приёмом
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, url.length);
+        ok = document.execCommand('copy');
+        ta.remove();
+      } catch {
+        ok = false;
+      }
+    }
+    if (ok) {
       planLinkBtn.textContent = '✓ Скопировано';
       setTimeout(() => { planLinkBtn.textContent = '🔗 Ссылка'; }, 2000);
-    } catch {
-      // clipboard заблокирован — выделяем адрес в hash напрямую
-      planLinkBtn.textContent = 'адрес в строке браузера';
+    } else {
+      // полный запрет — адрес уже в строке браузера (hash synced)
+      planLinkBtn.textContent = 'скопируйте адрес из строки браузера';
       setTimeout(() => { planLinkBtn.textContent = '🔗 Ссылка'; }, 2500);
     }
   });
