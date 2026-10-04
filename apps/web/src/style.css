@@ -564,6 +564,17 @@ a { color: var(--gold); }
 .tree-canvas.map-canvas {
   background: radial-gradient(ellipse at center, #141a26, #0a0d14 72%);
 }
+/* WebGL-режим «Игровой вид» (lazy-чанк: React+PixiJS). */
+.tree-game-host {
+  flex: 1 1 auto;
+  height: 520px;
+  position: relative;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #141a26, #0a0d14 72%);
+}
+.tree-game-host .tree-game-canvas,
+.tree-game-host canvas { width: 100% !important; height: 100% !important; display: block; }
 .tree-svg { display: block; touch-action: none; }
 .tree-svg.panning { cursor: grabbing; }
 .tree-svg .tnode { cursor: pointer; }

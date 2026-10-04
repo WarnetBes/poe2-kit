@@ -189,7 +189,16 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
           return `<option value="${escAttr(c)}">${escAttr(c)} (${escAttr(list)})</option>`;
         }).join('')}
       </select>
-      <button type="button" class="btn-fit" title="Вписать карту">⟳ Вписать</button>
+      <label class="tree-class-lbl" for="map-asc" title="Выделить асценданси (в игровом виде его диск переносится в хаб)">Asc:</label>
+      <select id="map-asc" class="tree-class-select" disabled>
+        <option value="">— все —</option>
+        ${baseClasses.flatMap((c) =>
+          ascNames.filter((a) => baseOf(a) === c).map((a) => `<option value="${escAttr(a)}">${escAttr(a)}</option>`),
+        ).join('')}
+      </select>
+      <button type="button" class="btn-fit btn-fit-svg" title="Вписать SVG-карту в окно">⟳ Вписать</button>
+      <button type="button" class="btn-fit btn-build" title="Подсветить пассивки последнего разобранного билда (вкладка «Импорт билда») прямо на игровом дереве">⭐ Билд</button>
+      <button type="button" class="btn-fit btn-game" title="Режим по умолчанию — игровой WebGL (PixiJS, официальный экспорт GGG). Тумблер переключает на лёгкий SVG.">🧭 Лёгкий вид (SVG)</button>
       <a class="btn-fit" href="https://poe2db.tw/us/passive-skill-tree/" target="_blank" rel="noopener noreferrer" title="Внешний планировщик с игровым видом карты (poe2db)">🗺 poe2db-планировщик ↗</a>
     </div>
     <details class="tree-legend" open>
@@ -557,27 +566,30 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     }
   }
 
-  // ── Фильтр по классу ────────────────────────────────────────────────────────
-  function applyClassFilter(selected: string): void {
+  // ── Фильтр по классу/асценданси (SVG-режим) ─────────────────────────────────
+  function applyClassFilter(selected: string, ascSelected = ''): void {
     const active = new Set<string>();
-    if (selected) {
+    if (ascSelected) {
+      active.add(ascSelected);
+    } else if (selected) {
       for (const asc of ascNames) if (baseOf(asc) === selected) active.add(asc);
     }
     for (const line of edgeEls) {
       const asc = line.getAttribute('data-asc');
       // inline style, не атрибут: CSS-правило .medge{opacity:.42} перебивает
       // presentation-атрибут, и фильтр визуально не работал.
-      line.style.opacity = !selected || (asc && active.has(asc)) ? '' : '0.15';
+      line.style.opacity = !selected && !ascSelected || (asc && active.has(asc)) ? '' : '0.15';
     }
     for (const bg of classBgUnder) {
       const asc = bg.getAttribute('data-asc');
-      const on = !selected || (asc ? active.has(asc) : bg.getAttribute('data-cls') === selected);
+      const on =
+        !selected && !ascSelected || (asc ? active.has(asc) : bg.getAttribute('data-cls') === selected);
       bg.style.opacity = on ? '' : '0.10';
     }
     for (const n of nodes) {
       const el = nodeEls[n.id];
       const under = underEls[n.id];
-      const op = !selected
+      const op = !selected && !ascSelected
         ? '1'
         : n.ascendancy && active.has(n.ascendancy)
           ? '1'
@@ -588,8 +600,198 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       under?.setAttribute('opacity', op);
     }
   }
-  classSel.addEventListener('change', () => applyClassFilter(classSel.value));
+  // ── Игровой WebGL-вид — режим по умолчанию вкладки, SVG — лёгкий фолбэк ──────
+  const gameBtn = wrap.querySelector<HTMLButtonElement>('.btn-game')!;
+  const ascSel = wrap.querySelector<HTMLSelectElement>('#map-asc')!;
+  let game: import('./treeGame/mount').GameHandle | null = null;
+  /** true, пока WebGL-режим активен или загружается (управляет гейтами fit). */
+  let gameMode = false;
+  const showGameDetail = (info: import('./treeGame/mount').GameNodeInfo | null, skill: number): void => {
+    if (!info) {
+      detail.innerHTML = `<div class="tname">Узел #${skill}</div><p class="dim">Нет данных в экспорте GGG.</p>`;
+      return;
+    }
+    const typeBadge = info.isKeystone
+      ? 'keystone'
+      : info.isNotable
+        ? 'notable'
+        : info.isMastery
+          ? 'mastery'
+          : info.isJewelSocket
+            ? 'jewel-слот'
+            : info.ascendancy
+              ? 'ascendancy'
+              : 'обычный';
+    const stats = info.stats.length
+      ? `<ul class="tstats">${info.stats.map((s) => `<li>${escAttr(s)}</li>`).join('')}</ul>`
+      : '<p class="dim">Статы не указаны.</p>';
+    detail.innerHTML = `
+      <div class="tname">${escAttr(info.name)}</div>
+      <div class="tbadges">
+        <span class="pill">${typeBadge}</span>
+        ${info.ascendancy ? `<span class="pill">${escAttr(info.ascendancy)}</span>` : ''}
+        ${info.isAscendancyStart ? '<span class="pill">стартовая точка</span>' : ''}
+        <span class="pill mono">#${skill}</span>
+      </div>
+      ${stats}`;
+  };
+
+  /** (Пере)заполняет селектор асценданси; из GGG — optgroup'ами по классам. */
+  function populateAsc(byClass?: Map<string, string[]>): void {
+    const cur = ascSel.value;
+    ascSel.innerHTML = '';
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = '— все —';
+    ascSel.append(all);
+    const addOpt = (value: string) => {
+      const o = document.createElement('option');
+      o.value = value;
+      o.textContent = value;
+      return o;
+    };
+    if (byClass) {
+      for (const [cls, list] of byClass) {
+        const gr = document.createElement('optgroup');
+        gr.label = cls;
+        for (const a of list) gr.append(addOpt(a));
+        ascSel.append(gr);
+      }
+    } else {
+      for (const c of baseClasses) {
+        for (const a of ascNames.filter((x) => baseOf(x) === c)) ascSel.append(addOpt(a));
+      }
+    }
+    ascSel.value = [...ascSel.options].some((o) => o.value === cur) ? cur : '';
+    ascSel.disabled = false;
+  }
+
+  const unmountGame = (): void => {
+    game?.unmount();
+    game = null;
+    wrap.querySelector('.tree-game-host')?.remove();
+    canvas.style.display = '';
+  };
+
+  // ── Билд: подсветка пассивок последнего разобранного PoB ───────────────────
+  type LastBuild = { class?: string; ascendancy?: string; passiveNodes: string[] };
+  const buildBtn = wrap.querySelector<HTMLButtonElement>('.btn-build')!;
+  let buildShown = false;
+  /** Авто-показ билда при первом монтировании WebGL (дальше — выбор пользователя). */
+  let buildAuto = true;
+  const readLastBuild = (): LastBuild | null => {
+    try {
+      const b = JSON.parse(localStorage.getItem('poe2k.lastBuild') ?? 'null') as LastBuild | null;
+      return b && Array.isArray(b.passiveNodes) && b.passiveNodes.length ? b : null;
+    } catch {
+      return null;
+    }
+  };
+  const buildAllocation = (b: LastBuild): import('@poe2-toolkit/tree-core').BuildAllocation => ({
+    // PoB Spec nodes — те же числовые id, что GGG skill (проверено: 148/148
+    // на эталоне 28880), конвертация не нужна.
+    allocated: b.passiveNodes.map(Number).filter(Number.isInteger),
+    ascendId: b.ascendancy || undefined,
+  });
+  const applyBuildButtonState = (): void => {
+    const b = readLastBuild();
+    if (!b) {
+      buildBtn.textContent = '⭐ Билд (нет)';
+      buildBtn.disabled = true;
+      buildShown = false;
+      return;
+    }
+    buildBtn.disabled = false;
+    buildBtn.textContent = buildShown
+      ? `★ Билд — скрыть (${b.passiveNodes.length})`
+      : `⭐ Билд (${b.passiveNodes.length})`;
+  };
+  const setBuildShown = (on: boolean): void => {
+    const b = readLastBuild();
+    buildShown = on && !!b;
+    if (game) {
+      game.setBuild(buildShown && b ? buildAllocation(b) : null);
+      if (buildShown && b) {
+        // Кольцо класса и диск асценданси — от билда, селекторы синхронизируем.
+        if (b.class && [...classSel.options].some((o) => o.value === b.class)) classSel.value = b.class;
+        if (b.ascendancy && [...ascSel.options].some((o) => o.value === b.ascendancy)) {
+          ascSel.value = b.ascendancy;
+        } else if (b.class) {
+          // Асценданси в списке ещё нет (WebGL-данные не грузились) — сброс.
+          ascSel.value = '';
+        }
+        game.setClass(classSel.value || undefined);
+        game.setAscendancy(ascSel.value || undefined);
+        applyClassFilter(classSel.value, ascSel.value);
+      }
+    }
+    applyBuildButtonState();
+  };
+  buildBtn.addEventListener('click', () => setBuildShown(!buildShown));
+  applyBuildButtonState();
+
+  const enableGame = async (): Promise<void> => {
+    gameMode = true;
+    gameBtn.disabled = true;
+    gameBtn.textContent = '⏳ Загрузка WebGL-данных…';
+    try {
+      let host = wrap.querySelector<HTMLElement>('.tree-game-host');
+      if (!host) {
+        host = document.createElement('div');
+        host.className = 'tree-game-host';
+        canvas.parentElement!.insertBefore(host, canvas);
+      }
+      const mod = await import('./treeGame/mount');
+      game = await mod.mountGameTree(host, {
+        onNodeClick: (info, skill) => { showGameDetail(info, skill); },
+      });
+      canvas.style.display = 'none';
+      game.setClass(classSel.value || undefined);
+      if (ascSel.value) game.setAscendancy(ascSel.value);
+      populateAsc(game.ascByClass);
+      // Билд: при первом открытии подсвечиваем автоматически, дальше —
+      // последнее решение пользователя сохраняется между переключениями вида.
+      if (buildAuto) {
+        buildAuto = false;
+        setBuildShown(true);
+      } else {
+        setBuildShown(buildShown);
+      }
+      gameBtn.textContent = '🧭 Лёгкий вид (SVG)';
+    } catch (e) {
+      // Авто-fallback на SVG: карта остаётся рабочей в любом случае.
+      gameMode = false;
+      unmountGame();
+      populateAsc();
+      const msg = e instanceof Error ? e.message : String(e);
+      gameBtn.textContent = `🎮 Игровой вид (недоступно: ${escAttr(msg)})`;
+    } finally {
+      gameBtn.disabled = false;
+    }
+  };
+
+  const enableSvg = (): void => {
+    gameMode = false;
+    unmountGame();
+    gameBtn.textContent = '🎮 Игровой вид (WebGL)';
+  };
+
+  gameBtn.addEventListener('click', () => { if (gameMode) enableSvg(); else void enableGame(); });
+
+  // Смена класса в SVG — фильтр, в WebGL — стартовое кольцо (в обоих — фильтр SVG).
+  classSel.addEventListener('change', () => {
+    applyClassFilter(classSel.value, ascSel.value);
+    game?.setClass(classSel.value || undefined);
+  });
+  // Выбор асценданси: SVG — фильтр, WebGL — переносит его диск в хаб.
+  ascSel.addEventListener('change', () => {
+    applyClassFilter(classSel.value, ascSel.value);
+    game?.setAscendancy(ascSel.value || undefined);
+  });
   applyClassFilter('');
+
+  // WebGL-режим — основной: монтируем сразу при открытии вкладки.
+  void enableGame();
 
   // ── Pan перетаскиванием ────────────────────────────────────────────────────
   let dragging = false, lastX = 0, lastY = 0;
@@ -673,8 +875,9 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     if (n) showDetail(n);
   });
 
-  fitBtn.addEventListener('click', fit);
-  window.addEventListener('resize', fit);
+  // «Вписать» и resize — только для видимого SVG (в WebGL-режиме canvas скрыт).
+  fitBtn.addEventListener('click', () => { if (!gameMode) fit(); });
+  window.addEventListener('resize', () => { if (!gameMode) fit(); });
 
   fit();
 }

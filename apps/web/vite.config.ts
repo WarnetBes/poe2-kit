@@ -26,6 +26,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // #24b «Игровой вид»: React + PixiJS + @poe2-toolkit — отдельный чанк
+          // 'treegame'; грузится ТОЛЬКО по тумблеру (dynamic import из fullMap).
+          if (id.includes('/apps/web/src/treeGame/') ||
+              id.match(/[\\/]node_modules[\\/](react|react-dom|react-jsx-runtime|scheduler|pixi\.js|@poe2-toolkit)[\\/]/)) {
+            return 'treegame';
+          }
           // vite-хелперы (modulepreload-polyfill, preload-helper) держим в 'core',
           // иначе Circular chunk: core -> app -> core (хелпер нужен обоим).
           // index.html (entry-фасад) обязан лежать в 'app' вместе с main.ts,
