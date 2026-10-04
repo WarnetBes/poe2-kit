@@ -17,10 +17,11 @@ import {
   buildScene, buildTreeGraph, clearAscendancyAllocation,
   toggleAllocation, toggleAscendancyAllocation,
   type BuildAllocation, type Scene, type SpriteManifest, type TreeData,
-  type TreeGraph,
+  type TreeGraph, type WorldRect,
 } from '@poe2-toolkit/tree-core';
 import { normalizeGggTree } from '@poe2-toolkit/tree-core/ggg';
-import { GameTree } from './GameTree';
+import { GameTree, DIFF_TREE_COLORS } from './GameTree';
+import { buildCentreSprites } from './centreSprites';
 
 import dataUrl from '../../../../packages/core/data/game/passive_tree/export/data.json?url';
 import manifestUrl from '../../../../packages/core/data/game/passive_tree/export/manifest.json?url';
@@ -72,6 +73,24 @@ export interface GameHandle {
   planSetAscendancy(name: string | undefined): void;
   /** Полный сброс плана. */
   resetPlan(): void;
+  /**
+   * Diff-режим (№210): перекрасить weapon-set-тинты сцены в два цвета
+   * расхождений план ↔ PoB (missing=оранжевый, extra=фиолетовый). Сам набор
+   * узлов сцена получает через setBuild (weaponSets: 1|2): true — палитра
+   * DIFF_TREE_COLORS вместо дефолтных красного/зелёного.
+   */
+  setDiffMode(on: boolean): void;
+  // ── Поиск узлов: фокус viewport + teal-кольцо (пропы focus/highlight TreeView) ──
+  /**
+   * Отцентрировать WebGL-вид на узле (prop `focus` tree-react: ре-фрейминг
+   * WorldRect). false = узла нет в текущей сцене. Побочно зажигает
+   * standing teal-кольцо (highlight) на этом узле.
+   */
+  focusNode(skill: number): boolean;
+  /** Teal-кольца на наборе узлов (хиты поиска); null/пусто — снять. */
+  highlightNodes(skills: number[] | null): void;
+  /** GameNodeInfo по skill id (для типизации хитов поиска: mastery и т.п.). */
+  nodeInfo(skill: number): GameNodeInfo | null;
   /** базовый класс → его асценданси (display-имена, из GGG data.json). */
   ascByClass: Map<string, string[]>;
 }
@@ -196,7 +215,25 @@ export async function mountGameTree(host: HTMLElement, opts: MountOpts): Promise
   const L = await loaded;
 
   let activeClassId: number | undefined;
+  let activeClassName: string | undefined;
   let activeAscendancy: string | undefined;
+  /** Diff-режим (№210): цвета weapon-set-ов → missing/extra. */
+  let diffMode = false;
+  // ── Поиск узлов: viewport-фокус + teal-кольцо ─────────────────────────────
+  /** Prop `focus` TreeView: новая ссылка = ре-фрейминг; null = вид по умолчанию. */
+  let focusRect: WorldRect | null = null;
+  /** Prop `highlight` TreeView: стоячие teal-кольца (хиты поиска). */
+  let highlightSet: Set<number> | null = null;
+  /** Кэш skill → PlacedNode текущей сцены (перестрается при setBuild). */
+  let placeCacheScene: Scene | null = null;
+  let placeCache = new Map<number, { x: number; y: number; radius: number }>();
+  const placedOf = (sk: number): { x: number; y: number; radius: number } | undefined => {
+    if (placeCacheScene !== scene) {
+      placeCacheScene = scene;
+      placeCache = new Map(scene.nodes.map((n) => [n.skill, { x: n.x, y: n.y, radius: n.radius }] as const));
+    }
+    return placeCache.get(sk);
+  };
 
   // ── Планировщик (№209) ────────────────────────────────────────────────────
   // Корень = start-узел класса; граф ходьбы строится per-класс (activeStart),
@@ -240,6 +277,11 @@ export async function mountGameTree(host: HTMLElement, opts: MountOpts): Promise
         atlases: L.atlases,
         activeClassId,
         activeAscendancy,
+        // Хаб-арт: кольца всегда, портрет — активного класса (?hubart=0 — выкл).
+        centreSprites: buildCentreSprites(activeClassName),
+        colors: diffMode ? DIFF_TREE_COLORS : undefined,
+        focus: focusRect,
+        highlight: highlightSet,
         onNodeClick: (skill: number, screen: { x: number; y: number }) =>
           opts.onNodeClick(L.nodeBySkill.get(skill) ?? null, skill, screen),
       }),
@@ -254,6 +296,7 @@ export async function mountGameTree(host: HTMLElement, opts: MountOpts): Promise
     },
     setClass(name: string | undefined) {
       activeClassId = name ? L.classIds.get(name) : undefined;
+      activeClassName = activeClassId === undefined ? undefined : name;
       render();
     },
     setAscendancy(name: string | undefined) {
@@ -306,6 +349,28 @@ export async function mountGameTree(host: HTMLElement, opts: MountOpts): Promise
     },
     resetPlan() {
       plan = null;
+    },
+    setDiffMode(on: boolean) {
+      diffMode = on;
+      render();
+    },
+    focusNode(skill: number) {
+      const p = placedOf(skill);
+      if (!p) return false;
+      // рамка вокруг узла: не меньше пары экранных «кварталов» дерева,
+      // зум оставляем на усмотрение fit-а TreeView (prop focus).
+      const r = Math.max(p.radius * 3, 120);
+      focusRect = { minX: p.x - r, minY: p.y - r, maxX: p.x + r, maxY: p.y + r };
+      highlightSet = new Set([skill]);
+      render();
+      return true;
+    },
+    highlightNodes(skills: number[] | null) {
+      highlightSet = skills && skills.length ? new Set(skills) : null;
+      render();
+    },
+    nodeInfo(skill: number) {
+      return L.nodeBySkill.get(skill) ?? null;
     },
     ascByClass: ascendanciesByClass(L.treeData),
   };

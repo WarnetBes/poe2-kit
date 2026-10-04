@@ -589,13 +589,59 @@ a { color: var(--gold); }
    золотого PoB-билда; в игровом виде план виден allocated-фреймами tree-core. */
 .tree-svg .tnode.mplan { filter: drop-shadow(0 0 2.5px #7fd0ff) drop-shadow(0 0 5px #1f9bff); }
 .tree-svg .mnode.mplan { stroke: #5cc0ff; stroke-width: 2px; }
+/* №210: Diff vs PoB — расхождения план ↔ билд в два цвета.
+   missing (оранжевый): есть в PoB-билде, не взято в план — добрать;
+   extra (фиолетовый): взято в план, в билде нет — отклонение. */
+.tree-svg .tnode.mdiff-missing { filter: drop-shadow(0 0 2.5px #ff9a66) drop-shadow(0 0 5px #ff6a2a); }
+.tree-svg .mnode.mdiff-missing { stroke: #ff7847; stroke-width: 2.4px; }
+.tree-svg .mnode-under[data-diff="missing"] { stroke: #ff7847; stroke-width: 2.8px; }
+.tree-svg .tnode.mdiff-extra { filter: drop-shadow(0 0 2.5px #ccaaff) drop-shadow(0 0 5px #9947ff); }
+.tree-svg .mnode.mdiff-extra { stroke: #b06bff; stroke-width: 2.4px; stroke-dasharray: 3 2; }
+.tree-svg .mnode-under[data-diff="extra"] { stroke: #b06bff; stroke-width: 2.8px; stroke-dasharray: 3 2; }
+/* Кнопка Δ Diff: активное состояние — оранжево-фиолетовый акцент, как и метки. */
+.btn-plan-diff.active { border-color: #ff7847; color: #ffb894;
+  box-shadow: 0 0 0 1px #b06bff66 inset, 0 0 4px #ff784755; }
+.diff-counts { font-size: 0.8rem; padding: 0.1rem 0.55rem; border: 1px solid var(--border, #3a4a66);
+  border-radius: 999px; color: var(--dim, #8fa3c0); }
+.diff-counts .diff-missing { color: #ff7847; }
+.diff-counts .diff-extra { color: #c79aff; }
 .plan-badge { font-size: 0.8rem; padding: 0.1rem 0.5rem; border: 1px solid var(--border, #3a4a66);
   border-radius: 999px; color: var(--dim, #8fa3c0); }
 .plan-mark { margin: 0.4rem 0 0; font-size: 0.78rem; line-height: 1.35; }
 .plan-mark.ok { color: #7ff0a8; }
 .plan-mark.pob { color: #ffd76a; }
 .plan-mark.hint { color: var(--dim, #8fa3c0); }
+.plan-mark.diff-missing { color: #ff9a66; }
+.plan-mark.diff-extra { color: #c79aff; }
 .tree-svg .mhit { pointer-events: all; stroke: none; }
+/* ── №211: поиск узлов — input в .tree-top + дропдаун совпадений ─────────── */
+.tree-search { position: relative; display: inline-flex; align-items: center; }
+.tree-search-input {
+  width: 200px; padding: 0.28rem 0.6rem; font-size: 0.85rem;
+  background: var(--panel-2, #131a26); color: var(--text, #dbe6f5);
+  border: 1px solid var(--border, #3a4a66); border-radius: 6px; outline: none;
+}
+.tree-search-input:focus { border-color: #5cc0ff; box-shadow: 0 0 0 1px #5cc0ff44; }
+.tree-search-drop {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 60;
+  max-height: 340px; overflow-y: auto; min-width: 260px; width: max-content; max-width: 380px;
+  background: var(--panel-2, #131a26); border: 1px solid var(--border, #3a4a66);
+  border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+.tree-search-item {
+  display: flex; gap: 8px; align-items: baseline; justify-content: space-between;
+  width: 100%; padding: 5px 8px; font-size: 0.82rem; text-align: left;
+  background: none; border: 0; border-radius: 5px; cursor: pointer;
+  color: var(--text, #dbe6f5);
+}
+.tree-search-item:hover { background: #1d2a3f; }
+.tree-search-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-search-type { color: var(--dim, #8fa3c0); font-size: 0.74rem; white-space: nowrap; }
+.tree-search-note { padding: 6px 10px; font-size: 0.78rem; color: var(--dim, #8fa3c0); }
+/* SVG-метка найденного узла (лёгкий вид): teal-кольцо, как highlight WebGL */
+.tree-svg .tnode.mfocus { filter: drop-shadow(0 0 2.5px #7feaff) drop-shadow(0 0 5px #00c8ff); }
+.tree-svg .mnode.mfocus { stroke: #4fd8ff; stroke-width: 2px; }
+.tree-svg .mnode-under[data-search] { stroke: #4fd8ff; stroke-width: 2.4px; }
 .tree-svg .mring { pointer-events: none; }
 .tree-svg .mclassbg { pointer-events: none; opacity: 0.5; }
 .tree-svg .medge {

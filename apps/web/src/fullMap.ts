@@ -22,6 +22,7 @@ import layoutUrl from '../../../packages/core/data/game/passive_tree/layout.json
 import skillsUrl from '../../../packages/core/data/game/passive_tree/assets/skills.webp?url';
 import groupBgUrl from '../../../packages/core/data/game/passive_tree/assets/group-background.webp?url';
 import { classBgUrls } from './classBgAssets';
+import { initTreeSearch } from './treeSearch';
 
 interface LayoutNode {
   name: string;
@@ -54,7 +55,8 @@ interface Layout {
   ascClasses: Record<string, string>;
 }
 
-interface Node {
+/** Узел дерева (layout-строка). Экспортирован для treeSearch (индекс поиска). */
+export interface Node {
   id: string;
   name: string;
   stats: string[];
@@ -202,6 +204,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
       <span class="plan-badge" id="plan-badge" hidden title="Взятые узлы: клик по узлу в игровом виде берёт/снимает очко (кратчайший путь, отсечение осиротевших ветвей — как PoB)">План: <b>0</b></span>
       <button type="button" class="btn-fit btn-plan-link" hidden title="Скопировать ссылку с планом — открывающий увидит ту же раскладку узлов">🔗 Ссылка</button>
       <button type="button" class="btn-fit btn-plan-reset" hidden title="Полностью снять все взятые узлы плана">🧹 Сброс</button>
+      <button type="button" class="btn-fit btn-plan-diff" hidden title="Подсветить расхождения план ↔ PoB-билд (Δ vs PoB)">Δ Diff</button>
+      <span class="diff-counts" id="diff-counts" hidden title="Расхождения план ↔ PoB-билд: оранжевые узлы есть в PoB-билде, но не взяты в план (добери кликом); фиолетовые — взяты в план, но в PoB-билде их нет"></span>
       <a class="btn-fit" href="https://poe2db.tw/us/passive-skill-tree/" target="_blank" rel="noopener noreferrer" title="Внешний планировщик с игровым видом карты (poe2db)">🗺 poe2db-планировщик ↗</a>
     </div>
     <details class="tree-legend" open>
@@ -631,6 +635,18 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     // План-статус узла: green («взято кликом»), PoB — золотой, отказ — серый hint.
     const inPlan = planIds.includes(skill);
     const inBuild = buildShown && buildAllocation(readLastBuild()!).allocated.includes(skill);
+    // Diff-статус (№210): подсветка расхождений, только когда режим включён.
+    let diffLine = '';
+    if (diffOn) {
+      const d = computeDiff();
+      if (d) {
+        if (d.missing.includes(skill)) {
+          diffLine = '<p class="plan-mark diff-missing">Δ Нет в плане — узел есть в PoB-билде, добери кликом</p>';
+        } else if (d.extra.includes(skill)) {
+          diffLine = '<p class="plan-mark diff-extra">Δ Нет в PoB-билде — план отклонился от эталона</p>';
+        }
+      }
+    }
     const planLine = inPlan
       ? '<p class="plan-mark ok">✅ Взято в плане — клик снимет (с orphan-отсечением)</p>'
       : inBuild
@@ -647,7 +663,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         <span class="pill mono">#${skill}</span>
       </div>
       ${stats}
-      ${planLine}`;
+      ${planLine}
+      ${diffLine}`;
   };
 
   /** (Пере)заполняет селектор асценданси; из GGG — optgroup'ами по классам. */
@@ -747,15 +764,28 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
    *  asc-ветка приоритетнее у плана (он редактируется, билд — read-only). */
   const applyAllocation = (): void => {
     const b = readLastBuild();
-    const buildAlloc = buildShown && b ? buildAllocation(b) : null;
+    // В diff-режиме билд обязан попасть в сцену независимо от его видимости
+    // (⭐): missing-узлы иначе не светятся allocated-фреймами.
+    const diff = diffOn ? computeDiff() : null;
+    const buildAlloc = (buildShown || diff) && b ? buildAllocation(b) : null;
     applySvgBuild(buildShown, b);
     applySvgPlan();
+    applySvgDiff();
     if (game) {
       const merged = new Set<number>([...(buildAlloc?.allocated ?? []), ...planIds]);
+      // Diff (№210): missing → weapon-set 1 (оранжевый), extra → set 2
+      // (фиолетовый). Тинты применяет tree-react к фреймам и рельсам —
+      // легальный двухцветный маркер без патчей node_modules.
+      const weaponSets: Record<number, 1 | 2> = {};
+      if (diff) {
+        for (const id of diff.missing) weaponSets[id] = 1;
+        for (const id of diff.extra) weaponSets[id] = 2;
+      }
       game.setBuild(
         merged.size
           ? {
               allocated: [...merged],
+              ...(Object.keys(weaponSets).length ? { weaponSets } : {}),
               // ascendId в buildAllocation — display-имя.
               ascendId: planAsc || buildAlloc?.ascendId || undefined,
             }
@@ -850,7 +880,73 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     if (planClass) planBadge.title = `План от класса ${planClass}${planAsc ? ` / ${planAsc}` : ''}: клик по узлу в игровом виде берёт/снимает очко`;
     planLinkBtn.hidden = n === 0;
     planResetBtn.hidden = n === 0;
+    refreshDiffUI();
   };
+
+  // ── Diff vs PoB (№210): расхождения план ↔ билд в два цвета ────────────────
+  // missing = есть в PoB-билде, но нет в плане (спланировал не всё — добрать);
+  // extra = есть в плане, но нет в билде (план отклонился от эталона PoB).
+  const diffBtn = wrap.querySelector<HTMLButtonElement>('.btn-plan-diff')!;
+  const diffCounts = wrap.querySelector<HTMLElement>('#diff-counts')!;
+  let diffOn = false;
+  const computeDiff = (): { missing: number[]; extra: number[] } | null => {
+    const b = readLastBuild();
+    if (!b) return null;
+    const buildSet = new Set(buildAllocation(b).allocated);
+    const missing = [...buildSet].filter((id) => !planIds.includes(id));
+    const extra = planIds.filter((id) => !buildSet.has(id));
+    return { missing, extra };
+  };
+  /** SVG-метки diff (лёгкий вид): классы/атрибуты на кружок + контур иконки. */
+  let svgDiffMarked: string[] = [];
+  const applySvgDiff = (): void => {
+    for (const id of svgDiffMarked) {
+      nodeEls[id]?.classList.remove('mdiff-missing', 'mdiff-extra');
+      underEls[id]?.removeAttribute('data-diff');
+    }
+    svgDiffMarked = [];
+    const diff = diffOn ? computeDiff() : null;
+    if (!diff) return;
+    for (const id of diff.missing) {
+      const el = nodeEls[String(id)];
+      if (!el) continue;
+      el.classList.add('mdiff-missing');
+      underEls[String(id)]?.setAttribute('data-diff', 'missing');
+      svgDiffMarked.push(String(id));
+    }
+    for (const id of diff.extra) {
+      const el = nodeEls[String(id)];
+      if (!el) continue;
+      el.classList.add('mdiff-extra');
+      underEls[String(id)]?.setAttribute('data-diff', 'extra');
+      svgDiffMarked.push(String(id));
+    }
+  };
+  const refreshDiffUI = (): void => {
+    const b = readLastBuild();
+    diffBtn.hidden = !b;
+    diffBtn.classList.toggle('active', diffOn);
+    const diff = b ? computeDiff() : null;
+    if (!b || !diff) {
+      diffCounts.hidden = true;
+      if (!b) diffBtn.title = 'Δ vs PoB: сначала разберите PoB-билд во вкладке «Импорт билда»';
+      else diffCounts.title = 'Нет плана — diff пуст: план строится кликами по узлам в игровом виде';
+      return;
+    }
+    diffCounts.hidden = !diffOn;
+    diffCounts.innerHTML =
+      `не хватает <b class="diff-missing">${diff.missing.length}</b>` +
+      ` · лишних <b class="diff-extra">${diff.extra.length}</b>`;
+    diffBtn.title = diffOn
+      ? 'Δ Diff активен: оранжевые — есть в PoB-билде, не взяты в план; фиолетовые — в плане, но не в PoB. Клик — выключить.'
+      : 'Подсветить расхождения план ↔ PoB-билд: оранжевые — добрать из билда, фиолетовые — лишние в плане. Клик — включить.';
+  };
+  diffBtn.addEventListener('click', () => {
+    diffOn = !diffOn;
+    game?.setDiffMode(diffOn);
+    applyAllocation();
+  });
+  refreshDiffUI();
 
   /** Клик по узлу плана (только игровой вид: логика в treeGame-чанке). */
   const handlePlanClick = (
@@ -1042,6 +1138,44 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
   // WebGL-режим — основной: монтируем сразу при открытии вкладки.
   void enableGame();
 
+  // ── Поиск узлов (№211): индекс из layout, фокус SVG/WebGL ────────────────
+  // Логика/индексация/UI — в treeSearch.ts; здесь только крючки зависимостей:
+  // SVG-центровка (замыкание на tx/ty/k/apply) и WebGL GameHandle.focusNode.
+  const focusSvgAt = (x: number, y: number): void => {
+    const W = canvas.clientWidth || 800;
+    const H = canvas.clientHeight || 520;
+    // Целевой экранный масштаб: узел читается, окрестность видна для контекста.
+    if (baseScale > 0) k = Math.min(30, Math.max(0.05, 0.6 / baseScale));
+    const sk = baseScale * k;
+    tx = W / 2 - sk * (x - cx);
+    ty = H / 2 - sk * (y - cy);
+    apply();
+  };
+  let svgSearchMarked = '';
+  const markSvgNode = (id: string): void => {
+    nodeEls[svgSearchMarked]?.classList.remove('mfocus');
+    underEls[svgSearchMarked]?.removeAttribute('data-search');
+    svgSearchMarked = id;
+    nodeEls[id]?.classList.add('mfocus');
+    underEls[id]?.setAttribute('data-search', '1');
+  };
+  initTreeSearch(wrap.querySelector<HTMLElement>('.tree-top')!, nodes, {
+    focusSvg: focusSvgAt,
+    markSvg: markSvgNode,
+    gameActive: () => gameMode && !!game,
+    focusGame: (skill) => (game ? game.focusNode(skill) : false),
+    gameHighlight: (skills) => game?.highlightNodes(skills),
+    showInfo: (id) => {
+      const skill = Number(id);
+      if (gameMode && game) showGameDetail(game.nodeInfo(skill), skill);
+      else {
+        const n = db.nodes.get(id);
+        if (n) showDetail(n);
+      }
+    },
+    masteryOf: (skill) => (game ? game.nodeInfo(skill)?.isMastery === true : false),
+  });
+
   // ── Pan перетаскиванием ────────────────────────────────────────────────────
   let dragging = false, lastX = 0, lastY = 0;
   svg.addEventListener('pointerdown', (e) => {
@@ -1106,6 +1240,19 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     const stats = n.stats.length
       ? `<ul class="tstats">${n.stats.map((s) => `<li>${escAttr(s)}</li>`).join('')}</ul>`
       : '<p class="dim">Статы не указаны.</p>';
+    // Diff-статус (№210) — только когда режим включён и PoB-билд загружен.
+    let diffLine = '';
+    if (diffOn) {
+      const d = computeDiff();
+      if (d) {
+        const skill = Number(n.id);
+        if (d.missing.includes(skill)) {
+          diffLine = '<p class="plan-mark diff-missing">Δ Нет в плане — узел есть в PoB-билде, добери в игровом виде</p>';
+        } else if (d.extra.includes(skill)) {
+          diffLine = '<p class="plan-mark diff-extra">Δ Нет в PoB-билде — план отклонился от эталона</p>';
+        }
+      }
+    }
     detail.innerHTML = `
       <div class="tname">${escAttr(n.name)}</div>
       <div class="tbadges">
@@ -1115,7 +1262,8 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
         ${startRingAsc[n.id] ? '<span class="pill">стартовая точка</span>' : '' }
         <span class="pill mono">#${n.id}</span>
       </div>
-      ${stats}`;
+      ${stats}
+      ${diffLine}`;
   }
   svg.addEventListener('click', (e) => {
     const el = (e.target as Element).closest<SVGElement>('.mnode');
