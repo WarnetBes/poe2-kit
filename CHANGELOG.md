@@ -5,14 +5,47 @@
 
 ## [Unreleased]
 
+## [1.0.22] — 2026-10-04
+
+Фокус релиза: **хайдоут-хаб, игровая WebGL-карта дерева и интерактивный
+планищик** — дерево как в игре, клик-аллокация с PoB-семантикой pathing,
+плюс официальный экспорт `*.build` по ссылкам.
+
 ### Added
+- **Хайдоут-хаб** (`591e060`, №199–202): core.hideout
+  (parse/summarize/classify/share-код/markdown), вкладка «Хайдоуты» в web
+  (разбор .hideout, MTX-чекбоксы, canvas-мини-карта), 5 живых фикстур,
+  e2e-hideout 15/15. Нативный PoE2-экспорт = POH-формат 1:1 (12 живых файлов
+  владельца); decor.json x1.7 — 234 имени / 9 баз; SPEC генератора
+  `docs/HIDEOUT_GENERATOR_SPEC.md` (buildHideout/rebaseHideout/substituteFree).
+  Узоры Выборга/Карелии в web-скине: Олафова башня, ромбо-цепь käsivyynte,
+  ёлочка tree-of-life, слепая аркада, ромбическая канва (inline SVG data-URI).
+- **Интерактивный планировщик на карте дерева** (`e6c3495`, №209): клик по
+  узлу в игровом WebGL-виде берёт/снимает очко с path-валидацией в
+  `@poe2-toolkit/tree-core` (кратчайший путь от старта класса, отсечение
+  осиротевших ветвей — семантика PoB); merge плана и подсветки PoB в одну
+  сцену, persist localStorage `poe2k.plan`, шаринг `#p=<class>:<asc>:<ids>`
+  в hash, бейдж «План: N», кнопки «Ссылка»/«Сброс», автостарт класса,
+  Голубые метки `.mplan` в SVG-виде, статус узла в detail-карточке.
+- **e2e планировщика** (`207cdb3`, №210): scripts/e2e-planner.mjs — living-клик
+  по canvas с точной репликацией viewport, restore из `#p=hash`, сброс;
+  ALL PASS 19/19; persist-on-restore — расшаренная ссылка пишет и localStorage.
 - **MCP `poe2_export_build_planner`** (№208): конвертация билда PoB (share-код или ссылка pobb.in/poe.ninja) в официальный `*.build` Build Planner PoE2 (schema v1) для импорта в игре. Гир — из клир-текстов (уники — по имени, рарники — additional_text), честные warnings о непопавшем.
 - **Per-dataset свежесть** (№208): `poe2_data_freshness` больше не слеп к отдельным датасетам — таблица дат/возраста всех офлайн-файлов (support_gems честно показывает 296 дн ⚠, pre-0.5); `scripts/refresh-data.mjs` — тот же реестр с политикой fail/warn; хук в `run_live_smoke_daily.bat` (не блокирует итог смока).
 - **Импорт ссылок в web-UI** (№208): поле импорта билда принимает теперь и ссылки (pobb.in → /raw, poe.ninja/pob) через `core.build.toXml` (анти-HTML, таймаут) — раньше умирало на `decodeShareCode`.
 ### Fixed
+- **Копирование план-ссылки** (`7a0b4d5`, №210+): кнопка «🔗 Ссылка» реально
+  работает — полный каскад clipboard API → execCommand(copy) через скрытый
+  textarea → честная надпись «скопируйте адрес из строки браузера»
+  (раньше NotAllowedError молча съедался декоративным catch).
+- **DPI-фикс прокси serve-dist** (`591e060`, №202): spawn(curl --ssl-no-revoke)
+  + fetch-fallback + 3 ретрая — DPI-сеть душит сырой node:https (0/7) и
+  undici-пул (~60%, отравленный keep-alive), curl 3/3; стало 8/8 по 200 за 0.65с.
 - **P1 rejected-promise кэш** (№208, аудит web): сбой загрузки больше не прилипает в ленивых кэшах `treeGame/mount.ts` («Игровой вид» мёртв до F5) и `treeMap.ts` (dbPromise) — отклонённый promise сбрасывается, ретрай на следующем действии.
 - **P1 resize-утечка** (№208): «Показать дерево» больше не копит window-resize-листенеры (detached-DOM) — AbortController, живёт один рендер.
 - **P0 stripBraces в *.build** (№208): посторонние `{}` в тексте модов вырезаются перед `additional_text` — парсер игры использует скобы как делимитеры разметки Custom Text (донор: PoB2 BuildExportPoE2.lua:185).
+
+- **`.gitattributes`** (`ff76d0a`, №202-bis): `*.hideout -text` — запрет EOL-подмены на checkout (нативные хайдоут-файлы PoE2 ломались нормализацией).
 
 ### Added (№204–207, ранее)
 - **Миграция layout.json на официальный экспорт GGG** (№207): `scripts/build_tree_layout.mjs` регенерирует SVG-датасет вкладок «Карта/Дерево» из того же `export/data.json`, что питает WebGL (единый источник истины; было — PoB TreeData с другой системой координат). Узлов 5152 (SVG показывает именованные: 4912), рёбер 6069 (дуги 1603 по орбитам + прямые), иконки — через тот же manifest.json, позиции дисков асценданси — центроид+дельта в новых координатах. Эталон 28880: 148/148 узлов PoB ≡ GGG skill — совместимость билд-подсветки и treeMap сохранена; потеря визуала минимальна (2 ребра узла 30100 — GGG обнулил его имя; 1 self-loop отброшен).
