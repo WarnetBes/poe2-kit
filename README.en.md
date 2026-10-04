@@ -45,7 +45,7 @@ poe2scout, poe.ninja and trade2.*
 - **+ more tabs**: waypoint/tilestone recipes, boss-timer, RU⇄EN item/gem
   dictionaries, crafting recipes (essences, omens), currency rates, a
   “pinnacle readiness” checklist, live top-builds from poe.ninja.
-- **🤖 MCP server** — 59 poe2_* tools, so your AI assistant (OpenCode,
+- **🤖 MCP server** — 60 poe2_* tools, so your AI assistant (OpenCode,
   Claude Desktop, …) can price items, decode PoB codes, pull ladders,
   rates and dataset info for you.
 - **🌐 Web dashboard** — the same core in the browser: rates, price check,
@@ -56,7 +56,7 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 | Frontend | Package | What it is |
 |---|---|---|
 | 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: hotkey pricing, build/gems/leveling tabs, watchlist alerts |
-| 🧠 MCP server for AI | `apps/mcp` | 59 `poe2_*` tools for AI assistants (stdio) |
+| 🧠 MCP server for AI | `apps/mcp` | 60 `poe2_*` tools for AI assistants (stdio) |
 | 🌐 Web app | `apps/web` | Browser dashboard: currency rates, price check, leveling guide, build import |
 
 > **Note**: since v1.0.18 the overlay panel UI is switchable to English
