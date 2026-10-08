@@ -56,6 +56,12 @@ function adviceBlock(a: KeybindAdvice): string {
       .join('');
     parts.push(`<h4>Spirit-блок — НЕ биндить (${a.spirit.length})</h4><ul class="kb-spirit-list">${rows}</ul>`);
   }
+  if (a.triggered?.length) {
+    const rows = a.triggered
+      .map((t) => `<li><b>${esc(t.skills.join(', '))}</b> ← через ${esc(t.trigger)} — срабатывают сами</li>`)
+      .join('');
+    parts.push(`<h4>Триггер-сетапы — бинд НЕ нужен (${a.triggered.length})</h4><ul class="kb-spirit-list">${rows}</ul>`);
+  }
   if (a.unassigned.length) {
     parts.push(`<p class="kb-note err">Без слота (укажи вручную): ${a.unassigned.map(esc).join(', ')}.</p>`);
   }

@@ -50,6 +50,19 @@ export interface KeybindSpiritEntry {
   note: string;
 }
 
+/**
+ * №225: триггер-сетап «Cast on X»: активный камень группы — мета-триггер,
+ * связанные скиллы (Ice Nova через Cast on Block, Comet через Cast on
+ * Critical) срабатывают по событию сами. Бинд не нужен и вручную не кастуется,
+ * но главный скилл обязан быть виден в отчёте — иначе исчезает молча.
+ */
+export interface KeybindTriggeredSetup {
+  /** Имя мета-триггера (активный камень группы). */
+  trigger: string;
+  /** Связанные скиллы группы (не саппорты) — срабатывают по событию. */
+  skills: string[];
+}
+
 export interface KeybindAdvice {
   platform: KeybindPlatform;
   /** Слоты с назначенными навыками (в порядке рекомендованной важности). */
@@ -60,6 +73,8 @@ export interface KeybindAdvice {
   free: KeybindSlot[];
   /** Ауры/херальды: НЕ биндить, резервация Spirit. */
   spirit: KeybindSpiritEntry[];
+  /** №225: триггер-сетапы «Cast on X» — бинд не нужен, скиллы срабатывают сами. */
+  triggered: KeybindTriggeredSetup[];
   /** Число бинд-слотов платформы, доступных навыкам (геймпад PoE2: 22 всего). */
   totalSlots: number;
   /** Пошаговая инструкция ручной установки в игре (только верифицированные пути меню). */
@@ -216,12 +231,19 @@ export function adviseKeybinds(b: BuildImport, opts: KeybindsOpts = {}): Keybind
   const classified = gems.map(({ name, isMain }) => classifyRole(name, isMain, overrides));
 
   // Spirit-блок: ауры/херальды не биндим.
+  // №225: «Cast on X» — мета-триггеры (событие: блок/уклонение/крит):
+  // не кастуются вручную и не занимают слот — но связанные скиллы обязаны
+  // попасть в отчёт. Имя-эвристика (без датасета): наблюдены живыми билдами
+  // poe.ninja — Cast on Block / Cast on Dodge / Cast on Critical (09.10).
+  const TRIGGER_META_RE = /^Cast on \w+/i;
   const spirit: KeybindSpiritEntry[] = [];
+  const triggered: KeybindTriggeredSetup[] = [];
   const bounded: Array<{ name: string; role: KeybindRole; unverified?: string }> = [];
   for (let i = 0; i < gems.length; i++) {
     const { name } = gems[i]!;
     const c = classified[i]!;
     if (c.role === 'aura') {
+      const isTriggerMeta = TRIGGER_META_RE.test(name);
       const det = getSkillGemDetails(name);
       // PoE2: у persistent-гемов резервация — levels[0].spiritReservationFlat
       // (проверено по датасету: Herald of Ice → 30), а не cost.spirit.
@@ -230,12 +252,31 @@ export function adviseKeybinds(b: BuildImport, opts: KeybindsOpts = {}): Keybind
       spirit.push({
         gem: name,
         spiritCost: cnt,
-        note: 'резервирует Spirit — кастуется раз (при входе/после смерти), слот не занимает',
+        note: isTriggerMeta
+          ? 'мета-триггер: срабатывает по событию (блок/уклонение/крит) — бинд и ручной каст не нужны, слот не занимает'
+          : 'резервирует Spirit — кастуется раз (при входе/после смерти), слот не занимает',
       });
       if (c.unverified) unverifiedNotes.push(`${name}: ${c.unverified}`);
     } else {
       bounded.push({ name, role: c.role, unverified: c.unverified });
       if (c.unverified) unverifiedNotes.push(`${name}: ${c.unverified}`);
+    }
+    // №225: поддерживаемые скиллы триггер-группы. Саппорты PoE2 часто НЕ
+    // заканчиваются на « Support» (Rakiata's Flow, efficiency-линейка II/III),
+    // поэтому различаем по датасету: активы имеют skillTypes, саппорты —
+    // нет записи/пусто. Живая проверка 09.10: Ice Nova/Comet/Eternal March —
+    // tagged, Efficiency II/Lifetap/Rakiata's Flow — [].
+    if (TRIGGER_META_RE.test(name)) {
+      const linked = (gems[i]!.group.gems ?? [])
+        .map((g) => g.name)
+        .filter(
+          (n) =>
+            n &&
+            n !== name &&
+            !/\sSupport$/.test(n) &&
+            ((getSkillGemDetails(n)?.skillTypes?.length ?? 0) > 0),
+        );
+      if (linked.length) triggered.push({ trigger: name, skills: linked });
     }
   }
 
@@ -351,6 +392,7 @@ export function adviseKeybinds(b: BuildImport, opts: KeybindsOpts = {}): Keybind
       system: sysList,
       free: [],
       spirit,
+      triggered,
       totalSlots: assignments.length + unassigned.length + sysList.length,
       manual: [
         'Открой Настройки → Управление (Keybindings) и назначь каждому навыку клавишу из таблицы.',
@@ -403,6 +445,7 @@ export function adviseKeybinds(b: BuildImport, opts: KeybindsOpts = {}): Keybind
     system,
     free,
     spirit,
+    triggered,
     totalSlots: 22,
     manual: [
       'Инвентарь → Skills → выбери навык → «Set Skill Bind» → нажми кнопку геймпада.',
@@ -449,6 +492,13 @@ export function keybindsToMarkdown(a: KeybindAdvice): string {
   }
   if (a.unassigned.length) {
     lines.push(`**Без слота (укажи вручную):** ${a.unassigned.join(', ')}.`);
+    lines.push('');
+  }
+  if (a.triggered?.length) {
+    lines.push('**Триггер-сетапы (бинд НЕ нужен — срабатывают сами по событию):**');
+    for (const t of a.triggered) {
+      lines.push(`- ${t.skills.join(', ')} ← через ${t.trigger}`);
+    }
     lines.push('');
   }
   lines.push('**Как выставить в игре:**');
