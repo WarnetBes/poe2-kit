@@ -82,7 +82,13 @@ function coerceToXml(content: string, origin: string): string {
 export async function toXml(source: string): Promise<string> {
   const src = (source || '').trim();
   if (isLink(src)) {
-    // raw-эндпоинты poe.ninja (шard-билд и персонаж профиля) отдают чистый код.
+    // Профиль poe.ninja — до запрета _PAGE_HOSTS: профиль-ссылки лежат на poe.ninja,
+    // но это НЕ страница-билд, а живой источник через model API.
+    const profileRef = parseProfileCharacterUrl(src);
+    if (profileRef) {
+      return coerceToXml(await fetchProfileCharacterCode(profileRef), src);
+    }
+    // raw-эндпоинты poe.ninja отдают чистый код (шard-билд; профиль — выше).
     const ninjaRaw = _NINJA_BUILD.test(src) || /\/pob\/raw\//.test(src);
     if (_PAGE_HOSTS.test(src) && !ninjaRaw) {
       throw new PobCodeError('это страница-билда, а не сырой PoB-код. Вставьте код экспорта.');
@@ -430,6 +436,11 @@ export async function importBuild(input: string): Promise<BuildImport> {
     }
   }
   if (isLink(trimmed)) {
+    // Профиль poe.ninja → model API (fetchProfileCharacterCode гейтит приватные/пропавшие).
+    if (parseProfileCharacterUrl(trimmed)) {
+      const profileCode = await fetchProfileCharacterCode(trimmed);
+      return fromXml(coerceToXml(profileCode, trimmed));
+    }
     const content = await fetchCode(trimmed);
     if (content.startsWith('{') && content.endsWith('}')) {
       return parseBuildJson(JSON.parse(content) as Record<string, unknown>);
@@ -791,9 +802,81 @@ export function parseProfileCharacterUrl(input: string): ProfileCharacterRef | n
   };
 }
 
-/** raw-эндпоинт с PoB-кодом персонажа профиля (публичный, без авторизации). */
+/**
+ * raw-эндпоинт с PoB-кодом персонажа профиля.
+ * @deprecated Мёртвый путь: poe.ninja больше не отдаёт код по `/pob/raw/profile/code/...`
+ * (HTTP 404, проверено 08–09.10.2026). Используйте {@link profileCharacterModelUrl}
+ * + {@link fetchProfileCharacterCode} — рабочий model API из бандлов SPA.
+ */
 export function profileCharacterCodeUrl(ref: ProfileCharacterRef): string {
   return `https://poe.ninja/poe2/pob/raw/profile/code/${ref.account}/${ref.league}/${ref.character}`;
+}
+
+/**
+ * Model API poe.ninja — живой источник PoB-кода персонажа профиля.
+ * Эндпоинт подтверждён бандлами SPA (`a.Dku9f68N.mjs`):
+ * `GET /poe2/api/profile/characters/{accountname}/{league}/{charactername}/model/{version}`.
+ * JSON: `{type:"found", charModel:{..., pathOfBuildingExport:"<base64 PoB-код>"}}`.
+ *
+ * ⚠️ Сегменты обязаны быть percent-encoded: undici с raw-строкой USC-2/кириллицы/
+ * корейского кодирует иначе и получает 404 (A/B-проверено 08.10.2026).
+ */
+export function profileCharacterModelUrl(ref: ProfileCharacterRef, version = 0): string {
+  return (
+    `https://poe.ninja/poe2/api/profile/characters/` +
+    `${encodeURIComponent(ref.account)}/${encodeURIComponent(ref.league)}` +
+    `/${encodeURIComponent(ref.character)}/model/${version}`
+  );
+}
+
+interface NinjaProfileModel {
+  type?: string;
+  charModel?: { pathOfBuildingExport?: string };
+}
+
+/**
+ * Скачать PoB-код персонажа профиля poe.ninja через model API.
+ *
+ * Принимает ссылку на страницу персонажа или готовый ProfileCharacterRef.
+ * Версии модели ротируются сайтом: пробуем 0..3, отдаём первый "found".
+ * Бросает PobCodeError с человекочитаемой причиной при недоступности:
+ * профиль приватный / персонаж не отслеживается / модель выпала из кэша
+ * (наблюдение 08–09.10.2026: кэш моделей живёт ограниченное время, «мёртвые»
+ * профили отдают 404 на все версии и `event: notfound` в SSE-канале).
+ */
+export async function fetchProfileCharacterCode(
+  input: string | ProfileCharacterRef,
+  timeoutMs = 15000,
+): Promise<string> {
+  const ref = typeof input === 'string' ? parseProfileCharacterUrl(input) : input;
+  if (!ref) throw new PobCodeError('не ссылка на персонажа poe.ninja');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    for (let version = 0; version <= 3; version++) {
+      const res = await fetch(profileCharacterModelUrl(ref, version), {
+        headers: { 'User-Agent': 'poe2-kit/0.1.0' },
+        signal: controller.signal,
+      });
+      if (res.status === 404) continue; // этой версии нет — следующая
+      if (!res.ok) throw new PobCodeError(`model API poe.ninja: HTTP ${res.status}`);
+      const json = JSON.parse(await res.text()) as NinjaProfileModel;
+      if (json.type !== 'found' || !json.charModel?.pathOfBuildingExport) {
+        throw new PobCodeError(`model API poe.ninja: неожиданный ответ (type=${String(json.type)})`);
+      }
+      return json.charModel.pathOfBuildingExport;
+    }
+    throw new PobCodeError(
+      `персонаж «${ref.character}» (${ref.league}) недоступен на poe.ninja: профиль приватный, ` +
+        `персонаж не отслеживается сайтом или модель выпала из кэша. ` +
+        `Откройте страницу профиля в браузере (обновляет модель) и повторите.`,
+    );
+  } catch (e) {
+    if (e instanceof PobCodeError) throw e;
+    throw new PobCodeError(`model API poe.ninja недоступен (${String(e)})`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -811,7 +894,7 @@ export async function fetchProfileCharacterGear(
   if (!ref) {
     throw new PobCodeError('не ссылка на персонажа poe.ninja');
   }
-  const code = await fetchCode(profileCharacterCodeUrl(ref), timeoutMs);
+  const code = await fetchProfileCharacterCode(ref, timeoutMs);
   const xml = coerceToXml(code, `profile:${ref.character}`);
   return buildCodeToGear(xml);
 }
