@@ -22,8 +22,33 @@ function dataDir(): string {
   return pathMod!.join(pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)), '..', 'data', 'game');
 }
 
+// ─── Браузерные датасеты (№222): web-вкладки probesляют полные файлы fetch'ом ──
+//
+// Под Node датасеты читаются с диска; в браузере host-приложение может
+// установить те же файлы целиком через installBrowserDataset() ДО первого
+// обращения к датасетным функциям. Файл обязан быть ПОЛНЫМ (тот же JSON,
+// что в packages/core/data/game/...) — подмешивать усечённые срезы нельзя:
+// кэши построенных записей (уровни, Spirit-cost) молча соврут.
+
+const BROWSER_DATASETS = new Map<string, unknown>();
+
+/**
+ * Установить браузерную копию офлайн-датасета (полный файл, 1:1 с data/game).
+ * Вернуть true, если файл уже был установлен (идемпотентно — можно звать часто).
+ * Вызывать асинхронно заранее (до adviseKeybinds и др.), т.к. loadJson синхронен.
+ */
+export function installBrowserDataset(rel: string, data: unknown): boolean {
+  const had = BROWSER_DATASETS.has(rel);
+  if (!had) BROWSER_DATASETS.set(rel, data);
+  return had;
+}
+
 function loadJson<T>(rel: string): T {
-  if (!HAS_DISK) throw new Error('Офлайн-датасеты недоступны в браузере: ' + rel);
+  if (!HAS_DISK) {
+    const o = BROWSER_DATASETS.get(rel);
+    if (o !== undefined) return o as T;
+    throw new Error('Офлайн-датасеты недоступны в браузере: ' + rel + ' — установите через installBrowserDataset()');
+  }
   return JSON.parse(fsMod!.readFileSync(pathMod!.join(dataDir(), rel), 'utf8')) as T;
 }
 
@@ -286,7 +311,7 @@ export function searchSkillGems(query: string, limit = 5): SkillGem[] {
 }
 
 /** Полная запись гема (с уровнями) по имени. */
-export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{ cost: Record<string, number>; levelRequirement: number; baseMultiplier?: number }> }) | null {
+export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{ cost: Record<string, number>; levelRequirement: number; baseMultiplier?: number; spiritReservationFlat?: number }> }) | null {
   const raw = rawGems();
   const q = query.trim().toLowerCase();
   const hit =
@@ -298,6 +323,9 @@ export function getSkillGemDetails(query: string): (SkillGem & { levels: Array<{
     cost: l.cost ?? {},
     levelRequirement: (l as { levelRequirement?: number }).levelRequirement ?? 0,
     baseMultiplier: (l as { baseMultiplier?: number }).baseMultiplier,
+    // №222: PoE2 persistent-гемы (HasReservation) резервируют Spirit этим полем
+    // (Herald of Ice → 30), cost у них отсутствует.
+    spiritReservationFlat: (l as { spiritReservationFlat?: number }).spiritReservationFlat,
   }));
   const unlock =
     levels.find((l) => l.levelRequirement > 0)?.levelRequirement ??

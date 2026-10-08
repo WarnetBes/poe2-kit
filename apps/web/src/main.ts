@@ -25,6 +25,7 @@ import { pasteFromClipboard } from './clipboard';
 import { renderFullMap } from './fullMap';
 import { showHideout, copyHideoutShare, copyHideoutMarkdown, initHideoutTab } from './hideout';
 import { initAtlasTab } from './atlasMap';
+import { keybindsFromInputs, keybindsFromLastBuild } from './keybinds';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -56,6 +57,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="leveling" class="tab">Прокачка</button>
         <button data-tab="checklist" class="tab">Чек-лист</button>
         <button data-tab="build" class="tab">Импорт билда</button>
+        <button data-tab="keybinds" class="tab">🎮 Раскладка</button>
         <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="atlas" class="tab">Атлас</button>
@@ -124,6 +126,26 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
         <div id="out-build" class="out"></div>
         <div id="out-build-price" class="out"></div>
+      </section>
+
+      <section id="pane-keybinds" class="pane">
+        <h2>🎮 Раскладка навыков <small>геймпад Xbox / PS · клавиатура</small></h2>
+        <p class="hint">Строит раскладку биндов по билду PoB: 22 слота геймпада PoE2 (11 кнопок + сет при удержании L2-модификатора) с эргономикой по рекомендациям GGG, или хотбар LMB/RMB/Q-W-E-R-T. Ауры/херальды/persistent-скиллы (Ghost Dance, Wind Dancer…) не биндятся — выводятся Spirit-блоком. Файлом бинды не применяются: генерируется инструкция для ручной установки в игре.</p>
+        <textarea id="keybinds-input" rows="6" placeholder="Вставь share-код PoB..."></textarea>
+        <div class="lvset">
+          <select id="keybinds-platform" title="Платформа">
+            <option value="xbox">🎮 Xbox</option>
+            <option value="playstation">🎮 PlayStation</option>
+            <option value="keyboard">⌨ Клавиатура</option>
+          </select>
+          <select id="keybinds-mode" title="Режим движения (для клавиатуры)">
+            <option value="wasd">WASD</option>
+            <option value="click">клик-мув</option>
+          </select>
+          <button id="btn-keybinds" class="primary">Подобрать раскладку</button>
+          <button id="btn-keybinds-last" class="ghost">Из поля «Импорт билда»</button>
+        </div>
+        <div id="out-keybinds" class="out"></div>
       </section>
 
       <section id="pane-compare" class="pane">
@@ -302,6 +324,10 @@ document.querySelector('#btn-hideout-copy')!.addEventListener('click', () => cop
 document.querySelector('#btn-hideout-md')!.addEventListener('click', () => copyHideoutMarkdown());
 initHideoutTab();
 initAtlasTab();
+
+// ── Раскладка (№221) ─────────────────────────────────────
+document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
+document.querySelector('#btn-keybinds-last')!.addEventListener('click', () => keybindsFromLastBuild());
 
 document.querySelector('#btn-compare')!.addEventListener('click', () =>
   void showBuildCompare(

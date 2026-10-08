@@ -79,6 +79,8 @@ Thumbs.db
 apps/web/deploy-dist/
 apps/web/deploy/poe2kit/
 apps/web/deploy/*.zip
+# Полная браузерная копия датасета (№222): копируется скриптом при build/dev
+apps/web/public/datasets/
 
 # Переносимые дистрибутивы для запуска на других ПК (overlay/web):
 # zip-артефакты игнорируем, исходники пакета переноски — версируем.

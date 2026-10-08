@@ -3,7 +3,27 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
-## [Unreleased]
+## [1.0.26] - 2026-10-08
+
+Советчик раскладки навыков (SPEC `docs/SPEC_KEYBIND_ADVISOR.md`, №221–223): классификация активных гемов билда PoB и раскладка по слотам геймпада (Xbox/PS, 22 слота с L2-модификатором, эргономика по комментариям GGG) и клавиатуры (LMB/RMB/Q-W-E-R-T, режимы WASD/клик-мув); SVG-схемы контроллеров; «имба-атаки» — авто-определение главной атаки.
+
+### Added
+- **core.keybinds** (`adviseKeybinds`, `keybindsToMarkdown`): роли primary/burst/movement/buff/curse/aura; Spirit-блок (ауры/херальды/persistent — НЕ биндоваются, вывод с ценой резервации); системные слоты не перебиваются (dodge LB/L1, фляги D-pad, карта/портал L2+◀▶, A=Interact); `overrides`-пины ролей; пометки `unverified` для несверённого с игрой.
+- **MCP-тул №61 `poe2_keybind_advisor`** (code/platform/movement_mode/overrides) — полная раскладка текстом.
+- **Web-вкладка «🎮 Раскладка»**: вставка PoB share-кода/decoded XML, выбор платформы и режима движения, карточки слотов, Spirit-блок, ручные шаги выставления в игре.
+- **SVG-визуал раскладки** (№223, `apps/web/src/keybindsVisual.ts`): геймпад Xbox/PS (face/триггеры/D-pad, L2-панель) и клавиатура (мышь/QWERT/WASD/Space/1–5) — кнопки окрашены стихией камня (`gem_colors.json`, второй браузерный датасет через `installBrowserDataset`).
+- **«Имба-атаки»** (№223b/№223c): сортировка внутри роли — дэмедж-скиллы раньше утилити; при отсутствии main-группы каскад авто-повышения до primary: `FullDPSSkill` PoB (max DPS) → теговый fallback датасета (причина: `mainSocketGroup` PoB2 дефолтится в 1 → первая группа часто аура → RB/LMB пустовали). Точный предикат дэмеджа по 183 тегам: `Attack` | Damage-семейство (без HasReservation), гварды NOT_DMG; Spell-тег исключён как маркер (~41 ложный позитив снят: курсы/бафы/Empowers-мета/Guard-варкраи).
+- **KEYBOARD_SYSTEM**: Weapon Set Swap (X) и Force Move (Mouse 3) — кандидаты дайджеста keymap.io, помечены unverified.
+- **core.build.toXml: decoded XML passthrough** — сырой XML билда (начинающийся с `<PathOfBuilding`) больше не падает как «невалидный base64» (web/MCP принимают оба формата).
+- **core.dataset.installBrowserDataset(rel, data)** (№222): хост-приложение устанавливает полную браузерную копию офлайн-датасета; web-вкладка «Раскладка» лениво fetch'ит `public/datasets/skill_gems_v2.json` (~550 КБ gzip; копия при build/dev скриптом `apps/web/scripts/copy-datasets.mjs`, в git не хранится).
+- **getSkillGemDetails: `spiritReservationFlat`** — резервация Spirit persistent-гемов (PoE2) прокинута в уровни; раньше Spirit-стоимость терялась (cost отсутствует у HasReservation-гемов).
+- **Ресёрч-дайджест раскладок сообщества** (КУБ-3): `_research/poe2_keybinds_community_digest.md` — дефолты PoE2 (keymap.io, verified), BindIQ-методика, reddit-паттерны.
+
+### Fixed
+- **PS-дубль слота** (№222): дубль-чек слотов сверялся в Xbox-нотации при выдаче PS-нотации — на PlayStation два навыка получали один слот. Сверка теперь в нотации платформы (тест уникальности добавлен).
+
+### Verified
+- core tsc ✓, vitest 188/188 ✓ (8 keybinds + 7 promote-тестов), core/mcp/overlay build ✓, MCP smoke 61 exit 0 ✓, web tsc+vite build ✓, живой CDP-прогон: xbox/ps/keyboard×wasd/click — без дублей, SVG строится, консоль чистая ✓; деплой на шару 192.168.0.200 (deploy-share --all + web dist), LAN preview 5173 = 200 ✓.
 
 ## [1.0.25] - 2026-10-04
 

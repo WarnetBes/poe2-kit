@@ -421,6 +421,11 @@ export async function showBuildImport(code: string): Promise<void> {
           summary: core.build.summarizeBuild(b),
         }),
       );
+      // №223: исходный share-код — рядом с разбором, чтобы потребители
+      // («Раскладка», оверлей, будущие вкладки) пересобирали advice того же
+      // билда, а не просили вставить код заново. Ключи lastBuild/lastBuildCode
+      // пишутся одной транзакцией импорта: меняются только вместе.
+      localStorage.setItem('poe2k.lastBuildCode', code.trim());
     } catch {
       /* ignore */
     }

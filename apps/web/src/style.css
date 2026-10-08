@@ -988,3 +988,42 @@ h2::after {
 .calc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
 .calc-dot-atlas { background: #ffd76a; }
 .calc-dot-passives { background: #5cc0ff; }
+
+/* ── Вкладка «Раскладка» (№221: советчик биндов) ─────────────── */
+.kb-head { margin: 0.2rem 0 0.8rem; }
+.kbgrid { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.4rem 0 1rem; }
+.kbkey {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
+  gap: 0.1rem 0.6rem; align-items: baseline;
+  min-width: 12.5rem; max-width: 22rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border, #3a2c1e); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.kbkey.kb-primary { border-color: #c8a24a; box-shadow: 0 0 10px rgba(200, 162, 74, 0.25); }
+.kbkey.kb-system { opacity: 0.75; }
+.kbkey.kb-dim { opacity: 0.8; }
+.kb-slot {
+  grid-row: 1 / span 3; align-self: center; text-align: center;
+  font-weight: 700; font-size: 1.15rem; color: #e8d5a3;
+  background: #241a10; border: 1px solid #584426; border-radius: 8px;
+  padding: 0.45rem 0.7rem; min-width: 4.2rem; white-space: nowrap;
+}
+.kb-ps { display: block; font-size: 0.72rem; font-weight: 400; color: #a08d5f; }
+.kb-gem { font-weight: 600; }
+.kb-free-slot { color: #8b8069; font-weight: 400; }
+.kb-role { font-size: 0.78rem; color: #b3a67f; }
+.kb-why { font-size: 0.75rem; color: #8b8069; }
+.kb-unver { cursor: help; }
+.kb-note { margin: 0.3rem 0 0.8rem; }
+.kb-spirit { color: #7fb2d9; }
+.kb-spirit-list li { margin: 0.15rem 0; }
+.kb-manual li { margin: 0.2rem 0; }
+.kb-unver-box { margin-top: 0.8rem; }
+.kb-unver-box summary { cursor: pointer; color: #d9b96c; }
+/* №223: SVG-схемы геймпада/клавиатуры с раскраской стихий камней */
+.kb-visual { margin: 0.2rem 0 1rem; }
+.kb-visual details { border: 1px solid #3a2c1e; border-radius: 10px; background: rgba(0, 0, 0, 0.25); padding: 0.5rem 0.8rem 0.7rem; }
+.kb-visual summary { cursor: pointer; color: #d9b96c; font-weight: 600; }
+.kb-visual svg { display: block; max-width: 640px; width: 100%; height: auto; margin: 0.5rem auto 0.2rem; }
+.kb-visual .kb-note { font-size: 0.78rem; color: #8b8069; margin: 0; }

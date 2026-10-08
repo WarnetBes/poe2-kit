@@ -31,6 +31,7 @@ import { registerSourcesTools } from './tools/sources.js';
 import { registerOverlayStateTools } from './tools/overlayState.js';
 import { registerOverlayBridgeTools } from './tools/overlayBridge.js';
 import { registerRuneTools } from './tools/runes.js';
+import { registerKeybindTools } from './tools/keybinds.js';
 export function buildServer(): number {
   const server = new McpServer({
     name: 'poe2-kit-mcp',
@@ -71,6 +72,7 @@ export function buildServer(): number {
   count += registerOverlayStateTools(server);
   count += registerOverlayBridgeTools(server);
   count += registerRuneTools(server);
+  count += registerKeybindTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;

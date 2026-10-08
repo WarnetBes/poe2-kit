@@ -1,8 +1,8 @@
-{
+﻿{
   "name": "poe2-kit",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "private": true,
-  "description": "Бесплатный набор инструментов для Path of Exile 2: веб-приложение, Windows-оверлей и MCP-сервер на едином ядре",
+  "description": "Р‘РµСЃРїР»Р°С‚РЅС‹Р№ РЅР°Р±РѕСЂ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ РґР»СЏ Path of Exile 2: РІРµР±-РїСЂРёР»РѕР¶РµРЅРёРµ, Windows-РѕРІРµСЂР»РµР№ Рё MCP-СЃРµСЂРІРµСЂ РЅР° РµРґРёРЅРѕРј СЏРґСЂРµ",
   "type": "module",
   "workspaces": [
     "packages/core",

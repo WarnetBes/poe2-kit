@@ -89,6 +89,9 @@ export async function toXml(source: string): Promise<string> {
     }
     return coerceToXml(await fetchCode(src), src);
   }
+  // Сырой decoded XML (export PoB / уже разобранный код) — пропускаем как есть.
+  // Те же критерии, что в coerceToXml: PathOfBuilding в начале контента.
+  if (src.includes('PathOfBuilding') && src.indexOf('<') < 200) return src;
   return decodeShareCode(src);
 }
 

@@ -12,14 +12,14 @@
  *   node scripts/deploy-share.mjs --core     # только core dist+data ×3
  *   node scripts/deploy-share.mjs --overlay  # только overlay dist
  *   node scripts/deploy-share.mjs --mcp      # только mcp dist
- *
- * exit-коды: 0 OK · 1 ошибка деплоя/сборки · 2 шара недоступна.
+  * exit-коды: 0 OK · 1 ошибка деплоя/сборки · 2 шара недоступна.
  */
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-const SHARE = '//192.168.0.195/OpenCodeProjectsF/poe2-kit';
+// IP друга плавает по DHCP (было 192.168.0.195, стало 192.168.0.200) — можно задать env POE2K_SHARE.
+const SHARE = process.env.POE2K_SHARE ?? '//192.168.0.200/OpenCodeProjectsF/poe2-kit';
 const ROOT = path.resolve(import.meta.dirname, '..');
 
 const mode = process.argv[2] ?? '--all';
@@ -162,6 +162,30 @@ if (wantMcp) {
     report('mcp dist', n);
   } catch (e) { report('mcp dist', 0, e); }
 }
+
+/**
+ * Манифесты версий (№216k): Electron читает версию из package.json на старте.
+ * Раньше деплой возил только dist/data → Ctrl+F6 у друга врал «1.0.19» при свежем коде.
+ * Синхронизируем все 5 package.json при каждом запуске (дёшево, 5 маленьких файлов).
+ */
+const manifests = [
+  'package.json',
+  'apps/overlay/package.json',
+  'packages/core/package.json',
+  'apps/mcp/package.json',
+  'apps/web/package.json',
+];
+let manifestFail = 0;
+for (const rel of manifests) {
+  try {
+    await copyVerified(path.join(ROOT, rel), path.join(SHARE, rel));
+    console.log(`OK  package.json: ${rel} (${JSON.parse(fs.readFileSync(path.join(ROOT, rel))).version})`);
+  } catch (e) {
+    console.error(`✖ package.json ${rel}: ${e instanceof Error ? e.message : e}`);
+    manifestFail++;
+  }
+}
+fail += manifestFail;
 
 console.log(fail ? `DEPLOY FAILED (${fail} ошибок)` : 'DEPLOY OK');
 process.exit(fail ? 1 : 0);

@@ -34,8 +34,10 @@ export * from './craftGuide.js';
 export * from './endgame.js';
 export * from './buildPlanner.js';
 export * from './hideout.js';
+export * from './keybinds.js';
 import * as buildPlannerMod from './buildPlanner.js';
 import * as hideoutMod from './hideout.js';
+import * as keybindsMod from './keybinds.js';
 export * from './questRewards.js';
 export * from './cache.js';
 export * from './gameConfig.js';
@@ -143,6 +145,7 @@ export const core = {
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
   buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
   hideout: hideoutMod, // №198: офлайн-разбор .hideout (PoE2-вкладка «Хайдоуты»)
+  keybinds: keybindsMod, // №221: советчик раскладки навыков (геймпад/клавиатура)
   result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
 };
 
