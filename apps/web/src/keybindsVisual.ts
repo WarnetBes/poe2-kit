@@ -35,10 +35,30 @@ function gemColors(en: string): string[] {
   return cs.map((c) => COLOR_HEX[c] ?? C_DIM);
 }
 
-/** Сокращённая подпись гема для кнопки. */
-function shortLabel(s: string): string {
-  const t = s.trim();
-  return t.length > 12 ? t.slice(0, 11) + '…' : t;
+/** №227: перенос подписи в 1–2 строки (вместо уродливой обрезки 12 симв.). */
+function wrapLabel(s: string, maxChars: number, maxLines = 2): string[] {
+  const words = s.trim().split(/\s+/);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if (!cur) cur = w;
+    else if (`${cur} ${w}`.length <= maxChars) cur += ` ${w}`;
+    else {
+      lines.push(cur);
+      cur = w;
+    }
+  }
+  if (cur) lines.push(cur);
+  // №227: одиночное слово длиннее maxChars резать с «…» (wrap по пробелам его не трогает).
+  for (let i = 0; i < lines.length; i++) {
+    if ((lines[i] ?? '').length > maxChars) lines[i] = (lines[i] ?? '').slice(0, Math.max(1, maxChars - 1)) + '…';
+  }
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = kept[maxLines - 1]!.slice(0, Math.max(1, maxChars - 1)) + '…';
+    return kept;
+  }
+  return lines;
 }
 
 interface Pb {
@@ -47,12 +67,10 @@ interface Pb {
   y: number;
   rx: number;
   ry: number;
-  /** форма */
+  /** форма кнопки: одна нотация платформы (Y или △), без дублей «Y / △» */
   shape: 'circle' | 'capsule' | 'rect';
-  /** подпись формы (нотация Xbox) */
+  /** подпись формы, нотация текущей платформы */
   label: string;
-  /** подпись в PS-нотации */
-  psLabel?: string;
 }
 
 function slotMap(a: KeybindAdvice): Map<string, KeybindSlot> {
@@ -78,25 +96,32 @@ function gButton(p: Pb, s: KeybindSlot | undefined, opts: { small?: boolean } = 
     colors.length > 1
       ? `<path d="M ${p.x - p.rx} ${p.y} a ${p.rx} ${p.ry} 0 0 0 ${p.rx * 2} 0" fill="none" stroke="${colors[1]}" stroke-width="2" opacity="0.85"/>`
       : '';
-  const nameSize = opts.small ? 11 : 12;
-  const btnName = opts.small ? 10 : 11;
-  const nameY = p.shape === 'circle' ? p.y + 4 : p.y + 4;
-  const sub =
-    s && s.role === 'system' && s.system
-      ? `<text x="${p.x}" y="${nameY}" text-anchor="middle" font-size="${nameSize}" fill="${C_TEXT}">${esc(shortLabel(s.system))}</text>`
-      : s && s.gem
-        ? `<text x="${p.x}" y="${nameY}" text-anchor="middle" font-size="${nameSize}" fill="${C_TEXT}">${esc(shortLabel(s.gem))}</text>`
-        : '';
-  return (
-    `<g>` +
-    shape +
-    hybrid +
-    (p.label
-      ? `<text x="${p.x}" y="${p.y + p.ry + 14}" text-anchor="middle" font-size="${btnName}" fill="${filled ? stroke : C_DIM}" font-weight="bold">${esc(p.label)}${p.psLabel ? `<tspan fill="${C_DIM}"> / ${esc(p.psLabel)}</tspan>` : ''}</text>`
-      : '') +
-    sub +
-    `</g>`
-  );
+  // №227: имя — переносом до 2 строк в кнопке, полное имя — в <title>-tooltip.
+  const tip = s && (s.gem || s.system) ? `<title>${esc(s.gem ?? s.system ?? '')}</title>` : '';
+  const firstName = s && s.role === 'system' && s.system ? s.system : (s?.gem ?? '');
+  const multi = !!firstName && !opts.small && p.shape === 'circle';
+  const nameSize = opts.small ? 10.5 : 11;
+  const nameLines = multi ? wrapLabel(firstName, p.rx > 20 ? 8 : 9, 2) : [];
+  const nameText = nameLines.length
+    ? nameLines
+        .map(
+          (ln, i) =>
+            `<text x="${p.x}" y="${p.y + (nameLines.length === 1 ? 5 : -3 + i * (nameSize + 1))}" text-anchor="middle" font-size="${nameSize}" fill="${C_TEXT}">${esc(ln)}</text>`,
+        )
+        .join('')
+    : firstName
+      ? `<text x="${p.x}" y="${p.y + 9}" text-anchor="middle" font-size="${nameSize}" fill="${C_TEXT}">${esc(wrapLabel(firstName, 22, 1)[0]!)}</text>`
+      : '';
+  const labelAbove = p.label && nameLines.length ? p.y - p.ry - 5 : null;
+  const labelText = p.label
+    ? labelAbove != null
+      ? `<text x="${p.x}" y="${labelAbove}" text-anchor="middle" font-size="11" font-weight="bold" fill="${filled ? stroke : C_DIM}">${esc(p.label)}</text>`
+      : firstName
+        ? // капсула/таб с навыком: нотация сверху, имя ниже, межстрочный зазор ≥13px — без пересечения глифов
+          `<text x="${p.x}" y="${p.y - 5}" text-anchor="middle" font-size="10.5" font-weight="bold" fill="${filled ? stroke : C_DIM}">${esc(p.label)}</text>`
+        : `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" font-size="12" font-weight="bold" fill="${filled ? C_TEXT : C_DIM}">${esc(p.label)}</text>`
+    : '';
+  return `<g>${tip}${shape}${hybrid}${labelText}${nameText}</g>`;
 }
 
 /** Капсула L2-слоя (геймпад): «удерживай LT + кнопка». */
@@ -106,96 +131,115 @@ function l2chip(key: string, ps: string, s: KeybindSlot | undefined): string {
   const name = s?.gem ?? s?.system ?? '—';
   return (
     `<g>` +
+    `<title>${esc(name)}</title>` +
     `<rect x="0" y="-15" width="150" height="30" rx="15" fill="#1c2029" stroke="${stroke}" stroke-width="1.5"/>` +
     `<text x="10" y="5" font-size="12" font-weight="bold" fill="${stroke}">${esc(key)}</text>` +
-    `<text x="10" y="5" dx="46" font-size="11" fill="${s?.gem || s?.system ? C_TEXT : C_DIM}">${esc(shortLabel(name))}</text>` +
+    `<text x="10" y="5" dx="46" font-size="11" fill="${s?.gem || s?.system ? C_TEXT : C_DIM}">${esc(wrapLabel(name, 15, 1)[0]!)}</text>` +
     (ps ? `<text x="140" y="-20" font-size="9" fill="${C_DIM}" text-anchor="end">${esc(ps)}</text>` : '') +
     `</g>`
   );
 }
 
-/** SVG-схема геймпада: слой 0 на корпусе, L2-слой — панелью под ним. */
+/** SVG-схема геймпада (№227: начисто): симметричный корпус, LT — подсказка,
+ *  одна нотация кнопок, русские подписи, без пересечений D-pad/стик/фляги. */
 function gamepadSvg(a: KeybindAdvice): string {
   const m = slotMap(a);
   const ps = a.platform === 'playstation';
   const at = (slot: string): KeybindSlot | undefined => m.get(slot);
   const parts: string[] = [];
 
-  // корпус
+  // триггеры: тонкие язычки над корпусом; LT не «кнопка» — подпись-подсказка
   parts.push(
-    `<path d="M 150 80 Q 130 78 118 100 L 64 190 Q 52 214 78 226 L 150 258 Q 200 278 320 278 Q 440 278 490 258 L 562 226 Q 588 214 576 190 L 522 100 Q 510 78 490 80 L 420 74 L 220 74 Z" fill="${C_BODY}" stroke="${C_FRAME}" stroke-width="3"/>`,
+    `<rect x="115" y="44" width="130" height="20" rx="10" fill="#1c2029" stroke="${C_FRAME}" stroke-width="1.5"/>` +
+      `<text x="180" y="58" text-anchor="middle" font-size="10" fill="${C_DIM}">${ps ? 'L2 — слой 2 (удерживай)' : 'LT — слой 2 (удерживай)'}</text>`,
+  );
+  parts.push(gButton({ x: 460, y: 54, rx: 65, ry: 13, shape: 'rect', label: ps ? 'R2' : 'RT' }, at('RT'), { small: true }));
+
+  // бамперы
+  parts.push(gButton({ x: 170, y: 104, rx: 40, ry: 14, shape: 'capsule', label: ps ? 'L1' : 'LB' }, at('LB'), { small: true }));
+  parts.push(gButton({ x: 470, y: 104, rx: 40, ry: 14, shape: 'capsule', label: ps ? 'R1' : 'RB' }, at('RB'), { small: true }));
+
+  // корпус — симметричен относительно x=320
+  parts.push(
+    `<path d="M 130 108 L 510 108 Q 585 112 600 200 Q 612 296 540 316 L 452 332 Q 415 340 392 318 L 360 288 L 280 288 L 248 318 Q 225 340 188 332 L 100 316 Q 28 296 40 200 Q 55 112 130 108 Z" fill="${C_BODY}" stroke="${C_FRAME}" stroke-width="3"/>`,
   );
 
-  // триггеры и бампера
-  parts.push(gButton({ x: 210, y: 62, rx: 46, ry: 14, shape: 'rect', label: ps ? 'L2 (модификатор)' : 'LT (модификатор)' }, undefined, { small: true }));
-  parts.push(gButton({ x: 430, y: 62, rx: 46, ry: 14, shape: 'rect', label: ps ? 'R2' : 'RT' }, at('RT'), { small: true }));
-  parts.push(gButton({ x: 175, y: 100, rx: 34, ry: 13, shape: 'capsule', label: ps ? 'L1' : 'LB' }, at('LB'), { small: true }));
-  parts.push(gButton({ x: 465, y: 100, rx: 34, ry: 13, shape: 'capsule', label: ps ? 'R1' : 'RB' }, at('RB'), { small: true }));
+  // центральные кнопки
+  parts.push(
+    `<circle cx="285" cy="132" r="8" fill="#1c2029" stroke="${C_FRAME}"/>` +
+      `<circle cx="355" cy="132" r="8" fill="#1c2029" stroke="${C_FRAME}"/>` +
+      `<circle cx="320" cy="132" r="11" fill="#1c2029" stroke="${C_DIM}"/>`,
+  );
 
-  // стики (используются игрой, в PoE2 правый — камера)
-  const stick = (x: number, y: number, label: string): string =>
-    `<g><circle cx="${x}" cy="${y}" r="34" fill="#1c2029" stroke="${C_FRAME}" stroke-width="2"/>` +
-    `<circle cx="${x}" cy="${y}" r="24" fill="#252b38" stroke="${C_FRAME}"/>` +
-    `<text x="${x}" y="${y + 44}" text-anchor="middle" font-size="10" fill="${C_DIM}">${esc(label)}</text></g>`;
-  parts.push(stick(150, 190, ps ? 'левый стик' : 'left stick'));
-  parts.push(stick(320, 250, ps ? 'правый стик (камера)' : 'right stick (camera)'));
-
-  // D-pad: ▲▼ — фляги (система), ◀▶ — база под L2-слой
-  const dx = 150;
-  const dy = 120;
-  const dpad = (x: number, y: number, label: string, s: KeybindSlot | undefined): string => {
-    const filled = !!s && s.role === 'system';
-    const name = s?.system ? shortLabel(s.system) : '';
+  // D-pad (влевее, отдель от левого стика). ◀▶ — база LT-слоя (чипы ниже).
+  const dx = 140;
+  const dy = 190;
+  const dpad = (x: number, y: number, label: string, s: KeybindSlot | undefined, capAbove: boolean): string => {
+    const filled = !!s && (s.role === 'system' || !!s.gem);
+    const firstName = s && s.role === 'system' && s.system ? s.system : (s?.gem ?? '');
+    const lines = firstName ? wrapLabel(firstName, 9, 2) : [];
+    const caption = lines
+      .map((ln, i) => {
+        const yy = capAbove ? 128 - (lines.length - 1 - i) * 10 : 248 + i * 10;
+        return `<text x="${x}" y="${yy}" text-anchor="middle" font-size="9" fill="${filled ? C_TEXT : C_DIM}">${esc(ln)}</text>`;
+      })
+      .join('');
     return (
-      `<g><circle cx="${x}" cy="${y}" r="14" fill="${filled ? '#1c2029' : '#1c2029'}" stroke="${filled ? C_DIM : C_FRAME}" stroke-width="1.5"/>` +
-      `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="${C_DIM}">${esc(label)}</text>` +
-      (name ? `<text x="${x}" y="${y + 28}" text-anchor="middle" font-size="10" fill="${C_TEXT}">${esc(name)}</text>` : '') +
+      `<g><title>${esc(firstName || label)}</title>` +
+      `<circle cx="${x}" cy="${y}" r="15" fill="${filled ? '#262c3a' : '#1c2029'}" stroke="${filled ? C_DIM : C_FRAME}" stroke-width="1.5"/>` +
+      `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" fill="${C_DIM}">${esc(label)}</text>` +
+      caption +
       `</g>`
     );
   };
-  parts.push(dpad(dx, dy - 18, '▲', at('D-Pad ▲')));
-  parts.push(dpad(dx, dy + 18, '▼', at('D-Pad ▼')));
-  parts.push(dpad(dx - 18, dy, '◀', undefined));
-  parts.push(dpad(dx + 18, dy, '▶', undefined));
+  parts.push(dpad(dx, dy - 32, '▲', at('D-Pad ▲'), true));
+  parts.push(dpad(dx, dy + 32, '▼', at('D-Pad ▼'), false));
+  parts.push(dpad(dx - 32, dy, '◀', undefined, true));
+  parts.push(dpad(dx + 32, dy, '▶', undefined, true));
 
-  // face-кнопки
-  parts.push(gButton({ x: 465, y: 120, rx: 24, ry: 24, shape: 'circle', label: ps ? '△' : 'Y', psLabel: ps ? 'Y' : '△' }, at('Y')));
-  parts.push(gButton({ x: 405, y: 175, rx: 24, ry: 24, shape: 'circle', label: ps ? '□' : 'X', psLabel: ps ? 'X' : '□' }, at('X')));
-  parts.push(gButton({ x: 525, y: 175, rx: 24, ry: 24, shape: 'circle', label: ps ? '○' : 'B', psLabel: ps ? 'B' : '○' }, at('B')));
-  parts.push(gButton({ x: 465, y: 230, rx: 24, ry: 24, shape: 'circle', label: ps ? '✕' : 'A', psLabel: ps ? 'A' : '✕' }, at('A')));
+  // стики: левый — движение, правый — камера (по-русски, №227)
+  const stick = (x: number, y: number, label: string, slot?: KeybindSlot): string =>
+    `<g><title>${esc(slot?.gem ?? label)}</title>` +
+    `<circle cx="${x}" cy="${y}" r="34" fill="#1c2029" stroke="${C_FRAME}" stroke-width="2"/>` +
+    `<circle cx="${x}" cy="${y}" r="24" fill="#252b38" stroke="${C_FRAME}"/>` +
+    `<text x="${x}" y="${y + 48}" text-anchor="middle" font-size="10" fill="${C_DIM}">${esc(label)}</text></g>`;
+  parts.push(stick(250, 258, 'движение', at('left stick')));
+  parts.push(stick(390, 258, 'камера', at('right stick')));
 
-  // центральные
-  parts.push(
-    `<circle cx="255" cy="120" r="10" fill="#1c2029" stroke="${C_FRAME}"/>` +
-      `<circle cx="385" cy="120" r="10" fill="#1c2029" stroke="${C_FRAME}"/>` +
-      `<circle cx="320" cy="120" r="14" fill="#1c2029" stroke="${C_DIM}"/>`,
-  );
+  // face-кнопки: ромб, одна нотация платформы
+  parts.push(gButton({ x: 500, y: 156, rx: 22, ry: 22, shape: 'circle', label: ps ? '△' : 'Y' }, at('Y')));
+  parts.push(gButton({ x: 464, y: 192, rx: 22, ry: 22, shape: 'circle', label: ps ? '□' : 'X' }, at('X')));
+  parts.push(gButton({ x: 536, y: 192, rx: 22, ry: 22, shape: 'circle', label: ps ? '○' : 'B' }, at('B')));
+  parts.push(gButton({ x: 500, y: 228, rx: 22, ry: 22, shape: 'circle', label: ps ? '✕' : 'A' }, at('A')));
 
-  // L2-слой: панель под корпусом
+  // L2-слой: панель под корпусом — чипы без дыр (сквозная нумерация, не по слоту)
   const l2order = ['LT+RB', 'LT+RT', 'LT+Y', 'LT+X', 'LT+B', 'LT+◀', 'LT+▶'];
-  const chips = l2order
-    .map((slot, i) => {
-      const s = at(slot);
-      if (!s || s.role === 'free') return '';
-      const keyLabel = ps ? 'L2+' + slot.slice(3) : 'LT+' + slot.slice(3);
-      return `<g transform="translate(${(i % 4) * 160}, ${Math.floor(i / 4) * 44})">${l2chip(keyLabel, '', s)}</g>`;
-    })
+  const chipDefs = l2order
+    .map((k) => ({ k, s: at(k) }))
+    .filter(({ s }) => s && s.role !== 'free')
+    .map(({ k, s }) => ({
+      // LT+RB -> «LT+RB», LT+◀ -> «LT+◀» (сплайс уже с нужным суффиксом)
+      key: (a.platform === 'playstation' ? 'L2+' : 'LT+') + k.slice(3),
+      s,
+    }));
+  const chips = chipDefs
+    .map(
+      ({ key, s }, i) =>
+        `<g transform="translate(${(i % 4) * 160}, ${Math.floor(i / 4) * 44})">${l2chip(key, '', s)}</g>`,
+    )
     .join('');
   parts.push(
-    `<g transform="translate(40, 300)">` +
-      `<text x="0" y="0" font-size="12" fill="${C_DIM}">${ps ? 'Удерживай L2 + кнопка (редкие слоты)' : 'Удерживай LT + кнопка (редкие слоты)'}</text>` +
+    `<g transform="translate(40, 356)">` +
+      `<text x="0" y="0" font-size="12" fill="${C_DIM}">${ps ? 'Удерживай L2 + кнопка (второй слой)' : 'Удерживай LT + кнопка (второй слой)'}</text>` +
       `<g transform="translate(0, 24)">${chips}</g>` +
       `</g>`,
   );
 
-  const h = Math.ceil(
-    (l2order.filter((k) => {
-      const s = at(k);
-      return s && s.role !== 'free';
-    }).length + 3) / 4,
-  );
-  return `<svg viewBox="0 0 640 ${h > 1 ? 370 : 320}" xmlns="${SVGNS}" role="img" aria-label="Схема раскладки геймпада" font-family="inherit">${parts.join('')}</svg>`;
+  const rows = Math.ceil(chipDefs.length / 4);
+  const h = 356 + 24 + rows * 44 + 14;
+  return `<svg viewBox="0 0 640 ${h}" xmlns="${SVGNS}" role="img" aria-label="Схема раскладки геймпада" font-family="inherit">${parts.join('')}</svg>`;
 }
+
 
 /** SVG-схема клавиатуры: мышь + ряд QWERT + Space + фляги 1–5. */
 function keyboardSvg(a: KeybindAdvice): string {
@@ -224,7 +268,7 @@ function keyboardSvg(a: KeybindAdvice): string {
     if (s?.gem) {
       const c = gemColors(s.gem)[0] ?? '#c8a24a';
       parts.push(
-        `<text x="145" y="${dy}" font-size="12" fill="${c}">${esc(s.slot)}: ${esc(shortLabel(s.gem))}</text>`,
+        `<g><title>${esc(s.gem)}</title><text x="145" y="${dy}" font-size="12" fill="${c}">${esc(s.slot)}: ${esc(wrapLabel(s.gem, 18, 1)[0]!)}</text></g>`,
       );
     }
   }
@@ -246,7 +290,7 @@ function keyboardSvg(a: KeybindAdvice): string {
   parts.push(`<g><text x="230" y="130" font-size="11" fill="${C_DIM}">движение:</text>${wasd(310, 140, 'W')}${wasd(278, 176, 'A')}${wasd(310, 176, 'S')}${wasd(342, 176, 'D')}</g>`);
 
   // Space — Dodge, 1–5 — фляги
-  parts.push(gButton({ x: 320, y: 240, rx: 120, ry: 20, shape: 'rect', label: 'Space', psLabel: '' }, at('Space')));
+  parts.push(gButton({ x: 320, y: 240, rx: 120, ry: 20, shape: 'rect', label: 'Space' }, at('Space')));
   parts.push(
     `<g><text x="230" y="300" font-size="11" fill="${C_DIM}">фляги (дефолт):</text>` +
       [1, 2, 3, 4, 5]
@@ -263,10 +307,10 @@ function keyboardSvg(a: KeybindAdvice): string {
 
 /** Блок «картинка контроллера» для вкладки: над текстовыми карточками. */
 export function visualBlock(a: KeybindAdvice): string {
-  const svg = a.platform === 'keyboard' ? keyboardSvg(a) : gamepadSvg(a);
-  const note =
-    a.platform === 'keyboard'
-      ? 'Схема клавиатуры: кнопки окрашены стихией навыка (сила/ловкость/интеллект). Деы фляг/Space — эвристика дефолтов, сверь в игре.'
-      : 'Схема геймпада: кнопки окрашены стихией навыка (сила/ловкость/интеллект). Слой «удерживай LT/L2» — редкие слоты, вынесен панелью.';
-  return `<div class="kb-visual"><details open><summary>Схема контроллера</summary>${svg}<p class="kb-note">${esc(note)}</p></details></div>`;
+  const kb = a.platform === 'keyboard';
+  const svg = kb ? keyboardSvg(a) : gamepadSvg(a);
+  const note = kb
+    ? 'Схема клавиатуры: клавиши окрашены стихией навыка (сила/ловкость/интеллект). Дефолты фляг/Space — эвристика, сверь в игре. Полное имя навыка — наведи курсор.'
+    : 'Схема геймпада: кнопки окрашены стихией навыка (сила/ловкость/интеллект). Второй слой — «удерживай LT/L2 + кнопка», панель под корпусом. Полное имя навыка — наведи курсор.';
+  return `<div class="kb-visual"><details open><summary>${kb ? 'Схема клавиатуры' : 'Схема геймпада'}</summary>${svg}<p class="kb-note">${esc(note)}</p></details></div>`;
 }
