@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MCP-инструменты: калькуляторы механик PoE2 (EHP, Spirit, Stun).
  * TS-порт идей hivemind-poe2-mcp (src/calculator/; HivemindOverlord/poe2-mcp).
  */

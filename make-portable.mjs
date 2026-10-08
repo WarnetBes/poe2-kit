@@ -24,7 +24,41 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const FULL = process.argv.includes('--full');
-const ver = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+
+// Пре-полёт (грабли 2026-10-08 №224: PowerShell `Set-Content -Encoding utf8` в PS5
+// вписывает BOM — JSON.parse молча не прощает). Читаем все package.json, strip BOM,
+// валидируем ДО запуска дорогих шагов (билд 4 пакетов + npm ci в стейдже).
+const PKGS = [
+  'package.json',
+  'packages/core/package.json',
+  'apps/overlay/package.json',
+  'apps/web/package.json',
+  'apps/mcp/package.json',
+];
+function readJsonNoBom(p) {
+  let raw = fs.readFileSync(p, 'utf8');
+  if (raw.charCodeAt(0) === 0xfeff) {
+    console.warn(`[portable] BOM в ${p} — срезаю (источник: правка из PS5).`);
+    raw = raw.slice(1);
+    fs.writeFileSync(p, raw, 'utf8'); // чиним файл, чтобы git diff показал правду
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`[portable] FATAL: ${p} — невалидный JSON: ${e.message}`);
+    process.exit(1);
+  }
+}
+const pkgJsons = Object.fromEntries(PKGS.map((p) => [p, readJsonNoBom(path.join(ROOT, p))]));
+const ver = pkgJsons['package.json'].version;
+// Консистентность версий монорепо: рассинхрон package.json — источник
+// Деплои «шара одного пакета со старой версией» (№224).
+for (const [p, j] of Object.entries(pkgJsons)) {
+  if (j.version !== ver) {
+    console.error(`[portable] FATAL: ${p}: version=${j.version}, ожидалось ${ver} — синхронизируй.`);
+    process.exit(1);
+  }
+}
 const OUT_DIR = path.join(ROOT, '_portable');
 const STAGE_NAME = `poe2-kit-portable-${ver}-win64${FULL ? '-full' : ''}`;
 const STAGE = path.join(OUT_DIR, STAGE_NAME);

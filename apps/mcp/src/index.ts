@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 /**
  * PoE2 Kit — MCP-сервер.
  * Предоставляет инструменты poe2_* поверх единого ядра @poe2-kit/core

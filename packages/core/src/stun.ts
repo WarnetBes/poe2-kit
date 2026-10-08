@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Калькулятор станов Path of Exile 2.
  *
  * TS-порт hivemind-poe2-mcp (src/calculator/stun_calculator.py;
