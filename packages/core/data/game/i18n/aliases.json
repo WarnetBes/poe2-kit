@@ -1,0 +1,199 @@
+{
+  "_meta": {
+    "patch": "0.5.x",
+    "collectedAt": "2026-10-09",
+    "sources": [
+      "_research/poe2_eu_digest_2026-10.md §2 (poe2db de/fr/sp/pt — официальные строки GGG, проверено 09.10.2026)",
+      "_research/poe2_ru_digest_2026-10.md §1.2 (poe2db ru — официальные строки GGG, проверено 09.10.2026)"
+    ],
+    "note": "Только термины, подтверждённые дайджестами от 09.10.2026. Отсутствие языкового ключа или пустой список = термин не переведён в этой локали (честно, не выдумывать). Heist=«Кража», Blight=«Скверна» ПОСОЗНАТЕЛЬНО НЕ включены: это PoE1-заимствования, дайджест RU оставил их вне основной таблицы до проверки по 1.0 (Этап 5)."
+  },
+  "terms": [
+    {
+      "en": "Waystone",
+      "de": ["Wegstein"],
+      "fr": ["Pierre de téléportation"],
+      "es": ["Piedra guía"],
+      "pt": ["Pedra-guia"],
+      "ru": ["Путевой камень", "Путевые камни"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp|pt/Waystones (09.10.2026, EU-дайджест §2)",
+          "poe2db.tw/ru/Waystones (09.10.2026, RU-дайджест §1.2: офиц. «Путевой камень (Ур. N)», НЕ «камень пути»)"
+        ]
+      }
+    },
+    {
+      "en": "Exalted Orb",
+      "de": ["Erhabene Sphäre"],
+      "fr": ["Orbe exalté"],
+      "es": ["Orbe exaltado"],
+      "pt": ["Orbe Exaltado"],
+      "ru": ["Сфера возвышения"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp|pt/Exalted_Orb (09.10.2026, EU-дайджест §2)",
+          "poe2db.tw/ru/Exalted_Orb (09.10.2026, RU-дайджест §1.2)"
+        ]
+      }
+    },
+    {
+      "en": "Divine Orb",
+      "de": ["Göttliche Sphäre"],
+      "fr": ["Orbe divin"],
+      "es": ["Orbe divino"],
+      "pt": ["Orbe Divino"],
+      "ru": ["Божественная сфера"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp|pt/Divine_Orb (09.10.2026, EU-дайджест §2)",
+          "poe2db.tw/ru (Economy, 09.10.2026, RU-дайджест §1.2)"
+        ]
+      }
+    },
+    {
+      "en": "Simulacrum",
+      "de": ["Simulakrum"],
+      "fr": ["Simulacre"],
+      "es": ["Simulacro"],
+      "ru": ["Симулякр"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp/Simulacrum (09.10.2026, EU-дайджест §2)",
+          "poe2db.tw/ru/Simulacrum (09.10.2026, RU-дайджест §1.2)"
+        ],
+        "note": "PT: не переведён («Simulacrum») — так и зафиксировано: ключа pt нет (EU-дайджест §2)"
+      }
+    },
+    {
+      "en": "Simulacrum Splinter",
+      "de": ["Simulakrum-Splitter"],
+      "fr": ["Esquille de Simulacre"],
+      "es": ["Fragmento de Simulacro"],
+      "pt": ["Fragmento de Simulacrum"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp|pt/Simulacrum_Splinter (09.10.2026, EU-дайджест §2)"
+        ],
+        "note": "RU: не снят дайджестом — ключа ru нет (не выдумывать)"
+      }
+    },
+    {
+      "en": "Delirium",
+      "fr": ["Délire"],
+      "es": ["Delirio"],
+      "pt": ["Delírio"],
+      "ru": ["Делириум"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "poe2db.tw/de|fr|sp|pt/Delirium (09.10.2026, EU-дайджест §2)",
+          "poe2db.tw/ru (09.10.2026, RU-дайджест §1.2: офиц. «Делириум», транслитерация)"
+        ],
+        "note": "DE: не переведено («Delirium») — так и зафиксировано: ключа de нет (EU-дайджест §2)"
+      }
+    },
+    {
+      "en": "Tier",
+      "de": ["Level"],
+      "fr": ["Palier"],
+      "es": ["grado"],
+      "pt": ["Nível"],
+      "ru": ["Ур."],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": [
+          "EU-дайджест §2: Waystone (Tier N) → «(Level N)» DE / «(Palier N)» FR / «(grado N)» ES / «(Nível N)» PT",
+          "RU-дайджест §1.3 п.4: RU-тиры карт «Ур. N»"
+        ],
+        "note": "Только в связке «(tier-word N)» — применяется с границей слова; alias-вариант кандидата идёт ПОСЛЕ родных ключей"
+      }
+    },
+    {
+      "en": "Chaos Orb",
+      "ru": ["Сфера хаоса"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru/Economy (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Breach",
+      "ru": ["Разлом"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Essence",
+      "ru": ["Сущность"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Ritual",
+      "ru": ["Ритуал"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Expedition",
+      "ru": ["Экспедиция"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Abyss",
+      "ru": ["Бездна"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Strongbox",
+      "ru": ["Ларец"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Shrine",
+      "ru": ["Святыня", "Алтарь"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"],
+        "note": "Дубль-термин: минимап-иконка «Святыня», контент-ветка «Алтарь» — матчить оба (RU-дайджест §1.2)"
+      }
+    },
+    {
+      "en": "Tablet",
+      "ru": ["Плитка"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    },
+    {
+      "en": "Atlas",
+      "ru": ["Атлас"],
+      "_meta": {
+        "patch": "0.5.x",
+        "sources": ["poe2db.tw/ru (09.10.2026, RU-дайджест §1.2)"]
+      }
+    }
+  ]
+}

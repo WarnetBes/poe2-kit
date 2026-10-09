@@ -29,12 +29,24 @@
  *   каждый стат размечается trade-ready | text-only; полный промах —
  *   Result-совместимый err(parse) с payload.unknown (список нераспознанных).
  *
+ * Этап 2 (№246, находка EU-ресёрча — дайджест poe2_eu_digest_2026-10.md
+ * §2.1 п.7): торговый UI в DE/FR/PT-клиентах отдаёт СМЕСЬ EN и
+ * локализованных строк, FR-текст длиннее EN на ~25% (обрезки), один термин
+ * переведён двумя способами ⇒ stat-id закреплён как ПЕРВИЧНЫЙ ключ
+ * матчинга (MatchStrategy='stat-id', дефолт): если у входа известен stat-id
+ * (item-API GGG / датасет), матчим по нему; текст — фолбэк с пометкой
+ * matchedBy: 'stat-id' | 'text'. Текст-фолбэк расширен i18n-алиасами
+ * (data/game/i18n/aliases.json): локализованный термин в строке НЕ
+ * заменяется, а добавляет ДОПОЛНИТЕЛЬНЫЙ кандидат с EN-термином — родные
+ * кандидаты сохраняют приоритет.
+ *
  * Слой аддитивный: публичный API trade.ts (matchStatFilter и др.) не меняется.
  */
 
 import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
 import { cachedJson, DEFAULT_TTLS } from './cache.js';
 import { getLearnedStatTemplates } from './learnedStats.js';
+import { getI18nTermAliases, I18N_ALIAS_LANGS } from './i18nAliases.js';
 import { err, ok, type Result } from './result.js';
 
 /** Копия константы trade2 (без импорта trade.js — тот зависит от нас). */
@@ -55,14 +67,33 @@ export interface StatCatalogEntry {
 /** Откуда сматчился stat-id. */
 export type StatMatchSource = 'offline' | 'live' | 'unknown';
 
+/** Ключ матча (Этап 2, №246): 'stat-id' — первичный, 'text' — фолбэк. */
+export type MatchedBy = 'stat-id' | 'text';
+
+/** Стратегия матчинга пользовательской строки:
+ *  - 'stat-id' (дефолт): если у входа известен stat-id — матчить по нему
+ *    первично, текст — фолбэк (инструкция EU-находки: текст вне EN
+ *    ненадёжен — смеси EN/локали, FR-обрезки, дубль-переводы);
+ *  - 'text': форсировать текст-путь (id известного входа не используется
+ *    для решения) — поведение слоя до №246.
+ *  Для голых строк (без id) стратегии эквивалентны — как раньше. */
+export type MatchStrategy = 'stat-id' | 'text';
+
+/** Вход bulk-матчинга: голая строка (все текущие вызовы, ItemMod.text) либо
+ *  объект с известным stat-id (из item-API GGG / датасета, где у стата есть id). */
+export type StatMatchInput = string | { text: string; id?: string | null };
+
 /** Результат матчинга одного стата; id === null → не распознан нигде. */
 export interface StatMatch {
   id: string | null;
   source: StatMatchSource;
   /** Исходный текст мода (echo для UI/журналов). */
   text: string;
+  /** Чем сматчились: stat-id (первичный ключ) или текст (фолбэк). */
+  matchedBy?: MatchedBy;
   /** Нижняя граница значения (max × 0.9 — паритет с matchStatFilter в trade.ts).
-   *  undefined: стат без чисел или negate-вариант (semantics negative-ролла). */
+   *  undefined: стат без чисел, negate-вариант или текст обрезан (FR-кейс) —
+   *  stat-id-матч при этом остаётся валидным. */
   min?: number;
   /** Шаблон каталога, с которым сматчились (отладка/diff). */
   matchedText?: string;
@@ -98,6 +129,9 @@ export interface StatMatchOptions {
   noLive?: boolean;
   /** Предпочтительная группа при множественном совпадении (explicit). */
   preferredType?: string;
+  /** Стратегия матчинга (Этап 2, №246): 'stat-id' — id-первичный (дефолт),
+   *  'text' — только текст (как до №246). Для входов без id не различается. */
+  strategy?: MatchStrategy;
 }
 
 // ────────────────────────────────────────────────
@@ -115,6 +149,85 @@ function stripLegacy(s: string): string {
 
 /** Число с опциональным знаком (знак срезается при замене на '#'). */
 const NUM_RE = /[-+]?\d+(?:\.\d+)?/g;
+
+// ────────────────────────────────────────────────
+// I18n-алиасы (Этап 2, №246): расширение множества вариантов текст-фолбэка
+// ────────────────────────────────────────────────
+
+/** Правило подстановки: локализованный термин (lower) → EN-термин (lower). */
+interface AliasRule {
+  alias: string;
+  en: string;
+}
+
+let aliasRulesCache: AliasRule[] | null = null;
+
+/** Скомпилированные правила: все локали всех терминов aliases.json.
+ *  Длинные первым проходом — иначе «Simulakrum» съест «Simulakrum-Splitter». */
+function getAliasRules(): AliasRule[] {
+  if (aliasRulesCache) return aliasRulesCache;
+  const rules: AliasRule[] = [];
+  for (const t of getI18nTermAliases()) {
+    const en = t.en.trim().toLowerCase();
+    if (!en) continue;
+    for (const lang of I18N_ALIAS_LANGS) {
+      for (const a of t[lang] ?? []) {
+        const alias = a.trim().toLowerCase();
+        if (alias && alias !== en) rules.push({ alias, en });
+      }
+    }
+  }
+  rules.sort((x, y) => y.alias.length - x.alias.length);
+  aliasRulesCache = rules;
+  return rules;
+}
+
+/** Буква/цифра? \b в JS-regex ASCII-only (не видит «Делириум»,
+ *  «téléportation»), поэтому границы фраз проверяем посимвольно. */
+function isWordChar(ch: string): boolean {
+  return /\p{L}|\p{Nd}/u.test(ch);
+}
+
+/** Заменить все вхождения фразы с проверкой «границ слова». Возвращает
+ *  исходную строку, если вхождений с корректными границами нет. */
+function replaceWholePhrase(s: string, phrase: string, replacement: string): string {
+  if (!phrase || !s.includes(phrase)) return s;
+  let out = '';
+  let idx = 0;
+  let changed = false;
+  while (idx < s.length) {
+    const j = s.indexOf(phrase, idx);
+    if (j < 0) {
+      out += s.slice(idx);
+      break;
+    }
+    const end = j + phrase.length;
+    const prevOk = j === 0 || !isWordChar(s[j - 1]!);
+    const nextOk = end >= s.length || !isWordChar(s[end]!);
+    if (prevOk && nextOk) {
+      out += s.slice(idx, j) + replacement;
+      changed = true;
+    } else {
+      out += s.slice(idx, end);
+    }
+    idx = end;
+  }
+  return changed ? out : s;
+}
+
+/**
+ * Дополнительный ключ-вариант с EN-терминами вместо локализованных (все
+ * распознанные алиасы заменяются за один проход, порядок — длинные первыми).
+ * Пусто = локализованных терминов в строке нет. Родной ключ НЕ удаляется —
+ * это расширенное множество вариантов, а не подмена строки.
+ */
+function aliasVariantKeys(key: string): string[] {
+  let v = key;
+  for (const rule of getAliasRules()) {
+    v = replaceWholePhrase(v, rule.alias, rule.en);
+  }
+  return v !== key ? [v] : [];
+}
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -169,16 +282,34 @@ function makeCandidates(text: string): Candidate[] {
       }
     }
   }
+  // Этап 2 (№246): i18n-варианты — строго ПОСЛЕ родных кандидатов: родной
+  // шаблон каталога всегда бьёт алиас-вариант, алиасы работают только на
+  // промахе родных ключей (зона text-фолбэка, вне EN-клиента).
+  const natives = out.slice();
+  for (const c of natives) {
+    for (const v of aliasVariantKeys(c.key)) push(v, c.negated);
+  }
   return out;
 }
 
 /** Индекс каталога: нормализованный шаблон ('#' внутри) → записи каталога. */
 type CatalogIndex = Map<string, StatCatalogEntry[]>;
 
-function buildIndex(entries: StatCatalogEntry[]): CatalogIndex {
+/** Каталог слоя: текстовый индекс (фолбэк) + прямой индекс по stat-id
+ *  (первичный ключ, Этап 2 №246). */
+interface Catalog {
+  byText: CatalogIndex;
+  byId: Map<string, StatCatalogEntry>;
+}
+
+function buildCatalog(entries: StatCatalogEntry[]): Catalog {
   const index: CatalogIndex = new Map();
+  const byId = new Map<string, StatCatalogEntry>();
   for (const e of entries) {
     if (!e || typeof e.id !== 'string' || typeof e.text !== 'string' || !e.text) continue;
+    // Первый id в порядке слоя побеждает (дамп → learned): для byId
+    // репрезентативен оригинал каталога, не learn-дубликат.
+    if (!byId.has(e.id)) byId.set(e.id, e);
     const n = normalizeStatText(e.text);
     if (!n) continue;
     for (const key of new Set([n, stripLegacy(n)])) {
@@ -187,7 +318,12 @@ function buildIndex(entries: StatCatalogEntry[]): CatalogIndex {
       else index.set(key, [e]);
     }
   }
-  return index;
+  return { byText: index, byId };
+}
+
+/** Запись каталога по stat-id (первичный ключ). null = id слою неизвестен. */
+function findById(catalog: Catalog, id: string): StatCatalogEntry | null {
+  return catalog.byId.get(id) ?? null;
 }
 
 /** Лучший кандидат из совпавших по одному ключу: длиннейший текст, затем
@@ -270,9 +406,9 @@ function tradeStatsPath(): string {
  *  должен затирать правду живого каталога). */
 const STALE_AFTER_MS = 45 * 24 * 60 * 60 * 1000;
 
-let offlineCache: { index: CatalogIndex; entries: number; fetchedAt: number | null } | null = null;
+let offlineCache: { index: Catalog; entries: number; fetchedAt: number | null } | null = null;
 
-function getOfflineIndex(): { index: CatalogIndex; entries: number; fetchedAt: number | null } {
+function getOfflineIndex(): { index: Catalog; entries: number; fetchedAt: number | null } {
   if (offlineCache) return offlineCache;
   let entries: StatCatalogEntry[] = [];
   let fetchedAt: number | null = null;
@@ -294,7 +430,7 @@ function getOfflineIndex(): { index: CatalogIndex; entries: number; fetchedAt: n
   }
   // Learn-библиотека — последний офлайн-слой уверенности (см. learnedStats.ts)
   entries = entries.concat(getLearnedStatTemplates() as StatCatalogEntry[]);
-  offlineCache = { index: buildIndex(entries), entries: entries.length, fetchedAt };
+  offlineCache = { index: buildCatalog(entries), entries: entries.length, fetchedAt };
   return offlineCache;
 }
 
@@ -306,7 +442,7 @@ const LIVE_FAIL_RETRY_MS = 5 * 60 * 1000;
 
 const liveState: {
   fetcher: (() => Promise<StatCatalogEntry[]>) | null;
-  ok: CatalogIndex | null;
+  ok: Catalog | null;
   failedAt: number;
 } = { fetcher: null, ok: null, failedAt: 0 };
 
@@ -334,7 +470,7 @@ async function defaultFetchLive(): Promise<StatCatalogEntry[]> {
  * 5 минут (negative-memo: прайс-чек не должен долбить лежащий API на каждый стат).
  * Мемоизация привязана к функции-fetcher: подмена fetcher (тесты) сбрасывает её.
  */
-async function getLiveIndex(opts: StatMatchOptions): Promise<CatalogIndex | null> {
+async function getLiveIndex(opts: StatMatchOptions): Promise<Catalog | null> {
   if (opts.noLive) return null;
   const fetcher = opts.fetchLive ?? defaultFetchLive;
   if (liveState.fetcher === fetcher) {
@@ -344,7 +480,7 @@ async function getLiveIndex(opts: StatMatchOptions): Promise<CatalogIndex | null
   liveState.fetcher = fetcher;
   try {
     const entries = await fetcher();
-    liveState.ok = buildIndex(entries);
+    liveState.ok = buildCatalog(entries);
     liveState.failedAt = 0;
     return liveState.ok;
   } catch {
@@ -360,6 +496,7 @@ export function resetStatMatchingCaches(): void {
   liveState.fetcher = null;
   liveState.ok = null;
   liveState.failedAt = 0;
+  aliasRulesCache = null; // №246: перечитать aliases.json (тесты/патч данных)
 }
 
 // ────────────────────────────────────────────────
@@ -371,6 +508,7 @@ function toStatMatch(
   text: string,
   source: StatMatchSource,
   preferredType?: string,
+  matchedBy: MatchedBy = 'text',
 ): StatMatch {
   if (!found) return { id: null, source: 'unknown', text };
   const normText = normalizeStatText(text);
@@ -379,45 +517,57 @@ function toStatMatch(
     id: found.entry.id,
     source,
     text,
+    matchedBy,
     ...(min !== undefined ? { min } : {}),
     matchedText: found.entry.text,
   };
 }
 
 /**
- * Матчинг ОДНОГО стата: текст мода → { id, source }.
+ * Матчинг ОДНОГО стата: текст (или {text, id}) → { id, source, matchedBy }.
  * Порядок слоёв: свежий оффлайн-дамп → живой fallback → unknown;
  * протухший дамп (>45 дней) → сначала живой, дамп как фолбэк.
+ * При известном stat-id и стратегии 'stat-id' (дефолт) — id-матч первичен
+ * в каждом слое, текст — фолбэк (Этап 2, №246).
  */
-export async function matchStat(text: string, opts: StatMatchOptions = {}): Promise<StatMatch> {
+export async function matchStat(
+  text: StatMatchInput,
+  opts: StatMatchOptions = {},
+): Promise<StatMatch> {
   const { matches } = await matchStatsBulk([text], opts);
-  return matches[0]?.match ?? { id: null, source: 'unknown', text };
+  return matches[0]?.match ?? { id: null, source: 'unknown', text: typeof text === 'string' ? text : text.text };
 }
 
 /**
- * Bulk-матчинг: список текстов статов → per-stat разметка HasTradeSupport
- * (Sidekick-паттерн): каждый стат trade-ready | text-only. Живой каталог
- * тянется максимум ОДИН раз на вызов (и мемоизируется между вызовами).
+ * Bulk-матчинг: список статов (текст или {text, id}) → per-stat разметка
+ * HasTradeSupport (Sidekick-паттерн): каждый стат trade-ready | text-only.
+ * Живой каталог тянется максимум ОДИН раз на вызов (и мемоизируется).
+ *
+ * Этап 2 (№246): при известном stat-id (вход-объект) и дефолтной стратегии
+ * 'stat-id' матч идёт по id первично в каждом слое — локализованный/обрезанный
+ * текст (DE-смеси, FR-обрезки) не влияет на результат. Текст — фолбэк
+ * (matchedBy: 'text'), расширенный i18n-алиасами.
  */
 export async function matchStatsBulk(
-  mods: string[],
+  mods: StatMatchInput[],
   opts: StatMatchOptions = {},
 ): Promise<StatMatchingPayload> {
   const preferredType = opts.preferredType ?? 'explicit';
-  let offline: CatalogIndex;
+  const strategy: MatchStrategy = opts.strategy ?? 'stat-id';
+  let offline: Catalog;
   let offlineFresh = true;
   if (opts.offlineEntries !== undefined) {
-    offline = buildIndex([...opts.offlineEntries, ...(opts.extraOfflineEntries ?? [])]);
+    offline = buildCatalog([...opts.offlineEntries, ...(opts.extraOfflineEntries ?? [])]);
   } else {
     const o = getOfflineIndex();
     offline = opts.extraOfflineEntries
-      ? buildIndex([...flattenIndex(o.index), ...opts.extraOfflineEntries])
+      ? buildCatalog([...flattenIndex(o.index), ...opts.extraOfflineEntries])
       : o.index;
     // Протухший дамп (>45 дней): живой каталог правдивее — live-first.
     offlineFresh = !(o.fetchedAt && Date.now() - o.fetchedAt > STALE_AFTER_MS);
   }
 
-  const liveNeeded = async (): Promise<CatalogIndex | null> => getLiveIndex(opts);
+  const liveNeeded = async (): Promise<Catalog | null> => getLiveIndex(opts);
 
   const matches: StatMatchBulkItem[] = [];
   const unknown: string[] = [];
@@ -425,9 +575,13 @@ export async function matchStatsBulk(
   let liveMatches = 0;
 
   // Кэш индексов на вызов: live тянем лениво и не больше одного раза.
-  let live: CatalogIndex | null | undefined;
+  let live: Catalog | null | undefined;
 
-  for (const text of mods) {
+  for (const input of mods) {
+    const text = typeof input === 'string' ? input : input.text;
+    const knownId = typeof input === 'string' ? null : input.id ?? null;
+    // Первичный ключ — stat-id, если он известен входу и не отключён стратегией.
+    const useStatId = strategy === 'stat-id' && !!knownId;
     const item = async (): Promise<StatMatchBulkItem> => {
       // Порядок: fresh dump → live; stale dump → live → dump.
       const order: Array<'offline' | 'live'> = offlineFresh
@@ -435,14 +589,34 @@ export async function matchStatsBulk(
         : ['live', 'offline'];
       for (const layer of order) {
         if (layer === 'offline') {
-          const found = findInIndex(offline, text, preferredType);
+          if (useStatId) {
+            const entry = findById(offline, knownId!);
+            if (entry) {
+              return {
+                text,
+                match: toStatMatch({ entry, negated: false }, text, 'offline', preferredType, 'stat-id'),
+                tradeReady: true,
+              };
+            }
+          }
+          const found = findInIndex(offline.byText, text, preferredType);
           if (found) {
             return { text, match: toStatMatch(found, text, 'offline', preferredType), tradeReady: true };
           }
         } else {
           if (live === undefined) live = await liveNeeded();
           if (live) {
-            const found = findInIndex(live, text, preferredType);
+            if (useStatId) {
+              const entry = findById(live, knownId!);
+              if (entry) {
+                return {
+                  text,
+                  match: toStatMatch({ entry, negated: false }, text, 'live', preferredType, 'stat-id'),
+                  tradeReady: true,
+                };
+              }
+            }
+            const found = findInIndex(live.byText, text, preferredType);
             if (found) {
               return { text, match: toStatMatch(found, text, 'live', preferredType), tradeReady: true };
             }
@@ -464,9 +638,9 @@ export async function matchStatsBulk(
   return { matches, unknown, offlineMatches, liveMatches };
 }
 
-function flattenIndex(index: CatalogIndex): StatCatalogEntry[] {
+function flattenIndex(catalog: Catalog): StatCatalogEntry[] {
   const out: StatCatalogEntry[] = [];
-  for (const bucket of index.values()) out.push(...bucket);
+  for (const bucket of catalog.byText.values()) out.push(...bucket);
   return out;
 }
 
@@ -477,7 +651,7 @@ function flattenIndex(index: CatalogIndex): StatCatalogEntry[] {
  * матч — ok с payload.unknown.
  */
 export async function matchStatsBulkResult(
-  mods: string[],
+  mods: StatMatchInput[],
   opts: StatMatchOptions = {},
 ): Promise<StatMatchingResult> {
   const payload = await matchStatsBulk(mods, opts);

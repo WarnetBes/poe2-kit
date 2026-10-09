@@ -137,7 +137,7 @@ function mapPrepChecklist(stats: DefensiveStats, threat: MapThreat): MapPrepChec
 |---|---|
 | 1 | экстрактор идемпотентен; JSON валиден (UTF-8 no BOM, префлайт make-portable); ≥140 карт; sanity: MapRustbowl/MapBackwash пулы совпадают с отчётом №233; `poe2_data_freshness` видит новый датасет |
 | 2 | core tsc 0; vitest (все + новые); юнит-кейсы: Exposure-математика, SUF-элемент-мод → monsterEleBonus, пустые моды, unknown-мод → честный unknown |
-| 3 | MCP smoke exit 0 (62 тула), тул в списке `__poe2Registered` |
+| 3 | MCP smoke exit 0 (62 тула; 63 после №239 Phase-2), тул в списке `__poe2Registered` |
 | 4 | web tsc+build; CDP-живой прогон вкладки (консоль 0); overlay tsc |
 | 5 | vitest полный, smoke run-all, CDP_all |
 | 6 | CHANGELOG, версии ×5 package.json, origin→github main+tag, gh release + portable |

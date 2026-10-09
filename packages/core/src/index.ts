@@ -21,10 +21,15 @@ export * from './oauth.js';
 export * from './uniques.js';
 export * from './learnlog.js';
 export * from './learnedStats.js';
+
+export * from './i18nAliases.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './bosses.js';
 export * from './sources.js';
+export * from './freshness.js';
+export * from './patches.js';
+export * from './datasetDiff.js';
 export * from './ladder.js';
 export * from './advice.js';
 export * from './runes.js';
@@ -36,9 +41,11 @@ export * from './buildPlanner.js';
 export * from './hideout.js';
 export * from './keybinds.js';
 export * from './mapPrep.js';
+export * from './simulacrum.js';
 import * as buildPlannerMod from './buildPlanner.js';
 import * as hideoutMod from './hideout.js';
 import * as keybindsMod from './keybinds.js';
+import * as simulacrumMod from './simulacrum.js';
 import * as mapPrepMod from './mapPrep.js';
 export * from './questRewards.js';
 export * from './cache.js';
@@ -54,6 +61,9 @@ import * as enemymod from './enemy.js';
 import * as ailmentsmod from './ailments.js';
 import * as optimizemod from './optimize.js';
 import * as sourcesmod from './sources.js';
+import * as freshnessmod from './freshness.js';
+import * as patchesmod from './patches.js';
+import * as datasetDiffMod from './datasetDiff.js';
 
 // Типы калькуляторов (значения — через namespace core.ehp/core.spirit/core.stun,
 // чтобы не конфликтовать с estimate-слоем).
@@ -139,6 +149,9 @@ export const core = {
   ailments: ailmentsmod,
   optimize: optimizemod,
   sources: sourcesmod,
+  freshness: freshnessmod, // №245: kind/update-классификация + stale-логика датасетов
+  patches: patchesmod, // №248: офлайн-реестр патчей → knownPatchAt для freshness
+  datasetDiff: datasetDiffMod, // №248: снапшоты/diff-отчёт refresh (до/после)
   runes: runesMod,
   starterBuilds: starterBuildsMod,
   endgame: endgameMod,
@@ -149,6 +162,7 @@ export const core = {
   hideout: hideoutMod, // №198: офлайн-разбор .hideout (PoE2-вкладка «Хайдоуты»)
   keybinds: keybindsMod, // №221: советчик раскладки навыков (геймпад/клавиатура)
   mapPrep: mapPrepMod, // №234: Map Prep Assistant — угроза карты + чек-лист подготовки (Этап 2)
+  simulacrum: simulacrumMod, // №239: данные гайда Simulacrum (Delirium 0.5.x) + markdown для MCP-тула
   result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
 };
 

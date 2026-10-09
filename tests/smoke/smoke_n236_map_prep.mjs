@@ -1,4 +1,4 @@
-// №236-смок (Map Prep, Этап 3): MCP-тул poe2_map_prep — регистрация (62 тула)
+// №236-смок (Map Prep, Этап 3): MCP-тул poe2_map_prep — регистрация (63 тула: 62 + poe2_simulacrum_guide №239)
 // + вызов handler'а собранного dist по кейсам:
 //   (a) map+mods+tier → of_exposure смэтчен, debuff max_res, area level по тиру;
 //   (b) pob (PoB-XML) и defensiveStats → персональные checks, build_provided;
@@ -22,13 +22,13 @@ need(/poe2_map_prep/.test(distSrc) && /structuredContent/.test(distSrc)
   && /unknown_mods/.test(distSrc) && /build_provided/.test(distSrc),
   1, 'dist/tools/mapPrep.js: poe2_map_prep + structured JSON-выход');
 
-// 2. Регистрация: dist/index.js зовёт registerMapPrepTools; --smoke = 62, тул в списке
+// 2. Регистрация: dist/index.js зовёт registerMapPrepTools; --smoke = 63, тул в списке
 const distIndex = readFileSync('apps/mcp/dist/index.js', 'utf8');
 need(/registerMapPrepTools/.test(distIndex), 2, 'dist/index.js: registerMapPrepTools');
 const smoke = spawnSync(process.execPath, ['apps/mcp/dist/index.js', '--smoke'], { encoding: 'utf8' });
 const smokeOut = smoke.stderr + smoke.stdout;
-const m62 = /\[smoke\] Registered tools: 62\b/.test(smokeOut);
-need(smoke.status === 0 && m62, 3, 'index --smoke: exit 0, ровно 62 тулов');
+const m62 = /\[smoke\] Registered tools: 63\b/.test(smokeOut);
+need(smoke.status === 0 && m62, 3, 'index --smoke: exit 0, ровно 63 тулов');
 need(/^\s*- poe2_map_prep$/m.test(smokeOut), 4, 'index --smoke: poe2_map_prep в списке __poe2Registered');
 
 // 3. Перехватываем registerTool (как index.ts) и зовём handler напрямую

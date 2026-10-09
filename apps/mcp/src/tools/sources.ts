@@ -31,6 +31,12 @@ export function registerSourcesTools(server: McpServer): number {
       const lines = ['## Библиотека источников PoE2 Kit', ''];
       for (const s of core.sources.listWebSources()) {
         lines.push(`### ${s.id} — ${s.title} [${s.category}]`);
+        lines.push(
+          `- Классификация: kind=${s.kind}, update=${s.update}` +
+            (s.update === 'auto'
+              ? ' — освежается автоматически (скрипты/живой API), протухание >30 дн или после патча'
+              : ' — обновляется вручную, протухание >90 дн'),
+        );
         lines.push(`- Для чего: ${s.useFor}`);
         if (s.mcpTool) lines.push(`- Спец-тул (предпочесть!): ${s.mcpTool}`);
         lines.push(`- Fetchable: ${s.fetchable ? 'да (poe2_sources_fetch)' : 'нет — только спец-тул/браузер'}`);

@@ -1027,3 +1027,46 @@ h2::after {
 .kb-visual summary { cursor: pointer; color: #d9b96c; font-weight: 600; }
 .kb-visual svg { display: block; max-width: 640px; width: 100%; height: auto; margin: 0.5rem auto 0.2rem; }
 .kb-visual .kb-note { font-size: 0.78rem; color: #8b8069; margin: 0; }
+
+/* == №239: вкладка «🌀 Simulacrum» (гайд-энциклопедия; новые классы только sim-*) == */
+.sim-facts { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 16px; }
+.sim-fact {
+  flex: 1 1 150px; min-width: 140px; text-align: center;
+  border: 1px solid var(--border, #3a2c1e); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25); padding: 10px 8px;
+}
+.sim-fact b { display: block; font-size: 1.45rem; color: var(--gold, #d6b36a); }
+.sim-fact span { font-size: 12.5px; color: var(--dim); line-height: 1.35; display: block; margin-top: 3px; }
+.sim-steps { margin: 6px 0 8px; }
+.sim-steps li { margin-bottom: 9px; line-height: 1.5; }
+.sim-steps li::marker { color: var(--gold, #d6b36a); font-weight: 700; }
+.sim-scroll { overflow-x: auto; margin: 4px 0 6px; }
+.sim-waves td { vertical-align: middle; }
+.sim-final td { border-bottom: 1px solid #c8a24a; box-shadow: inset 0 0 14px rgba(200, 162, 74, 0.10); }
+.sim-badge {
+  display: inline-block; margin: 2px 6px 2px 0; padding: 2px 8px;
+  border: 1px solid var(--border, #3a2c1e); border-radius: 999px;
+  font-size: 12.5px; background: rgba(0, 0, 0, 0.3); white-space: nowrap;
+}
+.sim-shards { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px; }
+.sim-shard {
+  flex: 1 1 200px; border: 1px solid var(--border, #3a2c1e); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25); padding: 8px 12px 10px;
+}
+.sim-shard h4 { margin: 0 0 4px; font-size: 15px; }
+.sim-shard p { margin: 3px 0; font-size: 13.5px; }
+.sim-bosses { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+.sim-boss {
+  border: 1px solid var(--border, #3a2c1e); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25); padding: 10px 14px 12px;
+}
+.sim-boss h4 { margin: 0 0 6px; font-size: 15.5px; }
+.sim-bosstags { margin-bottom: 6px; }
+.sim-collapse {
+  border: 1px solid var(--border, #3a2c1e); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25); padding: 8px 14px; margin-bottom: 8px;
+}
+.sim-collapse summary { cursor: pointer; color: var(--gold, #d6b36a); font-weight: 600; }
+.sim-collapse ul { margin: 8px 0 2px; }
+.sim-collapse li { margin: 4px 0; line-height: 1.45; }
+.sim-checklist .ghost { margin-bottom: 8px; }

@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "patch": "0.5.5e",
+    "as_of": "2026-10-09",
+    "sources": [
+      "_research/poe2_en_digest_2026-10.md (§1 хронология, maxroll.gg + poe2db.tw, проверено 09.10.2026)",
+      "_research/poe2_bugs_digest_2026-10.md (§Контекст версий, poepatchnotes.com/poe2 + pathofexile.com/forum)"
+    ],
+    "note": "Офлайн-справочник патчей PoE2 (Этап 4, №248) — data-источник knownPatchAt для freshness-логики: auto-датасеты, полученные ДО даты последнего подтверждённого патча, считаются stale. Даты — ТОЛЬКО из дайджестов ресёрча 09.10.2026; спорные/приблизительные помечены unverified=true и в knownPatchAt НЕ попадают. Никакого живого парсинга GGG-страниц: файл обновляет куратор при патче. Расхождение источников зафиксировано в note соответствующей записи (0.5.3/0.5.4)."
+  },
+  "patches": [
+    {
+      "version": "0.4.0",
+      "date": "2025-12-12",
+      "title": "The Last of the Druids",
+      "league": true,
+      "source": "maxroll.gg/poe2/news/0-4-0-the-last-of-the-druids-to-launch-on-december-12th"
+    },
+    {
+      "version": "0.5.0",
+      "date": "2026-05-29",
+      "title": "Return of the Ancients",
+      "league": true,
+      "source": "maxroll.gg/poe2/news/0-5-0-return-of-the-ancients-to-launch-on-may-29th"
+    },
+    {
+      "version": "0.5.1",
+      "date": "2026-06-04",
+      "source": "poe2db.tw/us/Version_0.5.1; maxroll.gg/poe2/news/0-5-1-patch-notes"
+    },
+    {
+      "version": "0.5.2",
+      "date": "2026-06-11",
+      "source": "maxroll.gg/poe2/news/0-5-2-patch-notes; pathofexile.com/forum/view-thread/3960375"
+    },
+    {
+      "version": "0.5.3",
+      "date": "2026-06-18",
+      "unverified": "точная дата не подтверждена: EN-дайджест даёт ~18–20.06.2026 по превью-анонсу maxroll от 18.06.2026; взята нижняя граница. В knownPatchAt не попадает.",
+      "date_accuracy": "approx",
+      "source": "maxroll.gg/poe2/news/path-of-exile-2-0-5-3-patch-preview (18.06.2026); poe2db.tw/us/Version_0.5.3"
+    },
+    {
+      "version": "0.5.4",
+      "date": "2026-06-25",
+      "unverified": "расхождение источников: bugs-дайджест (poepatchnotes.com/poe2) даёт 25.06.2026, EN-дайджест — «~июль 2026, точная дата не установлена». Взята дата bugs-дайджеста, но запись остаётся unverified и в knownPatchAt не попадает.",
+      "date_accuracy": "day-of-approximate-source",
+      "source": "poepatchnotes.com/poe2 (bugs-дайджест §Контекст версий); poe2db.tw/us/Version_0.5.4"
+    },
+    {
+      "version": "0.5.5",
+      "date": "2026-09-02",
+      "title": "Forbidden Rites (event league)",
+      "league": true,
+      "source": "maxroll.gg/poe2/news/0-5-5-forbidden-rites-patch-notes; pathofexile.com/forum/view-thread/4000864"
+    },
+    {
+      "version": "0.5.5b",
+      "date": "2026-09-11",
+      "hotfix": true,
+      "source": "poepatchnotes.com/poe2 (bugs-дайджест); poe2db.tw/us/Version_0.5.5b"
+    },
+    {
+      "version": "0.5.5c",
+      "date": "2026-09-17",
+      "hotfix": true,
+      "source": "poepatchnotes.com/poe2 (bugs-дайджест); poe2db.tw/us/Version_0.5.5c"
+    },
+    {
+      "version": "0.5.5d",
+      "date": "2026-09-28",
+      "hotfix": true,
+      "source": "poepatchnotes.com/poe2 (bugs-дайджест); poe2db.tw/us/Version_0.5.5d"
+    },
+    {
+      "version": "0.5.5e",
+      "date": "2026-10-06",
+      "hotfix": true,
+      "source": "poepatchnotes.com/poe2 (bugs-дайджест §Контекст версий; последняя на 09.10.2026); путь патчноута: fixed «some areas were particularly slow to load» от 06.10.2026"
+    }
+  ]
+}

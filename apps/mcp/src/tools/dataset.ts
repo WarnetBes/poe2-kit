@@ -6,49 +6,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-/** Per-dataset даты (№208): паритет со scripts/refresh-data.mjs freshness. */
-function offlineDatasetDates(): string[] {
-  const targets: Array<[string, string[]]> = [
-    ['trade/trade_stats.json', ['_meta', 'fetchedAt']],
-    ['skill_gems/recommended_supports.json', ['scraped_at']],
-    ['skill_gems/gem_colors.json', ['generated_at']],
-    ['build_planner/map.json', ['metadata', 'extraction_date']],
-    ['passive_tree/layout.json', ['metadata', 'generated_at']],
-    ['hideout/decor.json', ['_meta', 'generated']],
-    ['support_gems/support_gems.json', ['metadata', 'extraction_date']],
-  ];
-  const rows: string[] = [];
-  let dataDir: string;
-  try {
-    // packages/core/dist/index.js → packages/core/data/game.
-    // exports "." у core объявлен только в import-условии, поэтому
-    // import.meta.resolve (createRequire().resolve падает в CJS-контексте).
-    const coreEntry = import.meta.resolve('@poe2-kit/core');
-    dataDir = path.join(path.dirname(fileURLToPath(coreEntry)), '..', 'data', 'game');
-  } catch {
-    return ['| _путь к data/game не разрешён_ | — | — |'];
-  }
-  for (const [rel, keys] of targets) {
-    try {
-      const raw: unknown = JSON.parse(fs.readFileSync(path.join(dataDir, rel), 'utf8'));
-      let cur: unknown = raw;
-      for (const k of keys) cur = (cur as Record<string, unknown> | null)?.[k];
-      if (typeof cur !== 'string') {
-        rows.push(`| ${rel} | ? | ? |`);
-        continue;
-      }
-      const ageDays = Math.floor((Date.now() - Date.parse(cur)) / 86_400_000);
-      rows.push(`| ${rel} | ${cur.slice(0, 10)} | ${Number.isFinite(ageDays) ? `${ageDays} дн` : '?'}${ageDays > 45 ? ' ⚠' : ''} |`);
-    } catch {
-      rows.push(`| ${rel} | — | не читается |`);
-    }
-  }
-  return rows;
-}
 
 export function registerDatasetTools(server: McpServer): number {
   let count = 0;
@@ -411,39 +368,89 @@ export function registerDatasetTools(server: McpServer): number {
       title: 'PoE2 Data Freshness (versions + cache)',
       description: `Версии и свежесть всех источников данных poe2-kit:
 - офлайн-датасеты (патч, ревизия, дата извлечения);
+- пер-датасетная таблица: источник, kind (datamined/community/official), update (auto/manual), дата из меты (_meta/rev если есть), возраст, stale-флаг (auto: старше 30 дн или старше известного патча; manual: старше 90 дн; протухшие — 🔴 STALE, нет меты — ⚠ пометка);
 - дисковый кэш живых источников (лиги poe2scout, RePoE base_items/mods, снапшоты/словари poe.ninja) — URL, возраст.
 
 После патча игры: clear=true — очистить кэш, чтобы лиги/предметы перезагрузились свежими.
 
 Аргументы:
   - clear (boolean, опц.): очистить дисковый кэш перед сводкой.
+  - patch_version (string, опц.): версия патча из офлайн-реестра патчей (например "0.5.5e") — оценить свежесть «на момент патча X»: auto-датасеты, полученные ДО даты этого патча, считаются stale. По умолчанию — последний подтверждённый патч реестра.
 `,
       inputSchema: {
         clear: z.boolean().optional().describe('Очистить дисковый кэш живых источников'),
+        patch_version: z.string().optional().describe('Свежесть «на момент патча X» (версия из реестра патчей)'),
       },
       annotations: { readOnlyHint: false, openWorldHint: false },
     },
-    async ({ clear }) => {
+    async ({ clear, patch_version }) => {
       let cleared = 0;
       if (clear) cleared = core.cache.clearHttpCache();
       const v = core.dataset.getDatasetVersion();
+      // №248 (Этап 4): knownPatchAt — дата патча из офлайн-реестра
+      // data/game/patches.json. По умолчанию последний подтверждённый
+      // патч; patch_version — явное переопределение «на момент патча X».
+      let patchAtMs: number | null | undefined;
+      let patchLine: string;
+      if (patch_version) {
+        const p = core.patches.findKnownPatch(patch_version);
+        if (!p) {
+          const known = core.patches
+            .listKnownPatches()
+            .map((x) => x.version)
+            .join(', ');
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: `Патч «${patch_version}» отсутствует в офлайн-реестре патчей. Известные версии: ${known}.`,
+              },
+            ],
+          };
+        }
+        patchAtMs = p.dateMs;
+        patchLine = `Патч отсчёта (по запросу): **${p.version}** от ${p.date}${p.unverified ? ' ⚠ unverified' : ''}`;
+      } else {
+        patchAtMs = undefined; // дефолт внутри freshness: последний подтверждённый
+        const last = core.patches.latestKnownPatch();
+        patchLine = last
+          ? `Известный патч (основа auto-stale): **${last.version}** от ${last.date}`
+          : '⚠ реестр патчей не дал подтверждённой даты — правило «старше патча» не применяется';
+      }
       const entries = core.cache.httpCacheInfo();
-      // Per-dataset даты (№208): раньше тул был слеп к отдельным _meta
-      // (например support_gems 2025-12-12 выглядел «свежим» на фоне ревизии).
-      const perDs = offlineDatasetDates();
+      // Per-dataset свежесть (№208 → №245): core.freshness ведёт реестр
+      // мет (_meta/metadata/scraped_at), kind/update-классификацию и stale
+      // по порогам 30/90 дн + «старше известного патча» (№248 — по patches.json).
+      const fresheet = core.freshness.datasetFreshnessList(Date.now(), patchAtMs);
+      const staleCount = fresheet.filter((d) => d.stale).length;
       const lines = [
         '## Свежесть данных poe2-kit',
         '',
         '### Офлайн-датасеты',
         `- Патч: **${v.patch_version} «${v.patch_name}»** (ревизия ${v.data_revision}, ${v.released_as}), извлечено ${v.extracted_at}`,
         '',
-        '### Даты отдельных датасетов',
-        '| Датасет | Дата | Возраст |',
-        '|---|---|---|',
-        ...perDs,
+        `### Даты отдельных датасетов — ${fresheet.length}, протухших ${staleCount}`,
+        patchLine,
+        'Stale-правила (№245): auto — старше 30 дн ИЛИ старше известного патча; manual — старше 90 дн.',
+        '',
+        '| Датасет | Источник | kind/update | Дата | Возраст | Схема/rev | Состояние |',
+        '|---|---|---|---|---|---|---|',
+      ];
+      for (const d of fresheet) {
+        const state = d.stale
+          ? `🔴 STALE (${d.staleReason})`
+          : d.note
+            ? `⚠ ${d.note}`
+            : `✅ свежий (порог ${d.thresholdDays} дн)`;
+        const date = d.fetchedAt ? d.fetchedAt.slice(0, 10) : '—';
+        const age = d.ageDays != null ? `${d.ageDays} дн` : '?';
+        lines.push(`| ${d.rel} | ${d.sourceId} | ${d.kind}/${d.update} | ${date} | ${age} | ${d.schemaVersion ?? '—'} | ${state} |`);
+      }
+      lines.push(
         '',
         `### Дисковый кэш живых источников — ${entries.length} записей${clear ? ` (очищено ${cleared})` : ''}`,
-      ];
+      );
       if (!entries.length) {
         lines.push('_Кэш пуст — живые запросы пока не делались._');
       } else {

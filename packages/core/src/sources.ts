@@ -14,11 +14,28 @@
 
 import { httpText } from './http.js';
 
+/**
+ * Классификация происхождения данных источника (№245, Этап 1 «источники
+ * + автонововление данных»).
+ *  - datamined  — датамайн из файлов игры / агрегация официальных API
+ *                 (poe2db, PoB2, RePoE, poe.ninja, poe2scout);
+ *  - community  — сообщество: гайды, вики, форумы (обновляется людьми);
+ *  - official   — первоисточник GGG (новости, dev-docs, живой trade2 API).
+ */
+export type SourceKind = 'datamined' | 'community' | 'official';
+
+/** Как данные источника попадают в kit (№245). */
+export type SourceUpdate = 'auto' | 'manual';
+
 export interface WebSource {
   /** Короткий id для MCP (source_id). */
   id: string;
   title: string;
   category: 'wiki' | 'official' | 'api' | 'guide' | 'community';
+  /** Происхождение данных (№245): datamined / community / official. */
+  kind: SourceKind;
+  /** auto — скрипты/живой API освежают сами; manual — куратор обновляет руками (№245). */
+  update: SourceUpdate;
   /** Хост-базовое происхождение (для host-guard). */
   base: string;
   /** Страница по умолчанию (что вернёт фетч без path). */
@@ -46,12 +63,16 @@ const SOURCES: WebSource[] = [
     useFor: 'Механики, камни, уники, боссы, термины — проверка фактов о механике игры.',
     mcpTool: 'poe2_wiki_lookup',
     fetchable: false,
+    kind: 'community',
+    update: 'manual',
     notes: 'Спец-тул лучше: он ходит в MediaWiki API и отдаёт чистый wikitext.',
   },
   {
     id: 'poe2db',
     title: 'poe2db.tw (база данных)',
     category: 'api',
+    kind: 'datamined',
+    update: 'auto',
     base: 'https://poe2db.tw',
     landing: 'https://poe2db.tw',
     useFor: 'Точные числа: моды, базы, уровни камней, таблицы дропа.',
@@ -66,6 +87,8 @@ const SOURCES: WebSource[] = [
     landing: 'https://www.pathofexile.com/news',
     useFor: 'Патчноуты, анонсы лиг, изменения механик из первых рук.',
     fetchable: true,
+    kind: 'official',
+    update: 'manual',
     notes: 'Список анонсов; сам патчноут — по path вида /news/...',
   },
   {
@@ -76,6 +99,8 @@ const SOURCES: WebSource[] = [
     landing: 'https://www.pathofexile.com/developer/docs',
     useFor: 'Легал-границы публичных API GGG: rate-limits, что можно/нельзя.',
     fetchable: true,
+    kind: 'official',
+    update: 'manual',
     notes: 'Страница может быть JS-обёрткой вокруг OpenAPI-спеки: если текст пустой — это нормально, СПЕКА НЕ ПРОВЕРЕНА через фетч ❓.',
   },
   {
@@ -88,6 +113,8 @@ const SOURCES: WebSource[] = [
     // поиск занимает очередь и троттлится аккуратно
     mcpTool: 'poe2_trade_query / прайс-чек тулы',
     fetchable: false,
+    kind: 'official',
+    update: 'auto',
     notes: "JS-приложение, raw-fetch бесполезен. Только через API-туры кита (тот же путь, что у Awakened PoE Trade).",
   },
   {
@@ -99,6 +126,8 @@ const SOURCES: WebSource[] = [
     useFor: 'Курсы валют, тренды, ladder-снапшоты.',
     mcpTool: 'poe2_currency_* / poe2_ladder_* / poe2_history_*',
     fetchable: false,
+    kind: 'datamined', // агрегатор официального trade-API GGG (данные — датамайн, не мнение сообщества)
+    update: 'auto',
     notes: "Лимит 10 запросов/5 мин — только через туры кита с общим троттлом.",
   },
   {
@@ -110,6 +139,8 @@ const SOURCES: WebSource[] = [
     useFor: 'Актуальные цены уников/exotics, история цен.',
     mcpTool: 'poe2_currency_* / poe2_history_*',
     fetchable: false,
+    kind: 'datamined', // API-агрегатор официальных данных GGG (аналогично poe.ninja)
+    update: 'auto',
   },
   {
     id: 'maxroll-poe2',
@@ -119,11 +150,15 @@ const SOURCES: WebSource[] = [
     landing: 'https://maxroll.gg/poe2',
     useFor: 'Гайды по механикам эндгейма, mapping, билд-принципы, чек-листы.',
     fetchable: true,
+    kind: 'community',
+    update: 'manual',
   },
   {
     id: 'mobalytics-poe2',
     title: 'Mobalytics PoE2 (билд-гайды)',
     category: 'guide',
+    kind: 'community',
+    update: 'manual',
     base: 'https://mobalytics.gg',
     landing: 'https://mobalytics.gg/path-of-exile-2',
     useFor: 'Свежие билд-гайды и сравнение архетипов.',
@@ -138,6 +173,8 @@ const SOURCES: WebSource[] = [
     landing: 'https://pathofexile2.wiki',
     useFor: 'Быстрый lookup: квесты, NPC, локации, базовая справка.',
     fetchable: true,
+    kind: 'community',
+    update: 'manual',
     notes: '❌ Проверено 29.09.2026: соединение не устанавливается (connect timeout) — сайт, вероятно, недоступен/закрыт. Если фетч падает — не retry-ть, источник считается мёртвым.',
   },
   {
@@ -148,7 +185,34 @@ const SOURCES: WebSource[] = [
     landing: 'https://old.reddit.com/r/pathofexile2/',
     useFor: 'Мета-обсуждения, «что актуально после патча» — как намёки, не как факт.',
     fetchable: true,
+    kind: 'community',
+    update: 'manual',
     notes: 'Reddit агрессивно 403-ит не-браузерные UA: если текст пустой — пользуйтесь webfetch-агентом, НЕ retry-ьте.',
+  },
+  {
+    id: 'pob2',
+    title: 'Path of Building PoE2 (Lua-датамайн, локальный клон)',
+    category: 'api',
+    kind: 'datamined',
+    update: 'auto', // git pull клона + перегон датасетов (№234/№245)
+    base: 'https://github.com',
+    landing: 'https://github.com/PathOfBuilding-PoE2/PathOfBuilding',
+    useFor: 'Точные игровые данные: WorldAreas.lua, ModMap.lua, Bosses.lua, Gems.lua — фундамент наших датасетов (maps/waystone_mods, build_planner, enemy).',
+    fetchable: false,
+    notes: 'MIT. В датасетах kit ссылка — git_rev в _meta (например bb52d6b...); локальный клон: _research/path-of-building-poe2. Обновление: git pull + перегон скриптами сборки датасетов.',
+  },
+  {
+    id: 'repoe',
+    title: 'RePoE2 (repoe-fork) — экспорт игровых .dat в JSON',
+    category: 'api',
+    kind: 'datamined',
+    update: 'auto', // экспорт обновляется на каждый патч RePoE-комьюнити
+    base: 'https://repoe-fork.github.io',
+    landing: 'https://repoe-fork.github.io/poe2/',
+    useFor: 'Канонические stat_descriptions, base_items, mods, map_stat_descriptions — живой RePoE-слой kit (core.repoe).',
+    mcpTool: 'через core.repoe (кэш 7 дней, см. poe2_data_freshness)',
+    fetchable: false,
+    notes: 'Данные между патчами почти не меняются (TTL кэша 7 дней). ⚠ packs:null в экспорте — дефект экспорта, НЕ игры (№232).',
   },
 ];
 
@@ -159,6 +223,64 @@ export function listWebSources(): WebSource[] {
 export function getWebSource(id: string): WebSource | undefined {
   const k = id.trim().toLowerCase();
   return SOURCES.find((s) => s.id === k);
+}
+
+// ─── Stale-логика свежести источников (№245) ─────────────────────────────────
+//
+// Пороги протухания по update-классификации:
+//  - auto   — 30 дней (датамайн/живые API устаревают с патчем GGG);
+//  - manual — 90 дней (гайды/вики живут дольше, куратор освежает руками).
+// Для auto дополнительно: данные, полученные ДО известного патча, считаются
+// протухшими независимо от возраста (сравнение fetchedAt < knownPatchAt).
+
+/** Порог протухания для auto-источников (дней). */
+export const STALE_DAYS_AUTO = 30;
+/** Порог протухания для manual-источников (дней). */
+export const STALE_DAYS_MANUAL = 90;
+
+export interface SourceStaleness {
+  /** Возраст данных в днях (целых, вниз). */
+  ageDays: number;
+  /** Применённый порог (зависит от update). */
+  thresholdDays: number;
+  /** Протух ли источник по правилам №245. */
+  stale: boolean;
+  /** Человекочитаемая причина stale (null если свежий). */
+  staleReason: string | null;
+}
+
+/** Порог протухания по update-классификации (№245). */
+export function staleThresholdDays(update: SourceUpdate): number {
+  return update === 'auto' ? STALE_DAYS_AUTO : STALE_DAYS_MANUAL;
+}
+
+/**
+ * Возраст и stale-вердикт источника/датасета по kind/update-классификации.
+ * Чистая функция — вся свежестная reporting-логика (MCP + freshness) зовёт её.
+ */
+export function sourceStaleness(input: {
+  update: SourceUpdate;
+  fetchedAtMs: number;
+  nowMs?: number;
+  /** Дата известного патча GGG (ms): auto-данные старше патча = stale. */
+  knownPatchAtMs?: number;
+}): SourceStaleness {
+  const now = input.nowMs ?? Date.now();
+  const ageDays = Math.floor((now - input.fetchedAtMs) / 86_400_000);
+  const thresholdDays = staleThresholdDays(input.update);
+  let staleReason: string | null = null;
+  if (ageDays > thresholdDays) {
+    staleReason = `старше порога ${thresholdDays} дн (${input.update})`;
+  }
+  if (
+    input.update === 'auto' &&
+    input.knownPatchAtMs != null &&
+    Number.isFinite(input.knownPatchAtMs) &&
+    input.fetchedAtMs < input.knownPatchAtMs
+  ) {
+    staleReason = 'данные получены до известного патча';
+  }
+  return { ageDays, thresholdDays, stale: staleReason != null, staleReason };
 }
 
 export interface FetchWebSourceOptions {

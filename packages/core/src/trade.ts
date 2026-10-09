@@ -18,7 +18,7 @@ import { buildCodeToGear } from './build.js';
 import { scountCategoryForUnique } from './uniques.js';
 import { recordLearnedItem } from './learnlog.js';
 import { getLearnedStatTemplates } from './learnedStats.js';
-import { matchStatsBulk, type StatCatalogEntry } from './statMatching.js';
+import { matchStatsBulk, type StatCatalogEntry, type StatMatchInput, type MatchStrategy } from './statMatching.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -815,11 +815,13 @@ export function matchStatFilter(
  *  остаются opt-in источником пополнения learned-датасета.
  *  Протухший дамп (>45 дней) — live-first, дамп как фолбэк. */
 export async function matchModsToStatFilters(
-  modTexts: string[],
+  modTexts: StatMatchInput[],
+  opts: { strategy?: MatchStrategy } = {},
 ): Promise<{ filters: TradeStatFilter[]; unmatched: string[]; liveMatches: number }> {
   const learned = getLearnedStatTemplates() as StatCatalogEntry[];
   const { matches, unknown, offlineMatches, liveMatches } = await matchStatsBulk(modTexts, {
     extraOfflineEntries: learned,
+    ...(opts.strategy ? { strategy: opts.strategy } : {}),
   });
   const filters: TradeStatFilter[] = [];
   for (const m of matches) {

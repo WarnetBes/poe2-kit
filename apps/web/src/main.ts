@@ -27,6 +27,7 @@ import { showHideout, copyHideoutShare, copyHideoutMarkdown, initHideoutTab } fr
 import { initAtlasTab } from './atlasMap';
 import { keybindsFromInputs, keybindsFromLastBuild } from './keybinds';
 import { initMapPrepTab } from './mapPrep';
+import { initSimulacrumTab } from './simulacrum';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -63,6 +64,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="atlas" class="tab">Атлас</button>
         <button data-tab="mapprep" class="tab">🗺 Карты</button>
+        <button data-tab="simulacrum" class="tab">🌀 Simulacrum</button>
         <button data-tab="map" class="tab">Карта</button>
         <button data-tab="hideout" class="tab">Хайдоуты</button>
         <button data-tab="ai" class="tab">AI-чат</button>
@@ -203,6 +205,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-mapprep" class="primary">Вердикт</button>
         </div>
         <div id="out-mapprep" class="out"></div>
+      </section>
+
+      <section id="pane-simulacrum" class="pane">
+        <h2>🌀 Simulacrum <small>Delirium 0.5.x · доступ · волны · боссы · лут</small></h2>
+        <p class="hint">Энциклопедия + гайд: цепочка доступа (Mirror → Grand Mirror → Fog Bank → Simulacrum → Tang'Mazu), 7 волн и выбор шардов, телеграфы боссов, дроп-таблица с честной экономикой, атлас-ноды Delirium и чек-лист готовности. Гайд офлайн; спорные факты помечены «unverified» — патч GGG может поменять цифры.</p>
+        <div id="out-simulacrum" class="out"></div>
       </section>
 
       <section id="pane-map" class="pane">
@@ -354,6 +362,7 @@ document.querySelector('#btn-hideout-md')!.addEventListener('click', () => copyH
 initHideoutTab();
 initAtlasTab();
 initMapPrepTab();
+initSimulacrumTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
