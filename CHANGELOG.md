@@ -3,6 +3,27 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.27] - 2026-10-09
+
+Релиз объединяет волны №225–№227 (keybind-хвосты) и №234–№236 (новая фича «Map Prep Assistant» — советчик подготовки к картам). УТП фичи: офлайн-вердикт «этот waystone под ТВОИ резисты/EHP — качай/переролль», конкурентный контраст с Sidekick (regex без персонального совета) и poe2ref (без персонализации).
+
+### Added
+- **Map Prep Assistant №234–№236** (SPEC docs/SPEC_MAP_PREP.md):
+  - Датасеты Этапа 1: data/game/maps/maps.json (135 waystone-карт из PoB2 WorldAreas.lua, MIT: пулы трэш-монстров per-map + боссы + 6 биом-групп) и waystone_mods.json (74 группы модов × 3 ступени); экстрактор scripts/build_map_prep_data.mjs (идемпотентный, локальный PoB2-клон, rev в _meta). Отклонения от SPEC честно зафиксированы: 135 карт (не ≥140), 3 ступени (не 4), area_level=65 базовый (тиры через endgame.waystoneAreaLevel).
+  - **core.mapPrep** (mapThreat / mapPrepChecklist / mapPrepAdvice / requiredChaosRes): матчинг live-строк модов (canon: «-(7-8)%» == «minus (5 to 8)%»; построчный матч двухстрочных статов), каталог угроз по stat_text (Exposure → −maxRes, Smothering → recovery, Drought → фляги, resistant → монстр-резисты, элементные веса), вердикт-чеклист на базе ehp.identifyDefenseGaps + enemy-канона (boss +30% elem / pinnacle +50%); честная verified/unverified-дисциплина (пороги chaos — maxroll, помечены).
+  - **MCP-тул №62 poe2_map_prep** (map / mods[] / tier / pob либо defensiveStats → threat + checks + advice-markdown; structured output; без билда — честная пометка, не пустые fail-чеки).
+  - **Web-вкладка «🗺 Карты»** (поиск по 135 картам, тир T1–T16, вставка модов камня, вердикт по импортированному билду или ручным резистам, severity-бары, unverified-пометки видимы).
+  - **Overlay**: блок «Вердикт карты» в панели «🗺 Эндгейм» (логика — только core, ноль дублирования; IPC mapprep:check).
+  - e2e scripts/e2e-map-prep.mjs (13/13 живой CDP: datalist-135, exposure-матчинг, T12→76, консоль 0) + smoke tests/smoke/smoke_n236_map_prep.mjs (10/10).
+- №225: профиль-ссылки poe.ninja через живой model API GET /poe2/api/profile/characters/{enc-acc}/{league}/{enc-char}/model/{v} (JSON charModel.pathOfBuildingExport); profileCharacterModelUrl() + fetchProfileCharacterCode() с percent-encode сегментов; чинит importBuild/char-sync оверлея.
+- №226: KeybindAdvice.triggered — блок «бинд НЕ нужен» для Cast-on-X-сетапов (Ice Nova ← Cast on Block, Comet ← Cast on Critical и т.д.); data-driven отсев PoE2-саппортов по skillTypes; метки срабатывания по событию.
+- №227: переработка SVG-схемы геймпада по численному аудиту геометрии (симметрия корпуса, D-pad/стик без пересечений, wrapLabel 1–2 строки + title-tooltip, единая нотация face-кнопок).
+
+### Fixed
+- mapPrep: дубли чеков резистов (identifyDefenseGaps повторял резист-гэпы, покрытые Exposure-скорректированными) — резист-гэпы отфильтрованы из мержа.
+- mapPrep: extractNumbers больше не глотает внутренний дефис диапазона «(7-8)» как знак минуса — диапазоны в скобках всегда положительные; value приоритизирует живой ролл вставки над ступенью датасета.
+- overlay emitted-JS: regex-сплит в шаблонной строке эмитил живой перевод строки вместо последовательности backslash-n → SyntaxError в рендерере (грабли №174 повторно); удвоен экранирующий слэш. Урон пойман смоками n113/n196b/smoke_renderer.
+
 ## [1.0.26] - 2026-10-08
 
 Советчик раскладки навыков (SPEC `docs/SPEC_KEYBIND_ADVISOR.md`, №221–223): классификация активных гемов билда PoB и раскладка по слотам геймпада (Xbox/PS, 22 слота с L2-модификатором, эргономика по комментариям GGG) и клавиатуры (LMB/RMB/Q-W-E-R-T, режимы WASD/клик-мув); SVG-схемы контроллеров; «имба-атаки» — авто-определение главной атаки.

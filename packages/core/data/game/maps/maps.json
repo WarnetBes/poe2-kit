@@ -1,0 +1,1939 @@
+{
+  "_meta": {
+    "source": "PathOfBuilding-PoE2 WorldAreas.lua (MIT)",
+    "fetched": "2026-10-09",
+    "local_clone": "_research/path-of-building-poe2",
+    "git_rev": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "git_note": "Fix socket viewer background (#2553) (2026-10-01)",
+    "patch_note": "",
+    "map_count": 135,
+    "biome_tag_names": [
+      "desert",
+      "forest",
+      "grass",
+      "mountain",
+      "swamp",
+      "water"
+    ],
+    "filter": "id Map*, isMap=true, act>=10, level>=65, без MapUberBoss_* (пиннакл-арены → core.bosses) и MapHideout*"
+  },
+  "maps": [
+    {
+      "id": "MapAlpineRidge",
+      "name_en": "Alpine Ridge (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Winged Fiend"
+      ],
+      "boss_varieties": [
+        "Ignatia, the Flame-Sworn",
+        "Gelida, the Frost-Tongue"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapAridPlains",
+      "name_en": "Arid Plains (Map)",
+      "area_level": 65,
+      "biomes": [
+        "desert"
+      ],
+      "monster_varieties": [
+        "Mar Acolyte",
+        "Sand Spirit"
+      ],
+      "boss_varieties": [
+        "Akthi, the Final Sting",
+        "Anundr, the Sandworm"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapArroyo",
+      "name_en": "Arroyo (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Akthi, the Final Sting",
+        "Anundr, the Sandworm"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapAugury",
+      "name_en": "Augury (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Constricted Spitter",
+        "Slitherspitter"
+      ],
+      "boss_varieties": [
+        "Gressor-Kul, the Apex"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapAzmerianRanges",
+      "name_en": "Azmerian Ranges (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Elephant Tortoise",
+        "Stoneback Rhoa"
+      ],
+      "boss_varieties": [
+        "Morwyn, the Kinslayer"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBackwash",
+      "name_en": "Backwash (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Filthy Crone",
+        "Filthy First-born",
+        "Filthy Lobber",
+        "Flathead Clubber",
+        "Flathead Warrior",
+        "Foul Blacksmith",
+        "Foul Mauler",
+        "Foul Sage",
+        "Pyromushroom Cultivator"
+      ],
+      "boss_varieties": [
+        "Yaota, the Loathsome"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBastille",
+      "name_en": "Bastille (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Decrepit Mercenary",
+        "Iron Guard"
+      ],
+      "boss_varieties": [
+        "Veynar, the Frostbane"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBazaar",
+      "name_en": "Bazaar (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Chaotic Zealot",
+        "Vaal Goliath",
+        "Vaal Overseer"
+      ],
+      "boss_varieties": [
+        "Viper Napuatzi"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBloodwood",
+      "name_en": "Bloodwood (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Blood Collector",
+        "Blood Cretin",
+        "Courtesan"
+      ],
+      "boss_varieties": [
+        "Gorian, the Moving Earth"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBloomingField",
+      "name_en": "Blooming Field (Map)",
+      "area_level": 65,
+      "biomes": [
+        "grass"
+      ],
+      "monster_varieties": [
+        "Bloom Serpent"
+      ],
+      "boss_varieties": [
+        "The Black Crow"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBluff",
+      "name_en": "Bluff (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Constricted Spitter",
+        "Entrailhome Shambler",
+        "Slitherspitter"
+      ],
+      "boss_varieties": [
+        "Gressor-Kul, the Apex"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapBurialBog",
+      "name_en": "Burial Bog (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bogfelled Commoner",
+        "Bogfelled Slave",
+        "Dredge Fiend"
+      ],
+      "boss_varieties": [
+        "Grudgelash, Vile Thorn"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCaldera",
+      "name_en": "Caldera (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Feral Kin",
+        "Shaman Kin",
+        "Skulltop Kin",
+        "Spearbearer Kin",
+        "Tallwalker Kin",
+        "Torchbearer Kin",
+        "Tuskbearer Kin",
+        "Wardrum Kin"
+      ],
+      "boss_varieties": [
+        "The Ravenous Fang"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCanyon",
+      "name_en": "Canyon (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [
+        "Maraketh Undead",
+        "Risen Tale-woman"
+      ],
+      "boss_varieties": [
+        "Morvak, the Infernal"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCavernCity",
+      "name_en": "Sacred Reservoir (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Faridun Bladedancer",
+        "Faridun Butcher",
+        "Faridun Fledgling",
+        "Faridun Heavy Infantry",
+        "Faridun Infantry",
+        "Faridun Javelineer",
+        "Faridun Neophyte",
+        "Faridun Spearman",
+        "Faridun Swordsman",
+        "Faridun Wind-slicer"
+      ],
+      "boss_varieties": [
+        "Zahmir, the Blade Sovereign"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCenotes",
+      "name_en": "Cenotes (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bogfelled Commoner",
+        "Bogfelled Slave",
+        "Rotting Hulk",
+        "Swamp Golem"
+      ],
+      "boss_varieties": [
+        "Bahlak, the Sky Seer"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapChannel",
+      "name_en": "Channel (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Mar Acolyte",
+        "Sand Spirit"
+      ],
+      "boss_varieties": [
+        "Hask, the Fallen Son"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapChasm",
+      "name_en": "Chasm (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Diamora, Song of Death"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCliffside",
+      "name_en": "Cliffside (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Faithful Archer",
+        "Faithful Warrior",
+        "Righteous Axewielder",
+        "Twilight Order Oathsworn",
+        "Twilight Order Officer",
+        "Twilight Order Priest",
+        "Twilight Order Soldier"
+      ],
+      "boss_varieties": [
+        "Brakkus, the Juggernaut"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCreek",
+      "name_en": "Creek (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "River Drake"
+      ],
+      "boss_varieties": [
+        "Tierney, the Hateful"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCrimsonShores",
+      "name_en": "Crimson Shores (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Brimstone Crab"
+      ],
+      "boss_varieties": [
+        "Volkhar, the Emberborn"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapCrypt",
+      "name_en": "Crypt (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Knight-Gaunt",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "Meltwax, Mockery of Faith"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapDecay",
+      "name_en": "Decay (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Fungal Artillery",
+        "Fungal Proliferator",
+        "Fungal Zombie"
+      ],
+      "boss_varieties": [
+        "The Fungus Behemoth"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapDeforestation",
+      "name_en": "Deforestation (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Cultist Archer",
+        "Cultist Brute",
+        "Cultist Warrior",
+        "Cultist Witch"
+      ],
+      "boss_varieties": [
+        "Morwyn, the Kinslayer"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapDerelictMansion",
+      "name_en": "Derelict Mansion (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Tendril Sentinel"
+      ],
+      "boss_varieties": [
+        "Varloch, the Ashen Lord",
+        "Avelyne, the Withered Rose"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapDeserted",
+      "name_en": "Deserted (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Desiccated Lich",
+        "Living Sand"
+      ],
+      "boss_varieties": [
+        "Lord of the Pit"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapEpitaph",
+      "name_en": "Epitaph (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Dread Servant",
+        "Eternal Knight",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "Saphira, The Dread Consort"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapExcavation",
+      "name_en": "Digsite (Map)",
+      "area_level": 65,
+      "biomes": [
+        "grass"
+      ],
+      "monster_varieties": [
+        "Zealous Courser",
+        "Zealous Excavator",
+        "Zealous Guard",
+        "Zealous Pillarcrusher",
+        "Zealous Shockwarden"
+      ],
+      "boss_varieties": [
+        "Aurelian, the Grand Adjudicator"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapFlotsam",
+      "name_en": "Flotsam (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bloated Anchorman",
+        "Drowned Bearer",
+        "Drowned Explorer",
+        "Rotting Cannoneer",
+        "Rotting Demolitionist",
+        "Rotting Soulcatcher"
+      ],
+      "boss_varieties": [
+        "Malgor, the Nautilord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapForge",
+      "name_en": "Forge (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Goliath"
+      ],
+      "boss_varieties": [
+        "Vastweld, the Colossal Guardian"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapFortress",
+      "name_en": "Fortress (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Vaal Skeletal Priest",
+        "Vaal Skeletal Squire"
+      ],
+      "boss_varieties": [
+        "Pirasha, the Forgotten Prisoner"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapFrozenFalls",
+      "name_en": "Frozen Falls (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bulbous Maw",
+        "Pale Abductor",
+        "Pale Brinesplitter",
+        "Pale Tidecrasher",
+        "Pale Waterwalker"
+      ],
+      "boss_varieties": [
+        "Thraeven, Wing of Winter"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapGeode",
+      "name_en": "Geode (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Rattlecage, the Earthbreaker"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapGreenhouse",
+      "name_en": "Greenhouse (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest",
+        "swamp"
+      ],
+      "monster_varieties": [
+        "Vaal Skeletal Priest",
+        "Vaal Skeletal Squire"
+      ],
+      "boss_varieties": [
+        "Rootgrasp, the Hateful Forest"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapGrimhaven",
+      "name_en": "Grimhaven (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Decrepit Mercenary",
+        "Iron Thaumaturgist"
+      ],
+      "boss_varieties": [
+        "Saphira, The Dread Consort"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapHeadland",
+      "name_en": "Headland (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Pale-stitched Stalker"
+      ],
+      "boss_varieties": [
+        "Hask, the Fallen Son"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapHiddenGrotto",
+      "name_en": "Hidden Grotto (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Quake Golem",
+        "Skitter Golem"
+      ],
+      "boss_varieties": [
+        "Zar Wali, the Bone Tyrant"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapHive",
+      "name_en": "Hive (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Plague Nymph"
+      ],
+      "boss_varieties": [
+        "The Fungus Behemoth"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapIceCave",
+      "name_en": "Ice Cave (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [
+        "Quill Crab",
+        "Spiked Scuttler"
+      ],
+      "boss_varieties": [
+        "The Frostborn Fiend"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapInferno",
+      "name_en": "Inferno (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Burning Dead"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapKarst",
+      "name_en": "Karst (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapLoftySummit",
+      "name_en": "Lofty Summit (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Frost Wraith",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "Oloton, the Remorseless"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapLostTowers",
+      "name_en": "Lost Towers (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Blood Priest",
+        "Blood Priestess",
+        "Blood Zealot",
+        "Vaal Formshifter"
+      ],
+      "boss_varieties": [
+        "Chetza, the Feathered Plague"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMarrow",
+      "name_en": "Marrow (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Mar Acolyte",
+        "Risen Arbalest",
+        "Risen Maraketh"
+      ],
+      "boss_varieties": [
+        "Zar Wali, the Bone Tyrant"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMesa",
+      "name_en": "Mesa (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Hyena Demon",
+        "Sun Clan Scavenger"
+      ],
+      "boss_varieties": [
+        "Karash, The Dune Dweller"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMezzanine",
+      "name_en": "Mezzanine (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapMineshaft",
+      "name_en": "Mineshaft (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Forsaken Miner"
+      ],
+      "boss_varieties": [
+        "Vorrik, The Infernal Engineer"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMire",
+      "name_en": "Mire (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Cultist Archer",
+        "Cultist Daggerdancer"
+      ],
+      "boss_varieties": [
+        "Riona, Winter's Cackle"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMonument",
+      "name_en": "The Monument (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapMortuary",
+      "name_en": "Mortuary (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bladelash Transcendent",
+        "Brutal Transcendent",
+        "Surgical Experimentalist",
+        "Warrior Transcendent"
+      ],
+      "boss_varieties": [
+        "Micata, the Remade"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMothersoul_Female",
+      "name_en": "The Matriarch Halls (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Black Strider",
+        "Precursor Driller",
+        "Precursor Fabricator",
+        "Precursor Refractor",
+        "Precursor Spherator",
+        "Tombshrieker"
+      ],
+      "boss_varieties": [
+        "Phya, Sentinel of the Cradle"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMothersoul_Female_Quest",
+      "name_en": "The Matriarch Halls (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Phya, Sentinel of the Cradle"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMothersoul_Male",
+      "name_en": "The Patriarch Halls (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Black Strider",
+        "Precursor Driller",
+        "Precursor Fabricator",
+        "Precursor Refractor",
+        "Precursor Spherator",
+        "Tombshrieker"
+      ],
+      "boss_varieties": [
+        "Phyx, Sentinel of the Spark"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapMothersoul_Male_Quest",
+      "name_en": "The Patriarch Halls (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Phyx, Sentinel of the Spark"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapNecropolis",
+      "name_en": "Necropolis (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Death Knight",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "Tycho, the Black Praetor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapOasis",
+      "name_en": "Oasis (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Faridun Heavy Infantry",
+        "Faridun Neophyte",
+        "Faridun Spearman",
+        "Faridun Swordsman"
+      ],
+      "boss_varieties": [
+        "Ishtaroth, the Perennial"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapOrbalasCrossing",
+      "name_en": "Orbala's Crossing (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Serath, the Scaled One"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapOrnateChambers",
+      "name_en": "Ornate Chambers (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [
+        "Serpent Clan",
+        "Serpent Shaman"
+      ],
+      "boss_varieties": [
+        "Serath, the Scaled One"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapOutlands",
+      "name_en": "Outlands (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Faridun Heavy Infantry",
+        "Faridun Neophyte",
+        "Faridun Spearman",
+        "Faridun Swordsman"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapOvergrown",
+      "name_en": "Overgrown (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Constricted Shambler",
+        "Constricted Spitter",
+        "Entwined Hulk",
+        "Scorpion Monkey",
+        "Snakethroat Shambler"
+      ],
+      "boss_varieties": [
+        "Tetzcatl, the Blazing Guardian"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPenitentiary",
+      "name_en": "Penitentiary (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Gilded Cobra",
+        "Lost-men Zealot"
+      ],
+      "boss_varieties": [
+        "Incarnation of Death"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPit",
+      "name_en": "Pit (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Faridun Crawler"
+      ],
+      "boss_varieties": [
+        "Brakkus, the Juggernaut"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPlantation",
+      "name_en": "Plantation (Map)",
+      "area_level": 65,
+      "biomes": [
+        "grass"
+      ],
+      "monster_varieties": [
+        "Risen Farmhand",
+        "Scarecrow Beast"
+      ],
+      "boss_varieties": [
+        "Varloch, the Ashen Lord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPort",
+      "name_en": "Port (Map)",
+      "area_level": 65,
+      "biomes": [
+        "grass",
+        "water"
+      ],
+      "monster_varieties": [
+        "Drowned Explorer",
+        "Rotting Cannoneer"
+      ],
+      "boss_varieties": [
+        "Malgor, the Nautilord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecipice",
+      "name_en": "Precipice (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Morvak, the Infernal"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTower",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTowerDesert",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTowerForest",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTowerGrass",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTowerMountain",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapPrecursorTowerSwamp",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Precursor Displacer",
+        "Precursor Extractor"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRavine",
+      "name_en": "Ravine (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Constricted Spitter",
+        "Snakethroat Shambler"
+      ],
+      "boss_varieties": [
+        "Tetzcatl, the Blazing Guardian"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRazedFields",
+      "name_en": "Razed Fields (Map)",
+      "area_level": 65,
+      "biomes": [
+        "grass"
+      ],
+      "monster_varieties": [
+        "Decrepit Mercenary"
+      ],
+      "boss_varieties": [
+        "Elvara, the Savage Flame",
+        "Rael, the Frost Hand"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapReservoir",
+      "name_en": "Reservoir (Map)",
+      "area_level": 65,
+      "biomes": [
+        "swamp",
+        "forest"
+      ],
+      "monster_varieties": [
+        "Azak Fleshstabber",
+        "Azak Mauler",
+        "Azak Spearthrower",
+        "Azak Stalker",
+        "Azak Throatcutter"
+      ],
+      "boss_varieties": [
+        "Grudgelash, Vile Thorn"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRiverhold",
+      "name_en": "Riverhold (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Rabid Dog"
+      ],
+      "boss_varieties": [
+        "Thariel, the Umbral Wraith"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRiverside",
+      "name_en": "Riverside (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Quadrilla",
+        "Scorpion Monkey"
+      ],
+      "boss_varieties": [
+        "Zekoa, the Headcrusher"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRockpools",
+      "name_en": "Rockpools (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Constricted Shambler",
+        "Constricted Spitter",
+        "Snakethroat Shambler"
+      ],
+      "boss_varieties": [
+        "Brughor, the Insatiable"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRugosa",
+      "name_en": "Rugosa (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Giant Maw",
+        "Skittering Jellycrab"
+      ],
+      "boss_varieties": [
+        "Syvora, Daughter of the Deep"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRupture",
+      "name_en": "Rupture (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Quadrilla",
+        "Scorpion Monkey"
+      ],
+      "boss_varieties": [
+        "Zekoa, the Headcrusher"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapRustbowl",
+      "name_en": "Rustbowl (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Ancient Ezomyte",
+        "Risen Arbalest"
+      ],
+      "boss_varieties": [
+        "Gozen, Rebellious Rustlord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSanctuary",
+      "name_en": "Sanctuary (Map)",
+      "area_level": 65,
+      "biomes": [
+        "desert"
+      ],
+      "monster_varieties": [
+        "Faridun Heavy Infantry",
+        "Faridun Neophyte",
+        "Faridun Spearman",
+        "Faridun Swordsman"
+      ],
+      "boss_varieties": [
+        "Pirasha, the Forgotten Prisoner"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSandspit",
+      "name_en": "Sandspit (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Venomous Crab",
+        "Venomous Crab Matriarch"
+      ],
+      "boss_varieties": [
+        "The Sandstrider"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSavanna",
+      "name_en": "Savannah (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Hyena Demon",
+        "Sun Clan Scavenger"
+      ],
+      "boss_varieties": [
+        "Caedron, the Hyena Lord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSeepage",
+      "name_en": "Seepage (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Fungal Artillery",
+        "Fungal Proliferator",
+        "Fungal Rattler"
+      ],
+      "boss_varieties": [
+        "The Fungus Behemoth"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSevenWaters",
+      "name_en": "Confluence (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Rasp Scavenger",
+        "Vile Vulture"
+      ],
+      "boss_varieties": [
+        "Manassa, the Serpent Queen"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSinkhole",
+      "name_en": "Sinkhole (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Ancestral Archer",
+        "Ancestral Channeler",
+        "Ancestral Guardian",
+        "Ancestral Headtaker",
+        "Ancestral Hornbearer",
+        "Ancestral Warrior",
+        "Guardian Lizard",
+        "Guardian Turtle"
+      ],
+      "boss_varieties": [
+        "Yama The White"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSinterRift",
+      "name_en": "Sinter Rift (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Quake Golem",
+        "Skitter Golem"
+      ],
+      "boss_varieties": [
+        "Brughor, the Insatiable"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSlash",
+      "name_en": "Slash (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Cultivated Grove",
+        "Skeleton Spriggan"
+      ],
+      "boss_varieties": [
+        "The Black Crow"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSlick",
+      "name_en": "Slick (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Undead Vaal Guard"
+      ],
+      "boss_varieties": [
+        "Vorrik, The Infernal Engineer"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSnowfall",
+      "name_en": "Snowfall (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [
+        "Twilight Order Officer",
+        "Twilight Order Soldier"
+      ],
+      "boss_varieties": [
+        "Thariel, the Umbral Wraith"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSpiderWoods",
+      "name_en": "Spider Woods (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Black Strider",
+        "Vault Lurker"
+      ],
+      "boss_varieties": [
+        "Rootgrasp, the Hateful Forest"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSpring_",
+      "name_en": "Spring (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Adorned Beetle",
+        "Adorned Scarab"
+      ],
+      "boss_varieties": [
+        "Manassa, the Serpent Queen"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSteamingSprings",
+      "name_en": "Steaming Springs (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bramble Rhoa"
+      ],
+      "boss_varieties": [
+        "Manassa, the Serpent Queen"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSteppe",
+      "name_en": "Steppe (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Diretusk Boar"
+      ],
+      "boss_varieties": [
+        "Gozen, Rebellious Rustlord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapStronghold",
+      "name_en": "Stronghold (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Rattling Gibbet",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "The Shackled Horror"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSulphuricCaverns",
+      "name_en": "Sulphuric Caverns (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Orok Fleshstabber",
+        "Orok Hunter",
+        "Orok Shaman",
+        "Orok Throatcutter"
+      ],
+      "boss_varieties": [
+        "The Bone Colossus",
+        "Lord of the Pit"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSump",
+      "name_en": "Sump (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Diretusk Boar",
+        "Ill-fated Explorer"
+      ],
+      "boss_varieties": [
+        "Brakka, the Withered Crone"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSunTemple",
+      "name_en": "Sun Temple (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bloodrite Guard",
+        "Bloodrite Priest",
+        "Priest of the Sun"
+      ],
+      "boss_varieties": [
+        "Tonqui, Seer of the Sun"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSwampTower",
+      "name_en": "Sinking Spire (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Filthy Crone",
+        "Flathead Clubber",
+        "Hunchback Clubber"
+      ],
+      "boss_varieties": [
+        "Stormgore, the Guardian"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapSwarm",
+      "name_en": "Swarm (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Volkhar, the Emberborn"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapTerrace",
+      "name_en": "Terrace (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [
+        "Benedictus, First Herald of Utopia"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapTrenches",
+      "name_en": "Trenches (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Gargantuan Wasp",
+        "Swarming Wasp"
+      ],
+      "boss_varieties": [
+        "Gorian, the Moving Earth"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueCastaway",
+      "name_en": "Castaway (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bloated Anchorman",
+        "Drowned Bearer",
+        "Drowned Crawler",
+        "Drowned Explorer",
+        "Gull Shrike",
+        "Man o' War",
+        "Rotting Cannoneer",
+        "Rotting Demolitionist",
+        "Rotting Soulcatcher",
+        "Searot Harpooner",
+        "Searot Skeleton",
+        "Searot Sniper"
+      ],
+      "boss_varieties": [
+        "Torrek of the Drowned Fleet"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueFreight_",
+      "name_en": "Freight (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueInitialTower",
+      "name_en": "Precursor Tower (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Hyena Demon",
+        "Sun Clan Scavenger"
+      ],
+      "boss_varieties": [
+        "Karash, The Dune Dweller"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueLake",
+      "name_en": "The Fractured Lake (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMegalith",
+      "name_en": "The Ezomyte Megaliths (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Ancient Ezomyte",
+        "Pack Werewolf",
+        "Risen Arbalest",
+        "Skeleton Spriggan",
+        "Vile Hag",
+        "Vile Imp",
+        "Werewolf Prowler"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant01_Chimeral",
+      "name_en": "Merchant's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant01_Oasis",
+      "name_en": "Jado's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant01_Sandswept",
+      "name_en": "Merchant's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant02_Crimson",
+      "name_en": "Merchant's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant02_Farmland",
+      "name_en": "Merchant's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant03_Beach",
+      "name_en": "Moment of Zen (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant03_Raft",
+      "name_en": "Moment of Zen (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant03_Tropical",
+      "name_en": "Moment of Zen (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueMerchant04_PirateShip",
+      "name_en": "The Voyage (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueReactor_01",
+      "name_en": "Western Gateway (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Black Strider",
+        "Precursor Driller",
+        "Precursor Fabricator",
+        "Precursor Refractor",
+        "Precursor Spherator",
+        "Tombshrieker"
+      ],
+      "boss_varieties": [
+        "Precursor Separator"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueReactor_02",
+      "name_en": "Ancient Gateway (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Black Strider",
+        "Precursor Driller",
+        "Precursor Fabricator",
+        "Precursor Refractor",
+        "Precursor Spherator",
+        "Tombshrieker"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueReactor_03",
+      "name_en": "Eastern Gateway (Map)",
+      "area_level": 65,
+      "biomes": [
+        "forest"
+      ],
+      "monster_varieties": [
+        "Black Strider",
+        "Precursor Driller",
+        "Precursor Fabricator",
+        "Precursor Refractor",
+        "Precursor Spherator",
+        "Tombshrieker"
+      ],
+      "boss_varieties": [
+        "Precursor Refiner"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueReactor_04",
+      "name_en": "Site of the Chosen (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueSelenite",
+      "name_en": "The Silent Cave (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueUntaintedParadise",
+      "name_en": "Untainted Paradise (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Bramble Ape",
+        "Bramble Burrower",
+        "Bramble Hulk",
+        "Bramble Rhoa",
+        "Caustic Crab",
+        "Quill Crab"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueVault",
+      "name_en": "Vaults of Kamasa (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapUniqueWildwood",
+      "name_en": "The Viridian Wildwood (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Cultist Archer",
+        "Cultist Brute",
+        "Cultist Daggerdancer",
+        "Cultist Warrior",
+        "Cultist Witch",
+        "Forgotten Stag",
+        "Nameless Burrower",
+        "Nameless Dweller",
+        "Nameless Horror",
+        "Nameless Hulk",
+        "Nameless Lurker",
+        "Nameless Vermin",
+        "Treant Foulspawn",
+        "Treant Fungalreaver",
+        "Treant Hookhorror",
+        "Treant Mystic",
+        "Treant Sage",
+        "Treant Spriggan"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapVaalCity",
+      "name_en": "Vaal City (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Viper Legionnaire"
+      ],
+      "boss_varieties": [
+        "Viper Napuatzi"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapVaalFactory",
+      "name_en": "The Assembly (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Rusted Dyna Golem"
+      ],
+      "boss_varieties": [
+        "Tetzcatl, the Blazing Guardian"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapVaalFoundry",
+      "name_en": "Molten Vault (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Gold-Melted Sentinel",
+        "Gold-Melted Shambler",
+        "Gold-melted Blacksmith"
+      ],
+      "boss_varieties": [
+        "Gulzal, the Living Furnace "
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapVaalVault",
+      "name_en": "Sealed Vault (Map)",
+      "area_level": 65,
+      "biomes": [
+        "mountain"
+      ],
+      "monster_varieties": [
+        "Blood Priest",
+        "Blood Priestess",
+        "Blood Zealot",
+        "Vaal Formshifter"
+      ],
+      "boss_varieties": [
+        "Ytzara, Blood Oracle",
+        "Maztli, Flesh-Shaper"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapVaalVillage",
+      "name_en": "Vaal Village (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Vaal Goliath"
+      ],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapVoidReliquary",
+      "name_en": "The Reliquary Vault (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    },
+    {
+      "id": "MapWaywardIsle",
+      "name_en": "Wayward Isle (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Gilded Cobra",
+        "Lost-men Necromancer",
+        "Lost-men Zealot",
+        "Ribrattle",
+        "Skullslinger",
+        "Spinesnatcher"
+      ],
+      "boss_varieties": [
+        "Lord of the Pit"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapWetlands",
+      "name_en": "Wetlands (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Hyena Demon",
+        "Sun Clan Scavenger"
+      ],
+      "boss_varieties": [
+        "Caedron, the Hyena Lord"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapWillow",
+      "name_en": "Willow (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Lightning Wraith",
+        "Risen Rattler"
+      ],
+      "boss_varieties": [
+        "Connal, the Tormented"
+      ],
+      "verified": true
+    },
+    {
+      "id": "MapWoodland",
+      "name_en": "Woodland (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [
+        "Antlion Charger",
+        "Ill-fated Explorer"
+      ],
+      "boss_varieties": [
+        "Murtagh, the Engorged",
+        "Colm, the Rancorous"
+      ],
+      "verified": true
+    },
+    {
+      "id": "Map_HildaCampsite",
+      "name_en": "Hilda's Campsite (Map)",
+      "area_level": 65,
+      "biomes": [],
+      "monster_varieties": [],
+      "boss_varieties": [],
+      "verified": true
+    }
+  ]
+}

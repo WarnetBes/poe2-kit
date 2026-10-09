@@ -1,0 +1,1367 @@
+{
+  "_meta": {
+    "source": "PathOfBuilding-PoE2 ModMap.lua (MIT; собран вручную самим PoB2 — конфиг map-модов PoB2, not PoE1)",
+    "fetched": "2026-10-09",
+    "local_clone": "_research/path-of-building-poe2",
+    "git_rev": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "git_note": "Fix socket viewer background (#2553) (2026-10-01)",
+    "patch_note": "",
+    "group_count": 74,
+    "prefix_count": 43,
+    "suffix_count": 31,
+    "render_warnings": 0
+  },
+  "mods": [
+    {
+      "id": "armoured",
+      "kind": "prefix",
+      "name_en": "Armoured",
+      "config_label_en": "Enemy Physical Damage reduction:",
+      "tiers": [
+        {
+          "stat_text_en": "+20% Monster Physical Damage Reduction",
+          "values": 20
+        },
+        {
+          "stat_text_en": "+30% Monster Physical Damage Reduction",
+          "values": 30
+        },
+        {
+          "stat_text_en": "+40% Monster Physical Damage Reduction",
+          "values": 40
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "hexproof",
+      "kind": "prefix",
+      "name_en": "Hexproof",
+      "config_label_en": "Enemy is Hexproof?",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters are Hexproof"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "hexwarded",
+      "kind": "prefix",
+      "name_en": "Hexwarded",
+      "config_label_en": "Less effect of Curses on enemy:",
+      "tiers": [
+        {
+          "stat_text_en": "25% less effect of Curses on Monsters",
+          "values": 25
+        },
+        {
+          "stat_text_en": "40% less effect of Curses on Monsters",
+          "values": 40
+        },
+        {
+          "stat_text_en": "60% less effect of Curses on Monsters",
+          "values": 60
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "resistant",
+      "kind": "prefix",
+      "name_en": "Resistant",
+      "config_label_en": "Enemy has Elemental / ^xD02090Chaos ^7Resist:",
+      "tiers": [
+        {
+          "stat_text_en": "+20% Monster Elemental Resistances\n+15% Monster Chaos Resistance",
+          "values": [
+            20,
+            15
+          ]
+        },
+        {
+          "stat_text_en": "+30% Monster Elemental Resistances\n+20% Monster Chaos Resistance",
+          "values": [
+            30,
+            20
+          ]
+        },
+        {
+          "stat_text_en": "+40% Monster Elemental Resistances\n+25% Monster Chaos Resistance",
+          "values": [
+            40,
+            25
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "unwavering",
+      "kind": "prefix",
+      "name_en": "Unwavering",
+      "tiers": [
+        {
+          "stat_text_en": "(15 to 19)% more Monster Life\nMonsters cannot be Stunned",
+          "values": [
+            [
+              15,
+              19
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "(20 to 24)% more Monster Life\nMonsters cannot be Stunned",
+          "values": [
+            [
+              20,
+              24
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "(25 to 30)% more Monster Life\nMonsters cannot be Stunned",
+          "values": [
+            [
+              25,
+              30
+            ]
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "fecund",
+      "kind": "prefix",
+      "name_en": "Fecund",
+      "tiers": [
+        {
+          "stat_text_en": "(20 to 29)% more Monster Life",
+          "values": [
+            20,
+            29
+          ]
+        },
+        {
+          "stat_text_en": "(30 to 39)% more Monster Life",
+          "values": [
+            30,
+            39
+          ]
+        },
+        {
+          "stat_text_en": "(40 to 49)% more Monster Life",
+          "values": [
+            40,
+            49
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "unstoppable",
+      "kind": "prefix",
+      "name_en": "Unstoppable",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters cannot be Taunted\nMonsters' Action Speed cannot be modified to below Base Value\nMonsters' Movement Speed cannot be modified to below Base Value",
+          "values": [
+            0
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "impervious",
+      "kind": "prefix",
+      "name_en": "Impervious",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have a 20% chance to avoid Poison, Impale, and Bleeding",
+          "values": 20
+        },
+        {
+          "stat_text_en": "Monsters have a 35% chance to avoid Poison, Impale, and Bleeding",
+          "values": 35
+        },
+        {
+          "stat_text_en": "Monsters have a 50% chance to avoid Poison, Impale, and Bleeding",
+          "values": 50
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "oppressive",
+      "kind": "prefix",
+      "name_en": "Oppressive",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have +30% chance to Suppress Spell Damage",
+          "values": 30
+        },
+        {
+          "stat_text_en": "Monsters have +45% chance to Suppress Spell Damage",
+          "values": 45
+        },
+        {
+          "stat_text_en": "Monsters have +60% chance to Suppress Spell Damage",
+          "values": 60
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "buffered",
+      "kind": "prefix",
+      "name_en": "Buffered",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters gain (20 to 29)% of Maximum Life as Extra Maximum Energy Shield",
+          "values": [
+            20,
+            29
+          ]
+        },
+        {
+          "stat_text_en": "Monsters gain (30 to 39)% of Maximum Life as Extra Maximum Energy Shield",
+          "values": [
+            30,
+            39
+          ]
+        },
+        {
+          "stat_text_en": "Monsters gain (40 to 49)% of Maximum Life as Extra Maximum Energy Shield",
+          "values": [
+            40,
+            49
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "titans",
+      "kind": "prefix",
+      "name_en": "Titan's",
+      "tiers": [
+        {
+          "stat_text_en": "Unique Boss has 25% increased Life\nUnique Boss has 45% increased Area of Effect",
+          "values": [
+            25,
+            45
+          ]
+        },
+        {
+          "stat_text_en": "Unique Boss has 30% increased Life\nUnique Boss has 55% increased Area of Effect",
+          "values": [
+            30,
+            55
+          ]
+        },
+        {
+          "stat_text_en": "Unique Boss has 35% increased Life\nUnique Boss has 70% increased Area of Effect",
+          "values": [
+            35,
+            70
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "savage",
+      "kind": "prefix",
+      "name_en": "Savage",
+      "tiers": [
+        {
+          "stat_text_en": "(14 to 17)% increased Monster Damage",
+          "values": [
+            14,
+            17
+          ]
+        },
+        {
+          "stat_text_en": "(18 to 21)% increased Monster Damage",
+          "values": [
+            18,
+            21
+          ]
+        },
+        {
+          "stat_text_en": "(22 to 25)% increased Monster Damage",
+          "values": [
+            22,
+            25
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "burning",
+      "kind": "prefix",
+      "name_en": "Burning",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters deal (50 to 69)% extra Physical Damage as Fire",
+          "values": [
+            50,
+            69
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (70 to 89)% extra Physical Damage as Fire",
+          "values": [
+            70,
+            89
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (90 to 110)% extra Physical Damage as Fire",
+          "values": [
+            90,
+            110
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "freezing",
+      "kind": "prefix",
+      "name_en": "Freezing",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters deal (50 to 69)% extra Physical Damage as Cold",
+          "values": [
+            50,
+            69
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (70 to 89)% extra Physical Damage as Cold",
+          "values": [
+            70,
+            89
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (90 to 110)% extra Physical Damage as Cold",
+          "values": [
+            90,
+            110
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "shocking",
+      "kind": "prefix",
+      "name_en": "Shocking",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters deal (50 to 69)% extra Physical Damage as Lightning",
+          "values": [
+            50,
+            69
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (70 to 89)% extra Physical Damage as Lightning",
+          "values": [
+            70,
+            89
+          ]
+        },
+        {
+          "stat_text_en": "Monsters deal (90 to 110)% extra Physical Damage as Lightning",
+          "values": [
+            90,
+            110
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "profane",
+      "kind": "prefix",
+      "name_en": "Profane",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters gain (0 to 0)% of their Physical Damage as Extra Chaos Damage\nMonsters Inflict Withered for 0 seconds on Hit",
+          "values": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "Monsters gain (21 to 25)% of their Physical Damage as Extra Chaos Damage\nMonsters Inflict Withered for 100 seconds on Hit",
+          "values": [
+            [
+              21,
+              25
+            ],
+            [
+              100
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "Monsters gain (31 to 35)% of their Physical Damage as Extra Chaos Damage\nMonsters Inflict Withered for 100 seconds on Hit",
+          "values": [
+            [
+              31,
+              35
+            ],
+            [
+              100
+            ]
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "fleet",
+      "kind": "prefix",
+      "name_en": "Fleet",
+      "tiers": [
+        {
+          "stat_text_en": "(15 to 20)% increased Monster Movement Speed\n(20 to 25)% increased Monster Attack Speed\n(20 to 25)% increased Monster Cast Speed",
+          "values": [
+            [
+              15,
+              20
+            ],
+            [
+              20,
+              25
+            ],
+            [
+              20,
+              25
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "(20 to 25)% increased Monster Movement Speed\n(25 to 35)% increased Monster Attack Speed\n(25 to 35)% increased Monster Cast Speed",
+          "values": [
+            [
+              20,
+              25
+            ],
+            [
+              25,
+              35
+            ],
+            [
+              25,
+              35
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "(25 to 30)% increased Monster Movement Speed\n(35 to 45)% increased Monster Attack Speed\n(35 to 45)% increased Monster Cast Speed",
+          "values": [
+            [
+              25,
+              30
+            ],
+            [
+              35,
+              45
+            ],
+            [
+              35,
+              45
+            ]
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "conflagrating",
+      "kind": "prefix",
+      "name_en": "Conflagrating",
+      "tiers": [
+        {
+          "stat_text_en": "All Monster Damage from Hits always Ignites"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "impaling",
+      "kind": "prefix",
+      "name_en": "Impaling",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters' Attacks have 25% chance to Impale on Hit",
+          "values": 25
+        },
+        {
+          "stat_text_en": "Monsters' Attacks have 40% chance to Impale on Hit",
+          "values": 40
+        },
+        {
+          "stat_text_en": "Monsters' Attacks have 60% chance to Impale on Hit",
+          "values": 60
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "empowered",
+      "kind": "prefix",
+      "name_en": "Empowered",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have a 0% chance to Ignite, Freeze and Shock on Hit",
+          "values": 0
+        },
+        {
+          "stat_text_en": "Monsters have a 15% chance to Ignite, Freeze and Shock on Hit",
+          "values": 15
+        },
+        {
+          "stat_text_en": "Monsters have a 20% chance to Ignite, Freeze and Shock on Hit",
+          "values": 20
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "overlords",
+      "kind": "prefix",
+      "name_en": "Overlord's",
+      "tiers": [
+        {
+          "stat_text_en": "Unique Boss deals 15% increased Damage\nUnique Boss has 20% increased Attack and Cast Speed",
+          "values": [
+            15,
+            20
+          ]
+        },
+        {
+          "stat_text_en": "Unique Boss deals 20% increased Damage\nUnique Boss has 25% increased Attack and Cast Speed",
+          "values": [
+            20,
+            25
+          ]
+        },
+        {
+          "stat_text_en": "Unique Boss deals 25% increased Damage\nUnique Boss has 30% increased Attack and Cast Speed",
+          "values": [
+            25,
+            30
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "punishing",
+      "kind": "prefix",
+      "name_en": "Punishing",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters reflect 13% of Physical Damage",
+          "values": 13
+        },
+        {
+          "stat_text_en": "Monsters reflect 15% of Physical Damage",
+          "values": 15
+        },
+        {
+          "stat_text_en": "Monsters reflect 18% of Physical Damage",
+          "values": 18
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "mirrored",
+      "kind": "prefix",
+      "name_en": "Mirrored",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters reflect 13% of Elemental Damage",
+          "values": 13
+        },
+        {
+          "stat_text_en": "Monsters reflect 15% of Elemental Damage",
+          "values": 15
+        },
+        {
+          "stat_text_en": "Monsters reflect 18% of Elemental Damage",
+          "values": 18
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_balance",
+      "kind": "suffix",
+      "name_en": "of Balance",
+      "config_label_en": "Player has Elemental Equilibrium?",
+      "tiers": [
+        {
+          "stat_text_en": "Players cannot inflict Exposure"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_congealment",
+      "kind": "suffix",
+      "name_en": "of Congealment",
+      "config_label_en": "Cannot Leech ^xE05030Life ^7/ ^x7070FFMana?",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters cannot be Leeched from"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_drought",
+      "kind": "suffix",
+      "name_en": "of Drought",
+      "config_label_en": "Gains reduced Flask Charges:",
+      "tiers": [
+        {
+          "stat_text_en": "Players gain 30% reduced Flask Charges",
+          "values": 30
+        },
+        {
+          "stat_text_en": "Players gain 40% reduced Flask Charges",
+          "values": 40
+        },
+        {
+          "stat_text_en": "Players gain 50% reduced Flask Charges",
+          "values": 50
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_exposure",
+      "kind": "suffix",
+      "name_en": "of Exposure",
+      "config_label_en": "-X% maximum Resistances:",
+      "tiers": [
+        {
+          "stat_text_en": "Players have minus (0 to 0)% to all maximum Resistances",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "stat_text_en": "Players have minus (5 to 8)% to all maximum Resistances",
+          "values": [
+            5,
+            8
+          ]
+        },
+        {
+          "stat_text_en": "Players have minus (9 to 12)% to all maximum Resistances",
+          "values": [
+            9,
+            12
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_impotence",
+      "kind": "suffix",
+      "name_en": "of Impotence",
+      "config_label_en": "Less Area of Effect:",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 15% less Area of Effect",
+          "values": 15
+        },
+        {
+          "stat_text_en": "Players have 20% less Area of Effect",
+          "values": 20
+        },
+        {
+          "stat_text_en": "Players have 25% less Area of Effect",
+          "values": 25
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_insulation",
+      "kind": "suffix",
+      "name_en": "of Insulation",
+      "config_label_en": "Enemy avoid Elemental Ailments:",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have 30% chance to Avoid Elemental Ailments",
+          "values": 30
+        },
+        {
+          "stat_text_en": "Monsters have 50% chance to Avoid Elemental Ailments",
+          "values": 50
+        },
+        {
+          "stat_text_en": "Monsters have 70% chance to Avoid Elemental Ailments",
+          "values": 70
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_miring",
+      "kind": "suffix",
+      "name_en": "of Miring",
+      "config_label_en": "Unlucky Dodge / Enemy has inc. Accuracy:",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have 10% increased Accuracy Rating\nPlayers have minus 30% to amount of Suppressed Spell Damage Prevented",
+          "values": [
+            10,
+            30
+          ]
+        },
+        {
+          "stat_text_en": "Monsters have 15% increased Accuracy Rating\nPlayers have minus 40% to amount of Suppressed Spell Damage Prevented",
+          "values": [
+            15,
+            40
+          ]
+        },
+        {
+          "stat_text_en": "Monsters have 20% increased Accuracy Rating\nPlayers have minus 50% to amount of Suppressed Spell Damage Prevented",
+          "values": [
+            20,
+            50
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_rust",
+      "kind": "suffix",
+      "name_en": "of Rust",
+      "config_label_en": "Reduced Block Chance / less Armour:",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 20% less Armour\nPlayers have 20% reduced Chance to Block",
+          "values": [
+            20,
+            20
+          ]
+        },
+        {
+          "stat_text_en": "Players have 30% less Armour\nPlayers have 25% reduced Chance to Block",
+          "values": [
+            30,
+            25
+          ]
+        },
+        {
+          "stat_text_en": "Players have 40% less Armour\nPlayers have 30% reduced Chance to Block",
+          "values": [
+            40,
+            30
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_smothering",
+      "kind": "suffix",
+      "name_en": "of Smothering",
+      "config_label_en": "Less Recovery Rate of ^xE05030Life ^7and ^x88FFFFEnergy Shield:",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 20% less Recovery Rate of Life and Energy Shield",
+          "values": 20
+        },
+        {
+          "stat_text_en": "Players have 40% less Recovery Rate of Life and Energy Shield",
+          "values": 40
+        },
+        {
+          "stat_text_en": "Players have 60% less Recovery Rate of Life and Energy Shield",
+          "values": 60
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_stasis",
+      "kind": "suffix",
+      "name_en": "of Stasis",
+      "config_label_en": "Cannot Regen ^xE05030Life^7, ^x7070FFMana ^7or ^x88FFFFES?",
+      "tiers": [
+        {
+          "stat_text_en": "Players cannot Regenerate Life, Mana or Energy Shield"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_toughness",
+      "kind": "suffix",
+      "name_en": "of Toughness",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters take (25 to 30)% reduced Extra Damage from Critical Strikes",
+          "values": [
+            25,
+            30
+          ]
+        },
+        {
+          "stat_text_en": "Monsters take (31 to 35)% reduced Extra Damage from Critical Strikes",
+          "values": [
+            31,
+            35
+          ]
+        },
+        {
+          "stat_text_en": "Monsters take (36 to 40)% reduced Extra Damage from Critical Strikes",
+          "values": [
+            36,
+            40
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_fatigue",
+      "kind": "suffix",
+      "name_en": "of Fatigue",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 20% less Cooldown Recovery Rate",
+          "values": 20
+        },
+        {
+          "stat_text_en": "Players have 30% less Cooldown Recovery Rate",
+          "values": 30
+        },
+        {
+          "stat_text_en": "Players have 40% less Cooldown Recovery Rate",
+          "values": 40
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_transience",
+      "kind": "suffix",
+      "name_en": "of Transience",
+      "tiers": [
+        {
+          "stat_text_en": "Buffs on Players expire 30% faster",
+          "values": 30
+        },
+        {
+          "stat_text_en": "Buffs on Players expire 50% faster",
+          "values": 50
+        },
+        {
+          "stat_text_en": "Buffs on Players expire 70% faster",
+          "values": 70
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_doubt",
+      "kind": "suffix",
+      "name_en": "of Doubt",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 25% reduced effect of Non-Curse Auras from Skills",
+          "values": 25
+        },
+        {
+          "stat_text_en": "Players have 40% reduced effect of Non-Curse Auras from Skills",
+          "values": 40
+        },
+        {
+          "stat_text_en": "Players have 60% reduced effect of Non-Curse Auras from Skills",
+          "values": 60
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_imprecision",
+      "kind": "suffix",
+      "name_en": "of Imprecision",
+      "tiers": [
+        {
+          "stat_text_en": "Players have 15% less Accuracy Rating",
+          "values": 15
+        },
+        {
+          "stat_text_en": "Players have 20% less Accuracy Rating",
+          "values": 20
+        },
+        {
+          "stat_text_en": "Players have 25% less Accuracy Rating",
+          "values": 25
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_blinding",
+      "kind": "suffix",
+      "name_en": "of Blinding",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters Blind on Hit"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_venom",
+      "kind": "suffix",
+      "name_en": "of Venom",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters Poison on Hit"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_deadliness",
+      "kind": "suffix",
+      "name_en": "of Deadliness",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have (160 to 200)% increased Critical Strike Chance\n+(30 to 35)% to Monster Critical Strike Multiplier",
+          "values": [
+            [
+              160,
+              200
+            ],
+            [
+              30,
+              35
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "Monsters have (260 to 300)% increased Critical Strike Chance\n+(36 to 40)% to Monster Critical Strike Multiplier",
+          "values": [
+            [
+              260,
+              300
+            ],
+            [
+              36,
+              40
+            ]
+          ]
+        },
+        {
+          "stat_text_en": "Monsters have (360 to 400)% increased Critical Strike Chance\n+(41 to 45)% to Monster Critical Strike Multiplier",
+          "values": [
+            [
+              360,
+              400
+            ],
+            [
+              41,
+              45
+            ]
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "abhorrent",
+      "kind": "prefix",
+      "name_en": "Abhorrent",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Abominations"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "antagonists",
+      "kind": "prefix",
+      "name_en": "Antagonist's",
+      "tiers": [
+        {
+          "stat_text_en": "(20-30)% increased number of Rare Monsters"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "bipedal",
+      "kind": "prefix",
+      "name_en": "Bipedal",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Humanoids"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "capricious",
+      "kind": "prefix",
+      "name_en": "Capricious",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Goatmen"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "ceremonial",
+      "kind": "prefix",
+      "name_en": "Ceremonial",
+      "tiers": [
+        {
+          "stat_text_en": "Area contains many Totems"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "chaining",
+      "kind": "prefix",
+      "name_en": "Chaining",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters' skills Chain 2 additional times"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "demonic",
+      "kind": "prefix",
+      "name_en": "Demonic",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Demons"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "emanant",
+      "kind": "prefix",
+      "name_en": "Emanant",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by ranged monsters"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "enthralled",
+      "kind": "prefix",
+      "name_en": "Enthralled",
+      "tiers": [
+        {
+          "stat_text_en": "Unique Bosses are Possessed"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "feasting",
+      "kind": "prefix",
+      "name_en": "Feasting",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Cultists of Kitava"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "feral",
+      "kind": "prefix",
+      "name_en": "Feral",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Animals"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "haunting",
+      "kind": "prefix",
+      "name_en": "Haunting",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Ghosts"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "lunar",
+      "kind": "prefix",
+      "name_en": "Lunar",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Lunaris fanatics"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "multifarious",
+      "kind": "prefix",
+      "name_en": "Multifarious",
+      "tiers": [
+        {
+          "stat_text_en": "Area has increased monster variety"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "skeletal",
+      "kind": "prefix",
+      "name_en": "Skeletal",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Skeletons"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "slithering",
+      "kind": "prefix",
+      "name_en": "Slithering",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Sea Witches and their Spawn"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "solar",
+      "kind": "prefix",
+      "name_en": "Solar",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Solaris fanatics"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "splitting",
+      "kind": "prefix",
+      "name_en": "Splitting",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters fire 2 additional Projectiles"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "twinned",
+      "kind": "prefix",
+      "name_en": "Twinned",
+      "tiers": [
+        {
+          "stat_text_en": "Area contains two Unique Bosses"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "undead",
+      "kind": "prefix",
+      "name_en": "Undead",
+      "tiers": [
+        {
+          "stat_text_en": "Area is inhabited by Undead"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_bloodlines",
+      "kind": "suffix",
+      "name_en": "of Bloodlines",
+      "tiers": [
+        {
+          "stat_text_en": "(20-30)% more Magic Monsters"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_carnage",
+      "kind": "suffix",
+      "name_en": "of Carnage",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters Maim on Hit with Attacks"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_consecration",
+      "kind": "suffix",
+      "name_en": "of Consecration",
+      "tiers": [
+        {
+          "stat_text_en": "Area has patches of Consecrated Ground"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_desecration",
+      "kind": "suffix",
+      "name_en": "of Desecration",
+      "tiers": [
+        {
+          "stat_text_en": "Area has patches of desecrated ground"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_endurance",
+      "kind": "suffix",
+      "name_en": "of Endurance",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters gain an Endurance Charge on Hit"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_enervation",
+      "kind": "suffix",
+      "name_en": "of Enervation",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters steal Power, Frenzy and Endurance charges on Hit"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_flames",
+      "kind": "suffix",
+      "name_en": "of Flames",
+      "tiers": [
+        {
+          "stat_text_en": "Area has patches of Burning Ground"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_frenzy",
+      "kind": "suffix",
+      "name_en": "of Frenzy",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters gain a Frenzy Charge on Hit"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_giants",
+      "kind": "suffix",
+      "name_en": "of Giants",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters have 45% increased Area of Effect"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_ice",
+      "kind": "suffix",
+      "name_en": "of Ice",
+      "tiers": [
+        {
+          "stat_text_en": "Area has patches of Chilled Ground"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_impedance",
+      "kind": "suffix",
+      "name_en": "of Impedance",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters Hinder on Hit with Spells"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_lightning",
+      "kind": "suffix",
+      "name_en": "of Lightning",
+      "tiers": [
+        {
+          "stat_text_en": "Area has patches of Shocked Ground which increase Damage taken by 20%"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "of_power",
+      "kind": "suffix",
+      "name_en": "of Power",
+      "tiers": [
+        {
+          "stat_text_en": "Monsters gain a Power Charge on Hit"
+        }
+      ],
+      "verified": true
+    }
+  ]
+}

@@ -960,3 +960,61 @@ export function getMetaSupports(): MetaSupportsDataset | null {
     return null;
   }
 }
+
+// ─── №234 Map Prep: датасеты карт (Этап 1, data/game/maps/) ──────────────────
+
+/**
+ * №234 / SPEC_MAP_PREP.md §3.1: карта из PoB2 WorldAreas.lua (dataset Этапа 1).
+ * area_level — базовый (все 65: тир-waystone задаёт реальный уровень,
+ * см. endgame.waystoneAreaLevel).
+ */
+export interface MapEntry {
+  id: string;                 // 'MapRustbowl' (WorldArea id — ключ)
+  name_en: string;            // WorldAreas.name, напр. 'Rustbowl (Map)'
+  area_level: number;
+  biomes: string[];
+  monster_varieties: string[];
+  boss_varieties: string[];
+  verified: boolean;
+}
+
+interface MapsDataset {
+  _meta: Record<string, unknown>;
+  maps: MapEntry[];
+}
+
+/** Одна ступень waystone-модификатора (values — число, массив или пары [min,max]). */
+export interface WaystoneModTier {
+  stat_text_en: string;
+  values?: unknown;
+}
+
+/** Группа waystone-модов (id = ключ группы, напр. 'of_exposure'). */
+export interface WaystoneModGroup {
+  id: string;
+  kind: 'prefix' | 'suffix';
+  name_en: string;
+  config_label_en?: string;
+  tiers: WaystoneModTier[];
+  verified: boolean;
+}
+
+interface WaystoneModsDataset {
+  _meta: Record<string, unknown>;
+  mods: WaystoneModGroup[];
+}
+
+let mapsCache: MapEntry[] | null = null;
+let waystoneModsCache: WaystoneModGroup[] | null = null;
+
+/** Все карты (135 записей Этапа 1; источник PoB2 WorldAreas.lua, MIT). */
+export function getMapEntries(): MapEntry[] {
+  mapsCache ??= loadJson<MapsDataset>('maps/maps.json').maps;
+  return mapsCache;
+}
+
+/** Все группы waystone-модов (74 группы Этапа 1; источник PoB2, MIT). */
+export function getWaystoneModGroups(): WaystoneModGroup[] {
+  waystoneModsCache ??= loadJson<WaystoneModsDataset>('maps/waystone_mods.json').mods;
+  return waystoneModsCache;
+}

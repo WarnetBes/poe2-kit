@@ -2207,7 +2207,106 @@ ${OVERLAY_SHELL}<script>
         sec.appendChild(tr2);
       }
     }
+    renderMapPrep(sec, endgame.mapPrep);
     wrap.appendChild(sec);
+  }
+
+  /** №234-Э4: «Вердикт карты» в панели «🗺 Эндгейм» — мост к core.mapPrep
+   * (вся логика в main через IPC mapprep:check; здесь только UI-минимализм:
+   * карта + тир + строка модов + кнопка). */
+  function renderMapPrep(sec, mp) {
+    if (!mp || !mp.maps || !mp.maps.length) return;
+    var grp = document.createElement('div');
+    grp.className = 'boss-grp-title';
+    grp.textContent = 'Вердикт карты (waystone)';
+    sec.appendChild(grp);
+    var box = document.createElement('div');
+    box.className = 'quest-row';
+    box.style.marginBottom = '6px';
+
+    var selMap = document.createElement('select');
+    selMap.style.cssText = 'max-width:42%;font-size:11px;margin-right:4px;background:rgba(0,0,0,0.45);color:var(--fg);border:1px solid #2a3344;border-radius:4px';
+    var opts = '<option value="">— карта —</option>';
+    for (var i = 0; i < mp.maps.length; i++) {
+      var m = mp.maps[i];
+      opts += '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
+    }
+    selMap.innerHTML = opts;
+
+    var selTier = document.createElement('select');
+    selTier.style.cssText = 'font-size:11px;margin-right:4px;background:rgba(0,0,0,0.45);color:var(--fg);border:1px solid #2a3344;border-radius:4px';
+    var topts = '<option value="">T?</option>';
+    for (var t = 1; t <= 16; t++) topts += '<option value="' + t + '">T' + t + '</option>';
+    selTier.innerHTML = topts;
+
+    var inpMods = document.createElement('input');
+    inpMods.placeholder = 'моды камня через ;';
+    inpMods.spellcheck = false;
+    inpMods.style.cssText = 'width:100%;box-sizing:border-box;margin:4px 0 3px 0;padding:3px 6px;border:1px solid #2a3344;border-radius:4px;background:rgba(0,0,0,0.35);color:var(--fg);font-size:11px';
+
+    var btn = document.createElement('button');
+    btn.textContent = 'Вердикт';
+    btn.className = 'quest-claim';
+
+    var out = document.createElement('div');
+    out.style.cssText = 'margin-top:4px;font-size:11px;line-height:1.45';
+
+    btn.addEventListener('click', function () {
+      var mods = inpMods.value.split(/[;\\n|]/).map(function (s) { return s.trim(); }).filter(Boolean);
+      out.textContent = 'Считаю…';
+      var res = (mp.resists && typeof mp.resists.fire === 'number') ? mp.resists : null;
+      window.poe2k.mapPrepCheck({ map: selMap.value, tier: selTier.value, mods: mods, resists: res })
+        .then(function (r) { renderMapPrepResult(out, r); })
+        .catch(function (e) { out.textContent = 'Ошибка: ' + (e && e.message ? e.message : e); });
+    });
+
+    box.appendChild(selMap);
+    box.appendChild(selTier);
+    box.appendChild(btn);
+    box.appendChild(inpMods);
+    box.appendChild(out);
+    sec.appendChild(box);
+  }
+
+  function renderMapPrepResult(out, r) {
+    out.innerHTML = '';
+    if (!r || r.ok === false) {
+      out.textContent = (r && r.error) ? '⚠ ' + r.error : 'Не удалось построить вердикт.';
+      return;
+    }
+    var th = r.threat || {};
+    var rows = [];
+    rows.push('area level ' + (th.area_level != null ? th.area_level : '?') +
+      ' · босс: ' + (th.boss && th.boss.name ? th.boss.name : 'шаблонный') +
+      (((th.monsterEleBonus || 0) > 0 || (th.monsterChaosRes || 0) > 0)
+        ? ' · монстрам +' + (th.monsterEleBonus || 0) + '% элем / +' + (th.monsterChaosRes || 0) + '% chaos резиста'
+        : ''));
+    var danger = (th.matchedMods || []).filter(function (m) { return m.threat; });
+    for (var i = 0; i < danger.length; i++) {
+      var d = danger[i].threat;
+      var icon = d.kind === 'player_debuff' ? '⚠' : d.kind === 'monster_res' ? '🛡' :
+        (d.element === 'fire' ? '🔥' : d.element === 'cold' ? '❄' : d.element === 'lightning' ? '⚡' : d.element === 'chaos' ? '☠' : '⚔');
+      rows.push(icon + ' ' + danger[i].name + ' (ступень ' + (danger[i].tierIndex + 1) + ')' +
+        (d.value != null ? ' −' + d.value + '%' : ''));
+    }
+    var unk = th.unknownMods || [];
+    for (var u = 0; u < unk.length; u++) rows.push('❓ не распознан: ' + unk[u]);
+    if (r.pool_assumed) rows.push('ℹ пул жизни неизвестен — использованы условные 3000 (резисты из билда)');
+    if (!r.build_provided) rows.push('ℹ билд не импортирован — персональные EHP-чеки пропущены (Ctrl+F3)');
+    var checks = r.checks || [];
+    for (var c = 0; c < checks.length; c++) {
+      if (checks[c].passed && checks[c].severity < 3) continue;
+      rows.push((checks[c].passed ? '✅' : '⛔') + ' ' + checks[c].advice_ru +
+        (checks[c].unverified ? ' ⚠ unverified' : '') + ' (severity ' + (Math.round(checks[c].severity * 10) / 10) + ')');
+    }
+    var notes = th.unverifiedNotes || [];
+    for (var n = 0; n < notes.length; n++) rows.push('⚠️ ' + notes[n]);
+    for (var r2 = 0; r2 < rows.length; r2++) {
+      var div = document.createElement('div');
+      div.className = 'boss-tip';
+      div.textContent = rows[r2];
+      out.appendChild(div);
+    }
   }
 
   /** №103: автообновление контекста прокачки, пока вкладка видима. */

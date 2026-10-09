@@ -698,6 +698,19 @@ interface BuildState {
 let buildState: BuildState | null = null;
 /** Идёт ли фоновый прайсинг слотов билда. */
 let buildPricing = false;
+// №234-Э4: статы обороны последнего est.defenses (estimateBuild) — вход для
+// Map Prep вердикта (mapprep:check). Логика вся в core.mapPrep; здесь только мост.
+let lastDefenses: {
+  life: number;
+  energyShield?: number;
+  armor?: number;
+  evasion?: number;
+  blockChance?: number;
+  fireRes?: number;
+  coldRes?: number;
+  lightningRes?: number;
+  chaosRes?: number;
+} | null = null;
 
 // ─── Автосинхронизация с персонажем poe.ninja ──────────────────────────────
 
@@ -2289,6 +2302,18 @@ async function refreshBuildEstimate(): Promise<void> {
         chaos: Math.round(est.defenses.chaosRes),
       },
     };
+    // №234-Э4: полный DefensiveStats (жизнь/ES/слои) — для вердикта карты.
+    lastDefenses = {
+      life: est.defenses.life,
+      energyShield: est.defenses.energyShield,
+      armor: est.defenses.armour,
+      evasion: est.defenses.evasion,
+      blockChance: est.defenses.blockChance,
+      fireRes: est.defenses.fireRes,
+      coldRes: est.defenses.coldRes,
+      lightningRes: est.defenses.lightningRes,
+      chaosRes: est.defenses.chaosRes,
+    };
     // №85: мост core.advice → панель билда. adviseBuild(est) берёт те же оценки,
     // что и summary, поэтому считаем в одном месте; приоритеты сортирует ядро.
     try {
@@ -2372,6 +2397,7 @@ function toggleBuildPanel(): void {
 /** Сбросить билд (IPC). */
 function resetBuild(): void {
   buildState = null;
+  lastDefenses = null; // №234-Э4: статы обороны больше не валидны
   try {
     fs.rmSync(buildStateFile(), { force: true });
   } catch {
@@ -3341,12 +3367,71 @@ async function runLevelingContext(): Promise<unknown> {
             : camp.level != null
               ? core.endgame.sekhemasFloorsForLevel(camp.level)
               : null,
+        // №234-Э4: Map Prep мост — каталог 135 карт для селекта «Вердикт карты»
+        // + резисты билда (если est.defenses посчитаны). Логика — в core.mapPrep.
+        mapPrep: {
+          maps: core.dataset
+            .getMapEntries()
+            .map((m) => ({ id: m.id, name: m.name_en, area_level: m.area_level }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          resists: buildState?.summary?.resists ?? null,
+        },
       },
     };
     await overlayWindow?.webContents.send('level:result', payload);
     return payload;
   } finally {
     busy = false;
+  }
+}
+
+// ─── №234-Э4: Map Prep мост (панель «🗺 Эндгейм» → «Вердикт карты») ──────────
+// Рендерер шлёт {map, tier?, mods, resists?}; логика целиком в core.mapPrep.
+// Статы обороны: 1) свежие est.defenses (lastDefenses), 2) резисты из
+// summary + условный пул 3000 (помечаем pool_assumed), 3) без билда — вердикт
+// без персональных EHP-чеков (honest, как в MCP-туле poe2_map_prep).
+function mapPrepVerdict(raw: unknown): Record<string, unknown> {
+  try {
+    const p = (raw ?? {}) as {
+      map?: unknown;
+      tier?: unknown;
+      mods?: unknown;
+      resists?: { fire?: unknown; cold?: unknown; lightning?: unknown; chaos?: unknown } | null;
+    };
+    const map = typeof p.map === 'string' ? p.map : '';
+    const mods = Array.isArray(p.mods) ? p.mods.map((m) => String(m).trim()).filter(Boolean) : [];
+    const tierNum = typeof p.tier === 'number' ? p.tier : parseInt(String(p.tier ?? ''), 10);
+    const tier = Number.isInteger(tierNum) && tierNum >= 1 && tierNum <= 16 ? tierNum : undefined;
+    if (!map && !mods.length && tier == null) {
+      return { ok: false, error: 'Не передано ничего: выбери карту и/или задай моды/тир.' };
+    }
+    const threat = core.mapPrep.mapThreat({ map: map || undefined, mods, tier });
+
+    const res = p.resists ?? null;
+    const num = (v: unknown): number | undefined =>
+      typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+    let stats: typeof lastDefenses | null = lastDefenses;
+    let poolAssumed = false;
+    if (!stats && res && num(res.fire) != null && num(res.cold) != null && num(res.lightning) != null && num(res.chaos) != null) {
+      stats = {
+        life: 3000, // пул неизвестен — условная норма, чтобы не рождать ложный low_hp
+        fireRes: num(res.fire),
+        coldRes: num(res.cold),
+        lightningRes: num(res.lightning),
+        chaosRes: num(res.chaos),
+      };
+      poolAssumed = true;
+    }
+    const checks = stats ? core.mapPrep.mapPrepChecklist(stats, threat) : [];
+    return {
+      ok: true,
+      threat,
+      checks,
+      build_provided: stats != null,
+      pool_assumed: poolAssumed,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -3635,6 +3720,9 @@ function setupIPC(): void {
   });
 
   ipcMain.handle('build:get', () => buildPayload());
+
+  // №234-Э4: Map Prep мост — вердикт по waystone (панель «🗺 Эндгейм»).
+  ipcMain.handle('mapprep:check', (_evt, payload: unknown) => mapPrepVerdict(payload));
 
   // №91: стартовые билды новичка (сюжет) — список классов + импорт без PoB-кода.
   ipcMain.handle('starter:list', () => core.starterBuilds.listStarterBuilds());

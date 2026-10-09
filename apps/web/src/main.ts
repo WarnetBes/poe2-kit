@@ -26,6 +26,7 @@ import { renderFullMap } from './fullMap';
 import { showHideout, copyHideoutShare, copyHideoutMarkdown, initHideoutTab } from './hideout';
 import { initAtlasTab } from './atlasMap';
 import { keybindsFromInputs, keybindsFromLastBuild } from './keybinds';
+import { initMapPrepTab } from './mapPrep';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -61,6 +62,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="compare" class="tab">Сравнение</button>
         <button data-tab="tree" class="tab">Дерево</button>
         <button data-tab="atlas" class="tab">Атлас</button>
+        <button data-tab="mapprep" class="tab">🗺 Карты</button>
         <button data-tab="map" class="tab">Карта</button>
         <button data-tab="hideout" class="tab">Хайдоуты</button>
         <button data-tab="ai" class="tab">AI-чат</button>
@@ -174,6 +176,33 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>Карта Атласа <small>40 очков · ветки механик</small></h2>
         <p class="hint">Древо атласа (atlas skills): клик по узлу берёт/снимает очко (только рядом со стартом или взятым узлом — как в игре, с refund), счётчик в тулбаре. Панорамирование (перетаскивание), масштаб (колесо), поиск по имени/статах, ссылка с планом (#a=) и авто-сохранение в браузере.</p>
         <div id="out-atlas" class="out"></div>
+      </section>
+
+      <section id="pane-mapprep" class="pane">
+        <h2>🗺 Карты <small>waystone-вердикт: моды · оборона · что взять</small></h2>
+        <p class="hint">Выбери карту, задай тир камня и вставь моды (каждый с новой строки) — вердикт покажет опасные моды, нехватку резистов/EHP и что взять с собой. Резисты подтягиваются из импортированного билда (вкладка «Импорт билда»); без билда — заполни 4 поля вручную. Пороги maxroll помечены «unverified» — проверяй в игре.</p>
+        <div class="lvset">
+          <input id="mapprep-map" list="mapprep-maps" placeholder="Карта: Rustbowl…" autocomplete="off" title="Начни печатать — подсказки по 135 картам" />
+          <datalist id="mapprep-maps"></datalist>
+          <select id="mapprep-tier" title="Тир waystone (задаёт area level 65–80)">
+            <option value="">тир: по карте</option>
+            <option value="1">T1</option><option value="2">T2</option><option value="3">T3</option>
+            <option value="4">T4</option><option value="5">T5</option><option value="6">T6</option>
+            <option value="7">T7</option><option value="8">T8</option><option value="9">T9</option>
+            <option value="10">T10</option><option value="11">T11</option><option value="12">T12</option>
+            <option value="13">T13</option><option value="14">T14</option><option value="15">T15</option>
+            <option value="16">T16</option>
+          </select>
+        </div>
+        <textarea id="mapprep-mods" rows="4" placeholder="Моды камня — каждый с новой строки:&#10;Players have -(7-8)% to all maximum Resistances&#10;+30% Monster Elemental Resistances"></textarea>
+        <div class="lvset">
+          <label class="dim">fire %</label><input id="mapprep-res-fire" type="number" placeholder="fire" />
+          <label class="dim">cold %</label><input id="mapprep-res-cold" type="number" placeholder="cold" />
+          <label class="dim">light %</label><input id="mapprep-res-lightning" type="number" placeholder="light" />
+          <label class="dim">chaos %</label><input id="mapprep-res-chaos" type="number" placeholder="chaos" />
+          <button id="btn-mapprep" class="primary">Вердикт</button>
+        </div>
+        <div id="out-mapprep" class="out"></div>
       </section>
 
       <section id="pane-map" class="pane">
@@ -324,6 +353,7 @@ document.querySelector('#btn-hideout-copy')!.addEventListener('click', () => cop
 document.querySelector('#btn-hideout-md')!.addEventListener('click', () => copyHideoutMarkdown());
 initHideoutTab();
 initAtlasTab();
+initMapPrepTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());

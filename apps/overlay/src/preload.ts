@@ -84,6 +84,8 @@ export interface OverlayAPI {
   buildgenComboCode(payload: unknown): Promise<unknown>;
   /** №143: фиксация попытки босса (kill|death) — время от входа в зону по живому логу. */
   bossTimerDone(zoneCode: string, kind: 'kill' | 'death'): Promise<unknown>;
+  /** №234-Э4: Map Prep — вердикт по waystone: {map, tier?, mods, resists?} → {ok, threat, checks}. */
+  mapPrepCheck(payload: unknown): Promise<unknown>;
   /** №196-bis (S7-UI): сброс кэшей stat-матчинга (кнопка Reload в баннере
    *  «N модов не распознано»); следующий прайс-чек пойдёт с чистой мемоизацией. */
   reloadTradeStats(): Promise<unknown>;
@@ -227,6 +229,8 @@ const api: OverlayAPI = {
   buildgenGemData: (chunk) => ipcRenderer.invoke('buildgen:gemdata', chunk),
   // №141: импорт-код связки конструктора (вернёт ok+code, main кладёт в буфер).
   buildgenComboCode: (payload) => ipcRenderer.invoke('buildgen:combocode', payload),
+  // №234-Э4: Map Prep мост (панель «🗺 Эндгейм» → «Вердикт карты»).
+  mapPrepCheck: (payload) => ipcRenderer.invoke('mapprep:check', payload),
   reloadTradeStats: () => ipcRenderer.invoke('trade:reloadStats'),
 };
 
