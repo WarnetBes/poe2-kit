@@ -4087,26 +4087,11 @@ function setupIPC(): void {
   // 1) meta_supports.json (эталон меты 0.5.5, первый = Min-Max-вариант),
   // 2) recommended_supports.json (poe2db, ранги). Промах обоих — null (UI
   // покажет compat-fallback, как раньше).
-  let metaSupportsCache: Record<string, { supports: string[]; build: string; date?: string }[]> | null = null;
-  let recoSupportsCache: Record<string, Array<{ rank: number; ru: string; en: string }>> | null = null;
+  // №262 Этап 4: движок рекомендаций саппортов перенесён в core
+  // (packages/core/src/gemSupports.ts, supportsForActive) — тот же код
+  // питает оверлей/web/MCP. Здесь — тонкая делегация; сигнатура та же.
   function supportsForActive(en: string): GemSupportRecoLite[] {
-    metaSupportsCache ??= core.dataset.getMetaSupports()?.entries ?? {};
-    recoSupportsCache ??= core.dataset.getRecommendedSupports()?.map ?? {};
-    const key = normName(en);
-    const meta = metaSupportsCache[key];
-    if (meta?.length) {
-      const m = meta[0]!;
-      const note = `эталон меты: ${m.build}${m.date ? ` (${m.date})` : ''}`;
-      return m.supports.map((s) => ({ en: s, tier: 'meta' as const, rank: null, note }));
-    }
-    const base = recoSupportsCache[key];
-    if (base?.length) {
-      return base
-        .slice()
-        .sort((a, b) => a.rank - b.rank)
-        .map((r) => ({ en: r.en, tier: 'base' as const, rank: r.rank, note: null }));
-    }
-    return [];
+    return core.gemSupports.supportsForActive(en);
   }
   let gemdataCache: GemdataItem[] | null = null;
   function buildGemdata(): GemdataItem[] {

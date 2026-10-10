@@ -42,11 +42,13 @@ export * from './buildPlanner.js';
 export * from './hideout.js';
 export * from './keybinds.js';
 export * from './slang.js';
+export * from './gemSupports.js';
 export * from './mapPrep.js';
 export * from './simulacrum.js';
 import * as buildPlannerMod from './buildPlanner.js';
 import * as hideoutMod from './hideout.js';
 import * as keybindsMod from './keybinds.js';
+import * as gemSupportsMod from './gemSupports.js';
 import * as simulacrumMod from './simulacrum.js';
 import * as mapPrepMod from './mapPrep.js';
 export * from './questRewards.js';
@@ -162,6 +164,7 @@ export const core = {
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
   buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
   hideout: hideoutMod, // №198: офлайн-разбор .hideout (PoE2-вкладка «Хайдоуты»)
+  gemSupports: gemSupportsMod, // №192/№262: движок рекомендаций саппортов
   keybinds: keybindsMod, // №221: советчик раскладки навыков (геймпад/клавиатура)
   mapPrep: mapPrepMod, // №234: Map Prep Assistant — угроза карты + чек-лист подготовки (Этап 2)
   simulacrum: simulacrumMod, // №239: данные гайда Simulacrum (Delirium 0.5.x) + markdown для MCP-тула
