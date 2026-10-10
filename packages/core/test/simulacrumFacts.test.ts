@@ -30,7 +30,9 @@ describe('simulacrumFacts: known-issues из data-файла (№247)', () => {
     expect(k.workaround).toContain('End Delirium Encounter');
     expect(k.status).toContain('open');
     expect(k.unverified).toBeTruthy();
-    expect(k.report_dates).toEqual(['05.10.2026', '06.10.2026']);
+    expect(k.report_dates).toEqual(['05.10.2026', '06.10.2026', '09.10.2026', '10.10.2026']);
+    // Волна-2 №256: второй триггер (островная арена босса Ol'Roth) в слитой записи
+    expect(k.issue).toContain('островной');
   });
 
   it('данные действительно из файла: текст совпадает с JSON-источником', () => {

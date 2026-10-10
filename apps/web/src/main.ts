@@ -28,6 +28,7 @@ import { initAtlasTab } from './atlasMap';
 import { keybindsFromInputs, keybindsFromLastBuild } from './keybinds';
 import { initMapPrepTab } from './mapPrep';
 import { initSimulacrumTab } from './simulacrum';
+import { initRadarTab } from './radar';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -65,6 +66,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button data-tab="atlas" class="tab">Атлас</button>
         <button data-tab="mapprep" class="tab">🗺 Карты</button>
         <button data-tab="simulacrum" class="tab">🌀 Simulacrum</button>
+        <button data-tab="radar" class="tab">🛡 Радар</button>
         <button data-tab="map" class="tab">Карта</button>
         <button data-tab="hideout" class="tab">Хайдоуты</button>
         <button data-tab="ai" class="tab">AI-чат</button>
@@ -211,6 +213,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>🌀 Simulacrum <small>Delirium 0.5.x · доступ · волны · боссы · лут</small></h2>
         <p class="hint">Энциклопедия + гайд: цепочка доступа (Mirror → Grand Mirror → Fog Bank → Simulacrum → Tang'Mazu), 7 волн и выбор шардов, телеграфы боссов, дроп-таблица с честной экономикой, атлас-ноды Delirium и чек-лист готовности. Гайд офлайн; спорные факты помечены «unverified» — патч GGG может поменять цифры.</p>
         <div id="out-simulacrum" class="out"></div>
+      </section>
+
+      <section id="pane-radar" class="pane">
+        <h2>🛡 Радар <small>патч-таймлайн · живые баги · воркараунды · хитрости</small></h2>
+        <p class="hint">Что изменилось в игре и что сейчас сломано: таймлайн патчей, живые баги с механизмами и воркараундами, исправленное (в каком патче), фичи-не-баги и легальные хитрости для соло и пати. Срез ручной курации (ресёрч-волны); ❓-пункты — единичные репорты, не факт: сверяйся с игрой.</p>
+        <div id="out-radar" class="out"></div>
       </section>
 
       <section id="pane-map" class="pane">
@@ -363,6 +371,7 @@ initHideoutTab();
 initAtlasTab();
 initMapPrepTab();
 initSimulacrumTab();
+initRadarTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());

@@ -1,5 +1,5 @@
 // №239 Phase-2-смок: MCP-тул poe2_simulacrum_guide — офлайн-гайд Simulacrum.
-// Проверяет: (1) dist-компиляция тулa, (2) регистрация в index (ровно 63 тулов),
+// Проверяет: (1) dist-компиляция тулa, (2) регистрация в index (ровно 65 тулов: 63 + poe2_known_issues/poe2_tricks, Радар №256),
 // (3) handler-кейсы: all → полный markdown с unverified-пометками;
 // каждую секцию можно запросить отдельно; несуществующая секция → isError.
 // Требует собранных dist (npm run build в core и mcp) — как соседние смоки.
@@ -20,13 +20,13 @@ need(/poe2_simulacrum_guide/.test(distSrc) && /structuredContent/.test(distSrc)
   && /checklist/.test(distSrc) && /markdown/.test(distSrc),
   1, 'dist/tools/simulacrum.js: poe2_simulacrum_guide + structured JSON-выход');
 
-// 2. Регистрация: dist/index.js зовёт registerSimulacrumTools; --smoke = 63
+// 2. Регистрация: dist/index.js зовёт registerSimulacrumTools; --smoke = 65
 const distIndex = readFileSync('apps/mcp/dist/index.js', 'utf8');
 need(/registerSimulacrumTools/.test(distIndex), 2, 'dist/index.js: registerSimulacrumTools');
 const smoke = spawnSync(process.execPath, ['apps/mcp/dist/index.js', '--smoke'], { encoding: 'utf8' });
 const smokeOut = smoke.stderr + smoke.stdout;
-need(smoke.status === 0 && /\[smoke\] Registered tools: 63\b/.test(smokeOut),
-  3, 'index --smoke: exit 0, ровно 63 тулов');
+need(smoke.status === 0 && /\[smoke\] Registered tools: 65\b/.test(smokeOut),
+  3, 'index --smoke: exit 0, ровно 65 тулов');
 need(/^\s*- poe2_simulacrum_guide$/m.test(smokeOut), 4, 'index --smoke: poe2_simulacrum_guide в списке __poe2Registered');
 
 // 3. Handler напрямую

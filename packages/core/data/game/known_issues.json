@@ -1,0 +1,289 @@
+{
+  "_meta": {
+    "patch": "0.5.5e",
+    "as_of": "2026-10-10",
+    "sources": [
+      "_research/poe2r2_bugs_digest_2026-10.md (баг-хантер волны-2, форумы GGG 07-10.10)",
+      "_research/poe2r2_ru_digest_2026-10.md (RU-сегмент, ezg/форумы)",
+      "_research/poe2r2_eu_digest_2026-10.md (DE/FR/ES/BR-форумы)",
+      "_research/poe2r2_asia_digest_2026-10.md (Inven KR)",
+      "pathofexile.com/forum/view-thread/3594260 (официальный Known Issues, ред. 06.10.2026)"
+    ],
+    "note": "Data-словарь вкладки «🛡 Радар» (Этап 4-2/№256): живые баги 0.5.5e-эпохи, исправленные и фичи-не-баги. Формат наследует known_issues из guides/simulacrum_facts.json. Статусы: live (подтверждён 2+ источниками/rep-ами), unverified (❓ единичные/одна локаль - в UI выводить с пометкой), fixed (fixed_in обязателен), feature (фича-не-баг: официально задокументированная механика, которую принимают за баг). При официальной фиксации GGG - переносить в fixed с fixed_in, запись не удалять (append-only-дух). Правки - только ручная курация; <непроверяемое> помечать unverified. Содержимое - только факты (JSON), <гипотезы> - см. SECURITY.md."
+  },
+  "issues": [
+    {
+      "id": "abyss-no-rare-spawn",
+      "title": "Abyss: редкие монстры не спавнятся, разрыв не закрывается",
+      "status": "live",
+      "severity": "progress-block",
+      "mechanism": "Abyss-разрыв открывается, но редкие монстры не спавнятся и «путь вниз» не открывается; частота ~каждые 10-15 карт (оценка второго репортёра).",
+      "workaround": "Нет (кроме слива карты). Не тратить tablet-фоном Abyss-префиксы на дорогих картах.",
+      "risk": "none",
+      "report_dates": ["07.10.2026", "09.10.2026", "10.10.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4010299",
+        "https://www.pathofexile.com/forum/view-thread/4010265",
+        "https://www.pathofexile.com/forum/view-thread/4010024"
+      ]
+    },
+    {
+      "id": "delirium-island-arena",
+      "title": "Grand Delirium Mirror на островной арене: unable-to-proceed (2-й триггер)",
+      "status": "live",
+      "severity": "progress-block",
+      "mechanism": "Если Grand Mirror спавнится на островной арене босса (например Ol'Roth), зеркало физически не спавнится и End Delirium выполнить невозможно - карту не закончить. Второй триггер известного unable-to-proceed (первый - из guides/simulacrum_facts.json).",
+      "workaround": "End Delirium Encounter, если доступен; иначе выход из Atlas, перевход через Map Device (community-данные). Профилактика: не гонять Delirium на картах с островными боссовыми аренами.",
+      "risk": "none",
+      "report_dates": ["09.10.2026", "10.10.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4010293",
+        "https://www.pathofexile.com/forum/view-thread/4009785"
+      ]
+    },
+    {
+      "id": "ritual-not-completing",
+      "title": "Ritual: ритуал не завершается (Grim Tangle / summoning circle)",
+      "status": "live",
+      "severity": "progress-loss",
+      "mechanism": "0.5.5e закрыл «убийство отдельных боссов не запускает Ritual», но семейство живо другими проявлениями: тотем Grim Tangle не завершает ритуал; босс summoning-circle не появляется.",
+      "workaround": "Пропустить ритуал (не блокирует карту).",
+      "risk": "none",
+      "report_dates": ["09.10.2026", "10.10.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4010303",
+        "https://www.pathofexile.com/forum/view-thread/4010281"
+      ]
+    },
+    {
+      "id": "checkpoint-softlock-family",
+      "title": "Семейство checkpoint/softlock: Sacred Bloom, Site of the Chosen, босс-файты",
+      "status": "unverified",
+      "severity": "progress-block",
+      "mechanism": "Семейство «checkpoint/cutscene/event не активирует выход». Свежие репорты: Sacred Bloom (4007935, отвечали 10.10), Site of the Chosen (3968134), Arbiter-евент (4010296), застревание в босс-файте (4010302). Каждый случай - единичный репорт, семейство - вывод, не факт.",
+      "workaround": "Выход из игры и перезаход; если не помогло - тикет GGG.",
+      "risk": "none",
+      "unverified": "единичные репорты 09-10.10, семейство - гипотеза по аналогии",
+      "report_dates": ["09.10.2026", "10.10.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4007935",
+        "https://www.pathofexile.com/forum/view-thread/3968134",
+        "https://www.pathofexile.com/forum/view-thread/4010296",
+        "https://www.pathofexile.com/forum/view-thread/4010302"
+      ]
+    },
+    {
+      "id": "party-fps-hollow-form",
+      "title": "Пати-FPS: Hollow Form + Sunder + Shield Wall лагает всю партию",
+      "status": "live",
+      "severity": "perf",
+      "mechanism": "Комбо Hollow Form + Sunder + Shield Wall роняет FPS до единиц у ВСЕХ членов партии (зеркальные копии синхронизируют нагрузку на всех клиентах).",
+      "workaround": "Не собирать это комбо в пати; в соло - терпимо.",
+      "risk": "none",
+      "report_dates": ["26.09.2026", "27.09.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4008271"]
+    },
+    {
+      "id": "abyss-breach-not-closing",
+      "title": "Abyss/Breach «не закрывается» - карта сгорает впустую",
+      "status": "live",
+      "severity": "progress-loss",
+      "mechanism": "Механика не завершается, карту финишировать нельзя; подтверждено независимо на двух локалях (FR + ES).",
+      "workaround": "Нет; закрыть карту через выход (лут собрать до).",
+      "risk": "none",
+      "report_dates": ["30.09.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4010170",
+        "https://www.pathofexile.com/forum/view-thread/4008999"
+      ]
+    },
+    {
+      "id": "breach-twin-bosses-hp",
+      "title": "Breach: у двух боссов колонии HP перестаёт сниматься",
+      "status": "unverified",
+      "severity": "progress-block",
+      "mechanism": "При спавне двух боссов breach-колонии их HP не тянется, убить невозможно; повторяется с 0.5 в 0.5.5 (репорт с скриншотом на Inven KR).",
+      "workaround": "Покинуть область.",
+      "risk": "none",
+      "unverified": "одна локаль (KR), репортов на EN-форуме в срезе 07-10.10 не видно",
+      "report_dates": ["07.10.2026"],
+      "sources": ["https://www.inven.co.kr/board/poe2/4845/39971"]
+    },
+    {
+      "id": "spirit-reservation-checkbox",
+      "title": "Галочка слота дух-гема молча блокирует %-reservation-баффы",
+      "status": "live",
+      "severity": "damage",
+      "mechanism": "Если на слоте неиспользуемого дух-гема стоит галочка, %-reservation-баффы не применяются - без иконки и лога.",
+      "workaround": "Снять галочку с неиспользуемого слота или убрать гем. Кандидат в FAQ kit'а.",
+      "risk": "none",
+      "report_dates": ["17.09.2026"],
+      "sources": ["https://www.inven.co.kr/board/poe2/4845/39837"]
+    },
+    {
+      "id": "elemental-weakness-silent",
+      "title": "Elemental Weakness молча не применяется при низком уровне гема",
+      "status": "live",
+      "severity": "damage",
+      "mechanism": "Проклятие не применяется, если уровень гема ниже порога цели/контента; без иконки и лога - игрок считает, что проклинает.",
+      "workaround": "Следить за уровнем гема при апгрейде контента; проверять на стенд-мобах.",
+      "risk": "none",
+      "report_dates": ["29.09.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4008772"]
+    },
+    {
+      "id": "ghostdance-compressed-duration",
+      "title": "Ghost Dance + Compressed Duration II не работают",
+      "status": "live",
+      "severity": "perk-broken",
+      "mechanism": "Долгожитель (репорт 2025): связка не даёт эффекта; треду отвечали 10.10 - не починено.",
+      "workaround": "Не использовать связку пока.",
+      "risk": "none",
+      "report_dates": ["10.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3855683"]
+    },
+    {
+      "id": "strongbox-unable-open",
+      "title": "Strongbox unable to open",
+      "status": "live",
+      "severity": "progress-loss",
+      "mechanism": "Стронгбоксы не открываются (долгожитель).",
+      "workaround": "Нет.",
+      "risk": "none",
+      "report_dates": ["09.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3951112"]
+    },
+    {
+      "id": "vaal-ruins-waypoint",
+      "title": "Vaal ruins waypoint недоступен",
+      "status": "live",
+      "severity": "minor",
+      "mechanism": "Waypoint-квест Vaal ruins недоступен (долгожитель, треду отвечали 09.10).",
+      "workaround": "Проходить заново пешком.",
+      "risk": "none",
+      "report_dates": ["09.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3949536"]
+    },
+    {
+      "id": "atlas-orphan-node",
+      "title": "Atlas-нода «not connected to anything»",
+      "status": "unverified",
+      "severity": "minor",
+      "mechanism": "Atlas-пассивка недоступна «because it is not connected to anything»; возможно старый кейс 0.4.x.",
+      "workaround": "Нет.",
+      "risk": "none",
+      "unverified": "единичный репорт 09.10.2026",
+      "report_dates": ["09.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4010268"]
+    },
+    {
+      "id": "kalguuran-expedition-stuck",
+      "title": "Kalguuran Expeditions: застревание логистики",
+      "status": "live",
+      "severity": "progress-block",
+      "mechanism": "Официальный Known Issues GGG (список от 06.10): расследуется.",
+      "workaround": "Нет (ждать хотфикс).",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3594260"]
+    },
+    {
+      "id": "cuachic-vault-boss",
+      "title": "Cuachic Vault: босс не появляется",
+      "status": "live",
+      "severity": "progress-block",
+      "mechanism": "Официальный Known Issues GGG (список от 06.10): расследуется.",
+      "workaround": "Нет (ждать хотфикс).",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3594260"]
+    },
+    {
+      "id": "it-that-was-tul-esh",
+      "title": "It That Was: фракционированный Tul/Esh-лут",
+      "status": "live",
+      "severity": "loot",
+      "mechanism": "Официальный Known Issues GGG (список от 06.10): расследуется.",
+      "workaround": "Нет (ждать хотфикс).",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3594260"]
+    },
+    {
+      "id": "guild-stash-affinities",
+      "title": "Guild stash affinities не сохраняются",
+      "status": "live",
+      "severity": "minor",
+      "mechanism": "Официальный Known Issues GGG (список от 06.10): расследуется.",
+      "workaround": "Нет (ждать хотфикс).",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/3594260"]
+    },
+    {
+      "id": "arbiter-non-quest-core",
+      "title": "Arbiter of Divinity повторно не фармится - это ФИЧА 0.5.5, не баг",
+      "status": "feature",
+      "severity": "endgame-plan",
+      "mechanism": "Non-quest Origin Core завершает Fortress целиком и открывает свободу Atlas-пассивок (+ покупка ключей Patriarch/Matriarch Halls на Currency Exchange - они на Atlas, не в Fortress). Quest Origin Core больше НЕ завершает секцию Fortress.",
+      "workaround": "Для Atlas-плана использовать non-quest Origin Core. Прямо влияет на эндгейм-роадмап Invoker-билда.",
+      "risk": "none",
+      "report_dates": ["07.10.2026", "10.10.2026"],
+      "sources": [
+        "https://www.pathofexile.com/forum/view-thread/4009949",
+        "https://www.pathofexile.com/forum/view-thread/4000864"
+      ]
+    },
+    {
+      "id": "ritual-boss-block-start",
+      "title": "Ritual не стартует после убийства отдельных боссов",
+      "status": "fixed",
+      "fixed_in": "0.5.5e",
+      "severity": "progress-loss",
+      "mechanism": "Убийство некоторых боссов предотвращало старт Ritual-энкаунтера.",
+      "workaround": "",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4009785"]
+    },
+    {
+      "id": "tomb-fallen-knight-stuck",
+      "title": "Tomb of the Fallen Knight: недоступность",
+      "status": "fixed",
+      "fixed_in": "0.5.5e",
+      "severity": "progress-block",
+      "mechanism": "Зона была недоступна.",
+      "workaround": "",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4009785"]
+    },
+    {
+      "id": "slow-area-loading",
+      "title": "Отдельные зоны грузились особенно медленно",
+      "status": "fixed",
+      "fixed_in": "0.5.5e",
+      "severity": "perf",
+      "mechanism": "«Some areas were particularly slow to load» - исправлено 06.10.",
+      "workaround": "",
+      "risk": "none",
+      "report_dates": ["06.10.2026"],
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4009785"]
+    },
+    {
+      "id": "trial-of-chaos-ascendancy-exploit",
+      "title": "Trial of Chaos: эксплойт очков Восхождения через повторный вход",
+      "status": "fixed",
+      "fixed_in": "0.5.5b",
+      "severity": "exploit",
+      "mechanism": "Вход в завершённый инстанс давления давал очки Восхождения.",
+      "workaround": "",
+      "risk": "ban",
+      "report_dates": ["23.09.2026"],
+      "sources": [
+        "_research/poe2r2_ru_digest_2026-10.md (ezg.com 23.09.2026, RU-дайджест волны-2)",
+        "https://www.pathofexile.com/forum/view-thread/4000864"
+      ]
+    }
+  ]
+}

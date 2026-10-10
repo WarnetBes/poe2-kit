@@ -29,6 +29,7 @@ export * from './bosses.js';
 export * from './sources.js';
 export * from './freshness.js';
 export * from './patches.js';
+export * from './radar.js';
 export * from './datasetDiff.js';
 export * from './ladder.js';
 export * from './advice.js';

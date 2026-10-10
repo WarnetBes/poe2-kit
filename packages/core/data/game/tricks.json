@@ -1,0 +1,94 @@
+{
+  "_meta": {
+    "patch": "0.5.5e",
+    "as_of": "2026-10-10",
+    "sources": [
+      "_research/poe2r2_bugs_digest_2026-10.md (секция хитростей/пати)",
+      "_research/poe2r2_ru_digest_2026-10.md (CardiffRu, RU-форумы)",
+      "_research/poe2r2_eu_digest_2026-10.md (BR/DE-форумы)",
+      "_research/poe2r2_en_digest_2026-10.md (maxroll/экономика)"
+    ],
+    "note": "Data-словарь вкладки «🛡 Радар» (Этап 4-2/№256), секция «💡 Хитрости»: ТОЛЬКО легальные приёмы и превентивные правила. Эксплойты с риском бана сюда НЕ помещаются - для них подходит только статус-кворум «не использовать» (см. дайджесты). Каждая запись: mechanism -> usage -> risk. unverified=true - единичный источник или Machine-перевод; проверять перед доверием. Правки - ручная курация."
+  },
+  "tricks": [
+    {
+      "id": "ritual-postpone-limit",
+      "title": "Ritual postpone: лимит 3 - предмет исчезает навсегда",
+      "category": "loot-rule",
+      "mechanism": "Отложить ритуальный предмет (например Headhunter) можно максимум 3 раза; после лимита предмет исчезает НАВСЕГДА, без предупреждения.",
+      "usage": "Считать отходы (первый - при/domain входе в круг); на дорогих предметах - не откладывать третий раз «на авось».",
+      "risk": "none",
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4004435"]
+    },
+    {
+      "id": "patch-day-stash",
+      "title": "Патч-день: не держать капитал в стэше",
+      "category": "survival-rule",
+      "mechanism": "При обновлениях/евент-лигах были кейсы потери содержимого стэша (BR-кейс: вся валюта исчезла из стэша после обновления event-лиги; FR-кейс: роллбэк прогресса).",
+      "usage": "Перед патчем/запуском лиги - держать ценности на персонаже или выждать первые часы патча; логин после патча начинать с проверки стэша.",
+      "risk": "none",
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4004326"]
+    },
+    {
+      "id": "texture-quality-low-vram",
+      "title": "Texture Quality (low-VRAM) - легальный перф-трюк 0.5.5e",
+      "category": "perf",
+      "mechanism": "0.5.5e добавила Texture Quality для слабых GPU: снижает VRAM-своп, в паре с off Upscale лечит семейство крашей.",
+      "usage": "Graphics -> Texture Quality понизить + отключить Upscale Mode; затем Verify/Repair при крашах.",
+      "risk": "none",
+      "sources": ["https://www.pathofexile.com/forum/view-thread/4009785"]
+    },
+    {
+      "id": "spirit-gem-checkbox",
+      "title": "Галочка дух-гем-слота: снять для %-reservation-баффов",
+      "category": "build-fix",
+      "mechanism": "Галочка на слоте неиспользуемого дух-гема молча блокирует %-reservation-баффы (баг, см. known_issues); снятие галочки - мгновенный «починку» билда без пересборки.",
+      "usage": "Если аура/бафф-стак ниже ожидания - первым делом проверить галочки слотов у дух-гемов.",
+      "risk": "none",
+      "sources": ["https://www.inven.co.kr/board/poe2/4845/39837"]
+    },
+    {
+      "id": "party-manastack-aurabot",
+      "title": "Пати-роль: Manastack Aurabot/Cursebot (Lich) - легальный якорь",
+      "category": "party",
+      "mechanism": "Саппорт-лейаут: аура-курсбот через Manastack (Lich) - легальная под-роль для повышения скорости/урона группы.",
+      "usage": "Второй персонаж в пати собирает ауры+проклятия; главное - не мульт-boxing автоматизацией (серая зона), а живой второй игрок.",
+      "risk": "none",
+      "sources": ["https://mobalytics.gg/poe-2/builds/manastack-aurabot-cursebot-support-lich-paychak1"]
+    },
+    {
+      "id": "party-mf-culler",
+      "title": "Пати-роль: MF-culler (rarity+забивание) - план под Gravebind-cap",
+      "status_note": "живёт как приём, но параметры IIR-кэпа - ❓",
+      "category": "party",
+      "mechanism": "Culler со стаком increased item rarity добивает боссов ради качества лута пати. Тезис: Gravebind молча кэпит ~20% increased rarity (0.5.эпоха) - значит планировать rarity-мультипликаторы на других вещах, а не на перчатках.",
+      "usage": "Стандартная роль лут-пати; проверять свой rarity-стак обычным A/B-фармом, не доверять сумме в чарлисте.",
+      "risk": "none",
+      "unverified": "Gravebind-cap - один Machine-переводённый источник (boostmatch), GGG не подтверждала; сам приём culler-a - стандарт",
+      "sources": [
+        "_research/poe2r2_bugs_digest_2026-10.md (§4.2, boostmatch.gg ❓)",
+        "https://www.pathofexile.com/forum/view-thread/3714377"
+      ]
+    },
+    {
+      "id": "party-loot-share-observation",
+      "title": "Пати vs соло: наблюдение о кратном росте лута",
+      "category": "party",
+      "mechanism": "RU-наблюдение: пати 4 игроков = 10-15 див/ч против ~0.5 у соло; механика деления количества GGG официально не раскрыта.",
+      "usage": "Для валютного фарма - формировать пати из 4 с MF-culler + aurabot; цифры - как ориентир, не гарантия.",
+      "risk": "none",
+      "unverified": "наблюдение одного треда, механизм GGG не раскрыт",
+      "sources": ["https://ru.pathofexile.com/forum/view-thread/3769796"]
+    },
+    {
+      "id": "expedition-farm-meta",
+      "title": "Фарм-мета 0.5.5e: Экспедиция > Ritual > 200% Deli Abyss",
+      "category": "economy",
+      "mechanism": "0.5.5 бафнула Экспедицию и Ritual; дайджесты сходятся: Экспедиция (Basin ~32 валюты/карта) и Ritual - топ; Essences/Strongboxes - F-tier.",
+      "usage": "Атлас-стратегию строить вокруг Экспедиции/Ritual; цифры - декларации гайдов (DTF 15-30 див/ч ❓), не обещания.",
+      "risk": "none",
+      "unverified": "цифры див/ч - декларативные, у каждого гайд-мейкера свои",
+      "sources": ["_research/poe2r2_ru_digest_2026-10.md", "_research/poe2r2_en_digest_2026-10.md"]
+    }
+  ]
+}
