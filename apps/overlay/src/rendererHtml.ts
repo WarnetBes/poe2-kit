@@ -4,6 +4,7 @@
  * Скрипт без module-импортов, поэтому грузится из файла без CORS-проблем.
  */
 import { T_DICT, SLANG_SECTIONS, SLANG_GLOSSARY, CRAFT_SYSTEMS, TAB_INFO } from './rendererData.js';
+import { liveIssues, listKnownTricks } from '@poe2-kit/core';
 import { OVERLAY_CSS } from './rendererCss.js';
 import { OVERLAY_SHELL } from './rendererShell.js';
 
@@ -250,7 +251,7 @@ ${OVERLAY_SHELL}<script>
   });
 
   function showMode(mode) {
-    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'gen' | 'import' — показываем только нужные блоки.
+    // mode: 'price' | 'level' | 'build' | 'gems' | 'maps' | 'pinnacle' | 'slang' | 'craft' | 'rates' | 'gen' | 'import' | 'radar' — показываем только нужные блоки.
     $('est').classList.toggle('hide', mode !== 'price');
     $('augLine').classList.toggle('hide', mode !== 'price');
     $('statBanner').classList.toggle('hide', mode !== 'price');
@@ -269,6 +270,7 @@ ${OVERLAY_SHELL}<script>
     $('genWrap').classList.toggle('hide', mode !== 'gen');
     $('importWrap').classList.toggle('hide', mode !== 'import');
     $('suppadvWrap').classList.toggle('hide', mode !== 'suppadv');
+    $('radarWrap').classList.toggle('hide', mode !== 'radar');
     updateScrollCtl();
   }
 
@@ -276,7 +278,7 @@ ${OVERLAY_SHELL}<script>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap', 'radarWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -441,6 +443,69 @@ ${OVERLAY_SHELL}<script>
   // Данные — из ядра poe2-kit по IPC (единый источник правды craftGuide.ts):
   // каталог статичен → кэшируем ответ один раз за сессию.
   var CRAFT_SYSTEMS = ${JSON.stringify(CRAFT_SYSTEMS, null, 2)};
+  // №262 Этап 2: радар-мини — live-баги и трюки запечены из ядра при сборке
+  // (radar.ts known_issues/known_tricks): ноль IPC, ноль сети, офлайн-панель.
+  var RADAR_LIVE = ${JSON.stringify(liveIssues(), null, 2)};
+  var RADAR_TRICKS = ${JSON.stringify(listKnownTricks(), null, 2)};
+  var radarSub = 'bugs'; // bugs | tricks — чипсы внутри вкладки
+  function radarChips() {
+    return '<div class="tree-chips">' +
+      [['bugs', '🐞 Live-баги (' + RADAR_LIVE.length + ')'], ['tricks', '🎯 Трюки (' + RADAR_TRICKS.length + ')']]
+        .map(function (s) {
+          return '<button class="tree-chip' + (radarSub === s[0] ? ' on' : '') + '" data-rs="' + s[0] + '">' + s[1] + '</button>';
+        }).join('') + '</div>';
+  }
+  function renderRadarTab() {
+    var host = $('radarContent');
+    if (!host) return;
+    var html = radarChips();
+    if (radarSub === 'bugs') {
+      if (!RADAR_LIVE.length) {
+        html += '<div class="lvl-hint">Live-багов в базе нет — база known_issues пуста для этого патча.</div>';
+      } else {
+        html += RADAR_LIVE.map(function (i) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(i.title) +
+            (i.severity ? ' <span style="color:var(--dim);font-size:10px">(' + esc(i.severity) + ')</span>' : '') + '</div>' +
+            '<div class="slang-def">' + esc(i.mechanism) +
+            (i.workaround ? '<br><b>Воркараунд:</b> ' + esc(i.workaround) : '') +
+            (i.unverified ? '<br><span style="color:var(--dim)">unverified: ' + esc(i.unverified) + '</span>' : '') +
+            '</div></div>';
+        }).join('');
+      }
+    } else {
+      if (!RADAR_TRICKS.length) {
+        html += '<div class="lvl-hint">Трюков в базе нет.</div>';
+      } else {
+        html += RADAR_TRICKS.map(function (t) {
+          return '<div class="slang-row"><div class="slang-term">' + esc(t.title) +
+            (t.category ? ' <span style="color:var(--dim);font-size:10px">' + esc(t.category) + '</span>' : '') + '</div>' +
+            '<div class="slang-def"><b>Как:</b> ' + esc(t.usage) +
+            '<br><b>Механизм:</b> ' + esc(t.mechanism) +
+            (t.risk ? '<br><b>Риск:</b> ' + esc(t.risk) : '') +
+            (t.unverified ? '<br><span style="color:var(--dim)">unverified: ' + esc(t.unverified) + '</span>' : '') +
+            '</div></div>';
+        }).join('');
+      }
+    }
+    host.innerHTML = html;
+    var chips = host.querySelectorAll('[data-rs]');
+    for (var ci = 0; ci < chips.length; ci++) {
+      chips[ci].addEventListener('click', function () {
+        radarSub = this.getAttribute('data-rs');
+        renderRadarTab();
+      });
+    }
+  }
+  function showRadarView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '🛡 Радар патча';
+    showMode('radar');
+    renderRadarTab();
+    requestSize();
+  }
   var craftCatalog = null; // кэш ответа craft:catalog
   var lastCraftPlan = null; // №134: последний успешный план — переживает переключения под-вью
   var craftSub = 'plan';   // plan | recipes | essences | omens
@@ -2692,6 +2757,7 @@ ${OVERLAY_SHELL}<script>
     ['rates', '💱 Курс'],
     ['gen', '🧬 Билды'],
     ['pinnacle', '🛡 Пиннакл'],
+    ['radar', '🛡 Радар'],
     ['settings', '⚙ Настройки'],
   ];
   function applyTabVisibility(hidden) {
@@ -3135,6 +3201,8 @@ ${OVERLAY_SHELL}<script>
           showGenView(); // №136: генератор билдов по ладдеру poe.ninja
         } else if (tab === 'import') {
           showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
+        } else if (tab === 'radar') {
+          showRadarView(); // №262: live-баги/трюки — офлайн, данные запечены
         } else {
           window.poe2k.panelOpen(tab).catch(function () {});
         }
@@ -3142,6 +3210,47 @@ ${OVERLAY_SHELL}<script>
     }
   }
   bindTabs();
+
+  // ─── №262 Этап 2: keybinds-секция в панели билда (движок core.keybinds) ────
+  // Отдельный div #buildKeybinds (в buildWrap после #buildSum): build-рендер
+  // его не перезаписывает, показывается/прячется вместе с панелью билда.
+  function renderKeybindsSection() {
+    var host = $('buildKeybinds');
+    if (!host) return;
+    host.innerHTML =
+      '<button id="kbBtn" class="tabbtn" style="margin-top:6px">🎮 Раскладка по билду</button>' +
+      '<div id="kbOut"></div>';
+    $('kbBtn').addEventListener('click', function () {
+      var out = $('kbOut');
+      if (!out) return;
+      out.innerHTML = '<div class="lvl-hint">Считаю раскладку…</div>';
+      window.poe2k.keybindsAdvice().then(function (res) {
+        if (!res || !res.ok) {
+          out.innerHTML = '<div class="lvl-hint">' + esc((res && res.error) || 'Ошибка') + '</div>';
+          return;
+        }
+        var a = res.advice || {};
+        var roles = (a.assignments || []).map(function (s) {
+          return '<button class="tree-chip" title="' + esc(s.reason || '') + '">' +
+            '<b>' + esc(s.slot) + '</b> ' + esc(s.gem || '—') + '</button>';
+        }).join('');
+        var spirit = (a.spirit || []).length
+          ? '<div class="lvl-hint">Spirit (не биндить): ' + a.spirit.map(function (s) { return esc(s.gem); }).join(', ') + '</div>'
+          : '';
+        var unassigned = (a.unassigned || []).length
+          ? '<div class="lvl-hint">Без слота: ' + a.unassigned.map(esc).join(', ') + '</div>'
+          : '';
+        out.innerHTML =
+          '<div class="slang-hint">' + esc(res.className || 'Билд') + (res.ascendancy ? ' / ' + esc(res.ascendancy) : '') +
+          ' — боевые слоты (' + (a.assignments || []).length + '):</div>' +
+          '<div class="tree-chips">' + roles + '</div>' + spirit + unassigned +
+          '<div class="lvl-hint">Полная раскладка (схемы, система, инструкции) — web-вкладка «🎮 Раскладка».</div>';
+      }).catch(function (e) {
+        out.innerHTML = '<div class="lvl-hint">Ошибка IPC: ' + esc(String(e)) + '</div>';
+      });
+    });
+  }
+  renderKeybindsSection();
   // №105: применить сохранённую тему/цвета при загрузке (main шлёт settings:display
   // только при изменениях, а не на старте) — берём настройки сами.
   window.poe2k.settingsGet().then(function (s) {

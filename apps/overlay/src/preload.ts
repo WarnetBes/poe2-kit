@@ -73,6 +73,8 @@ export interface OverlayAPI {
   craftCatalog(): Promise<unknown>;
   /** №134: персональный крафт-план по предмету из буфера (Ctrl+C в игре → вызов). */
   craftPlanBuffer(): Promise<unknown>;
+  /** №262 Этап 2: совет раскладки навыков по импортированному билду (KeybindAdvice). */
+  keybindsAdvice(): Promise<unknown>;
   /** №135: курсы валют по лигам ({ league, leagues, rates: [{name, chaos, divine, trend, source}] }). */
   currencyRates(league?: string): Promise<unknown>;
   /** №136: мета-генератор билдов ({ league, slugs, sample, classes: [...] }). */
@@ -222,6 +224,8 @@ const api: OverlayAPI = {
   craftCatalog: () => ipcRenderer.invoke('craft:catalog'),
 
   craftPlanBuffer: () => ipcRenderer.invoke('craft:plan'),
+
+  keybindsAdvice: () => ipcRenderer.invoke('keybinds:advice'),
 
   currencyRates: (league) => ipcRenderer.invoke('currency:rates', league),
 

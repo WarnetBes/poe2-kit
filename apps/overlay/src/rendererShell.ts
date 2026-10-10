@@ -26,6 +26,7 @@ export const OVERLAY_SHELL = `<body>
       <button data-tab="rates" title="Курсы валют по лигам: сколько стоит валюта в chaos (poe2scout + poe.ninja)">💱 Курс</button>
       <button data-tab="gen" title="Генератор билдов: живые билды топ-игроков poe.ninja по всем классам — скиллы, узлы, DPS/EHP">🧬 Билды</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
+      <button data-tab="radar" title="Радар: live-баги патча с воркараундами и трюки механик (офлайн)">🛡 Радар</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
       <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
     </div>
@@ -91,6 +92,9 @@ export const OVERLAY_SHELL = `<body>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
       </div>
+      <div id="radarWrap" class="hide">
+        <div id="radarContent"></div>
+      </div>
       <div id="scrollCtl">
         <button id="scrlUp" title="Прокрутить панель вверх (замена колеса мыши, если оно над оверлеем не работает)">▲</button>
         <button id="scrlDn" title="Прокрутить панель вниз">▼</button>
@@ -101,6 +105,7 @@ export const OVERLAY_SHELL = `<body>
         <div id="buildSlots"></div>
         <div id="buildTree"></div>
         <div id="buildSum"></div>
+        <div id="buildKeybinds"></div>
         <div id="buildErr" class="hide"></div>
       </div>
       <div id="importWrap" class="hide">

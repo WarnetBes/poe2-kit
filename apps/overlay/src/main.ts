@@ -203,7 +203,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'radar', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -3877,6 +3877,31 @@ function setupIPC(): void {
     } catch (err) {
       console.warn('[overlay] craft:plan failed:', (err as Error).message);
       return { ok: false, error: `Не удалось разобрать предмет: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №262 Этап 2: раскладка навыков по билду (keybinds.ts → web №221) ─────
+  // core.keybinds.adviseKeybinds(BuildImport) — тот же движок, что web-вкладка
+  // «🎮 Раскладка». Билд уже импортирован (Ctrl+F3): пересобираем BuildImport
+  // из rawInput и сводим слоты геймпада/клавиатуры. Никакой сети.
+  ipcMain.handle('keybinds:advice', async () => {
+    if (!buildState?.rawInput) {
+      return { ok: false, error: 'Билд не импортирован — сначала Ctrl+F3.' };
+    }
+    try {
+      const imported = await withTimeout(
+        core.build.importBuild(buildState.rawInput),
+        20_000,
+        'importBuild',
+      );
+      const advice = core.keybinds.adviseKeybinds(imported);
+      console.log(
+        `[overlay] keybinds advice: ${advice.assignments.length} слотов, spirit=${advice.spirit.length}, unassigned=${advice.unassigned.length}`,
+      );
+      return { ok: true, className: imported.class, ascendancy: imported.ascendancy, advice };
+    } catch (err) {
+      console.warn('[overlay] keybinds:advice failed:', (err as Error).message);
+      return { ok: false, error: `Не удалось построить раскладку: ${(err as Error).message}` };
     }
   });
 
