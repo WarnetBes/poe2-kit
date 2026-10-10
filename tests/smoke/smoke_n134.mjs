@@ -17,16 +17,15 @@ const coreIdx = fs.readFileSync('packages/core/dist/index.js', 'utf8');
 ok(/data-tab="slang"/.test(render), 'renderer: кнопка вкладки Слэнг');
 ok(/slangWrap/.test(render), 'renderer: slangWrap');
 ok(/SLANG_GLOSSARY/.test(render), 'renderer: словарь SLANG_GLOSSARY');
-{ // После S1-выноса (№179) данные слэнга живут в rendererData.js; в rendererHtml.js — плейсхолдер интерполяции.
-  const data = fs.readFileSync('apps/overlay/src/rendererData.ts', 'utf8') ||
-    fs.readFileSync('apps/overlay/dist/rendererData.js', 'utf8');
-  const seg = data.slice(data.indexOf('SLANG_GLOSSARY'), data.indexOf('CRAFT_SYSTEMS'));
+{ // №262 Этап 3: данные слэнга живут в packages/core/src/slang.ts (единый источник);
+  // в rendererHtml.js — плейсхолдер интерполяции из '@poe2-kit/core'.
+  const data = fs.readFileSync('packages/core/src/slang.ts', 'utf8');
+  const seg = data.slice(data.indexOf('SLANG_GLOSSARY'));
   const n = (seg.match(/\['[^']+', '/g) || []).length;
   ok(n >= 45, 'renderer: слэнг-записей >= 45 (факт: ' + n + ')');
-  ok(render.includes('${JSON.stringify(SLANG_GLOSSARY'), 'renderer: SLANG_GLOSSAY интерполируется из rendererData'); }
-{ const dataSrc = fs.readFileSync('apps/overlay/src/rendererData.ts', 'utf8');
-  const dataSeg = dataSrc.slice(dataSrc.indexOf('SLANG_GLOSSARY'), dataSrc.indexOf('CRAFT_SYSTEMS'));
-  ok(/'slang', '📖 Слэнг'/.test(render) && !/[\u4e00-\u9fff]/.test(dataSeg), 'renderer: TABS_META + mojibake в глоссарии нет'); }
+  ok(render.includes('${JSON.stringify(SLANG_GLOSSARY'), 'renderer: SLANG_GLOSSARY интерполируется из core'); }
+{ const dataSrc = fs.readFileSync('packages/core/src/slang.ts', 'utf8');
+  ok(/'slang', '📖 Слэнг'/.test(render) && !/[\u4e00-\u9fff]/.test(dataSrc), 'renderer: TABS_META + mojibake в глоссарии нет'); }
 
 // №134 крафт
 ok(/data-tab="craft"/.test(render), 'renderer: кнопка вкладки Крафт');

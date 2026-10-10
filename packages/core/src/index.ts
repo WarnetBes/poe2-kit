@@ -41,6 +41,7 @@ export * from './endgame.js';
 export * from './buildPlanner.js';
 export * from './hideout.js';
 export * from './keybinds.js';
+export * from './slang.js';
 export * from './mapPrep.js';
 export * from './simulacrum.js';
 import * as buildPlannerMod from './buildPlanner.js';

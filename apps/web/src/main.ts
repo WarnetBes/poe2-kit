@@ -32,6 +32,7 @@ import { initRadarTab } from './radar';
 import { initLandingTab } from './landing';
 import { initCraftTab } from './craftGuide';
 import { initPinnacleTab } from './pinnacle';
+import { initSlangTab } from './slang';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -69,6 +70,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button data-tab="leveling" data-group="level" class="tab">Прокачка</button>
           <button data-tab="checklist" data-group="level" class="tab">Чек-лист</button>
           <button data-tab="hideout" data-group="level" class="tab">Хайдоуты</button>
+          <button data-tab="slang" data-group="level" class="tab">📖 Слэнг</button>
           <button data-tab="build" data-group="build" class="tab">Импорт билда</button>
           <button data-tab="keybinds" data-group="build" class="tab">🎮 Раскладка</button>
           <button data-tab="compare" data-group="build" class="tab">Сравнение</button>
@@ -255,6 +257,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>🌀 Simulacrum <small>Delirium 0.5.x · доступ · волны · боссы · лут</small></h2>
         <p class="hint">Энциклопедия + гайд: цепочка доступа (Mirror → Grand Mirror → Fog Bank → Simulacrum → Tang'Mazu), 7 волн и выбор шардов, телеграфы боссов, дроп-таблица с честной экономикой, атлас-ноды Delirium и чек-лист готовности. Гайд офлайн; спорные факты помечены «unverified» — патч GGG может поменять цифры.</p>
         <div id="out-simulacrum" class="out"></div>
+      </section>
+
+      <section id="pane-slang" class="pane">
+        <h2>📖 Слэнг <small>игровой жаргон PoE2 — по-человечески</small></h2>
+        <p class="hint">Сокращения и термины, которыми общаются игроки: гайды, трейд-чаты, форумы. Тот же словарь, что во вкладке оверлея (единый источник — ядро poe2-kit).</p>
+        <div id="out-slang" class="out"></div>
       </section>
 
       <section id="pane-radar" class="pane">
@@ -465,6 +473,7 @@ initRadarTab();
 initLandingTab();
 initCraftTab();
 initPinnacleTab();
+initSlangTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());

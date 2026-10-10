@@ -3,7 +3,8 @@
  * Рендерер общается с main через preload-мост `window.poe2k`.
  * Скрипт без module-импортов, поэтому грузится из файла без CORS-проблем.
  */
-import { T_DICT, SLANG_SECTIONS, SLANG_GLOSSARY, CRAFT_SYSTEMS, TAB_INFO } from './rendererData.js';
+import { T_DICT, CRAFT_SYSTEMS, TAB_INFO } from './rendererData.js';
+import { SLANG_SECTIONS, SLANG_GLOSSARY } from '@poe2-kit/core';
 import { liveIssues, listKnownTricks } from '@poe2-kit/core';
 import { OVERLAY_CSS } from './rendererCss.js';
 import { OVERLAY_SHELL } from './rendererShell.js';
