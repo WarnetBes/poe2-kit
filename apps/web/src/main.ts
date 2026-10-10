@@ -29,6 +29,7 @@ import { keybindsFromInputs, keybindsFromLastBuild } from './keybinds';
 import { initMapPrepTab } from './mapPrep';
 import { initSimulacrumTab } from './simulacrum';
 import { initRadarTab } from './radar';
+import { initLandingTab } from './landing';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -54,31 +55,46 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="layout">
     <header class="topbar">
       <div class="brand"><span class="brand-orn" aria-hidden="true"></span>PoE2 <b>Kit</b></div>
-      <nav class="tabs">
-        <button data-tab="currency" class="tab active">Курсы валют</button>
-        <button data-tab="price" class="tab">Прайс-чек</button>
-        <button data-tab="leveling" class="tab">Прокачка</button>
-        <button data-tab="checklist" class="tab">Чек-лист</button>
-        <button data-tab="build" class="tab">Импорт билда</button>
-        <button data-tab="keybinds" class="tab">🎮 Раскладка</button>
-        <button data-tab="compare" class="tab">Сравнение</button>
-        <button data-tab="tree" class="tab">Дерево</button>
-        <button data-tab="atlas" class="tab">Атлас</button>
-        <button data-tab="mapprep" class="tab">🗺 Карты</button>
-        <button data-tab="simulacrum" class="tab">🌀 Simulacrum</button>
-        <button data-tab="radar" class="tab">🛡 Радар</button>
-        <button data-tab="map" class="tab">Карта</button>
-        <button data-tab="hideout" class="tab">Хайдоуты</button>
-        <button data-tab="ai" class="tab">AI-чат</button>
-        <span class="tab league-wrap">
-          <label class="league-label" for="league-select">Лига</label>
-          <select id="league-select" class="league-select" title="Актуальные лиги (из poe2scout)"></select>
-          <button id="btn-refresh-leagues" class="ghost mini" title="Обновить список лиг и кэш данных">⟳</button>
-        </span>
-      </nav>
+      <div class="navwrap">
+        <nav class="tabgroups" aria-label="Разделы">
+          <button data-group="now" class="tg active" title="Сводка: что делать сейчас">Сейчас</button>
+          <button data-group="level" class="tg" title="Акты 1–4, чек-лист, хайдоуты">📈 Прокачка</button>
+          <button data-group="build" class="tg" title="Импорт, раскладка, сравнение, дерево">🛠 Билд</button>
+          <button data-group="endgame" class="tg" title="Атлас, карты, Simulacrum, радар">⚔ Эндгейм</button>
+          <button data-group="econ" class="tg" title="Курсы, прайс-чек, AI">💰 Экономика</button>
+        </nav>
+        <nav class="tabs" aria-label="Вкладки раздела">
+          <button data-tab="leveling" data-group="level" class="tab">Прокачка</button>
+          <button data-tab="checklist" data-group="level" class="tab">Чек-лист</button>
+          <button data-tab="hideout" data-group="level" class="tab">Хайдоуты</button>
+          <button data-tab="build" data-group="build" class="tab">Импорт билда</button>
+          <button data-tab="keybinds" data-group="build" class="tab">🎮 Раскладка</button>
+          <button data-tab="compare" data-group="build" class="tab">Сравнение</button>
+          <button data-tab="tree" data-group="build" class="tab">Дерево (мои узлы)</button>
+          <button data-tab="map" data-group="build" class="tab">Дерево (полное)</button>
+          <button data-tab="atlas" data-group="endgame" class="tab">Атлас</button>
+          <button data-tab="mapprep" data-group="endgame" class="tab">🗺 Карты</button>
+          <button data-tab="simulacrum" data-group="endgame" class="tab">🌀 Simulacrum</button>
+          <button data-tab="radar" data-group="endgame" class="tab">🛡 Радар</button>
+          <button data-tab="currency" data-group="econ" class="tab">Курсы валют</button>
+          <button data-tab="price" data-group="econ" class="tab">Прайс-чек</button>
+          <button data-tab="ai" data-group="econ" class="tab">AI-чат</button>
+        </nav>
+      </div>
+      <div class="league-zone" title="Лига влияет на цены, чек-лист и лестницу">
+        <label class="league-label" for="league-select">Лига</label>
+        <select id="league-select" class="league-select" title="Актуальные лиги (из poe2scout)"></select>
+        <button id="btn-refresh-leagues" class="ghost mini" title="Обновить список лиг и кэш данных">⟳</button>
+      </div>
     </header>
     <main class="content">
-      <section id="pane-currency" class="pane active">
+      <section id="pane-now" class="pane active">
+        <h2>Сейчас <small>сводка: где я · что дальше · что сломано в игре</small></h2>
+        <p class="hint">Дашборд из твоих данных: чек-лист прокачки, последний разобранный билд и live-баги текущего патча. Появитcя смысл — после первого чек-листа/импорта билда. Полные списки — в группах разделов сверху.</p>
+        <div id="out-now" class="out"></div>
+      </section>
+
+      <section id="pane-currency" class="pane">
         <h2>Курсы валют <small>(poe.ninja)</small></h2>
         <button id="btn-currencies" class="primary">Показать курсы</button>
         <div id="out-currency" class="out"></div>
@@ -161,6 +177,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="lvset">
           <input id="compare-slug" type="text" value="forbiddenrites" placeholder="слаг снапшот-лиги poe.ninja" title="Например: forbiddenrites, wraeclast-hardcore, ssf-… (см. poe2_ladder_leagues)" />
           <button id="btn-compare" class="primary">Сравнить</button>
+          <button id="btn-compare-last" class="ghost" title="Взять PoB-код из поля «Импорт билда»">Из поля «Импорт билда»</button>
         </div>
         <div id="out-compare" class="out"></div>
       </section>
@@ -310,6 +327,54 @@ tabs.forEach((tab) => {
   });
 });
 
+// ── Группы навигации (№262, Этап 0): «Сейчас» + 4 раздела ──
+// Анти-паттерн дизайнера №1: группы обязаны реально переключать DOM-видимость
+// подстроки вкладок, а не быть «ещё одним рядом кнопок».
+const groupBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.tg'));
+/** Последняя активная вкладка внутри группы — чтобы возврат в группу возвращал туда же. */
+const lastTabInGroup: Record<string, string> = {};
+
+function showTabsOfGroup(group: string): void {
+  tabs.forEach((t) => {
+    t.classList.toggle('grp-hidden', t.dataset.group !== group);
+    t.classList.toggle('active', false);
+  });
+  document.querySelectorAll<HTMLElement>('.pane').forEach((p) => {
+    p.classList.toggle('active', p.id === 'pane-now');
+  });
+}
+
+function selectGroup(group: string): void {
+  groupBtns.forEach((b) => b.classList.toggle('active', b.dataset.group === group));
+  if (group === 'now') {
+    // Лендинг: подстрока пустая, панель — pane-now.
+    tabs.forEach((t) => t.classList.add('grp-hidden'));
+    document.querySelectorAll<HTMLElement>('.pane').forEach((p) => {
+      p.classList.toggle('active', p.id === 'pane-now');
+    });
+    return;
+  }
+  showTabsOfGroup(group);
+  const target =
+    lastTabInGroup[group] ?? tabs.find((t) => t.dataset.group === group)?.dataset.tab ?? '';
+  if (target) {
+    const btn = document.querySelector<HTMLButtonElement>(`[data-tab="${target}"]`);
+    btn?.click();
+  }
+}
+
+groupBtns.forEach((btn) => {
+  btn.addEventListener('click', () => selectGroup(btn.dataset.group!));
+});
+
+// Запоминаем последнюю вкладку группы при её выборе (для возврата).
+tabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const g = tab.dataset.group;
+    if (g) lastTabInGroup[g] = tab.dataset.tab!;
+  });
+});
+
 // ── Выбор лиги ─────────────────────────────────────────
 async function initLeagueSelector(): Promise<void> {
   const sel = document.querySelector<HTMLSelectElement>('#league-select');
@@ -372,6 +437,7 @@ initAtlasTab();
 initMapPrepTab();
 initSimulacrumTab();
 initRadarTab();
+initLandingTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
@@ -383,6 +449,16 @@ document.querySelector('#btn-compare')!.addEventListener('click', () =>
     (document.querySelector('#compare-slug') as HTMLInputElement).value || DEFAULT_LADDER_SLUG,
   ),
 );
+
+// №262: сравнение с полем «Импорт билда» — дедублирует вставку PoB-кода.
+document.querySelector('#btn-compare-last')!.addEventListener('click', () => {
+  const code = (document.querySelector('#build-input') as HTMLTextAreaElement).value;
+  if (!code.trim()) {
+    setStatus('Поле «Импорт билда» пусто: вставь там PoB share-код.');
+    return;
+  }
+  void showBuildCompare(code, (document.querySelector('#compare-slug') as HTMLInputElement).value || DEFAULT_LADDER_SLUG);
+});
 
 // Чек-лист прокачки: открытие вкладки рендерит список (состояние из localStorage)
 document.querySelector('[data-tab="checklist"]')!.addEventListener('click', () => showChecklist());

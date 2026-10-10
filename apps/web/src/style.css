@@ -310,6 +310,75 @@ button.primary:active { background: linear-gradient(180deg, #241d0f, #3d3218); }
 
 .out { margin-top: 10px; }
 
+/* ── Навигация группами (№262, Этап 0): «Сейчас» + 4 раздела ───────────── */
+.navwrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.tabgroups { display: flex; gap: 8px; flex-wrap: wrap; }
+.tg {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #16161d, #101016);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  clip-path: var(--clip-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tg:hover { color: var(--gold-hi); border-color: var(--border-hi); }
+.tg.active {
+  background: linear-gradient(180deg, #2b2413, #1b1810);
+  border-color: var(--border-hi);
+  color: var(--gold-hi);
+  text-shadow: 0 0 10px rgba(214, 179, 106, 0.4);
+}
+.navwrap .tabs { margin-left: 4px; }
+.tab.grp-hidden { display: none; }
+
+/* Лига — фиксированная зона шапки, не «ещё одна вкладка» (анти-паттерн №3). */
+.league-zone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  clip-path: var(--clip-sm);
+  background: linear-gradient(180deg, #14141b, #0f0f14);
+  white-space: nowrap;
+}
+
+/* ── Лендинг «Сейчас» (№262): карточки-сводки ───────────────────────────── */
+.now-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+.now-card {
+  border: 1px solid var(--border);
+  clip-path: var(--clip-sm);
+  background: linear-gradient(180deg, #14141b, #0f0f14);
+  padding: 14px 16px;
+}
+.now-card h3 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 15px;
+  letter-spacing: 0.8px;
+  color: var(--gold);
+  margin: 0 0 8px;
+}
+.now-body p { margin: 6px 0; }
+.now-list { margin: 6px 0 8px; padding-left: 18px; }
+.now-list li { margin: 4px 0; }
+
 /* ── Таблица курсов — «сундук» с латунными заголовками ──────────────────── */
 
 .tbl {

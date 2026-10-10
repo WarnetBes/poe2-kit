@@ -111,6 +111,38 @@ function resetForNewLeague(): void {
   }
 }
 
+/**
+ * Снимок прогресса для лендинга «Сейчас» (№262): зон пройдено/всего +
+ * первая невзятая зона акта (с ближайшей квестовой наградой, если есть).
+ * Тот же state-ключ, что у рендера чек-листа — единственный источник правды.
+ */
+export interface ChecklistSnapshot {
+  done: number;
+  total: number;
+  next: { act: number; actName: string; zone: string; monsterLevel: number; reward: string | null } | null;
+}
+
+export function checklistSnapshot(): ChecklistSnapshot {
+  try {
+    const st = loadState();
+    const plan = core.leveling.getLevelingPlan();
+    const done = plan.filter((z) => st.zones[`${z.act}|${z.zone}`]).length;
+    const nextZone = plan.find((z) => !st.zones[`${z.act}|${z.zone}`]);
+    const next = nextZone
+      ? {
+          act: nextZone.act,
+          actName: nextZone.actName ?? `Акт ${nextZone.act}`,
+          zone: nextZone.zone,
+          monsterLevel: nextZone.monsterLevel,
+          reward: nextZone.rewards?.[0] ?? null,
+        }
+      : null;
+    return { done, total: plan.length, next };
+  } catch {
+    return { done: 0, total: 0, next: null };
+  }
+}
+
 // ── Рендер ────────────────────────────────────────────────────────
 function render(): HTMLElement {
   const el = document.getElementById('out-checklist');
