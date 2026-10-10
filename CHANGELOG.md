@@ -3,6 +3,19 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.29] — 2026-10-10 (волна №262 + №263/№265: web/overlay-паритет, курация известного, живая верификация)
+
+### Added
+- **Волна №262 «web/overlay-паритет» (5 коммитов `c4639b8…4609188`):**
+  - **web**: nav-группы .tabgroups (Сейчас/Прокачка/Билд/Эндгейм/Экономика) + лендинг «Сейчас» (чек-лист-снапшот, резисты lastBuild, live-баги — офлайн); новые вкладки «🔨 Крафт» (craftPlan по предмету из поля/буфера + каталоги CRAFT_* аккордеонами), «👑 Пиннакл» (estimateBuild по `poe2k.lastBuildCode` → pinnacleChecklist, verdict pass/fail/unknown), «📖 Слэнг» (web-вкладок теперь 17); переименования map→«Дерево (полное)», tree→«Дерево (мои узлы)»; кнопка сравнения с последним билдом.
+  - **overlay**: новая вкладка «🛡 Радар» (liveIssues/listKnownTricks запечены JSON-инжектом из core, офлайн) + keybinds-секция в панели билда (IPC `keybinds:advice` → adviseKeybinds по импортированному билду, `#buildKeybinds`).
+  - **core**: `slang.ts` (единый источник словаря overlay+web), `gemSupports.ts` (движок supportsForActive, `normGemName`, `GemSupportRecoLite`, `resetGemSupportCaches`); overlay — делегация core.
+- **E2E-скрипты №265** (живая верификация): `tests/e2e/e2e_radar_unverified.mjs` (живой MCP-зов poe2_known_issues), `scripts/e2e-radar-web.mjs` (CDP-клик web-радара), `scripts/e2e-radar-overlay.mjs` (живой Electron-прогон overlay-радара).
+
+### Changed
+- **Курация known_issues (№263 + №265, живые фetчи forum-тредов)**: strongbox-unable-open и vaal-ruins-waypoint — подтверждены 10+ независимыми репортёрами → **live** с воркараундами (взорвать как экспедиционный; пати-телепорт/маяк с 5+ кристаллами); ghostdance-compressed-duration и spirit-reservation-checkbox — единичные репорты → **unverified** с пояснениями (поле `unverified`); битые Inven-URL `/board/poe2/4845/*` → `/board/poe/6317/*` (known_issues + tricks). Итог: live 12, unverified 5.
+- **T_DICT overlay**: строки радара («Воркараунд:», «Как:», «Механизм:») переведены для EN-локали.
+
 ## [1.0.28] — 2026-10-10 (волны №239–№248 + №256: Simulacrum, источники/свежесть, stat-id, «🛡 Радар»)
 
 ### Added
