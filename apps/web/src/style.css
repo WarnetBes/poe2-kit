@@ -379,6 +379,26 @@ button.primary:active { background: linear-gradient(180deg, #241d0f, #3d3218); }
 .now-list { margin: 6px 0 8px; padding-left: 18px; }
 .now-list li { margin: 4px 0; }
 
+/* ── Крафт (№262, Этап 1): аккордеоны каталога ─────────────────────────── */
+.craft-acc {
+  border: 1px solid var(--border);
+  background: rgba(20, 20, 27, 0.5);
+  padding: 10px 14px;
+  margin: 10px 0;
+}
+.craft-acc summary {
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  color: var(--gold);
+  letter-spacing: 0.6px;
+}
+.craft-acc[open] summary { color: var(--gold-hi); }
+.craft-sys {
+  font-size: 14px;
+  color: var(--gold);
+  margin: 14px 0 6px;
+}
+
 /* ── Таблица курсов — «сундук» с латунными заголовками ──────────────────── */
 
 .tbl {

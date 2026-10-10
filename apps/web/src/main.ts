@@ -30,6 +30,8 @@ import { initMapPrepTab } from './mapPrep';
 import { initSimulacrumTab } from './simulacrum';
 import { initRadarTab } from './radar';
 import { initLandingTab } from './landing';
+import { initCraftTab } from './craftGuide';
+import { initPinnacleTab } from './pinnacle';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -72,10 +74,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button data-tab="compare" data-group="build" class="tab">Сравнение</button>
           <button data-tab="tree" data-group="build" class="tab">Дерево (мои узлы)</button>
           <button data-tab="map" data-group="build" class="tab">Дерево (полное)</button>
+          <button data-tab="craft" data-group="build" class="tab">🔨 Крафт</button>
           <button data-tab="atlas" data-group="endgame" class="tab">Атлас</button>
           <button data-tab="mapprep" data-group="endgame" class="tab">🗺 Карты</button>
           <button data-tab="simulacrum" data-group="endgame" class="tab">🌀 Simulacrum</button>
           <button data-tab="radar" data-group="endgame" class="tab">🛡 Радар</button>
+          <button data-tab="pinnacle" data-group="endgame" class="tab">👑 Пиннакл</button>
           <button data-tab="currency" data-group="econ" class="tab">Курсы валют</button>
           <button data-tab="price" data-group="econ" class="tab">Прайс-чек</button>
           <button data-tab="ai" data-group="econ" class="tab">AI-чат</button>
@@ -193,6 +197,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div id="out-tree" class="out"></div>
       </section>
 
+      <section id="pane-craft" class="pane">
+        <h2>🔨 Крафт <small>план по предмету · каталог рецептов 0.5.5</small></h2>
+        <p class="hint">Персональный план: Ctrl+C по предмету в игре → «Из буфера». Или вставь текст предмета (Rarity/моды) — craftPlan построит шаги методологии «двух якорей» (waystone — по своей методологии №130). Ниже — полный каталог: рецепты, эссенции, сплавы, омены.</p>
+        <textarea id="craft-item-input" rows="4" placeholder="Rarity: Rare&#10;Unnamed Amulet&#10;--------&#10;…"></textarea>
+        <div class="aitools">
+          <button id="btn-craft-plan" class="primary">План по предмету</button>
+          <button id="btn-craft-clipboard" class="ghost">Из буфера</button>
+        </div>
+        <div id="out-craft" class="out"></div>
+      </section>
+
       <section id="pane-atlas" class="pane">
         <h2>Карта Атласа <small>40 очков · ветки механик</small></h2>
         <p class="hint">Древо атласа (atlas skills): клик по узлу берёт/снимает очко (только рядом со стартом или взятым узлом — как в игре, с refund), счётчик в тулбаре. Панорамирование (перетаскивание), масштаб (колесо), поиск по имени/статах, ссылка с планом (#a=) и авто-сохранение в браузере.</p>
@@ -224,6 +239,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-mapprep" class="primary">Вердикт</button>
         </div>
         <div id="out-mapprep" class="out"></div>
+      </section>
+
+      <section id="pane-pinnacle" class="pane">
+        <h2>👑 Пиннакл <small>чекап готовности: EHP · резисты · чек-лист</small></h2>
+        <p class="hint">Тот же чекап, что Ctrl+F7 в оверлее (№111): estimateBuild по PoB-коду → чек-лист против табличных статов пиннакл-боссов. «unknown» — данных в билде нет (честная частичность). Считается локально, без сети.</p>
+        <div class="aitools">
+          <button id="btn-pinnacle-last" class="primary">По последнему билду</button>
+          <button id="btn-pinnacle-build" class="ghost">Из поля «Импорт билда»</button>
+        </div>
+        <div id="out-pinnacle" class="out"></div>
       </section>
 
       <section id="pane-simulacrum" class="pane">
@@ -438,6 +463,8 @@ initMapPrepTab();
 initSimulacrumTab();
 initRadarTab();
 initLandingTab();
+initCraftTab();
+initPinnacleTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
