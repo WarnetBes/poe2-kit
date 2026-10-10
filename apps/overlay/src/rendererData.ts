@@ -17,6 +17,7 @@ export const T_DICT: Record<string, string> = {
     '🛡 Радар': '🛡 Radar',
     '🛡 Радар патча': '🛡 Patch radar',
     'Live-баги патча': 'Live patch bugs', 'Хитрости (трюки)': 'Tricks',
+    'Воркараунд:': 'Workaround:', 'Как:': 'How:', 'Механизм:': 'Mechanism:',
     '🎮 Раскладка по билду': '🎮 Keybinds for build',
     'Билд не импортирован — сначала Ctrl+F3.': 'Build not imported — press Ctrl+F3 first.',
     'Прайс': 'Price', 'Прокачка': 'Leveling', 'Перемещение': 'Move',

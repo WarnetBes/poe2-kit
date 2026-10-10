@@ -107,19 +107,19 @@
       "risk": "none",
       "unverified": "одна локаль (KR), репортов на EN-форуме в срезе 07-10.10 не видно",
       "report_dates": ["07.10.2026"],
-      "sources": ["https://www.inven.co.kr/board/poe2/4845/39971"]
+      "sources": ["https://www.inven.co.kr/board/poe/6317/39971"]
     },
     {
       "id": "spirit-reservation-checkbox",
       "title": "Галочка слота дух-гема молча блокирует %-reservation-баффы",
       "status": "unverified",
       "severity": "damage",
-      "unverified": "одна локаль (KR/Inven 39837), GGG не отвечал, независимо не подтверждён",
+      "unverified": "один репортёр (Inven 6317/39837, 17.09, 0 комментариев, 580 просмотров — проверено живым фетчем 10.10); одна локаль (KR), GGG не отвечал",
       "mechanism": "Если на слоте неиспользуемого дух-гема стоит галочка, %-reservation-баффы не применяются - без иконки и лога.",
       "workaround": "Снять галочку с неиспользуемого слота или убрать гем. Кандидат в FAQ kit'а.",
       "risk": "none",
       "report_dates": ["17.09.2026"],
-      "sources": ["https://www.inven.co.kr/board/poe2/4845/39837"]
+      "sources": ["https://www.inven.co.kr/board/poe/6317/39837"]
     },
     {
       "id": "elemental-weakness-silent",
@@ -139,7 +139,7 @@
       "severity": "perk-broken",
       "unverified": "единственный тред (репорт 2025), ответ 10.10 не от GGG, независимо не подтверждён",
       "mechanism": "Долгожитель (репорт 2025): связка не даёт эффекта; треду отвечали 10.10 - не починено.",
-      "workaround": "Не использовать связку пока.",
+      "workaround": "Не использовать связку пока; в треде подсказали Cooldown Recovery support (не подтверждено).",
       "risk": "none",
       "report_dates": ["10.10.2026"],
       "sources": ["https://www.pathofexile.com/forum/view-thread/3855683"]
@@ -147,25 +147,23 @@
     {
       "id": "strongbox-unable-open",
       "title": "Strongbox unable to open",
-      "status": "unverified",
+      "status": "live",
       "severity": "progress-loss",
-      "unverified": "единичный репорт (тред 3951112), в официальном Known Issues отсутствует",
-      "mechanism": "Стронгбоксы не открываются (долгожитель).",
-      "workaround": "Нет.",
+      "mechanism": "Стронгбоксы не открываются (долгожитель; 10+ независимых репортёров в одном треде 06-29.09).",
+      "workaround": "Есть: незакрывающийся сундук можно ВЗОРВАТЬ как экспедиционный (репорт 29.09, joshtheyipper).",
       "risk": "none",
-      "report_dates": ["09.10.2026"],
+      "report_dates": ["05.06.2026", "19.09.2026", "20.09.2026", "26.09.2026", "09.10.2026"],
       "sources": ["https://www.pathofexile.com/forum/view-thread/3951112"]
     },
     {
       "id": "vaal-ruins-waypoint",
       "title": "Vaal ruins waypoint недоступен",
-      "status": "unverified",
+      "status": "live",
       "severity": "minor",
-      "unverified": "единичный репорт (тред 3949536), независимо не подтверждён",
-      "mechanism": "Waypoint-квест Vaal ruins недоступен (долгожитель, треду отвечали 09.10).",
-      "workaround": "Проходить заново пешком.",
+      "mechanism": "Waypoint-квест Vaal ruins недоступен (долгожитель; 10+ независимых репортёров 05.06-09.10, тред 3949536; живая проверка 10.10).",
+      "workaround": "Два подтверждённых: (1) пати-телепорт к игроку с открытым waypoint; (2) маяк Infested Barrens/Viper Pit с 5+ кристаллами (подтверждено двумя игроками в треде).",
       "risk": "none",
-      "report_dates": ["09.10.2026"],
+      "report_dates": ["05.06.2026", "18.06.2026", "20.06.2026", "03.07.2026", "20.07.2026", "02.08.2026", "09.10.2026"],
       "sources": ["https://www.pathofexile.com/forum/view-thread/3949536"]
     },
     {

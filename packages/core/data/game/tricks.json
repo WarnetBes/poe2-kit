@@ -45,7 +45,7 @@
       "mechanism": "Галочка на слоте неиспользуемого дух-гема молча блокирует %-reservation-баффы (баг, см. known_issues); снятие галочки - мгновенный «починку» билда без пересборки.",
       "usage": "Если аура/бафф-стак ниже ожидания - первым делом проверить галочки слотов у дух-гемов.",
       "risk": "none",
-      "sources": ["https://www.inven.co.kr/board/poe2/4845/39837"]
+      "sources": ["https://www.inven.co.kr/board/poe/6317/39837"]
     },
     {
       "id": "party-manastack-aurabot",
