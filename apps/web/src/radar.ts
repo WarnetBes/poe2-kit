@@ -127,7 +127,7 @@ function renderRadar(el: HTMLElement): void {
           .map(
             (x) => `<tr>
               <td><b>${esc(x.version)}</b></td>
-              <td>${esc(x.date)}</td>
+              <td>${x.date_accuracy ? `<span title="точность даты: ${esc(x.date_accuracy)}">≈</span> ` : ''}${esc(x.date)}${x.date_accuracy ? ` <span class="dim" title="точность даты: ${esc(x.date_accuracy)}">(${esc(x.date_accuracy)})</span>` : ''}</td>
               <td>${x.hotfix ? 'хотфикс' : x.league ? '<b>лига</b>' : 'патч'}</td>
               <td>${esc(x.title ?? '—')}${x.unverified ? unver(x.unverified) : ''}</td>
               <td class="dim">${agoLabel(x.date, nowMs)}</td>

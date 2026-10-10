@@ -153,6 +153,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-build-price" class="ghost">Оценить снаряжение</button>
         </div>
         <div id="out-build" class="out"></div>
+        <div id="out-supports" class="out"></div>
         <div id="out-build-price" class="out"></div>
       </section>
 

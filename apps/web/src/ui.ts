@@ -8,6 +8,7 @@ import {
   type League,
 } from '@poe2-kit/core';
 import { renderTreeMap } from './treeMap';
+import { renderSupportsAdvice } from './supports';
 
 export { core, KNOWN_LEAGUES };
 
@@ -407,6 +408,10 @@ export async function showBuildImport(code: string): Promise<void> {
     if (gear) ls.push('<h4>Снаряжение</h4><ul class="kv">' + gear + '</ul>');
     if (b.passiveNodes.length) ls.push(`<p class="note">Пассивок: ${b.passiveNodes.length} · углублённый анализ — через ИИ (вкладка «AI»)/MCP.</p>`);
     el.innerHTML = ls.join('');
+    // №266: саппорт-советы по активным гемам (офлайн-слои core.gemSupports).
+    void renderSupportsAdvice(b.skills).catch(() => {
+      /* блок уже показал свою ошибку — разбор билда не ломаем */
+    });
     try {
       localStorage.setItem(
         'poe2k.lastBuild',

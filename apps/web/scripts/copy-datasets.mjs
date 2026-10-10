@@ -15,6 +15,10 @@ const gameDir = join(here, '..', '..', '..', 'packages', 'core', 'data', 'game')
 const files = [
   { dir: 'skill_gems', rel: 'skill_gems_v2.json', minBytes: 1_000_000 }, // 9.9 МБ — меньше мегабайта значит скопировалось не то
   { dir: 'skill_gems', rel: 'gem_colors.json', minBytes: 10_000 }, // ~29 КБ
+  // №266: «Саппорт-советы» в разборе билда — core.gemSupports в браузере
+  // (слои: meta_supports — эталон меты; recommended_supports — base-ранги poe2db).
+  { dir: 'skill_gems', rel: 'meta_supports.json', minBytes: 10_000 }, // ~16 КБ
+  { dir: 'skill_gems', rel: 'recommended_supports.json', minBytes: 200_000 }, // ~317 КБ
   // №234-Э4: «🗺 Карты» — датасеты Map Prep (135 карт + 74 группы модов, ~75 КБ);
   // кладутся в public/datasets/maps/ (fetch = datasets/maps/*.json).
   { dir: 'maps', rel: 'maps.json', minBytes: 30_000 }, // ~43 КБ
