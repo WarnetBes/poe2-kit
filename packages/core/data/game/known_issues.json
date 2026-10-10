@@ -112,8 +112,9 @@
     {
       "id": "spirit-reservation-checkbox",
       "title": "Галочка слота дух-гема молча блокирует %-reservation-баффы",
-      "status": "live",
+      "status": "unverified",
       "severity": "damage",
+      "unverified": "одна локаль (KR/Inven 39837), GGG не отвечал, независимо не подтверждён",
       "mechanism": "Если на слоте неиспользуемого дух-гема стоит галочка, %-reservation-баффы не применяются - без иконки и лога.",
       "workaround": "Снять галочку с неиспользуемого слота или убрать гем. Кандидат в FAQ kit'а.",
       "risk": "none",
@@ -134,8 +135,9 @@
     {
       "id": "ghostdance-compressed-duration",
       "title": "Ghost Dance + Compressed Duration II не работают",
-      "status": "live",
+      "status": "unverified",
       "severity": "perk-broken",
+      "unverified": "единственный тред (репорт 2025), ответ 10.10 не от GGG, независимо не подтверждён",
       "mechanism": "Долгожитель (репорт 2025): связка не даёт эффекта; треду отвечали 10.10 - не починено.",
       "workaround": "Не использовать связку пока.",
       "risk": "none",
@@ -145,8 +147,9 @@
     {
       "id": "strongbox-unable-open",
       "title": "Strongbox unable to open",
-      "status": "live",
+      "status": "unverified",
       "severity": "progress-loss",
+      "unverified": "единичный репорт (тред 3951112), в официальном Known Issues отсутствует",
       "mechanism": "Стронгбоксы не открываются (долгожитель).",
       "workaround": "Нет.",
       "risk": "none",
@@ -156,8 +159,9 @@
     {
       "id": "vaal-ruins-waypoint",
       "title": "Vaal ruins waypoint недоступен",
-      "status": "live",
+      "status": "unverified",
       "severity": "minor",
+      "unverified": "единичный репорт (тред 3949536), независимо не подтверждён",
       "mechanism": "Waypoint-квест Vaal ruins недоступен (долгожитель, треду отвечали 09.10).",
       "workaround": "Проходить заново пешком.",
       "risk": "none",
