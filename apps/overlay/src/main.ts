@@ -200,6 +200,10 @@ interface OverlaySettings {
   /** №113b: id вкладок, скрытых из боковой колонки кнопок (панель остаётся
    *  доступной по хоткею и из настроек). 'settings' скрыть нельзя — управление. */
   hiddenTabs?: string[];
+  /** P10 (§4.3, opt-in): вердикт-слой «предмет vs билд» в карточке прайса —
+   * upgrade/sidegrade/downgrade с гвардов core.itemVerdict, поверх гира
+   * импортированного билда (Ctrl+F3). Расчёт локальный, без сети. */
+  verdictLayer?: boolean;
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
@@ -1139,6 +1143,7 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.learn === 'boolean') next.learn = raw.learn;
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
+  if (typeof raw.verdictLayer === 'boolean') next.verdictLayer = raw.verdictLayer;
   if (raw.gemLang === 'en' || raw.gemLang === 'ru') next.gemLang = raw.gemLang;
   // №158: язык UI панели.
   if (raw.lang === 'ru' || raw.lang === 'en' || raw.lang === 'auto') next.lang = raw.lang;
@@ -2871,6 +2876,41 @@ async function checkPriceItem(itemText: string): Promise<Record<string, unknown>
 }
 
 /** Билд-ассистент: сопоставить предмет со слотом билда и отметить собранным. */
+/**
+ * P10 (§4.3, opt-in verdictLayer): вердикт «предмет vs билд» для кандидата из
+ * буфера — поверх гира импортированного билда. Слот-контекст core находит сам
+ * (по Item Class); гварды ExileLens: res-cap-lost ≠ upgrade, UNMEASURED ≠ upgrade.
+ * Тонкий мост: вся логика в core.itemVerdict, здесь только компоновка payload.
+ */
+function attachVerdict(result: Record<string, unknown>, itemText: string): void {
+  if (settings.verdictLayer !== true || !buildState || !itemText.trim()) return;
+  try {
+    const gear = buildState.slots
+      .filter((s) => s.itemText && s.itemText.trim().length > 0)
+      .map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText as string }));
+    if (gear.length === 0) return;
+    const v = core.itemVerdict.itemVerdict({
+      candidateText: itemText,
+      gear,
+      character: buildState.level ? { level: buildState.level } : undefined,
+    });
+    if (v.verdict === 'not_viable' && !v.guards.equipable && !v.current) return; // парс-мусор — не шумим
+    result.verdict = {
+      verdict: v.verdict,
+      headline: v.headline,
+      score: Math.round(v.score),
+      slot: v.slot,
+      reasons: v.reasons.filter((r) => r.direction !== 'info').slice(0, 3).map((r) => r.text),
+    };
+    statEvent(
+      'verdict:attached',
+      `${v.verdict} slot=${v.slot || '?'} score=${Math.round(v.score)}`,
+    );
+  } catch (err) {
+    console.warn(`[overlay] verdict: skip (${err instanceof Error ? err.message : String(err)})`);
+  }
+}
+
 function attachBuildMatch(result: Record<string, unknown>, itemText: string): void {
   if (!buildState || !itemText.trim()) return;
   try {
@@ -2969,6 +3009,7 @@ async function runPriceCheck(): Promise<unknown> {
     for (const it of list) {
       const r = await checkPriceItem(it);
       attachBuildMatch(r, it);
+      attachVerdict(r, it);
       results.push(r);
     }
 

@@ -2433,6 +2433,25 @@ ${OVERLAY_SHELL}<script>
       note.classList.add('hide');
       note.textContent = '';
     }
+    // P10 (§4.3): вердикт «предмет vs билд» (opt-in verdictLayer + импорт билда).
+    // Одна строка причинности (ITEM_CHECK_PRESENTATION-паттерн): gain/loss в лбу.
+    var vdEl = $('verdictLine');
+    if (res.verdict && res.verdict.verdict) {
+      var V_ICON = { upgrade: '✅', minor_upgrade: '🔼', sidegrade: '⚖️', downgrade: '❌', uncertain: '❓', not_viable: '⛔' };
+      var V_COLOR = { upgrade: '#7ec97e', minor_upgrade: '#a8d08d', sidegrade: '#d6c25a', downgrade: '#e07a6a', uncertain: '#9aa4b0', not_viable: '#c08a8a' };
+      var vk = String(res.verdict.verdict);
+      vdEl.classList.remove('hide');
+      vdEl.innerHTML =
+        '<b style="color:' + (V_COLOR[vk] || 'inherit') + '">' + (V_ICON[vk] || '') + ' ' +
+        esc(res.verdict.headline || vk) + '</b>' +
+        (res.verdict.slot ? ' <span style="font-size:10px;color:var(--dim)">[' + esc(res.verdict.slot) + ']</span>' : '');
+      vdEl.title = (res.verdict.reasons || []).join(' · ');
+    } else {
+      vdEl.classList.add('hide');
+      vdEl.innerHTML = '';
+      vdEl.title = '';
+    }
+
     if (res.estimate && res.estimate.median != null) {
       est.classList.remove('hide');
       var conf = res.estimate.confidence === 'exact' ? 'точно' : (res.estimate.confidence === 'approx' ? 'приблизительно' : 'грубо');
@@ -2808,6 +2827,7 @@ ${OVERLAY_SHELL}<script>
       learn: !!$('setLearn').checked,
       bindWindow: !!$('setBindWindow').checked,
       autoClipboard: !!$('setAutoClip').checked,
+      verdictLayer: !!$('setVerdictLayer').checked,
       gemLang: $('gemLangEn').classList.contains('on') ? 'en' : 'ru',
       // №105: тема доступности + свои цвета (пипетки).
       theme: draftTheme,
@@ -2841,6 +2861,7 @@ ${OVERLAY_SHELL}<script>
     $('setAutoHeight').checked = s.autoHeight === true;
     $('setLearn').checked = !!s.learn;
     $('setAutoClip').checked = !!s.autoClipboard;
+    $('setVerdictLayer').checked = !!s.verdictLayer;
     $('setBindWindow').checked = s.bindWindow !== false;
     paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
     paintUiLang(s.lang === 'ru' || s.lang === 'en' ? s.lang : 'auto');

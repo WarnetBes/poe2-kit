@@ -47,7 +47,8 @@ export const OVERLAY_SHELL = `<body>
       </div>
       <div id="est" class="est hide"></div>
       <div id="augLine" class="meta hide"></div>
-      <div id="buildNote" class="hide"></div>
+      <div id="verdictLine" class="meta hide"></div>
+    <div id="buildNote" class="hide"></div>
       <div id="busy" class="status-busy hide">Оценка цены…</div>
       <div id="err" class="err-box hide"></div>
       <div id="statBanner" class="meta hide"></div>
@@ -252,6 +253,17 @@ export const OVERLAY_SHELL = `<body>
           </label>
         </div>
         <div class="tip">Выключено по умолчанию (приватность): пока включено — kit читает буфер обмена каждые 500мс. Реагирует только на клир-текст предметов («Rarity:»), прочие копипасты игнорируются.</div>
+      </div>
+
+      <div class="set-row" id="verdictSection">
+        <div class="lbl">
+          <span>Вердикт «предмет vs билд» <small>— апгрейд или нет в карточке прайса</small></span>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:4px">
+            <input type="checkbox" id="setVerdictLayer" style="width:auto" />
+            <span style="font-size:10px;color:var(--dim)">Opt-in (локальный расчёт)</span>
+          </label>
+        </div>
+        <div class="tip">Выключено по умолчанию. При включённом и импортированном билде (Ctrl+F3) каждый Ctrl+C-предмет получает вердикт upgrade/sidegrade/downgrade: EHP-оси по 5 типам урона поверх гира билда, DPS оружия; гварды: потеря резист-капа ≠ апгрейд. Сеть не используется.</div>
       </div>
 
       <div class="set-row" id="learnSection">

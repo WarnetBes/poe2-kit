@@ -176,10 +176,11 @@ Energy Shield: 400
     expect(v.score).toBe(50);
   });
 
-  it('candidate-only (current не передан) — uncertain: UNMEASURED ≠ upgrade', () => {
+  it('candidate-only (current не передан) — uncertain: UNMEASURED ≠ upgrade; для брони offense-ось не применима', () => {
     const v = itemVerdict({ candidateText: BETTER_BODY });
     expect(v.verdict).toBe('uncertain');
-    expect(v.guards.offenseUnmeasured).toBe(true);
+    // BodyArmour: offense-моды не решают — ось не применима, а не unmeasured.
+    expect(v.guards.offenseUnmeasured).toBe(false);
   });
 
   it('без персонажа проверка требований неизвестна — гвард не даёт plain upgrade', () => {
@@ -229,5 +230,42 @@ Attacks per Second: ${aps}
     expect(d.energyShield).toBeGreaterThan(0);
     expect(d.life).toBeGreaterThan(0);
     expect(d.fireRes).toBe(10);
+  });
+
+  it('частичный character: level сверен, INT-требование нечем сверить — equipabilityUnknown', () => {
+    const v = itemVerdict({
+      candidateText: `Item Class: Body Armours
+Rarity: Rare
+Doom Vestment
+Sleek Jacket
+--------
+Energy Shield: 500
+--------
+Requires Level 60, 30 Int
+--------
++60 to maximum Life
+--------
+Item Level: 82
+`,
+      currentSlotText: CURRENT_BODY,
+      character: { level: 90 }, // overlay-мост: известен только уровень
+      basePools: { life: 1000, energyShield: 1500 },
+    });
+    expect(v.guards.equipabilityUnknown).toBe(true);
+    expect(v.guards.equipable).toBe(true);
+    // Несверенный INT кэпит plain upgrade → minor_upgrade или ниже.
+    expect(v.verdict).not.toBe('upgrade');
+  });
+
+  it('character дан полностью и покрывает требования — гварды чистые (unknown false)', () => {
+    const v = itemVerdict({
+      candidateText: BETTER_BODY,
+      currentSlotText: CURRENT_BODY,
+      character: { level: 90, intelligence: 120 },
+      basePools: { life: 1000, energyShield: 1500 },
+    });
+    expect(v.guards.equipabilityUnknown).toBe(false);
+    expect(v.guards.equipable).toBe(true);
+    expect(v.verdict).toBe('upgrade');
   });
 });

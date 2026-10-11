@@ -263,33 +263,43 @@ export function itemVerdict(input: ItemVerdictInput): ItemVerdict {
     );
   }
 
-  // Guards: требования.
+  // Guards: требования. Если хоть одно требование не удалось сверить
+  // (требование есть, а соответствующего поля персонажа нет) — гвард
+  // останется unknown: UNMEASURED ≠ upgrade (частичный character
+  // передаёт overlay: известен только level).
   let equipabilityUnknown = false;
-  if (input.character) {
+  {
     const r = candidate.requirements;
     const ch = input.character;
-    if (
-      (r.level != null && ch.level != null && r.level > ch.level) ||
-      (r.strength != null && ch.strength != null && r.strength > ch.strength) ||
-      (r.dexterity != null && ch.dexterity != null && r.dexterity > ch.dexterity) ||
-      (r.intelligence != null && ch.intelligence != null && r.intelligence > ch.intelligence)
-    ) {
-      const req = [
-        r.level != null ? `L${r.level}` : null,
-        r.strength != null ? `STR ${r.strength}` : null,
-        r.dexterity != null ? `DEX ${r.dexterity}` : null,
-        r.intelligence != null ? `INT ${r.intelligence}` : null,
-      ]
-        .filter(Boolean)
-        .join(', ');
-      const v = fail('not_viable', `Персонаж не может надеть: требования ${req}.`);
-      v.guards.equipable = false;
-      v.guards.equipabilityUnknown = false;
-      v.current = current ? { name: current.name ?? '', baseType: current.baseType } : null;
-      return v;
+    if (ch) {
+      if (
+        (r.level != null && ch.level != null && r.level > ch.level) ||
+        (r.strength != null && ch.strength != null && r.strength > ch.strength) ||
+        (r.dexterity != null && ch.dexterity != null && r.dexterity > ch.dexterity) ||
+        (r.intelligence != null && ch.intelligence != null && r.intelligence > ch.intelligence)
+      ) {
+        const req = [
+          r.level != null ? `L${r.level}` : null,
+          r.strength != null ? `STR ${r.strength}` : null,
+          r.dexterity != null ? `DEX ${r.dexterity}` : null,
+          r.intelligence != null ? `INT ${r.intelligence}` : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
+        const v = fail('not_viable', `Персонаж не может надеть: требования ${req}.`);
+        v.guards.equipable = false;
+        v.guards.equipabilityUnknown = false;
+        v.current = current ? { name: current.name ?? '', baseType: current.baseType } : null;
+        return v;
+      }
+      equipabilityUnknown =
+        (r.level != null && ch.level == null) ||
+        (r.strength != null && ch.strength == null) ||
+        (r.dexterity != null && ch.dexterity == null) ||
+        (r.intelligence != null && ch.intelligence == null);
+    } else {
+      equipabilityUnknown = true; // TRUST-01A: без данных персонажа сверить нельзя
     }
-  } else {
-    equipabilityUnknown = true; // TRUST-01A: без данных персонажа сверить нельзя
   }
 
   // Набор гира: current-слот заменяем кандидатом в переданном гире.
@@ -391,8 +401,12 @@ export function itemVerdict(input: ItemVerdictInput): ItemVerdict {
     });
   }
 
-  // Ось offense: только слот оружия (DPS самого предмета).
-  let offenseUnmeasured = true;
+  // Ось offense: measured — только слот оружия (DPS самого предмета).
+  // UNMEASURED ≠ upgrade кэпит вердикт только там, где offense решает
+  // (оружие/украшения); для defense-слотов ось не ПРИМЕНИМА — капа нет.
+  const OFFENSE_RELEVANT_SLOTS = new Set(['Weapon', 'Ring', 'Amulet', 'Belt', 'Quiver']);
+  const offenseRelevant = OFFENSE_RELEVANT_SLOTS.has(slot);
+  let offenseUnmeasured = offenseRelevant;
   let dpsDelta: number | null = null;
   if (slot === WEAPON_SLOT) {
     if (defsCurrent && current) {
@@ -410,13 +424,18 @@ export function itemVerdict(input: ItemVerdictInput): ItemVerdict {
       reasons.push({ text: 'DPS кандидата: собственный урон без сравнения (current не передан).', direction: 'info' });
     }
   }
-  if (offenseUnmeasured && slot !== WEAPON_SLOT) {
+  if (offenseUnmeasured && slot === WEAPON_SLOT) {
+    reasons.push({ text: 'DPS оружия не измерим (нет данных урона у предметов).', direction: 'info' });
+  } else if (offenseUnmeasured) {
     reasons.push({
       text: 'Offense-эффект (crit multi, attack speed, added damage с украшений) не измерим без PoB-оракула — ось UNMEASURED.',
       direction: 'info',
     });
-  } else if (offenseUnmeasured && slot === WEAPON_SLOT) {
-    reasons.push({ text: 'DPS оружия не измерим (нет данных урона у предметов).', direction: 'info' });
+  } else if (!offenseRelevant) {
+    reasons.push({
+      text: 'Offense-ось не применима к слоту (defense-предмет) — PoB-оракул не требуется.',
+      direction: 'info',
+    });
   }
 
   const guards: ItemVerdictGuards = {
