@@ -36,6 +36,7 @@ import { registerMapPrepTools } from './tools/mapPrep.js';
 import { registerSimulacrumTools } from './tools/simulacrum.js';
 import { registerRadarTools } from './tools/radar.js';
 import { registerPriceAnalysisTools } from './tools/priceAnalysis.js';
+import { registerLiveFilterTools } from './tools/liveFilter.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -82,6 +83,7 @@ export function buildServer(): number {
   count += registerSimulacrumTools(server);
   count += registerRadarTools(server);
   count += registerPriceAnalysisTools(server);
+  count += registerLiveFilterTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
