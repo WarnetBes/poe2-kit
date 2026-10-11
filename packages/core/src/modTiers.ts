@@ -4,9 +4,9 @@
  * Связка двух СУЩЕСТВУЮЩИХ слоёв ядра, между которыми раньше был разрыв
  * (мастер-план §2а: «данные есть → тул не обогащён»):
  *   parse.ts (синхронный разбор Ctrl+C-текста) + repoe.ts (индексы тиров
- *   RePoE: matchAllModTiers/lookupBaseItem). Донор-паттерн — poe2-mcp-server
- * (MIT, src/tools/item.ts: maxModSlots/enrichItem/formatEnrichmentSection):
- * слоты Rare 3P/3S, Magic 1P/1S; обогащение никогда не бросает исключений —
+ *   RePoE: matchAllModTiers/lookupBaseItem). Донор — poe2-mcp-server (MIT,
+ * © 2026 Serghei Iakovlev, src/tools/item.ts + src/services/repoe.ts:
+ * maxModSlots/enrichItem/formatEnrichmentSection): слоты Rare 3P/3S, Magic 1P/1S; обогащение никогда не бросает исключений —
  * при недоступности RePoE досье просто пустое, parse_item работает офлайн.
  */
 
@@ -50,6 +50,11 @@ export interface ModTierDossier {
   openSuffix: number;
   /** Невшитые explicit-моды, не найденные в индексе (уникальные/гибридные). */
   unmatchedExplicits: string[];
+}
+
+/** Бейдж тира для UI/текстовых тулов: «T2 из 5» (T1 — лучший). */
+export function tiersBadgeText(t: Pick<ModTierInfo, 'tier' | 'totalTiers'>): string {
+  return `T${t.tier} из ${t.totalTiers}`;
 }
 
 /** «est»: позиция ролла в диапазоне тира, %. */

@@ -173,6 +173,19 @@ SSF-план: не тратит сеть и валюту, выдаёт реко�
           `## Прайс-чек: ${res.itemName}`,
           `- **Редкость:** ${res.rarity}`,
         ];
+        // Бейджи тиров RePoE (P2, additive): «T2 из 5». resolveModTiers сам гейтит
+        // редкость (Rare/Magic only) и не бросает; пустое досье → секции нет.
+        {
+          const dossier = await core.modTiers.resolveModTiers(item_text);
+          if (dossier.modTiers.length) {
+            lines.push('', '### Тиры модов (RePoE)');
+            for (const t of dossier.modTiers) {
+              const badge = core.modTiers.tiersBadgeText(t);
+              const pct = t.rollPct !== null ? `, ролл ${t.rollPct}%` : '';
+              lines.push(`- ${t.modText} — **${badge}** (${t.prefixSuffix === 'prefix' ? 'префикс' : 'суффикс'}${pct})`);
+            }
+          }
+        }
         if (res.estimate) {
           lines.push(
             `- **Оценка:** ${res.estimate.median} chaos (доверие: ${res.estimate.confidence}, диапазон ${res.estimate.min}-${res.estimate.max})`,

@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import * as fsSync from 'node:fs';
 import * as pathSync from 'node:path';
 import * as osSync from 'node:os';
-import { maxModSlots, resolveModTiers } from '../src/modTiers.js';
+import { maxModSlots, resolveModTiers, tiersBadgeText } from '../src/modTiers.js';
 import { resetRepoeCaches } from '../src/repoe.js';
 import { resetHttpState } from '../src/http.js';
 
@@ -131,6 +131,13 @@ describe('modTiers: maxModSlots', () => {
     expect(maxModSlots('Magic')).toEqual({ prefixes: 1, suffixes: 1 });
     expect(maxModSlots('Unique')).toEqual({ prefixes: 0, suffixes: 0 });
     expect(maxModSlots('Normal')).toEqual({ prefixes: 0, suffixes: 0 });
+  });
+});
+
+describe('modTiers: tiersBadgeText', () => {
+  it('«T2 из 5»-формат бейджа', () => {
+    expect(tiersBadgeText({ tier: 2, totalTiers: 5 })).toBe('T2 из 5');
+    expect(tiersBadgeText({ tier: 1, totalTiers: 1 })).toBe('T1 из 1');
   });
 });
 
