@@ -10,9 +10,9 @@
 
 on:
   push:
-    # pob-oracle на push дорогой (~70 МБ PoB2 zip): гоняем только при
+    # pob-oracle на push дорогой (~390 МБ PoB2 zip): гоняем только при
     # изменениях oracle/. Прочие push — только быстрый ci-ping.
-    - workflows: [pob-oracle]
+    - workflows: [pob-oracle, pob-headless]
       filter:
         branches: [main]
         paths: [oracle/**]
@@ -26,6 +26,9 @@ on:
     - workflows: [pob-oracle]
       cron: "41 5 * * 1"
       description: "еженедельный headless-PoB2 оракул: ловим дрейф данных/формул PoB2"
+    - workflows: [pob-headless]
+      cron: "57 5 * * 1"
+      description: "еженедельный selftest headless-хоста на Linux (контракт, whatif, CAS)"
 
 workflows:
   ci-ping:
@@ -65,3 +68,23 @@ workflows:
             artifacts:
               paths:
                 - oracle/oracle-output.jsonl
+
+  # Headless-хост (Фаза 4): selftest pob_host.lua на LINUX — тот же
+  # pinned-тег PoB2, что и pob-oracle. Билд не нужен: new_build(),
+  # сценарий-матрица whatif, CAS-откат, контракт 4 (см. oracle/PINNED.md).
+  # Zip SHA256 выводится в лог для сверки с PINNED.md (дрейф апстрима
+  # виден вручную; codeload-архивы не гарантируют побайтовую стабильность).
+  pob-headless:
+    tasks:
+      - name: host-selftest
+        cubes:
+          - name: run-selftest
+            image: ghcr.io/pathofbuildingcommunity/pathofbuilding-tests:latest
+            script:
+              - cd "$SOURCECRAFT_WORKSPACE"
+              - apk add --no-cache curl unzip nodejs
+              - curl -fsSL -o pob2.zip https://codeload.github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/zip/refs/tags/v0.23.1
+              - sha256sum pob2.zip
+              - unzip -q pob2.zip
+              - mv PathOfBuilding-PoE2-0.23.1 pob2
+              - node oracle/headless-selftest.mjs pob2/src luajit
