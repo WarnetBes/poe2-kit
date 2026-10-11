@@ -46,7 +46,9 @@ end
 io.write = function(...) io.stderr:write(...); return io.stderr end
 
 local json = require("dkjson")
-local HEADLESS_RUNTIME_CONTRACT = 1
+-- Contract 2: +set_config CAS (before/autoResists/validation), +restore_config,
+-- +get_config_schema, +snapshot_build, +restore_build (Фаза 2 эпики).
+local HEADLESS_RUNTIME_CONTRACT = 2
 
 local booted, bootErr = pcall(dofile, "HeadlessWrapper.lua")
 if not booted or not build then
@@ -177,17 +179,163 @@ function methods.set_level(p)
 	return { ok = true, level = build.characterLevel, stats = collectStats(p.keys) }
 end
 
--- Патч build.configTab.input (what-if: боссы, charges, enemy resists, customMods...).
--- Полная замена значений по ключам; НЕ трогает неуказанные. Что-if без CAS —
--- транзакции с откатом = Фаза 2 эпики.
-function methods.set_config(p)
-	assert(type(p) == "table" and type(p.input) == "table", "set_config requires params.input")
-	for k, v in pairs(p.input) do
-		build.configTab.input[k] = v
+-- ---------------------------------------------------------------------------
+-- Фаза 2: CAS-конфиг + валидация + босс-резисты
+-- ---------------------------------------------------------------------------
+
+-- Ключи резистов врага, привязанные к enemyIsBoss. Значения = константы
+-- апстрима ConfigOptions.lua (apply enemyIsBoss: Boss=30 стр.2011, Pinnacle=50
+-- стр.2053, Uber=50 стр.2094; None очищает). PoB в headless ставит их только
+-- как GUI-плейсхолдеры (SetPlaceholder), в расчёт резист идёт лишь из input —
+-- поэтому применяем сами (паттерн MIT-донора pob_headless.lua:2688/2714).
+local BOSS_ELE_RES = { Boss = 30, Pinnacle = 50, Uber = 50, None = 0 }
+local BOSS_RESIST_KEYS = { "enemyFireResist", "enemyColdResist", "enemyLightningResist", "enemyChaosResist" }
+
+-- Enum-схема конфига прямо из движка: Modules/ConfigOptions (LoadModule
+-- глобален в HeadlessWrapper, стр.124). Лениво, один раз.
+local configSchemaCache
+local function configSchema()
+	if configSchemaCache ~= nil then return configSchemaCache end
+	local ok, varList = pcall(LoadModule, "Modules/ConfigOptions")
+	local schema = { vars = {}, unknown = {} }
+	if ok and type(varList) == "table" then
+		for _, vd in ipairs(varList) do
+			if type(vd) == "table" and vd.var ~= nil then
+			local ent = { var = vd.var, type = vd.type, label = vd.label }
+			if type(vd.list) == "table" then
+				local vals = {}
+				for _, item in ipairs(vd.list) do vals[#vals + 1] = item.val end
+				ent.values = vals
+				if vd.defaultIndex and vd.list[vd.defaultIndex] then
+					ent.default = vd.list[vd.defaultIndex].val
+				end
+			end
+			schema.vars[vd.var] = ent
+			end
+		end
+	end
+	configSchemaCache = schema
+	return schema
+end
+
+-- Валидация по enum-спискам движка. errors = невалидные значения list-ключей —
+-- set_config/restore_config с errors НЕ применяют ничего (CAS-атомарность).
+-- warnings = неизвестные ключи (пишутся вслепую: varList покрывает только GUI-вары).
+local function validateConfigInput(input)
+	local schema = configSchema()
+	local warnings, errors = {}, {}
+	for k, v in pairs(input) do
+		local ent = schema.vars[k]
+		if ent == nil then
+			warnings[#warnings + 1] = "unknown config key: " .. tostring(k) .. " (applied blindly)"
+		elseif ent.values and type(v) == "string" then
+			local okVal = false
+			for _, allowed in ipairs(ent.values) do
+				if v == allowed then okVal = true break end
+			end
+			if not okVal then
+				errors[#errors + 1] = string.format("key %s: value %q not in engine list {%s}",
+					tostring(k), v, table.concat(ent.values, ", "))
+			end
+		end
+	end
+	return warnings, errors
+end
+
+-- Снимок старых значений по списку ключей (nil фиксируется как json.null,
+-- чтобы restore_config мог вернуть «ключа не было»).
+local function configBefore(input)
+	local cfg = build.configTab.configSets[build.configTab.activeConfigSetId].input
+	local before = {}
+	for k in pairs(input) do
+		local v = cfg[k]
+		if v == nil then before[k] = json.null else before[k] = v end
+	end
+	return before
+end
+
+-- Запись конфиг-ключей (nil/json.null → удалить ключ). После — BuildModList+recalc.
+local function applyConfigInput(input)
+	local cfg = build.configTab.configSets[build.configTab.activeConfigSetId].input
+	for k, v in pairs(input) do
+		if v == nil or v == json.null then cfg[k] = nil else cfg[k] = v end
 	end
 	build.configTab:BuildModList()
 	recalc()
-	return { applied = p.input, stats = collectStats(p.keys) }
+end
+
+-- Патч build.configTab.input (what-if: боссы, charges, enemy resists, customMods...).
+-- Полная замена значений по ключам; НЕ трогает неуказанные. Фаза 2: CAS —
+-- возвращает `before` (снимок затронутых ключей) для restore_config и
+-- автоматически проставляет резисты тира босса (PoB в headless их не применяет).
+function methods.set_config(p)
+	assert(type(p) == "table" and type(p.input) == "table", "set_config requires params.input")
+	local warnings, errors = validateConfigInput(p.input)
+	if #errors > 0 then
+		return { ok = false, errorCode = "invalid_config_value", errors = errors, warnings = warnings }
+	end
+	-- Ключи, которые реально лягут в input: запрос + авто-резисты босса.
+	local effective = {}
+	for k, v in pairs(p.input) do effective[k] = v end
+	local appliedResists
+	if p.input.enemyIsBoss ~= nil then
+		local tier = tostring(p.input.enemyIsBoss)
+		local ele = BOSS_ELE_RES[tier] or 0
+		appliedResists = { tier = tier, eleResist = ele }
+		for _, k in ipairs(BOSS_RESIST_KEYS) do
+			if p.input[k] == nil and effective[k] == nil then
+				effective[k] = (k == "enemyChaosResist") and 0 or ele
+				appliedResists[k] = effective[k]
+			end
+		end
+	end
+	local before = configBefore(effective)
+	applyConfigInput(effective)
+	local res = {
+		applied = effective,
+		before = before,
+		stats = collectStats(p.keys),
+	}
+	if appliedResists ~= nil then res.autoResists = appliedResists end
+	if #warnings > 0 then res.warnings = warnings end
+	return res
+end
+
+-- Откат CAS: вернуть значения из `before` (снимок set_config). nil → ключ удалён.
+function methods.restore_config(p)
+	assert(type(p) == "table" and type(p.before) == "table", "restore_config requires params.before")
+	local warnings, errors = validateConfigInput(p.before)
+	if #errors > 0 then
+		return { ok = false, errorCode = "invalid_config_value", errors = errors, warnings = warnings }
+	end
+	local before = configBefore(p.before)
+	applyConfigInput(p.before)
+	local res = { restored = p.before, before = before, stats = collectStats(p.keys) }
+	if #warnings > 0 then res.warnings = warnings end
+	return res
+end
+
+-- Списки enum движка: { vars = { [key] = {type, label, values?, default?} } }.
+function methods.get_config_schema()
+	local schema = configSchema()
+	local vars = {}
+	for k, ent in pairs(schema.vars) do vars[k] = ent end
+	return { vars = vars }
+end
+
+-- Полный CAS-снапшот билда (XML через SaveDB) — откат ЛЮБЫХ изменений,
+-- не только конфига. Паттерн MIT-донора pob_headless.lua:2111-2133.
+function methods.snapshot_build(p)
+	local xmlText = build:SaveDB("code")
+	assert(type(xmlText) == "string" and #xmlText > 0, "SaveDB produced empty build snapshot")
+	return { xml = xmlText }
+end
+
+function methods.restore_build(p)
+	assert(type(p) == "table" and type(p.xml) == "string" and #p.xml > 0, "restore_build requires params.xml")
+	loadBuildFromXML(p.xml, "snapshot-restore")
+	recalc()
+	return { mainSkill = mainSkillName(), stats = collectStats(p and p.keys) }
 end
 
 function methods.stats(p)

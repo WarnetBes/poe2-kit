@@ -8,8 +8,11 @@
  *     HeadlessWrapper.lua; билд подаётся готовым XML (наш pobcode.decodeShareCode
  *     уже умеет инфляцию на TS-стороне — патч-бюджет экономим).
  *   - Русским «одним запросом» (one-shot): MCP пишет JSON-RPC строки в stdin,
- *     закрывает его, читает построчный stdout до EOF. Долгоживущий демон и
- *     CAS-транзакции с откатом — Фаза 2-3 эпики (docs/pob_headless_epic.md).
+ *     закрывает его, читает построчный stdout до EOF.
+ *   - Фаза 2 закрыта: set_config CAS (снимок before + restore_config на хосте),
+ *     валидация enum по спискам движка (Modules/ConfigOptions), авто-резисты
+ *     тира босса (Boss 30 / Pinnacle 50 / Uber 50 — GUI-плейсхолдеры апстрима
+ *     headless не применяет), полный snapshot_build/restore_build.
  *
  * Рантайм-зависимости (все воспроизводимы, см. oracle/setup-headless.mjs):
  *   - oracle/bin/luajit.exe — LuaJIT 2.1 (luapower mingw64, MIT, SHA256-гейт);
@@ -60,6 +63,10 @@ export interface RecomputeStats {
   stats: Record<string, number | string | boolean>;
   /** ms движка (wall clock спавна). */
   tookMs: number;
+  /** Фаза 2: авто-резисты тира босса (enemyIsBoss → enemyXResist), применённые хостом. */
+  autoResists?: { tier: string; eleResist: number;[key: string]: unknown };
+  /** Фаза 2: предупреждения валидации конфига (неизвестные ключи — применены вслепую). */
+  configWarnings?: string[];
 }
 export interface RecomputeUnavailable { available: false; reason: string; setupHint?: string; missing?: string[] }
 export type RecomputeResult = RecomputeStats | RecomputeUnavailable;
@@ -156,6 +163,7 @@ export function recomputeBuild(
 
   let loadResult: Record<string, unknown> | null = null;
   let finalResult: Record<string, unknown> | null = null;
+  let configFileResult: Record<string, unknown> | null = null;
   let ready = false;
   for (const line of (r.stdout || '').split('\n')) {
     const t = line.trim();
@@ -173,14 +181,25 @@ export function recomputeBuild(
     if (frame.ok === false) {
       return { available: false, reason: `Ошибка RPC ${String(frame.method ?? frame.id)}: ${String(frame.error)}` };
     }
-    if (frame.id === loadId) loadResult = frame.result as Record<string, unknown>;
-    if (frame.id === finalId) finalResult = frame.result as Record<string, unknown>;
+    const frameResult = frame.result as Record<string, unknown> | undefined;
+    // Фаза 2: set_config отвечает ok:false ВНУТРИ result (без pcall-ошибки) —
+    // невалидное значение конфига обязано звучать громко, а не молчаливым no-op.
+    if (frameResult && frameResult.ok === false) {
+      const errs = Array.isArray(frameResult.errors) ? (frameResult.errors as string[]).join('; ') : '';
+      return {
+        available: false,
+        reason: `Конфиг отклонён движком (${String(frameResult.errorCode ?? 'invalid')}): ${errs || 'см. autoResists/warnings'}`,
+      };
+    }
+    if (frame.id === loadId) loadResult = frameResult ?? null;
+    if (input.config && frame.id === 3) configFileResult = frameResult ?? null;
+    if (frame.id === finalId) finalResult = frameResult ?? null;
   }
   if (!ready) return { available: false, reason: 'startup-фрейм не получен (stdout без ready=true)' };
   if (!loadResult || typeof loadResult !== 'object') return { available: false, reason: 'load_build_xml не вернул результат' };
 
   const merged = { ...loadResult, ...(finalResult ?? {}) } as Record<string, unknown>;
-  return {
+  const res: RecomputeStats = {
     available: true,
     mainSkill: (merged.mainSkill as string | null) ?? null,
     characterLevel: (merged.characterLevel as number | null) ?? null,
@@ -189,4 +208,11 @@ export function recomputeBuild(
     stats: (merged.stats as RecomputeStats['stats']) ?? {},
     tookMs,
   };
+  if (configFileResult) {
+    const auto = configFileResult.autoResists as RecomputeStats['autoResists'] | undefined;
+    const warns = configFileResult.warnings as string[] | undefined;
+    if (auto) res.autoResists = auto;
+    if (warns && warns.length > 0) res.configWarnings = warns;
+  }
+  return res;
 }

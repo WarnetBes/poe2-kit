@@ -29,7 +29,10 @@ export function registerRecomputeTools(server: McpServer): number {
   - pob_code: PoB share-код (из pobb.in/poe.ninja или Ctrl+C из PoB) или
   - xml: готовый XML билда.
   - level (опц.): what-if уровень персонажа 1-100.
-  - config (опц.): what-if патч input-конфига PoB — {"enemyIsBoss":"Uber Pinnacle","customMods":"..."}.
+  - config (опц.): what-if патч input-конфига PoB — {"enemyIsBoss":"Uber","customMods":"..."}.
+    Значения enum-ключей валидируются списками движка (невалид → отказ, не молчаливый no-op).
+    enemyIsBoss автоматически проставляет резисты тира (Boss 30 / Pinnacle 50 / Uber 50 / None 0):
+    апстрим в headless применяет их только как GUI-плейсхолдеры.
   - stats (опц.): узкий список ключей статов (по умолчанию каталог ~60 ключей).
 
 Примеры:
@@ -98,12 +101,23 @@ export function registerRecomputeTools(server: McpServer): number {
           `Скилл-групп: ${result.skillGroups.length}; главное: **${result.mainSkill ?? '—'}**; ` +
           `уровень ${result.characterLevel ?? '—'}; дерево ${result.treeVersion ?? '—'}; движок ${result.tookMs} мс.`;
 
+        const cfgInfo: string[] = [];
+        if (result.autoResists) {
+          const a = result.autoResists;
+          cfgInfo.push(`Босс-тир **${a.tier}** → авто-резисты: F/C/L=${a.eleResist}%, Chaos=0% (headless плейсхолдеры апстрима движок не применяет).`);
+        }
+        if (result.configWarnings?.length) {
+          cfgInfo.push(`⚠ Предупреждения конфига:\n${result.configWarnings.map((w) => `- ${w}`).join('\n')}`);
+        }
+        const cfgBlock = cfgInfo.length ? `\n#### What-if конфиг\n${cfgInfo.join('\n')}\n` : '\n';
+
         return {
           content: [{
             type: 'text' as const,
             text:
-              `### Headless-PoB2 пересчёт (живой движок)\n${header}\n\n` +
-              `#### Урон\n${dps.join('\n')}\n\n` +
+              `### Headless-PoB2 пересчёт (живой движок)\n${header}\n` +
+              cfgBlock +
+              `\n#### Урон\n${dps.join('\n')}\n\n` +
               `#### Оборона и ресурсы\n${def.join('\n')}\n\n` +
               `#### Скиллы (первые группы)\n${groups}\n\n` +
               `Полный каталог статов (JSON):\n\`\`\`json\n${JSON.stringify(s, null, 1)}\n\`\`\``,

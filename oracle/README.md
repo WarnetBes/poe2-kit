@@ -80,11 +80,16 @@ jobs:
 Linux-вариант: вместо luapower-бинаря — `ghcr.io/pathofbuildingcommunity/pathofbuilding-tests`
 (тот же образ, что и CI PoB2; внутри есть `luajit`). Задачаائق: `cd src && LUA_PATH='?.lua;../runtime/lua/?.lua' luajit ../../oracle/oracle.lua`.
 
-## Headless-хост v2 (эпика, Фаза 1 — 11.10.2026)
+## Headless-хост v2 (эпика, Фазы 1–2 — 11.10.2026)
 
 Интерактивный line-JSON-RPC хост `headless/pob_host.lua` поверх того же движка:
-one-shot (stdin = запросы, EOF = выход), startup-фрейм `{ready, runtimeContract}`,
-методы `ping/new_build/load_build_xml/set_level/set_config/stats`.
+one-shot (stdin = запросы, EOF = выход), startup-фрейм `{ready, runtimeContract}` (контракт 2),
+методы `ping/new_build/load_build_xml/set_level/set_config/stats` +
+Фаза 2: `restore_config` (откат по снимку `before` из set_config), `get_config_schema`
+(enum-списки движка), `snapshot_build`/`restore_build` (полный XML-откат).
+`set_config` валидирует enum-значения (невалид → `{ok:false, errors}`, ничего не применяется)
+и автоматически применяет резисты тира врага: Boss 30 / Pinnacle 50 / Uber 50 / None 0 —
+апстрим в headless ставит их только как GUI-плейсхолдеры (ConfigOptions.lua apply → SetPlaceholder).
 Потребляет MCP-тул `poe2_recompute` (обвязка `packages/core/src/pobHost.ts`).
 Спека фаз и границы: `docs/pob_headless_epic.md`.
 

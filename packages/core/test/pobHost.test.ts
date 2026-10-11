@@ -168,4 +168,59 @@ describe('recomputeBuild — happy path (mock spawn)', () => {
     expect(r.available).toBe(false);
     expect((r as { reason: string }).reason).toContain('HeadlessWrapper');
   });
+
+  // ── Фаза 2: CAS/валидация конфига ──────────────────────────────────
+  it('set_config ok:false (невалидный enum) → honest unavailable, не тихий no-op', () => {
+    const dir = makeRuntime();
+    const spawnImpl = (() => ({
+      status: 0,
+      stdout: [
+        startup,
+        frame({ id: 1, ok: true, result: { stats: { Life: 1 } } }),
+        frame({
+          id: 3, ok: true,
+          result: { ok: false, errorCode: 'invalid_config_value', errors: ['key enemyIsBoss: value "NotABoss" not in engine list {None, Boss, Pinnacle, Uber}'] },
+        }),
+      ].join('\n') + '\n',
+    })) as never;
+    const r = recomputeBuild(
+      { xml: '<PathOfBuilding/>', config: { enemyIsBoss: 'NotABoss' } },
+      { POE2K_LUAJIT: join(dir, 'luajit.exe'), POE2K_POB2_SRC: dir } as NodeJS.ProcessEnv,
+      spawnImpl,
+    );
+    expect(r.available).toBe(false);
+    expect((r as { reason: string }).reason).toContain('invalid_config_value');
+    expect((r as { reason: string }).reason).toContain('NotABoss');
+  });
+
+  it('успешный set_config: пробрасывает autoResists и configWarnings в результат', () => {
+    const dir = makeRuntime();
+    const loadRes = { mainSkill: 'Ice Strike', stats: { Life: 1539 } };
+    const cfgRes = {
+      applied: { enemyIsBoss: 'Pinnacle', enemyColdResist: 50 },
+      before: {},
+      autoResists: { tier: 'Pinnacle', eleResist: 50, enemyChaosResist: 0 },
+      warnings: ['unknown config key: customMods (applied blindly)'],
+      stats: { Life: 1539 },
+    };
+    const spawnImpl = (() => ({
+      status: 0,
+      stdout: [
+        frame({ ready: true, runtimeContract: 2 }),
+        frame({ id: 1, ok: true, result: loadRes }),
+        frame({ id: 3, ok: true, result: cfgRes }),
+      ].join('\n') + '\n',
+    })) as never;
+    const r = recomputeBuild(
+      { xml: '<PathOfBuilding/>', config: { enemyIsBoss: 'Pinnacle', customMods: 'x' } },
+      { POE2K_LUAJIT: join(dir, 'luajit.exe'), POE2K_POB2_SRC: dir } as NodeJS.ProcessEnv,
+      spawnImpl,
+    );
+    expect(r.available).toBe(true);
+    const ok = r as Extract<typeof r, { available: true }>;
+    expect(ok.autoResists?.tier).toBe('Pinnacle');
+    expect(ok.autoResists?.eleResist).toBe(50);
+    expect(ok.configWarnings?.[0]).toContain('customMods');
+    expect(ok.stats.Life).toBe(1539);
+  });
 });
