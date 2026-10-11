@@ -2,6 +2,7 @@
 
 export * from './types.js';
 export * from './trade.js';
+export * from './priceAnalysis.js';
 export * from './build.js';
 export * from './leveling.js';
 export * from './repoe.js';
@@ -116,6 +117,7 @@ import * as questRewardsMod from './questRewards.js';
 import * as craftMod from './craftGuide.js';
 import * as pobcodeMod from './pobcode.js';
 import * as resultMod from './result.js';
+import * as priceAnalysisMod from './priceAnalysis.js';
 
 export const core = {
   trade,
@@ -169,6 +171,7 @@ export const core = {
   mapPrep: mapPrepMod, // №234: Map Prep Assistant — угроза карты + чек-лист подготовки (Этап 2)
   simulacrum: simulacrumMod, // №239: данные гайда Simulacrum (Delirium 0.5.x) + markdown для MCP-тула
   result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
+  priceAnalysis: priceAnalysisMod, // анализ трендов/волатильности валют (порт poe2scout-mcp, MIT)
 };
 
 export default core;

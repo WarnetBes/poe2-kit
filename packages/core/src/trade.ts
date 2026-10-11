@@ -236,6 +236,7 @@ export function clearScoutCache(): void {
 
 interface ScoutCurrencyItem {
   ApiId?: string;
+  ItemId?: number;
   Text?: string;
   CurrentPrice?: number | null;
 }
@@ -277,6 +278,187 @@ export async function fetchScoutCurrencyRates(league?: string): Promise<Currency
   }
   scoutCurrencyCache.set(key, { at: Date.now(), rates });
   return rates;
+}
+
+// ────────────────────────────────────────────────
+// poe2scout: история цен (часовые логи + дневные OHLC-свечи)
+// Живые эндпоинты (проверены 11.10.2026, лига Forbidden Rites):
+//   /poe2/Leagues/{shortName}/Items/{ItemId}/History?LogCount=N
+//     → { PriceHistory: [{ Price, Time, Quantity }], HasMore }
+//   /poe2/Leagues/{shortName}/Items/{ItemId}/DailyStatsHistory?DayCount=N
+//     → { DailyStats: [{ Time, Open, High, Low, Close, Average, Volume }] }
+// Это закрывает P1 #8 «история цен» без мёртвого NINJA_EXCHANGE.
+// ────────────────────────────────────────────────
+
+/** Точка истории цен poe2scout (часовой лог). */
+export interface ScoutPricePoint {
+  /** Цена в базовой валюте лиги (exalted). */
+  price: number;
+  /** ISO-время точки (часовой шаг). */
+  time: string;
+  /** Объём за час (единицы базовой валюты; мера ликвидности). */
+  quantity: number;
+}
+
+/** Дневная свеча poe2scout. */
+export interface ScoutDailyStat {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  average: number;
+  volume: number;
+}
+
+interface ScoutHistoryResponse {
+  PriceHistory?: Array<{ Price?: number; Time?: string; Quantity?: number }>;
+  HasMore?: boolean;
+}
+
+interface ScoutDailyResponse {
+  DailyStats?: Array<{
+    Time?: string;
+    Open?: number;
+    High?: number;
+    Low?: number;
+    Close?: number;
+    Average?: number;
+    Volume?: number;
+  }>;
+}
+
+/** ItemId poe2scout по ApiId валюты (кэш per-league; ItemId устойчив к патчам лучше имён). */
+const scoutItemIdCache = new Map<string, { at: number; ids: Map<string, number> }>();
+const SCOUT_IDS_TTL = 30 * 60 * 1000;
+
+export function clearScoutHistoryCache(): void {
+  scoutItemIdCache.clear();
+  scoutHistoryCache.clear();
+  scoutDailyCache.clear();
+}
+
+/** Загрузить ApiId→ItemId по категории валют (по умолчанию currency). */
+async function scoutItemIds(league?: string, category = 'currency'): Promise<Map<string, number>> {
+  const l = league ?? currentLeague ?? 'Forbidden Rites';
+  const key = `${l}|${category}`;
+  const hit = scoutItemIdCache.get(key);
+  if (hit && Date.now() - hit.at < SCOUT_IDS_TTL) return hit.ids;
+
+  const code = await scoutLeagueCode(l);
+  const ids = new Map<string, number>();
+  try {
+    const url = `${SCOUT_HOST}/Leagues/${encodeURIComponent(code)}/Currencies/ByCategory?Category=${encodeURIComponent(category)}&PerPage=250`;
+    const data = await httpJson<ScoutPage>(url);
+    for (const it of data.Items ?? []) {
+      if (it.ApiId && it.ItemId != null) ids.set(it.ApiId, it.ItemId);
+    }
+  } catch {
+    /* пустая карта — вызывающий код честно вернёт null */
+  }
+  scoutItemIdCache.set(key, { at: Date.now(), ids });
+  return ids;
+}
+
+/** Сопоставить строку пользователя ("Divine Orb", "divine", "chaos") → ApiId poe2scout. */
+export function matchScoutApiId(name: string, apiIds: Iterable<string>): string | null {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-');
+  const wanted = norm(name);
+  if (!wanted) return null;
+  const all = [...apiIds];
+  if (all.length === 0) return null;
+  // 1) точное: "divine" → divine, "perfect-chaos-orb" → perfect-chaos-orb.
+  for (const id of all) if (norm(id) === wanted) return id;
+  // 2) без суффикса "orb": "divine-orb" → divine, "exalted-orb" → exalted.
+  const noOrb = wanted.replace(/-orb$/, '');
+  if (noOrb !== wanted) for (const id of all) if (norm(id) === noOrb) return id;
+  // 3) Possessive/of-конструкции: "mirror-of-kalandra" → mirror.
+  const noOf = wanted.replace(/-of-[^-]+$/, '');
+  if (noOf !== wanted) for (const id of all) if (norm(id) === noOf) return id;
+  return null;
+}
+
+const SCOUT_HIST_TTL = 5 * 60 * 1000;
+const scoutHistoryCache = new Map<string, { at: number; points: ScoutPricePoint[] }>();
+const scoutDailyCache = new Map<string, { at: number; days: ScoutDailyStat[] }>();
+
+/** Публичный доступ к ApiId→ItemId валют poe2scout (для MCP/web матчинга названий). */
+export function fetchScoutApiIds(league?: string): Promise<Map<string, number>> {
+  return scoutItemIds(league);
+}
+
+/**
+ * Часовая история цен валюты из poe2scout.
+ * @param apiId идентификатор poe2scout ("divine", "chaos", ...) — см. matchScoutApiId
+ * @param logCount сколько последних часовых точек (живой API отдаёт столько, сколько есть)
+ */
+export async function fetchScoutPriceHistory(
+  apiId: string,
+  opts: { league?: string; logCount?: number } = {},
+): Promise<ScoutPricePoint[] | null> {
+  const l = opts.league ?? currentLeague ?? 'Forbidden Rites';
+  const logCount = Math.max(1, Math.min(opts.logCount ?? 48, 500));
+  const key = `${l}|${apiId}|${logCount}`;
+  const hit = scoutHistoryCache.get(key);
+  if (hit && Date.now() - hit.at < SCOUT_HIST_TTL) return hit.points;
+
+  const code = await scoutLeagueCode(l);
+  const ids = await scoutItemIds(l);
+  const itemId = ids.get(apiId);
+  if (itemId == null) return null;
+
+  try {
+    const url = `${SCOUT_HOST}/Leagues/${encodeURIComponent(code)}/Items/${itemId}/History?LogCount=${logCount}`;
+    const data = await httpJson<ScoutHistoryResponse>(url);
+    const points: ScoutPricePoint[] = (data.PriceHistory ?? [])
+      .filter((p) => typeof p.Price === 'number')
+      .map((p) => ({
+        price: p.Price as number,
+        time: p.Time ?? '',
+        quantity: p.Quantity ?? 0,
+      }));
+    scoutHistoryCache.set(key, { at: Date.now(), points });
+    return points;
+  } catch {
+    return null;
+  }
+}
+
+/** Дневные OHLC-свечи валюты из poe2scout (для трендов «оседать в Divines или нет»). */
+export async function fetchScoutDailyStats(
+  apiId: string,
+  opts: { league?: string; dayCount?: number } = {},
+): Promise<ScoutDailyStat[] | null> {
+  const l = opts.league ?? currentLeague ?? 'Forbidden Rites';
+  const dayCount = Math.max(1, Math.min(opts.dayCount ?? 7, 90));
+  const key = `${l}|${apiId}|${dayCount}`;
+  const hit = scoutDailyCache.get(key);
+  if (hit && Date.now() - hit.at < SCOUT_HIST_TTL) return hit.days;
+
+  const code = await scoutLeagueCode(l);
+  const ids = await scoutItemIds(l);
+  const itemId = ids.get(apiId);
+  if (itemId == null) return null;
+
+  try {
+    const url = `${SCOUT_HOST}/Leagues/${encodeURIComponent(code)}/Items/${itemId}/DailyStatsHistory?DayCount=${dayCount}`;
+    const data = await httpJson<ScoutDailyResponse>(url);
+    const days: ScoutDailyStat[] = (data.DailyStats ?? [])
+      .filter((d) => typeof d.Close === 'number')
+      .map((d) => ({
+        time: d.Time ?? '',
+        open: d.Open ?? 0,
+        high: d.High ?? 0,
+        low: d.Low ?? 0,
+        close: d.Close as number,
+        average: d.Average ?? 0,
+        volume: d.Volume ?? 0,
+      }));
+    scoutDailyCache.set(key, { at: Date.now(), days });
+    return days;
+  } catch {
+    return null;
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -379,6 +561,7 @@ export async function fetchCurrencyHistory(league?: string): Promise<CurrencyHis
 export function clearRatesCache(): void {
   ninjaCache.clear();
   scoutCurrencyCache.clear();
+  clearScoutHistoryCache();
 }
 
 // ────────────────────────────────────────────────
