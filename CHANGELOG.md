@@ -3,6 +3,27 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.31] — 2026-10-11 (сессии №455–№463: ЭПИКА headless-PoB — движок PathOfBuilding-PoE2 в комплекте, фазы 1–4)
+
+### Added
+- **Headless-PoB оракул (эпика, фазы 1–4; хост `oracle/headless/pob_host.lua`, контракт 4):** настоящий движок PoB2 (v0.23.1, без патчей апстрима) считается в ките. One-shot для тула + ДОЛГОЖИВУЩАЯ персист-сессия для web (boot ~2.5 с один раз → RPC ~3 мс, FIFO-очередь, id-матчинг, ленивый рестарт; RPC умершего движка = честный отказ, не ответ из пустого билда).
+  - **MCP-тул `poe2_recompute`:** живые статы билда + what-if матрица `scenarios=[...]` (до 12 сценариев {name, config, level} одним boot'ом, CAS-изоляция: каждый поверх baseline, невалидный сценарий — точечный отказ, матрица живёт); CAS-конфиг с валидацией enum и авто-резистами босс-тиров (Boss 30 / Pinnacle 50 / Uber 50 — апстрим в headless применяет их только как GUI-плейсхолдеры); `get_config_schema`, snapshot/restore_build.
+  - **Дерево целей в `poe2_build_estimate`:** опция `goals` (≤8 уровневых вех) → live-таблица DPS/Life/EHP с Δ к baseline; XML-код ретраится через decode-фолбэк.
+  - **Web-вкладка «🧮 PoB-оракул»** (раздел «Билд»): статус сессии, загрузка share-кода/XML (дедуп «Из поля "Импорт билда"»), пресеты what-if (Босс / Пиннакл+Хаос75 / Uber / lvl 92-95-100 + свой уровень) с Δ% и честным 503+hint. API: serve-dist.mjs `/api/pob/{load,rpc,status}` (whitelist-RPC, произвольный Lua не отдаём).
+- **Воспроизводимость оракула (фаза 4):** `oracle/PINNED.md` (тег v0.23.1, zip SHA256, SHA-гейты luajit.exe/lua51.dll, контракт 4, процедура дрейфа 0_5→1.0); кросс-платформенный `oracle/headless-selftest.mjs` (без билд-XML: new_build/whatif/CAS); CI-workflow `pob-headless` (Linux, SourceCraft; sha256sum в лог для сверки с пинами).
+- **Инструкция сетапа игрового ПК:** `docs/GAMINGPC_SETUP_RU.md` из шары (XP-copy → Node → рантайм → клон PoB2 → POE2K_POB2_SRC → serve-dist → оракул/MCP/оверлей; таблица симптомов).
+
+### Fixed
+- **⚠️ Веб-сборка была сломана с Фазы 2:** `pobHost.ts`/`pobSession.ts` использовали статические named-imports node-builtins — rollup подменяет их `__vite-browser-external` без экспортов → `vite build` web падал. Переведены на канонический nodeenv-паттерн кита (ленивые node:* через IS_NODE; top-level await, es2022). Не проявлялось ранее, потому что web-dist не персобирался; теперь правило: трогаешь packages/core → гейтить `npm run build -w @poe2-kit/web`.
+- **Контракт 3→4 протокола:** dkjson при DECODE пропускает `"ключ":null` — «удалить ключ» через JSON round-trip не выражался, restore_config по RPC молча не откатывал. Фикс: `set_config` отдаёт `remove[]`, `restore_config` принимает `before` и/или `remove`.
+
+### Verified (live E2E, эталон Invoker lvl 97)
+- baseline TotalDPS 5 992 638.62 / Life 1539 — идентичен настольному PoB2 того же тега; Boss +0% (билд игнорирует элементальные резисты — флаги Ignore*), Pinnacle+Chaos75 −26.2%, Uber −70% (1.80M); 12-сценарная смешанная матрица (level+config вместе) — 0 fails, after-matrix = baseline до копейки; персист-сессия: 10 RPC одним спавном, каждый ~3 мс.
+- Гейты релиза: tsc 0 (core/mcp/overlay/web), vitest 563/563 (+6 PobSession, +2 oracle), vite build OK, smoke 75.
+
+### Not verified (честно)
+- Первый Linux-CI-ран pob-headless (ждёт cloud worker), визуал вкладки в браузере (проверен HTTP-API-уровень), HTTP-конкурентность под нагрузкой, дни-аптайм сессии, live-OAuth GGG (`POE2K_GGG_CLIENT_ID`), дрейф-процедура на живом релизе 1.0.
+
 ## [1.0.30] — 2026-10-10 (сессия №266: suppadv-web, честность дат патч-таймлайна, пробы источников)
 
 ### Added
