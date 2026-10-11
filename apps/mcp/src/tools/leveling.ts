@@ -17,6 +17,7 @@ export function registerLevelingTools(server: McpServer): number {
   - act (number, опц.): номер акта (1-4). Если не указан — весь план целиком.
   - from_level (number, опц.): показывать зоны с уровня монстров не ниже этого.
   - class (string, опц.): базовый класс ИЛИ асценданси ('Warrior', 'Sorceress', 'Ranger', 'Mercenary', 'Witch', 'Druid', 'Huntress', 'Monk', либо 'Invoker', 'Lich', 'Titan', 'Deadeye', ...) — обогатить план советами этого класса (камни/экипировка/механика).
+  - league (string, опц.): лига для league-контекста (по умолчанию не задана). В "Forbidden Rites" Plunder's Point помечается 🔴ОБЯЗАТЕЛЬНО (Runeseeker → Verisium Anvil → Runeforging, гейт — 4 Map Pieces в Kingsmarch).
   - monk (boolean, опц., deprecated): true — то же, что class='Monk'.
 
 Источник: path-of-levelling-2 (автор Kami-Guru метод), данные зон и наград.
@@ -31,17 +32,20 @@ export function registerLevelingTools(server: McpServer): number {
         act: z.number().int().min(1).max(4).optional().describe('Номер акта (1-4)'),
         from_level: z.number().int().optional().describe('Мин. уровень монстров'),
         class: z.string().optional().describe('Класс или асценданси для советов (Warrior/Invoker/...)'),
+        league: z.string().optional().describe('Лига для league-контекста (например "Forbidden Rites"): зоны типа Plunder\'s Point помечаются обязательными, с шагом Runeseeker→Runeforging'),
         monk: z.boolean().optional().describe('deprecated: советы Ice Strike Monk (= class=Monk)'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ act, from_level, class: klass, monk }) => {
+    async ({ act, from_level, class: klass, league, monk }) => {
       try {
         const query = klass ?? (monk ? 'Monk' : undefined);
         const guide = query ? core.leveling.resolveLevelingClass(query) : null;
+        // P8: league-контекст — в requiredInLeagues-зонах (Plunder's Point)
+        // план пометит обязательность и даст шаг Runeseeker→Runeforging.
         let plan = guide
           ? core.leveling.getClassLevelingPlan(query)
-          : core.leveling.getLevelingPlan();
+          : core.leveling.getLevelingPlan(league);
         if (act != null) plan = plan.filter((z) => z.act === act);
         if (from_level != null) plan = plan.filter((z) => z.monsterLevel >= from_level!);
         if (!plan.length) {
@@ -56,7 +60,8 @@ export function registerLevelingTools(server: McpServer): number {
           const steps = z.steps.length ? z.steps.map((s) => `    - ${s}`).join('\n') : '';
           const rewards = z.rewards.length ? ` *(награда: ${z.rewards.join('; ')})*` : '';
           const wp = z.hasWaypoint ? ' ⚑вайпоинт' : '';
-          lines.push(`**Акт ${z.act} · ${z.zone}** (уровень ${z.monsterLevel})${wp}${rewards}`);
+          const req = z.requiredInLeague ? ' 🔴ОБЯЗАТЕЛЬНО в вашей лиге' : z.optional ? ' (опционально)' : '';
+          lines.push(`**Акт ${z.act} · ${z.zone}** (уровень ${z.monsterLevel})${wp}${req}${rewards}`);
           if (steps) lines.push(steps);
           lines.push('');
         }

@@ -6,6 +6,7 @@ import {
   ACT_REWARDS,
   buildLevelingPlan,
   getLevelingPlan,
+  getZonesByAct,
   nextZones,
   rewardsOf,
   levelDiff,
@@ -217,5 +218,68 @@ describe('leveling: прочее', () => {
       if (t.toLevel != null) expect(12).toBeLessThanOrEqual(t.toLevel);
     }
     expect(getClassLevelingTips('Invoker', 3)[0]!.gems).toContain('Ice Strike');
+  });
+});
+
+describe('league-контекст (P8, №281-W2): Plunder\'s Point — required в Forbidden Rites', () => {
+  // Основание: poe2-leveling act4:335-336 (Runeseeker/Verisium Anvil/Runeforging,
+  // гейт 4 Map Pieces) + патч-факт №285-дайджеста; mainline-компиляция не меняется.
+
+  it('данные: единственная requiredInLeagues-зона — Plunder\'s Point (Forbidden Rites)', () => {
+    const req = LEVELING_ZONES.filter((z) => z.requiredInLeagues?.length);
+    expect(req.map((z) => z.zone)).toEqual(["Plunder's Point"]);
+    expect(req[0]!.requiredInLeagues).toContain('Forbidden Rites');
+    // mainline-компиляция не тронута: зона по-прежнему optional
+    expect(req[0]!.optional).toBe(true);
+  });
+
+  it('план без league: Plunder\'s Point — обычная сайд-зона (регресс S3 силён)', () => {
+    const z = getLevelingPlan().find((x) => x.zone === "Plunder's Point")!;
+    expect(z.optional).toBe(true);
+    expect(z.requiredInLeague).toBeUndefined();
+    expect(z.steps.join()).toContain('Опциональная зона');
+    // nextZones с финала акта её НЕ предлагает (как до P8)
+    expect(nextZones(4, 'Heart of the Tribe').map((x) => x.zone)).not.toContain("Plunder's Point");
+  });
+
+  it('план league=Forbidden Rites: зона помечена, шаг содержит Runeseeker/гейт', () => {
+    const z = getLevelingPlan('Forbidden Rites').find((x) => x.zone === "Plunder's Point")!;
+    expect(z.requiredInLeague).toBe('Forbidden Rites');
+    const steps = z.steps.join(' | ');
+    expect(steps).toContain('Runeseeker');
+    expect(steps).toContain('4 Map Pieces');
+    expect(steps).not.toContain('Опциональная зона');
+  });
+
+  it('матчинг лиги толерантен к регистру/пробелам: "forbidden rites"', () => {
+    const z = getZonesByAct(4, 'forbidden  rites').find((x) => x.zone === "Plunder's Point")!;
+    expect(z.requiredInLeague).toBe('forbidden  rites');
+  });
+
+  it('чужая лига: required-пометок нет (Standard — зона остаётся optional)', () => {
+    const fr = getLevelingPlan('Standard').find((x) => x.zone === "Plunder's Point")!;
+    expect(fr.requiredInLeague).toBeUndefined();
+    expect(fr.steps.join()).toContain('Опциональная зона');
+  });
+
+  it('nextZones league=Forbidden Rites: после финала акта Plunder\'s Point предлагается', () => {
+    const rest = nextZones(4, 'Heart of the Tribe', 'Forbidden Rites');
+    expect(rest.map((x) => x.zone)).toContain("Plunder's Point");
+  });
+
+  it('requiredInLeague не протекает в дефолтный кэш плана', () => {
+    getLevelingPlan('Forbidden Rites'); // league-сборка
+    const plain = getLevelingPlan();
+    expect(plain.find((x) => x.zone === "Plunder's Point")!.requiredInLeague).toBeUndefined();
+  });
+
+  it('zoneNotes.json: нота без «Optional Area!», с Runeforging-механикой (EN+RU)', async () => {
+    const raw = await import('node:fs').then((fs) => fs.readFileSync(new URL('../data/zoneNotes.json', import.meta.url), 'utf8'));
+    const data = JSON.parse(raw);
+    const entry = data.zoneNotes.find((z: { zoneName: string }) => z.zoneName === "Plunder's Point");
+    expect(entry.notes).toContain('Runeforging');
+    expect(entry.notes).toContain('4 Map Pieces');
+    expect(entry.notes).not.toContain('Optional Area!');
+    expect(entry.notes_ru).toContain('ОБЯЗАТЕЛЬНА');
   });
 });

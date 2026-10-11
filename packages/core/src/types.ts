@@ -215,6 +215,11 @@ export interface LevelingZone {
   /** Сайд-зона вне mainline («Optional Area!» по PoL-2): не предлагается как
    *  «следующая зона» сюжета, monsterLevel может быть ниже хвоста акта. */
   optional?: boolean;
+  /** Лига, в которой зона фактически ОБЯЗАТЕЛЬНА (P8): для mainline-компиляции
+   *  кампании остаётся optional, но при league-контексте плана (например
+   *  Plunder's Point в Forbidden Rites — Runeseeker → Runeforging) зона
+   *  предлагается как шаг. undefined — зона вне league-требований. */
+  requiredInLeague?: string;
   /** Ключевые задачи/заметки */
   steps: string[];
   /** Квестовые награды: скил-пойнты, буст духа и т.п. */

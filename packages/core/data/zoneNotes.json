@@ -456,7 +456,8 @@
 			"lockNoteOption": "unlocked",
 			"zoneCode": "G4_13",
 			"zoneName": "Plunder's Point",
-			"notes": "Optional Area!\nDo the expedition then continue with the act"
+			"notes": "REQUIRED in Forbidden Rites: Runeseeker quest (Farrow ends at Deserted Post) unlocks Verisium Anvil → Runeforging/Runic Alloys. Gated by turning in all 4 Map Pieces at Kingsmarch (Whakapanu, Shrike, Isle of Kin, Kedge Bay). Skip = lose Runeforging entirely. In other leagues — optional side area.",
+			"notes_ru": "В Forbidden Rites ОБЯЗАТЕЛЬНА: квест Runeseeker (Farrow завершается на Deserted Post) открывает Verisium Anvil → Runeforging/рунические сплавы. Гейт: сдать все 4 Map Pieces в Kingsmarch (Whakapanu, Shrike, Isle of Kin, Kedge Bay). Скип = полная потеря Runeforging. В остальных лигах — опциональная сайд-зона."
 		},
 		{
 			"lockNoteOption": "unlocked",

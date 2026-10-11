@@ -63,7 +63,7 @@ export const ACT_REWARDS: QuestReward[] = [
 /** Перечень точных зон кампании по порядку (Акты 1–4).
  *  `optional: true` — сайд-зона вне mainline («Optional Area!» в PoL-2):
  *  monsterLevel в ней может быть ниже хвоста акта, головы mainline не портит. */
-export const LEVELING_ZONES: { act: number; actName: string; zone: string; monsterLevel: number; optional?: boolean }[] = [
+export const LEVELING_ZONES: { act: number; actName: string; zone: string; monsterLevel: number; optional?: boolean; requiredInLeagues?: string[] }[] = [
   // Act 1 — Пробуждение
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'The Riverbank', monsterLevel: 1 },
   { act: 1, actName: 'Акт 1: Пробуждение', zone: 'Clearfell', monsterLevel: 3 },
@@ -135,7 +135,12 @@ export const LEVELING_ZONES: { act: number; actName: string; zone: string; monst
   // PoL-2 G4_13: «Optional Area!» — сайд-зона Expedition после финала акта;
   // уровень 56 ниже финального 64, поэтому она optional и не участвует в
   // mainline-цепочке «Следующая зона» / nextZones (фикс аудита S3).
-  { act: 4, actName: 'Акт 4: Острова', zone: 'Plunder\'s Point', monsterLevel: 56, optional: true },
+  // P8 (№281-W2, фикс known_issue-№1 плана): poe2-leveling act4:335-336 —
+  // в Forbidden Rites зона ОБЯЗАТЕЛЬНА: Runeseeker-квест (Farrow завершается
+  // на Deserted Post) → Verisium Anvil → Runeforging/Alloys; гейт — сдача
+  // всех 4 Map Pieces в Kingsmarch. Скип = потеря Runeforging целиком
+  // (критично для нашего SSF CI-билда: руны — дефицитный источник резистов).
+  { act: 4, actName: 'Акт 4: Острова', zone: 'Plunder\'s Point', monsterLevel: 56, optional: true, requiredInLeagues: ['Forbidden Rites'] },
 ];
 
 /**
@@ -172,26 +177,34 @@ export const INTERLUDES: { interlude: number; zone: string; zoneCode: string; re
  * Порядок — по массиву зон; награды привязываются по имени зоны.
  * Фикс S3: mainline-цепочка («Следующая зона», финал-босс) строится по
  * не-optional зонам — сайд-зоны не предлагаются как следующий шаг сюжета.
+ * P8: league-контекст — зона с requiredInLeagues, покрывающая лигу,
+ * помечается requiredInLeague и предлагается как шаг плана.
  */
-export function buildLevelingPlan(): LevelingZone[] {
+export function buildLevelingPlan(league?: string | null): LevelingZone[] {
   const rewardFor = (zone: string): string[] =>
     ACT_REWARDS.filter((r) => r.zone.toLowerCase() === zone.toLowerCase()).map((r) => r.reward);
 
   const zones = LEVELING_ZONES;
-  // Индекс следующей mainline-зоны (сайд-зоны пропускаются).
+  const norm = (s: string) => s.toLowerCase().replace(/[\s']/g, '');
+  const requiredHere = (z: (typeof zones)[number]): boolean =>
+    !!z.requiredInLeagues?.some((l) => norm(l) === norm(league ?? ''));
+  // Индекс следующей mainline-зоны (сайд-зоны пропускаются; league-required — нет).
   const nextMainlineIdx = (i: number): number | null => {
-    for (let j = i + 1; j < zones.length; j++) if (!zones[j]!.optional) return j;
+    for (let j = i + 1; j < zones.length; j++) if (!zones[j]!.optional || requiredHere(zones[j]!)) return j;
     return null;
   };
 
   return zones.map((z, i) => {
     const optional = !!z.optional;
+    const reqLeague = requiredHere(z);
     const steps: string[] = [
       z.zone === 'The Riverbank'
         ? 'Пройдите пролог к первому городу (Hillock — босс PoE1, в PoE2 его нет; первый сюжетный босс — Beira в Clearfell)'
-        : optional
-          ? 'Опциональная зона (сайд-контент, вне сюжетной цепочки акта)'
-          : `Пройдите зону "${z.zone}" (рекомендуемый уровень ${z.monsterLevel})`,
+        : reqLeague
+          ? `Обязательна в вашей лиге (${z.requiredInLeagues?.join(', ')}): Runeseeker-квест → Deserted Post → Verisium Anvil/Runeforging. Гейт: сдайте все 4 Map Pieces в Kingsmarch. Скип = потеря Runeforging целиком`
+          : optional
+            ? 'Опциональная зона (сайд-контент, вне сюжетной цепочки акта)'
+            : `Пройдите зону "${z.zone}" (рекомендуемый уровень ${z.monsterLevel})`,
     ];
     if (!optional) {
       const nIdx = nextMainlineIdx(i);
@@ -203,6 +216,7 @@ export function buildLevelingPlan(): LevelingZone[] {
       zone: z.zone,
       monsterLevel: z.monsterLevel,
       optional: optional || undefined,
+      requiredInLeague: reqLeague ? league! : undefined,
       hasWaypoint: CAMPAIGN_WAYPOINTS[z.zone],
       steps,
       rewards: rewardFor(z.zone),
@@ -212,30 +226,39 @@ export function buildLevelingPlan(): LevelingZone[] {
 
 /** Кэш плана, чтобы не пересобирать структуру каждый вызов. */
 let _cachedPlan: LevelingZone[] | null = null;
+let _cachedPlanLeague: string | null = null;
 
-/** Полный план прокачки (кэшируется в памяти). */
-export function getLevelingPlan(): LevelingZone[] {
-  if (!_cachedPlan) _cachedPlan = buildLevelingPlan();
+/** Полный план прокачки. Без league — кэшируется; с league (с contexts
+ *  requiredInLeague, P8) — собирается без общего кэша, чтобы дефолт-план
+ *  остальных вызовов не подпортился league-пометками. */
+export function getLevelingPlan(league?: string | null): LevelingZone[] {
+  if (league) return buildLevelingPlan(league);
+  if (!_cachedPlan) {
+    _cachedPlan = buildLevelingPlan();
+    _cachedPlanLeague = null;
+  }
   return _cachedPlan;
 }
 
 /** Зоны определённого акта. */
-export function getZonesByAct(act: number): LevelingZone[] {
-  return getLevelingPlan().filter((z) => z.act === act);
+export function getZonesByAct(act: number, league?: string | null): LevelingZone[] {
+  return getLevelingPlan(league).filter((z) => z.act === act);
 }
 
 /** Рекомендуемый "следующий шаг" по текущей зоне.
  *  Фикс S3: в «следующие» попадают только mainline-зоны ТЕКУЩЕГО акта —
  *  сайд-зоны (напр. Plunder's Point ниже уровнем) и зоны соседних актов
- *  не подмешиваются как «следующая» для сюжета. */
-export function nextZones(currentAct: number, currentZone?: string): LevelingZone[] {
-  const plan = getLevelingPlan();
+ *  не подмешиваются как «следующая» для сюжета.
+ *  P8: с league requiredInLeague-зоны участвуют в «следующих» (в Forbidden
+ *  Rites Plunder's Point — функционально обязательный шаг после финала). */
+export function nextZones(currentAct: number, currentZone?: string, league?: string | null): LevelingZone[] {
+  const plan = getLevelingPlan(league);
   const idx = plan.findIndex((z) => z.act === currentAct && (!currentZone || z.zone === currentZone));
   if (idx < 0) return plan.filter((z) => z.act >= currentAct);
   const cur = plan[idx]!;
-  const rest = cur.optional
+  const rest = cur.optional && !cur.requiredInLeague
     ? [] // стоим в сайд-зоне: без mainline-«следующих» внутри неё
-    : plan.slice(idx + 1).filter((z) => z.act === currentAct && !z.optional).slice(0, 2);
+    : plan.slice(idx + 1).filter((z) => z.act === currentAct && (!z.optional || z.requiredInLeague)).slice(0, 2);
   return [cur, ...rest];
 }
 
