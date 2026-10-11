@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "purpose": "Каталог условий лут-фильтра PoE2 (live-price filter, этап A). Данные, а не код: свежесть проверяется при новом лиг-патче против GGG docs Item Filters guide + коммитов Filtration-Fork (их BlockItemTypes = монитор синтаксиса).",
+    "sources": [
+      "Filtration-Fork (GPL-2.0 — ТОЛЬКО факты): BlockItemOrdering.cs:9-76 — порядок условий; BlockItemTypes/*.cs — имена и PoE2-пометки",
+      "divine-view (LICENSE-файла НЕТ — ТОЛЬКО факты): filterValidator.ts:12-56 — NUMERIC_CONDITIONS/ALL_CONDITIONS/OPERATORS; GemLevel N = shorthand для >= N (:109-111)",
+      "GGG docs itemfilters — канон; сверка вручную оставлена ЗА ГРАНИЦЕЙ этапа A (reference-страница отдаёт только API, синтаксис-гайд требует live-проверки)"
+    ],
+    "excluded": "PoE1-мусор отфильтрован навсегда: ElderItem, ShaperItem, BlightedMap/UberBlightedMap, Prophecy, SynthesisedItem, FracturedItem, Replica, Scourged, ZanaMemory, TransfiguredGem, HasCruciblePassiveTree (3.21), BaseWard (PoE1 3.15), HasSearingExarchImplicit/HasEaterOfWorldsImplicit (механики не в PoE2)",
+    "optional": "optional=true — 3.27-3.29-типы (Foulborn/HasVaalUniqueMod/IsVaalUnique — 3.27; Imbued — 3.28; MirageMap/MemoryStrands/Vestigial — 3.29): появятся/подтвердятся после патчей; генератор их НЕ использует по умолчанию",
+    "grabbli": [
+      "loose-список BaseType \"Catalyst\" (без ==) — substring-семантика; обратная запись как exact ломает игру (neversink.go:106-108)",
+      "условия в блоке сериализуются строго в ordering; действия — строго после условий"
+    ]
+  },
+  "operators": ["=", "==", ">", "<", ">=", "<=", "!=", "!"],
+  "numeric": [
+    "AreaLevel", "ItemLevel", "DropLevel", "Quality", "Sockets", "LinkedSockets",
+    "Height", "Width", "MapTier", "GemLevel", "StackSize", "WaystoneTier",
+    "EnchantmentPassiveNum", "CorruptedMods", "BaseEvasion", "BaseArmour",
+    "BaseEnergyShield", "UnidentifiedItemTier"
+  ],
+  "boolean": [
+    "Identified", "Corrupted", "Mirrored", "TwiceCorrupted", "AnyEnchantment",
+    "HasInfluence", "AlternateQuality"
+  ],
+  "boolean_optional": [
+    "AlwaysShow", "HasVaalUniqueMod", "IsVaalUnique", "Foulborn", "Vestigial",
+    "Imbued", "MirageMap", "MemoryStrands"
+  ],
+  "list": [
+    { "name": "Class", "exact": true, "loose": true },
+    { "name": "BaseType", "exact": true, "loose": true },
+    { "name": "Rarity", "exact": true, "loose": false, "values": ["Normal", "Magic", "Rare", "Unique"] },
+    { "name": "SocketGroup", "exact": true, "loose": false },
+    { "name": "HasExplicitMod", "exact": true, "loose": true },
+    { "name": "HasImplicitMod", "exact": true, "loose": true },
+    { "name": "HasEnchantment", "exact": true, "loose": false },
+    { "name": "EnchantmentPassiveNode", "exact": true, "loose": false }
+  ],
+  "numeric_optional": [],
+  "ordering": [
+    "Identified", "Corrupted", "CorruptedMods", "AlwaysShow", "UnidentifiedItemTier",
+    "TwiceCorrupted", "HasVaalUniqueMod", "IsVaalUnique", "Foulborn", "Mirrored",
+    "AreaLevel", "DropLevel", "ItemLevel", "Rarity", "Class", "BaseType", "Quality",
+    "StackSize", "LinkedSockets", "Sockets", "SocketGroup", "Height", "Width",
+    "MirageMap", "MapTier", "WaystoneTier", "GemLevel", "AlternateQuality",
+    "MemoryStrands", "Imbued", "Vestigial", "HasImplicitMod", "HasExplicitMod",
+    "AnyEnchantment", "HasEnchantment", "HasInfluence", "EnchantmentPassiveNum",
+    "EnchantmentPassiveNode", "BaseArmour", "BaseEvasion", "BaseEnergyShield"
+  ],
+  "actions": [
+    "SetTextColor", "SetBackgroundColor", "SetBorderColor", "SetFontSize",
+    "PlayAlertSound", "PlayAlertSoundPositional", "PlayEffect", "MinimapIcon",
+    "DisableDropSound", "EnableDropSound", "Continue"
+  ]
+}

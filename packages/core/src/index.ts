@@ -10,6 +10,7 @@ export * from './ai.js';
 export * from './parse.js';
 export * from './modTiers.js';
 export * from './metaLadder.js';
+export * from './livefilter/conditions.js';
 export * from './invokerGuide.js';
 export * from './regexOptimizer.js';
 export * from './runsTracker.js';
@@ -142,6 +143,7 @@ import * as modTiersMod from './modTiers.js';
 import * as regexOptimizerMod from './regexOptimizer.js';
 import * as runsTrackerMod from './runsTracker.js';
 import * as metaLadderMod from './metaLadder.js';
+import * as livefilterMod from './livefilter/conditions.js';
 import * as invokerGuideMod from './invokerGuide.js';
 
 export const core = {
@@ -155,6 +157,7 @@ export const core = {
   regexOptimizer: regexOptimizerMod,
   runsTracker: runsTrackerMod,
   metaLadder: metaLadderMod,
+  livefilter: livefilterMod,
   invokerGuide: invokerGuideMod,
   http,
   log: logmod,

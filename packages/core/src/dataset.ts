@@ -1061,3 +1061,46 @@ export function getVendorRegexPatterns(): VendorRegexEntry[] {
   vendorRegexCache ??= loadJson<VendorRegexDataset>('trade/vendor_regex.json').items;
   return vendorRegexCache;
 }
+
+
+// ─── Каталог условий лут-фильтра (live-price filter, этап A — P3, №281-W2) ──
+
+/**
+ * Условия лут-фильтра PoE2 из data/game/livefilter/conditions.json.
+ * Происхождение и PoE1-эксклюды — в _meta JSON; вычисляемые множества (.*;
+ * кэшируются и используются парсером/валидатором в livefilter/conditions.ts.
+ * GGG docs-сверка синтаксиса — регламент свежести.
+ */
+export interface FilterConditionCatalog {
+  numeric: string[];
+  boolean: string[];
+  boolean_optional?: string[];
+  list: Array<{ name: string; exact: boolean; loose: boolean; values?: string[] }>;
+  ordering: string[];
+  operators: string[];
+  actions: string[];
+  /** Вычисляемое: множество числовых условий. */
+  _numericSet: Set<string>;
+  /** Вычисляемое: множество парных условий (вкл. optional). */
+  _booleanSet: Set<string>;
+  /** Вычисляемое: map списочных условий. */
+  _listMeta: Map<string, { loose: boolean; values?: string[] }>;
+  /** Вычисляемое: множество действий. */
+  _actionSet: Set<string>;
+}
+
+let conditionCatalogCache: FilterConditionCatalog | null = null;
+
+export function getFilterConditionCatalog(): FilterConditionCatalog {
+  if (conditionCatalogCache) return conditionCatalogCache;
+  type Raw = Omit<FilterConditionCatalog, '_numericSet' | '_booleanSet' | '_listMeta' | '_actionSet'>;
+  const raw = loadJson<Raw>('livefilter/conditions.json');
+  conditionCatalogCache = {
+    ...raw,
+    _numericSet: new Set(raw.numeric),
+    _booleanSet: new Set([...raw.boolean, ...(raw.boolean_optional ?? [])]),
+    _listMeta: new Map(raw.list.map((l) => [l.name, { loose: l.loose, values: l.values }])),
+    _actionSet: new Set(raw.actions),
+  };
+  return conditionCatalogCache;
+}
