@@ -128,7 +128,8 @@ export type LogEventKind =
   | 'items_identified'
   | 'instance_connect'
   | 'scene_source'
-  | 'log_opening';
+  | 'log_opening'
+  | 'chat_message';
 
 /** Типизированное событие из строки Client.txt. */
 export interface ClientLogEvent {
@@ -149,6 +150,12 @@ export interface ClientLogEvent {
   count?: number;
   /** Реальное имя сцены из [SCENE] Set Source (для события scene_source). */
   sceneName?: string;
+  /** Канал чата (для chat_message, P4 №281-W2: донор poe2-whispergogo chat.go, MIT). */
+  chatChannel?: 'global' | 'trade' | 'party' | 'guild' | 'whisper' | 'local' | 'system';
+  /** Автор чат-сообщения (для chat_message). */
+  from?: string;
+  /** Текст чат-сообщения (для chat_message). */
+  text?: string;
   /** Сырое тело сообщения. */
   raw: string;
 }
@@ -176,6 +183,13 @@ const EVENT_PATTERNS: Array<[LogEventKind, RegExp]> = [
   ['items_identified', /^: (\d+) Items? identified/],
   // SCENE: реальное имя зоны — допуск к зонам, которых нет в ZONE_NAMES (серgeyklay SCENE_RE).
   ['scene_source', /^\[SCENE\] Set Source \[(.+)\]$/],
+  // Чат-каналы (P4, №281-W2; паттерн poe2-whispergogo chat.go:66-95, MIT):
+  // body = "[#CharName]: text" — global/trade/party/guild по префиксу; local без
+  // префикса. Ставится ПОСЛЕДНИМ: chat-тело не должно перехватывать чужие виды
+  // (все они выше по списку). Whisper @From/@To остаётся самостоятельным kind.
+  // Local-юзернейм ограничен «именем персонажа», чтобы не ловить debug-строки.
+  ['chat_message', /^([#%&$])([A-Za-z0-9_][A-Za-z0-9_ ]*?): (.+)$/],
+  ['chat_message', /^([A-Za-z][A-Za-z0-9_]{1,23}): (.+)$/],
 ];
 
 // Граница сессии. В реальном логе идёт без полного префикса: `дата **** LOG FILE OPENING ****`.
@@ -226,6 +240,21 @@ export function parseLogLine(line: string): ClientLogEvent | null {
       case 'scene_source':
         ev.sceneName = e[1];
         break;
+      case 'chat_message': {
+        // Первый вариант — с канальным префиксом (# global, % party, & guild, $ trade);
+        // второй (3 группы) — local-канал без префикса.
+        if (e.length >= 4) {
+          const ch = e[1];
+          ev.chatChannel = ch === '#' ? 'global' : ch === '%' ? 'party' : ch === '&' ? 'guild' : 'trade';
+          ev.from = e[2];
+          ev.text = e[3];
+        } else {
+          ev.chatChannel = 'local';
+          ev.from = e[1];
+          ev.text = e[2];
+        }
+        break;
+      }
     }
     return ev;
   }

@@ -261,6 +261,20 @@ const evConn = parseLogLine('2026/06/04 11:01:05 77431000 3ef2334b [INFO Client 
 ok(evConn?.kind === 'instance_connect' && evConn?.server === '64.87.33.204:21360', 'parseLogLine instance_connect');
 ok(parseLogLine('garbage line without prefix') === null, 'parseLogLine rejects garbage');
 
+// Чат-каналы (P4, №281-W2; паттерн poe2-whispergogo chat.go, MIT)
+const evG = parseLogLine('2026/06/04 11:02:00 77440000 3ef2334c [INFO Client 29396] #From TradeSnake: WTS Ancestral Tiara 5div');
+ok(evG?.kind === 'chat_message' && evG?.chatChannel === 'global' && evG?.from === 'From TradeSnake' && evG?.text?.includes('Ancestral Tiara'), 'parseLogLine chat global #');
+const evT = parseLogLine('2026/06/04 11:02:05 77441000 3ef2334d [INFO Client 29396] $SomeTrader: buying chaos');
+ok(evT?.chatChannel === 'trade', 'parseLogLine chat trade $');
+const evP = parseLogLine('2026/06/04 11:02:10 77442000 3ef2334e [INFO Client 29396] %PartyLeader: go boss');
+ok(evP?.chatChannel === 'party', 'parseLogLine chat party %');
+const evGu = parseLogLine('2026/06/04 11:02:15 77443000 3ef2334f [INFO Client 29396] &GuildMaster: raid at 21');
+ok(evGu?.chatChannel === 'guild', 'parseLogLine chat guild &');
+const evL = parseLogLine('2026/06/04 11:02:20 77444000 3ef23344 [INFO Client 29396] LocalPlayer: incoming mobs');
+ok(evL?.kind === 'chat_message' && evL?.chatChannel === 'local', 'parseLogLine chat local (без префикса)');
+const evW = parseLogLine('2026/06/04 11:02:25 77445000 3ef23350 [INFO Client 29396] @From Whisperer: psst');
+ok(evW?.kind === 'whisper' && evW?.whisperDirection === 'From', 'parseLogLine whisper не съеден chat-паттерном');
+
 // getClientState по синтетическому файлу-логу
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -624,7 +638,7 @@ const ach = core.default.ailments.ailmentChance({
   hitDamage: 50000, enemyAilmentThreshold: 71303, type: 'ignite',
 });
 ok(Math.abs(ach.chancePercent - (50000 / 71303 * 20)) < 1e-6, `ailments: ignite chance ${ach.chancePercent.toFixed(2)}%`);
-ok(core.default.ailments.chillThreshold(10000) === 10000
+ok(core.default.ailments.chillThreshold(10000) === 100 // CalcOffence.lua:5550: threshold / ChillEffectMultiplier(100)
   && core.default.ailments.AILMENT_CONSTANTS.CHILL_MAX_EFFECT === 50, 'ailments: chill multiplier 100');
 
 console.log('ehp: dodge / suppression / ward / lucky layers');
