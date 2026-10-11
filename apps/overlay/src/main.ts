@@ -1449,6 +1449,26 @@ function seedRuEnStatic(): void {
 }
 const ruEnBases = new Map<string, string>();
 const ruEnUniques = new Map<string, string>();
+
+/**
+ * §5: офлайн-фундамент ru→en (Exiled Exchange 2 MIT, core items_ru.json,
+ * built 2026-10-08, NOTICE.md). Синхронно, без сети: RU-прайс-чек работает
+ * СРАЗУ, до постройки сетевого poe2db-словаря; сетевые данные потом
+ * наполняют те же мапы поверх (свежее — приоритетнее, set-семантика).
+ * Вызывается при старте (init) и безопасно повторно (set-идемпотентно).
+ */
+function seedRuEnCore(): void {
+  try {
+    for (const [k, v] of core.ruLocale.ruEnMap('items')) ruEnBases.set(k, v);
+    for (const [k, v] of core.ruLocale.ruEnMap('uniques')) ruEnUniques.set(k, v);
+    const meta = core.ruLocale.ruEnLocaleMeta();
+    console.log(
+      `[overlay] ru-en offline core seeded: +${meta.items} bases, +${meta.uniques} uniques (built ${meta.built ?? '?'})`,
+    );
+  } catch (err) {
+    console.warn(`[overlay] ru-en offline core seed failed: ${err instanceof Error ? err.message : err}`);
+  }
+}
 let ruEnDictLoaded = false;
 let ruEnDictPromise: Promise<void> | null = null;
 
@@ -4438,6 +4458,7 @@ app.whenReady().then(async () => {
   // №85: агентский канал — MCP-туры дописывают команды в agent-queue.json, overlay применяет.
   startAgentQueuePolling();
   // Словарь ru↔en для сопоставления слотов: кэш с диска, недостающее — докачиваем в фоне.
+  seedRuEnCore(); // §5: офлайн-фундамент (ExE2 MIT) — до кэша и до сетевой постройки
   if (!loadRuEnDict()) void ensureRuEnDict();
   else seedRuEnStatic(); // кэш валиден — но статические базы должны быть всегда (#138)
   setupIPC();

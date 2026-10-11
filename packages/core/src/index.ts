@@ -51,6 +51,7 @@ export * from './learnlog.js';
 export * from './learnedStats.js';
 
 export * from './i18nAliases.js';
+export * from './ruLocale.js';
 export * from './poe2db.js';
 export * from './zoneNotes.js';
 export * from './bosses.js';
@@ -121,6 +122,7 @@ import * as logmod from './log.js';
 import * as wikimod from './wiki.js';
 import * as estmod from './estimate.js';
 import * as itemVerdictMod from './itemVerdict.js';
+import * as ruLocaleMod from './ruLocale.js';
 import * as tqmod from './tradeQuery.js';
 import * as dsmod from './dataset.js';
 import * as statdescmod from './statdesc.js';
@@ -176,6 +178,7 @@ export const core = {
   livefilterPipeline: livefilterPipelineMod,
   livefilterSnapshot: livefilterSnapshotMod,
   itemVerdict: itemVerdictMod,
+  ruLocale: ruLocaleMod,
   invokerGuide: invokerGuideMod,
   http,
   log: logmod,
