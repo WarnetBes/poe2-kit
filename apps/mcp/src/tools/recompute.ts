@@ -34,17 +34,28 @@ export function registerRecomputeTools(server: McpServer): number {
     enemyIsBoss автоматически проставляет резисты тира (Boss 30 / Pinnacle 50 / Uber 50 / None 0):
     апстрим в headless применяет их только как GUI-плейсхолдеры.
   - stats (опц.): узкий список ключей статов (по умолчанию каталог ~60 ключей).
+  - scenarios (опц., до 12): what-if МАТРИЦА в одном запуске движка — массив
+    {"name","config","level"}; каждый сценарий применяется поверх baseline и
+    откатывается (CAS), сценарии НЕ мультипликативны; невалидный сценарий помечается
+    отказом, остальные считаются. Пример: [{"name":"uber","config":{"enemyIsBoss":"Uber"}},
+    {"name":"lvl90","level":90}].
 
 Примеры:
   - poe2_recompute(pob_code="...") → панельные статы билда из глубин движка;
   - poe2_recompute(pob_code, config={"enemyIsBoss":"Pinnacle"}) → DPS vs босс;
-  - poe2_recompute(pob_code, level=95) → что даст 95-й уровень.`,
+  - poe2_recompute(pob_code, level=95) → что даст 95-й уровень;
+  - poe2_recompute(pob_code, scenarios=[...]) → матрица what-if с дельтами от baseline.`,
       inputSchema: {
         pob_code: z.string().min(20).optional().describe('PoB share-код (декодируется автоматически)'),
         xml: z.string().min(100).optional().describe('XML билда PoB2 (приоритет ниже кода)'),
         level: z.number().int().min(1).max(100).optional().describe('What-if уровень персонажа'),
         config: z.record(z.string(), z.unknown()).optional().describe('What-if патч configTab.input (ключ: значение)'),
         stats: z.array(z.string()).max(200).optional().describe('Только эти ключи статов'),
+        scenarios: z.array(z.object({
+          name: z.string().max(80).optional(),
+          config: z.record(z.string(), z.unknown()).optional(),
+          level: z.number().int().min(1).max(100).optional(),
+        })).max(12).optional().describe('What-if матрица (один движок, CAS-изоляция сценариев)'),
       },
       annotations: { readOnlyHint: true },
     },
@@ -55,6 +66,7 @@ export function registerRecomputeTools(server: McpServer): number {
           level: args.level,
           config: (args.config as Record<string, unknown> | undefined) ?? undefined,
           stats: args.stats,
+          scenarios: args.scenarios,
         });
 
         if (!result.available) {
@@ -111,16 +123,48 @@ export function registerRecomputeTools(server: McpServer): number {
         }
         const cfgBlock = cfgInfo.length ? `\n#### What-if конфиг\n${cfgInfo.join('\n')}\n` : '\n';
 
+        // Фаза 3: what-if матрица (сценарии поверх baseline, CAS-изоляция).
+        const scenRows: string[] = [];
+        if (result.scenarios?.length) {
+          const baseDps = typeof s.TotalDPS === 'number' ? s.TotalDPS : null;
+          const baseLife = typeof s.Life === 'number' ? s.Life : null;
+          scenRows.push('| Сценарий | TotalDPS | Δ DPS | Life | Примечание |');
+          scenRows.push('|---|---|---|---|---|');
+          for (const sc of result.scenarios) {
+            if (!sc.ok) {
+              scenRows.push(`| ${sc.name} | — | — | — | ❌ ${sc.errorCode ?? 'rejected'}: ${(sc.errors ?? [])[0] ?? ''} |`);
+              continue;
+            }
+            const st = (sc.stats ?? {}) as Record<string, number | string | boolean>;
+            const sdps = typeof st.TotalDPS === 'number' ? fmt(st.TotalDPS as number) : '—';
+            const slife = typeof st.Life === 'number' ? (st.Life as number).toLocaleString('ru-RU') : '—';
+            let delta = '—';
+            if (typeof st.TotalDPS === 'number' && baseDps) {
+              const d = ((st.TotalDPS - baseDps) / baseDps) * 100;
+              delta = `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
+            }
+            const note: string[] = [];
+            if (sc.autoResists) note.push(`тир ${sc.autoResists.tier} → авто-резисты ${sc.autoResists.eleResist}%`);
+            if (typeof st.Life === 'number' && baseLife && st.Life !== baseLife) note.push(`Life ${slife} vs ${baseLife.toLocaleString('ru-RU')}`);
+            if (sc.warnings?.length) note.push(`⚠ ${sc.warnings.length}`);
+            scenRows.push(`| **${sc.name}** | ${sdps} | ${delta} | ${slife} | ${note.join('; ')} |`);
+          }
+        }
+        const scenBlock = scenRows.length
+          ? `\n#### What-if матрица (${result.scenarios!.length} сценариев, каждый поверх baseline)\n\n${scenRows.join('\n')}\n`
+          : '';
+
         return {
           content: [{
             type: 'text' as const,
             text:
               `### Headless-PoB2 пересчёт (живой движок)\n${header}\n` +
               cfgBlock +
-              `\n#### Урон\n${dps.join('\n')}\n\n` +
-              `#### Оборона и ресурсы\n${def.join('\n')}\n\n` +
-              `#### Скиллы (первые группы)\n${groups}\n\n` +
-              `Полный каталог статов (JSON):\n\`\`\`json\n${JSON.stringify(s, null, 1)}\n\`\`\``,
+              `\n#### Урон (baseline)\n${dps.join('\n')}\n\n` +
+              `#### Оборона и ресурсы (baseline)\n${def.join('\n')}\n\n` +
+              `#### Скиллы (первые группы)\n${groups}\n` +
+              scenBlock +
+              `\nПолный каталог статов (JSON):\n\`\`\`json\n${JSON.stringify(s, null, 1)}\n\`\`\``,
           }],
         };
       },

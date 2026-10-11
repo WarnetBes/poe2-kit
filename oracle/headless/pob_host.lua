@@ -46,9 +46,11 @@ end
 io.write = function(...) io.stderr:write(...); return io.stderr end
 
 local json = require("dkjson")
--- Contract 2: +set_config CAS (before/autoResists/validation), +restore_config,
--- +get_config_schema, +snapshot_build, +restore_build (Фаза 2 эпики).
-local HEADLESS_RUNTIME_CONTRACT = 2
+-- Contract 3: +whatif — батч what-if сценариев в одном движке (Фаза 3): каждый
+-- сценарий поверх baseline с CAS-откатом (конфиг через снимок before, уровень
+-- через прежний characterLevel/characterLevelAutoMode); невалидный enum в одном
+-- сценарии НЕ применяется и НЕ рушит остальные.
+local HEADLESS_RUNTIME_CONTRACT = 3
 
 local booted, bootErr = pcall(dofile, "HeadlessWrapper.lua")
 if not booted or not build then
@@ -264,6 +266,24 @@ local function applyConfigInput(input)
 	recalc()
 end
 
+-- Эффективный input с авто-резистами тира босса (shared для set_config/whatif).
+-- Возвращает (effective, appliedResists|nil).
+local function expandBossResists(cfg)
+	local effective = {}
+	for k, v in pairs(cfg) do effective[k] = v end
+	if cfg.enemyIsBoss == nil then return effective, nil end
+	local tier = tostring(cfg.enemyIsBoss)
+	local ele = BOSS_ELE_RES[tier] or 0
+	local appliedResists = { tier = tier, eleResist = ele }
+	for _, k in ipairs(BOSS_RESIST_KEYS) do
+		if cfg[k] == nil then
+			effective[k] = (k == "enemyChaosResist") and 0 or ele
+			appliedResists[k] = effective[k]
+		end
+	end
+	return effective, appliedResists
+end
+
 -- Патч build.configTab.input (what-if: боссы, charges, enemy resists, customMods...).
 -- Полная замена значений по ключам; НЕ трогает неуказанные. Фаза 2: CAS —
 -- возвращает `before` (снимок затронутых ключей) для restore_config и
@@ -275,20 +295,7 @@ function methods.set_config(p)
 		return { ok = false, errorCode = "invalid_config_value", errors = errors, warnings = warnings }
 	end
 	-- Ключи, которые реально лягут в input: запрос + авто-резисты босса.
-	local effective = {}
-	for k, v in pairs(p.input) do effective[k] = v end
-	local appliedResists
-	if p.input.enemyIsBoss ~= nil then
-		local tier = tostring(p.input.enemyIsBoss)
-		local ele = BOSS_ELE_RES[tier] or 0
-		appliedResists = { tier = tier, eleResist = ele }
-		for _, k in ipairs(BOSS_RESIST_KEYS) do
-			if p.input[k] == nil and effective[k] == nil then
-				effective[k] = (k == "enemyChaosResist") and 0 or ele
-				appliedResists[k] = effective[k]
-			end
-		end
-	end
+	local effective, appliedResists = expandBossResists(p.input)
 	local before = configBefore(effective)
 	applyConfigInput(effective)
 	local res = {
@@ -336,6 +343,74 @@ function methods.restore_build(p)
 	loadBuildFromXML(p.xml, "snapshot-restore")
 	recalc()
 	return { mainSkill = mainSkillName(), stats = collectStats(p and p.keys) }
+end
+
+-- Фаза 3: батч what-if сценариев в ОДНОМ живом движке (один boot = вся матрица).
+-- Каждый сценарий применяется поверх baseline и откатывается CAS'ом до
+-- следующего: конфиг — по снимку before (expandBossResists продуцирует полный
+-- набор затронутых ключей), уровень — через прежние characterLevel/
+-- characterLevelAutoMode. Сценарий с ошибкой валидации помечается ok:false и
+-- не применяется; остальные сценарии и baseline не затрагиваются.
+function methods.whatif(p)
+	assert(type(p) == "table" and type(p.scenarios) == "table", "whatif requires params.scenarios")
+	assert(#p.scenarios <= 12, "whatif supports up to 12 scenarios per call")
+	local scenarioKeys = p.keys
+	local levelBefore = build.characterLevel
+	local autoModeBefore = build.characterLevelAutoMode
+	local out = {
+		baseline = collectStats(scenarioKeys),
+		scenarios = {},
+	}
+	for i, sc in ipairs(p.scenarios) do
+		local name = (type(sc) == "table" and type(sc.name) == "string" and sc.name ~= "") and sc.name
+			or ("scenario " .. i)
+		local entry = { name = name, index = i }
+		if type(sc) ~= "table" or (sc.config == nil and sc.level == nil) then
+			entry.ok = false
+			entry.errorCode = "invalid_scenario"
+			entry.errors = { "scenario needs config and/or level" }
+		else
+			local cfg = sc.config or {}
+			if type(cfg) ~= "table" then
+				entry.ok = false
+				entry.errorCode = "invalid_scenario"
+				entry.errors = { "scenario.config must be an object" }
+			else
+				-- Валидация enums делается по ЗАПРОШЕННОМУ cfg (без авто-резистов):
+				-- авто-резисты генерирует хост, они всегда валидны.
+				local warnings, errors = validateConfigInput(cfg)
+				if #errors > 0 then
+					entry.ok = false
+					entry.errorCode = "invalid_config_value"
+					entry.errors = errors
+					if #warnings > 0 then entry.warnings = warnings end
+				else
+					local effective, appliedResists = expandBossResists(cfg)
+					local before = configBefore(effective)
+					if sc.level ~= nil then
+						local lvl = tonumber(sc.level)
+						if lvl and lvl >= 1 and lvl <= 100 then
+							build.characterLevelAutoMode = false
+							build.characterLevel = math.floor(lvl)
+						end
+					end
+					applyConfigInput(effective)
+					entry.ok = true
+					entry.applied = effective
+					entry.stats = collectStats(sc.keys or scenarioKeys)
+					if appliedResists ~= nil then entry.autoResists = appliedResists end
+					if #warnings > 0 then entry.warnings = warnings end
+					-- CAS-откат к baseline для следующего сценария.
+					applyConfigInput(before)
+					build.characterLevelAutoMode = autoModeBefore
+					build.characterLevel = levelBefore
+					recalc()
+				end
+			end
+		end
+		out.scenarios[#out.scenarios + 1] = entry
+	end
+	return out
 end
 
 function methods.stats(p)

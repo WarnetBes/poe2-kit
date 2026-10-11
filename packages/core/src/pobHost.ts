@@ -54,6 +54,17 @@ export function resolvePobHostPaths(env: NodeJS.ProcessEnv = process.env): PobHo
 }
 
 export interface SkillGroupSummary { label: string; main: string; gems: string[] }
+export interface WhatIfScenarioOut {
+  index: number;
+  name: string;
+  ok: boolean;
+  errorCode?: string;
+  errors?: string[];
+  warnings?: string[];
+  stats?: Record<string, number | string | boolean>;
+  applied?: Record<string, unknown>;
+  autoResists?: { tier: string; eleResist: number;[key: string]: unknown };
+}
 export interface RecomputeStats {
   available: true;
   mainSkill: string | null;
@@ -67,10 +78,17 @@ export interface RecomputeStats {
   autoResists?: { tier: string; eleResist: number;[key: string]: unknown };
   /** Фаза 2: предупреждения валидации конфига (неизвестные ключи — применены вслепую). */
   configWarnings?: string[];
+  /** Фаза 3: what-if матрица (один boot движка, CAS-изоляция сценариев). */
+  scenarios?: WhatIfScenarioOut[];
 }
 export interface RecomputeUnavailable { available: false; reason: string; setupHint?: string; missing?: string[] }
 export type RecomputeResult = RecomputeStats | RecomputeUnavailable;
 
+export interface WhatIfScenarioInput {
+  name?: string;
+  config?: Record<string, unknown>;
+  level?: number;
+}
 export interface RecomputeInput {
   /** PoB share-code (pobb.in/…/ABcD… или чистый код) — декодируется в XML нашим pobcode. */
   pobCode?: string;
@@ -80,6 +98,11 @@ export interface RecomputeInput {
   level?: number;
   /** What-if: патч build.configTab.input (боссы, заряды, резисты врага, customMods...). */
   config?: Record<string, unknown>;
+  /**
+   * Фаза 3: what-if матрица сценариев — ОДИН boot движка на всю матрицу,
+   * каждый сценарий поверх baseline с CAS-откатом (не мультипликативно).
+   */
+  scenarios?: WhatIfScenarioInput[];
   /** Подмножество ключей статов (по умолчанию каталог хоста, ~60 ключей). */
   stats?: string[];
 }
@@ -125,16 +148,34 @@ export function recomputeBuild(
   const requests: { id: number; method: string; params?: unknown }[] = [];
   const loadId = 1;
   requests.push({ id: 1, method: 'load_build_xml', params: { xml } });
-  if (typeof input.level === 'number') {
-    requests.push({ id: 2, method: 'set_level', params: { level: input.level } });
-  }
-  if (input.config && Object.keys(input.config).length > 0) {
-    requests.push({ id: 3, method: 'set_config', params: { input: input.config } });
+  const useScenarios = Array.isArray(input.scenarios) && input.scenarios.length > 0;
+  if (useScenarios) {
+    // Фаза 3: матрица в ОДНОМ boot — хост сам CAS-откатывает между сценариями.
+    // Невалидные сценарии движок помечает ok:false точечно (без abort всей матрицы).
+    requests.push({
+      id: 2,
+      method: 'whatif',
+      params: {
+        scenarios: input.scenarios!.slice(0, 12).map((s) => ({
+          name: typeof s.name === 'string' ? s.name.slice(0, 80) : undefined,
+          config: s.config && typeof s.config === 'object' ? s.config : undefined,
+          level: typeof s.level === 'number' ? s.level : undefined,
+        })),
+        keys: input.stats ? input.stats.slice(0, 200) : undefined,
+      },
+    });
+  } else {
+    if (typeof input.level === 'number') {
+      requests.push({ id: 2, method: 'set_level', params: { level: input.level } });
+    }
+    if (input.config && Object.keys(input.config).length > 0) {
+      requests.push({ id: 3, method: 'set_config', params: { input: input.config } });
+    }
+    if (input.stats) {
+      requests.push({ id: 4, method: 'stats', params: { keys: input.stats.slice(0, 200) } });
+    }
   }
   const finalId = requests[requests.length - 1]!.id;
-  if (input.stats) {
-    requests.push({ id: 4, method: 'stats', params: { keys: input.stats.slice(0, 200) } });
-  }
 
   const started = Date.now();
   const r = spawnImpl(paths.luajit, [paths.hostLua], {
@@ -205,9 +246,21 @@ export function recomputeBuild(
     characterLevel: (merged.characterLevel as number | null) ?? null,
     treeVersion: (merged.treeVersion as string | null) ?? null,
     skillGroups: (merged.skillGroups as SkillGroupSummary[]) ?? [],
+    // Фаза 3: при сценариях merged.stats = baseline матрицы (stats whatif-фрейма).
     stats: (merged.stats as RecomputeStats['stats']) ?? {},
     tookMs,
   };
+  if (useScenarios) {
+    const wi = finalResult as { baseline?: unknown; scenarios?: unknown[] } | null;
+    // whatif-фрейм не несёт meta (mainSkill/level берём из load), но baseline
+    // статов каноничнее, чем stats загрузки до матрицы: перезаписываем.
+    if (wi && wi.baseline && typeof wi.baseline === 'object') {
+      res.stats = wi.baseline as RecomputeStats['stats'];
+    }
+    if (wi && Array.isArray(wi.scenarios)) {
+      res.scenarios = wi.scenarios.filter((s) => s && typeof s === 'object') as WhatIfScenarioOut[];
+    }
+  }
   if (configFileResult) {
     const auto = configFileResult.autoResists as RecomputeStats['autoResists'] | undefined;
     const warns = configFileResult.warnings as string[] | undefined;

@@ -223,4 +223,80 @@ describe('recomputeBuild — happy path (mock spawn)', () => {
     expect(ok.configWarnings?.[0]).toContain('customMods');
     expect(ok.stats.Life).toBe(1539);
   });
+
+  // ── Фаза 3: what-if матрица ────────────────────────────────────────
+  it('scenarios: шлёт один whatif-RPC и собирает baseline + сценарии (включая точечный отказ)', () => {
+    const dir = makeRuntime();
+    const loadRes = { mainSkill: 'Ice Strike', characterLevel: 95, stats: { Life: 1539 } };
+    const wiRes = {
+      baseline: { TotalDPS: 5992638.62, Life: 1539 },
+      scenarios: [
+        { index: 1, name: 'uber', ok: true, stats: { TotalDPS: 1798092.37, Life: 1539 }, autoResists: { tier: 'Uber', eleResist: 50 } },
+        { index: 2, name: 'bad', ok: false, errorCode: 'invalid_config_value', errors: ['key enemyIsBoss: value "NotABoss" not in engine list'] },
+      ],
+    };
+    let sent = '';
+    const spawnImpl = ((_c: string, _a: string[], opts: Record<string, unknown>) => {
+      sent = String(opts.input);
+      return {
+        status: 0,
+        stdout: [
+          frame({ ready: true, runtimeContract: 3 }),
+          frame({ id: 1, ok: true, result: loadRes }),
+          frame({ id: 2, ok: true, result: wiRes }),
+        ].join('\n') + '\n',
+      };
+    }) as never;
+    const r = recomputeBuild(
+      {
+        xml: '<PathOfBuilding/>',
+        scenarios: [
+          { name: 'uber', config: { enemyIsBoss: 'Uber' } },
+          { name: 'bad', config: { enemyIsBoss: 'NotABoss' } },
+        ],
+      },
+      { POE2K_LUAJIT: join(dir, 'luajit.exe'), POE2K_POB2_SRC: dir } as NodeJS.ProcessEnv,
+      spawnImpl,
+    );
+    // один whatif-запрос с обоими сценариями; никаких set_config/stats в этом режиме
+    const lines = sent.split('\n').map((l) => JSON.parse(l) as { method: string; params?: { scenarios?: unknown[]; keys?: unknown } });
+    expect(lines.map((l) => l.method)).toEqual(['load_build_xml', 'whatif']);
+    expect(lines[1]!.params?.scenarios).toHaveLength(2);
+    expect(lines[1]!.params?.keys).toBeUndefined();
+    // результат: baseline из whatif, сценарии проброшены, точечный отказ не рушит всё
+    expect(r.available).toBe(true);
+    const ok = r as Extract<typeof r, { available: true }>;
+    expect(ok.stats.TotalDPS).toBe(5992638.62);
+    expect(ok.stats.Life).toBe(1539);
+    expect(ok.scenarios).toHaveLength(2);
+    expect(ok.scenarios![0]!.ok).toBe(true);
+    expect(ok.scenarios![0]!.stats!.TotalDPS).toBe(1798092.37);
+    expect(ok.scenarios![1]!.ok).toBe(false);
+    expect(ok.scenarios![1]!.errorCode).toBe('invalid_config_value');
+  });
+
+  it('scenarios: обрезается до 12 на уровне входа', () => {
+    const dir = makeRuntime();
+    let sent = '';
+    const spawnImpl = ((_c: string, _a: string[], opts: Record<string, unknown>) => {
+      sent = String(opts.input);
+      return {
+        status: 0,
+        stdout: [
+          frame({ ready: true, runtimeContract: 3 }),
+          frame({ id: 1, ok: true, result: { stats: {} } }),
+          frame({ id: 2, ok: true, result: { baseline: {}, scenarios: [] } }),
+        ].join('\n') + '\n',
+      };
+    }) as never;
+    const many = Array.from({ length: 20 }, (_, i) => ({ name: 's' + i, level: 90 }));
+    const r = recomputeBuild(
+      { xml: '<PathOfBuilding/>', scenarios: many },
+      { POE2K_LUAJIT: join(dir, 'luajit.exe'), POE2K_POB2_SRC: dir } as NodeJS.ProcessEnv,
+      spawnImpl,
+    );
+    const wi = JSON.parse(sent.split('\n')[1]!) as { params: { scenarios: unknown[] } };
+    expect(wi.params.scenarios).toHaveLength(12);
+    expect(r.available).toBe(true);
+  });
 });

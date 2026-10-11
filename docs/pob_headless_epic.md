@@ -10,7 +10,7 @@
 - Движок: **апстрим PathOfBuilding-PoE2**, штатный `HeadlessWrapper.lua`, без патчей.
 - Загрузка билда: готовый XML; PoB-код → XML декодирует наш `core/pobcode` (патч-бюджет экономим).
 - Транспорт: line-JSON-RPC по stdio (`oracle/headless/pob_host.lua`):
-  startup-фрейм `{ready, runtimeContract:2,...}`, запрос = строка, EOF = корректный выход.
+  startup-фрейм `{ready, runtimeContract:3,...}`, запрос = строка, EOF = корректный выход.
   One-shot (MCP): несколько запросов в stdin → stdout → EOF. Протокол — паттерны
   MIT-донора poe2-exile-architect (© 2026 Max Wilk), наш код.
 - Рантайм Windows: `oracle/bin/luajit.exe` + `lua51.dll` — LuaJIT 2.1 (luapower mingw64,
@@ -24,7 +24,7 @@
 |---|---|---|
 | **1. Хост v1 + MCP poe2_recompute** | setup-headless, pob_host.lua (ping/new_build/load_build_xml/set_level/set_config/stats), core/pobHost.ts, тул poe2_recompute, тесты | ✅ сделано (эталон Invoker 95 живьём: TotalDPS 5.99M, EHP 31 675) |
 | **2. CAS-конфиг + валидация enum** | set_config CAS: снимок `before` затронутых ключей + `restore_config`; `get_config_schema` (списки движка из Modules/ConfigOptions); невалидные enum → отказ, не no-op; авто-резисты босс-тира (Boss 30 / Pinnacle 50 / Uber 50 — апстрим в headless применяет только как GUI-плейсхолдеры); полный `snapshot_build`/`restore_build` (XML через SaveDB). Долгоживущий персист-сессия web — остаётся Фазе 3 | ✅ сделано (живьём: Uber 1.80M vs baseline 5.99M, откат точный до копейки; contract 2) |
-| **3. Интеграция с estimate/evaluate** | связка с poe2_build_estimate/compare: ручной FullDPS what-if на живом движке, дерево целей | ⬜ |
+| **3. Интеграция с estimate/evaluate** | связка с poe2_build_estimate/compare: ручной FullDPS what-if на живом движке, дерево целей. Шаг 1 (сделан): what-if МАТРИЦА `scenarios` в poe2_recompute — один boot движка на всю матрицу (до 12 сценариев {name, config, level}), внутри хоста `methods.whatif` (contract 3): CAS-изоляция (конфиг через before, уровень через прежние characterLevel/AutoMode), точечный отказ сценария не рушит матрицу, Δ-таблица в выводе тула. Осталось: персист-сессия web (долгоживущий хост), дерево целей estimate/compare поверх матрицы | 🔶 частично (шаг 1: живьём Boss 0.0%/Pinnacle+Chaos75 −26.2%/Uber −70.0%/lvl90, изоляция доказана, clean-run = baseline) |
 | **4. Патч-конвейер и 1.0-готовность** | PINNED.md (ревизия апстрима, SHA бинарей), драйф TreeData/0_5→1.0, CI-job oracle-headless | ⬜ |
 
 ## Гейты каждой фазы
@@ -50,12 +50,16 @@ tsc 0 → vitest всё зелёное → build mcp+overlay 0 → smoke «Regis
 `recomputeBuild` обязан разворачивать это в honest unavailable, иначе мусорное
 значение конфига тихо проглатывается (старое поведение = тот же класс бага).
 
-## Что НЕ проверено (Фазы 1–2)
+## Что НЕ проверено (Фазы 1–3)
 
 - Поведение на машине друга (нет клона PoB2 на F:\ — тул честно ответит available:false;
   нужен `git clone https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2` +
   `set POE2K_POB2_SRC`).
 - CI Linux-путь хоста (run-oracle.sh — существующий CI работает на старом batch-скрипте;
   хост в CI подключается в Фазе 4).
-- Долгоживущий процесс (персист-сессия web — Фаза 3), утечки/стабильность под серией
+- Долгоживущий процесс (персист-сессия web — осталась в Фазе 3), утечки/стабильность под серией
   запросов; многоконфигсетные билды (configSets >1) на живом движке (юнит-путь тот же).
+- Матрица `scenarios`: проверена живьём на эталоне Invoker (7 сценариев, контракт 3, CAS-откат
+  до копейки, from-scratch boot ~11 с на 5+1 прогонов) — но НЕ проверена стабильность при
+  12 сценариях с level+config вместе в одной матрице (реальная утечка исключена CAS-логикой
+  хоста, но живого прогона с полным набором не было).
