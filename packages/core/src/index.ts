@@ -39,6 +39,7 @@ export * from './result.js';
 export * from './log.js';
 export * from './wiki.js';
 export * from './estimate.js';
+export * from './itemVerdict.js';
 export * from './tradeQuery.js';
 export * from './dataset.js';
 export * from './statdesc.js';
@@ -119,6 +120,7 @@ import * as http from './http.js';
 import * as logmod from './log.js';
 import * as wikimod from './wiki.js';
 import * as estmod from './estimate.js';
+import * as itemVerdictMod from './itemVerdict.js';
 import * as tqmod from './tradeQuery.js';
 import * as dsmod from './dataset.js';
 import * as statdescmod from './statdesc.js';
@@ -173,6 +175,7 @@ export const core = {
   livefilterInjector: livefilterInjectorMod,
   livefilterPipeline: livefilterPipelineMod,
   livefilterSnapshot: livefilterSnapshotMod,
+  itemVerdict: itemVerdictMod,
   invokerGuide: invokerGuideMod,
   http,
   log: logmod,
