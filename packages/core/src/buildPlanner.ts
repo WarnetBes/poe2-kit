@@ -248,6 +248,12 @@ function isSupportName(name: string): boolean {
   return id ? /SupportGem/.test(id) : /\sSupport$/i.test(name);
 }
 
+/** Саппорт ли гем по имени: по Metadata-пути (SupportGem*), фолбэк — суффикс " Support" (PoE1-стиль).
+ *  Экспортировано для pobCompare (E2): PoE2-саппорты НЕ несут суффикс в имени. */
+export function isSupportGemName(name: string): boolean {
+  return isSupportName(name);
+}
+
 function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkill[] {
   const map = loadMap().gem_name_to_metadata;
   const out: BuildPlannerSkill[] = [];

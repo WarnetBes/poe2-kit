@@ -634,7 +634,48 @@ export function registerBuildTools(server: McpServer): number {
     },
   );
 
-  return 7;
+  // ── E2: diff текущий vs эталон (мастер-план §6; сильнее донора — пассивки поимённо) ──
+  server.registerTool(
+    'poe2_pob_compare',
+    {
+      title: 'PoE2 PoB Compare (diff vs эталон)',
+      description: `Гэп-анализ: текущий билд против эталонного. Слои: gear (по слотам, дельты ES/Armour/Evasion), пассивки ПОИМЁННО (не хватает / лишние), скиллы (активные, ВСЕ саппорт-гэпы на скилл, уровни), конфиг (различия).
+
+Аргументы:
+  - current (string): текущий билд — PoB share-код, ссылка (pobb.in, poe.ninja) или сырой XML.
+  - reference (string, опц.): эталон — код/ссылка. По умолчанию — Ice Strike Invoker CI: https://poe.ninja/poe2/pob/28880.
+  - format (string, опц.): "text" (RU-вердикт, по умолчанию) или "json" (машиночитаемо для evaluate/optimize-тулов).
+
+Возвращает: сводку в одну строку + по слоям. Пассивки резолвятся в имена узлов
+(numeric_ids/tree-датасет); ID без резолва показываются как есть — молчать о них
+нечестно. Не вычисляет DPS (нужен движок PoB) — только структурный diff.
+`,
+      inputSchema: {
+        current: z.string().min(5).describe('Текущий билд: PoB share-код, ссылка или сырой XML'),
+        reference: z
+          .string()
+          .optional()
+          .describe('Эталон: PoB-код/ссылка. По умолчанию — https://poe.ninja/poe2/pob/28880'),
+        format: z.enum(['text', 'json']).optional().describe('text (RU-вердикт, по умолчанию) или json'),
+      },
+      annotations: { idempotentHint: true, openWorldHint: true },
+    },
+    async ({ current, reference, format }) => {
+      try {
+        const cur = await core.build.importBuild(current);
+        const ref = await core.build.importBuild(reference ?? 'https://poe.ninja/poe2/pob/28880');
+        const res = core.pobCompare.comparePobBuilds(cur, ref);
+        const text =
+          format === 'json' ? JSON.stringify(res, null, 2) : core.pobCompare.formatPobCompare(res);
+        return { content: [{ type: 'text', text }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка сравнения: ${msg}` }] };
+      }
+    },
+  );
+
+  return 8;
 }
 
 /** Отформатировать сравнение с топ-лестницей класса (P1) в читаемый markdown. */

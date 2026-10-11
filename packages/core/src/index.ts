@@ -68,6 +68,7 @@ export * from './ssf.js';
 export * from './craftGuide.js';
 export * from './endgame.js';
 export * from './buildPlanner.js';
+export * from './pobCompare.js';
 export * from './hideout.js';
 export * from './keybinds.js';
 export * from './slang.js';
@@ -75,6 +76,7 @@ export * from './gemSupports.js';
 export * from './mapPrep.js';
 export * from './simulacrum.js';
 import * as buildPlannerMod from './buildPlanner.js';
+import * as pobCompareMod from './pobCompare.js';
 import * as hideoutMod from './hideout.js';
 import * as keybindsMod from './keybinds.js';
 import * as gemSupportsMod from './gemSupports.js';
@@ -218,6 +220,7 @@ export const core = {
   questRewards: questRewardsMod,
   craft: craftMod,
   pobcode: pobcodeMod, // №141: encodeShareCode для импорт-кода конструктора связок
+  pobCompare: pobCompareMod, // E2: diff текущий vs эталон (сравнение PoB-билдов)
   buildPlanner: buildPlannerMod, // экспорт *.build (официальный Build Planner PoE2)
   hideout: hideoutMod, // №198: офлайн-разбор .hideout (PoE2-вкладка «Хайдоуты»)
   gemSupports: gemSupportsMod, // №192/№262: движок рекомендаций саппортов
