@@ -35,8 +35,11 @@ const AUTH_BASE = 'https://www.pathofexile.com/oauth/authorize';
 const TOKEN_URL = 'https://www.pathofexile.com/oauth/token';
 const API_BASE = 'https://api.pathofexile.com';
 
-/** Scopes запрашиваем у пользователя: минимум для задач кита. */
-export const GGG_OAUTH_SCOPES = 'account:profile account:characters';
+/** Scopes запрашиваем у пользователя: минимум для задач кита.
+ * account:item_filter — Item Filters API (upload лут-фильтра в аккаунт, P3-E).
+ * Токены, полученные ДО добавления scope, upload не проходят: GGG ответит
+ * 403/401 — лечится повторным входом poe2_oauth_login. */
+export const GGG_OAUTH_SCOPES = 'account:profile account:characters account:item_filter';
 
 /** Порт локального redirect (должен совпадать с зарегистрированным URI). */
 export const GGG_OAUTH_CALLBACK_PORT = 8080;
@@ -400,9 +403,23 @@ const AUTH_HEADER_PREFIX = 'Bearer ';
 
 /** GET к api.pathofexile.com с Bearer. 401 → один refresh → повтор. */
 async function apiGetJson<T>(path: string): Promise<T> {
+  return apiCallJson<T>(path);
+}
+
+/**
+ * Запрос к api.pathofexile.com с Bearer: GET (без body) или POST c JSON-body.
+ * 401 → один refresh → повтор: отклонённый до обработки запрос безопасно ретраить.
+ */
+async function apiCallJson<T>(
+  path: string,
+  opts: { body?: unknown; query?: string } = {},
+): Promise<T> {
   const token = await requireAccessToken();
+  const url = `${API_BASE}${path}${opts.query ? `?${opts.query}` : ''}`;
   const call = (t: GggOAuthToken) =>
-    httpJson<T>(`${API_BASE}${path}`, {
+    httpJson<T>(url, {
+      method: opts.body !== undefined ? 'POST' : 'GET',
+      body: opts.body,
       headers: { Authorization: AUTH_HEADER_PREFIX + t.access_token },
       timeoutMs: 20000,
     });
@@ -445,4 +462,148 @@ export async function getAccountProfile(): Promise<{
   [key: string]: unknown;
 }> {
   return apiGetJson<Record<string, unknown>>('/profile');
+}
+
+// ===== Item Filters API (аккаунтные онлайн-фильтры, GGG developer docs) =====
+// Канон: https://www.pathofexile.com/developer/docs/reference#itemfilters
+//   GET  /item-filter        → { filters: ItemFilter[] } (без body и validation)
+//   GET  /item-filter/<id>   → { filter: ItemFilter }    (с body и validation)
+//   POST /item-filter        (create, body JSON, Content-Type обязателен)
+//   POST /item-filter/<id>   (partial update; 202 = сохранено, но есть ошибки)
+// Realm enum: pc | xbox | sony | poe2. Scope: account:item_filter. P3-E.
+
+/** Аккаунтный онлайн-фильтр GGG (object ItemFilter из developer docs). */
+export interface GggItemFilter {
+  id?: string;
+  filter_name: string;
+  realm: string;
+  description?: string;
+  version?: string;
+  /** Normal | Ruthless. */
+  type?: string;
+  /** Всегда true, если присутствует. */
+  public?: boolean;
+  /** Тело фильтра; отсутствует в list-запросах. */
+  filter?: string;
+  validation?: { valid: boolean; version?: string | null; validated?: string | null };
+  [key: string]: unknown;
+}
+
+/** Результат upsert: что реально произошло на аккаунте GGG. */
+export interface GggItemFilterUpsertResult {
+  action: 'created' | 'updated' | 'unchanged';
+  /** Свежий объект ItemFilter (для unchanged — прочитанный с аккаунта). */
+  filter: GggItemFilter;
+  /**
+   * true — GGG ответил 202 Accepted: фильтр сохранён, но требуются доработки
+   * (validate нашёл ошибки). Сам error-объект — в validationError.
+   */
+  acceptedWithErrors?: boolean;
+  /** Сырой error-объект из ответа 202. */
+  validationError?: unknown;
+}
+
+/** Список онлайн-фильтров аккаунта (без тел фильтров). */
+export async function listAccountItemFilters(): Promise<GggItemFilter[]> {
+  const r = await apiGetJson<{ filters?: GggItemFilter[] }>('/item-filter');
+  return r.filters ?? [];
+}
+
+/** Один фильтр целиком: тело + validation. */
+export async function getAccountItemFilter(id: string): Promise<GggItemFilter | null> {
+  const safe = requireSafeFilterId(id);
+  const r = await apiGetJson<{ filter?: GggItemFilter | null }>(`/item-filter/${safe}`);
+  return r.filter ?? null;
+}
+
+/** Идентификатор фильтра в path: только URL-safe, без слэшей (граница API). */
+function requireSafeFilterId(id: string): string {
+  if (
+    !id ||
+    id.length > 128 ||
+    id.includes('/') ||
+    id.includes('\\') ||
+    id.includes('?') ||
+    id.includes('#') ||
+    !/^[A-Za-z0-9_-]+$/.test(id)
+  ) {
+    throw new Error(`недопустимый id фильтра: ${JSON.stringify(id)}`);
+  }
+  return id;
+}
+
+/** Валидны ли параметры type/realm по канону developer docs. */
+function assertItemFilterEnum(name: string, value: string, allowed: readonly string[]): void {
+  if (!allowed.includes(value)) {
+    throw new Error(`недопустимый ${name} фильтра: ${JSON.stringify(value)} (можно: ${allowed.join(', ')})`);
+  }
+}
+
+/**
+ * Idempotent-загрузка фильтра на аккаунт GGG (P3-E):
+ * ищем по filter_name+realm → тело совпадает ⇒ unchanged;
+ * нашли ⇒ POST /item-filter/<id> (partial update); нет ⇒ POST /item-filter (create).
+ * validate=true — попросить GGG провалидировать против текущей версии игры.
+ */
+export async function upsertAccountItemFilter(opts: {
+  filterName: string;
+  content: string;
+  realm?: string;
+  description?: string;
+  version?: string;
+  type?: string;
+  validate?: boolean;
+}): Promise<GggItemFilterUpsertResult> {
+  const realm = opts.realm ?? 'poe2';
+  if (!opts.filterName || opts.filterName.length > 64 || opts.filterName.includes('\n')) {
+    throw new Error(`недопустимое имя фильтра: ${JSON.stringify(opts.filterName)}`);
+  }
+  assertItemFilterEnum('realm', realm, ['pc', 'xbox', 'sony', 'poe2']);
+  if (opts.type !== undefined) assertItemFilterEnum('type', opts.type, ['Normal', 'Ruthless']);
+  if (!opts.content.trim()) throw new Error('пустое тело фильтра: GGG отклонит загрузку');
+  const validateQuery = opts.validate ? 'validate=true' : undefined;
+
+  const existing = (await listAccountItemFilters()).find(
+    (f) => f.filter_name === opts.filterName && f.realm === realm,
+  );
+
+  if (existing?.id) {
+    const current = await getAccountItemFilter(existing.id);
+    if (current && current.filter === opts.content) {
+      return { action: 'unchanged', filter: current };
+    }
+    const body: Record<string, unknown> = { filter: opts.content };
+    if (opts.description !== undefined) body['description'] = opts.description;
+    if (opts.version !== undefined) body['version'] = opts.version;
+    if (opts.type !== undefined) body['type'] = opts.type;
+    const r = await apiCallJson<{ filter?: GggItemFilter; error?: unknown }>(
+      `/item-filter/${existing.id}`,
+      { body, query: validateQuery },
+    );
+    if (!r.filter) throw new Error(`GGG не вернул объект фильтра после обновления: ${JSON.stringify(r).slice(0, 200)}`);
+    return {
+      action: 'updated',
+      filter: r.filter,
+      ...(r.error !== undefined ? { acceptedWithErrors: true, validationError: r.error } : {}),
+    };
+  }
+
+  const body: Record<string, unknown> = {
+    filter_name: opts.filterName,
+    realm,
+    filter: opts.content,
+  };
+  if (opts.description !== undefined) body['description'] = opts.description;
+  if (opts.version !== undefined) body['version'] = opts.version;
+  if (opts.type !== undefined) body['type'] = opts.type;
+  const r = await apiCallJson<{ filter?: GggItemFilter; error?: unknown }>('/item-filter', {
+    body,
+    query: validateQuery,
+  });
+  if (!r.filter) throw new Error(`GGG не вернул объект фильтра после создания: ${JSON.stringify(r).slice(0, 200)}`);
+  return {
+    action: 'created',
+    filter: r.filter,
+    ...(r.error !== undefined ? { acceptedWithErrors: true, validationError: r.error } : {}),
+  };
 }

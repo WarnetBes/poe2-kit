@@ -37,6 +37,7 @@ import { registerSimulacrumTools } from './tools/simulacrum.js';
 import { registerRadarTools } from './tools/radar.js';
 import { registerPriceAnalysisTools } from './tools/priceAnalysis.js';
 import { registerLiveFilterTools } from './tools/liveFilter.js';
+import { registerItemFilterUploadTools } from './tools/itemFilterUpload.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -84,6 +85,7 @@ export function buildServer(): number {
   count += registerRadarTools(server);
   count += registerPriceAnalysisTools(server);
   count += registerLiveFilterTools(server);
+  count += registerItemFilterUploadTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;
