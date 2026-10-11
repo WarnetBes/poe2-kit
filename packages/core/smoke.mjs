@@ -271,7 +271,8 @@ ok(evP?.chatChannel === 'party', 'parseLogLine chat party %');
 const evGu = parseLogLine('2026/06/04 11:02:15 77443000 3ef2334f [INFO Client 29396] &GuildMaster: raid at 21');
 ok(evGu?.chatChannel === 'guild', 'parseLogLine chat guild &');
 const evL = parseLogLine('2026/06/04 11:02:20 77444000 3ef23344 [INFO Client 29396] LocalPlayer: incoming mobs');
-ok(evL?.kind === 'chat_message' && evL?.chatChannel === 'local', 'parseLogLine chat local (без префикса)');
+ok(evL === null, 'parseLogLine local БЕЗ префикса не парсится (live: debug-шум, канал не наблюдаем — P4-в фмитриация)');
+ok(parseLogLine('2026/06/04 11:02:21 77445000 3ef23345 [INFO Client 29396] CreateSwapChain: SetFullScreenState 0') === null, 'parseLogLine debug-строка не chat (live-подтверждено)');
 const evW = parseLogLine('2026/06/04 11:02:25 77445000 3ef23350 [INFO Client 29396] @From Whisperer: psst');
 ok(evW?.kind === 'whisper' && evW?.whisperDirection === 'From', 'parseLogLine whisper не съеден chat-паттерном');
 

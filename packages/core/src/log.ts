@@ -184,12 +184,15 @@ const EVENT_PATTERNS: Array<[LogEventKind, RegExp]> = [
   // SCENE: реальное имя зоны — допуск к зонам, которых нет в ZONE_NAMES (серgeyklay SCENE_RE).
   ['scene_source', /^\[SCENE\] Set Source \[(.+)\]$/],
   // Чат-каналы (P4, №281-W2; паттерн poe2-whispergogo chat.go:66-95, MIT):
-  // body = "[#CharName]: text" — global/trade/party/guild по префиксу; local без
-  // префикса. Ставится ПОСЛЕДНИМ: chat-тело не должно перехватывать чужие виды
-  // (все они выше по списку). Whisper @From/@To остаётся самостоятельным kind.
-  // Local-юзернейм ограничен «именем персонажа», чтобы не ловить debug-строки.
+  // body = "[#CharName]: text" — global/trade/party/guild по префиксу.
+  // Ставится ПОСЛЕДНИМ: chat-тело не должно перехватывать чужие виды (все
+  // они выше по списку). Whisper @From/@To остаётся самостоятельным kind,
+  // но несёт chatChannel/from/text (P4-в).
+  // Local-канал ОСОЗНАННО не парсится: живая проверка на реальном Client.txt
+  // показала, что бесканальный формат «Name: text» ловит debug-строки
+  // («CreateSwapChain: SetFullScreenState 0»); канального префикса у local
+  // нет — отличить от debug надёжно нельзя (fit-or-explain: не шумим).
   ['chat_message', /^([#%&$])([A-Za-z0-9_][A-Za-z0-9_ ]*?): (.+)$/],
-  ['chat_message', /^([A-Za-z][A-Za-z0-9_]{1,23}): (.+)$/],
 ];
 
 // Граница сессии. В реальном логе идёт без полного префикса: `дата **** LOG FILE OPENING ****`.
@@ -233,6 +236,10 @@ export function parseLogLine(line: string): ClientLogEvent | null {
         break;
       case 'whisper':
         ev.whisperDirection = e[1] as 'From' | 'To';
+        // P4-в: whisper как чат-канал (from/text для чат-секций log_state/summary).
+        ev.chatChannel = 'whisper';
+        ev.from = e[2];
+        ev.text = e[3];
         break;
       case 'items_identified':
         ev.count = parseInt(e[1]!, 10);

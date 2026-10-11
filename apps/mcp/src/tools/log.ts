@@ -84,6 +84,26 @@ export function registerLogTools(server: McpServer): number {
         if (!core.log.hasSubstantialLogData(st)) {
           lines.push('', '_Данных мало (возможно, игра только запущена). Попробуйте full_history=true._');
         }
+        // P4-в (№281-W2): чат-секция — торговля/глобал/виспер, анти-спам
+        // (последние 5, дедуп подряд одного автора+текста; local-канал не
+        // показываем — у него нет канального префикса, риск debug-false-positive).
+        const chat = st.events.filter(
+          (e) => (e.kind === 'chat_message' && e.chatChannel && e.chatChannel !== 'local') || e.kind === 'whisper',
+        );
+        const recent: typeof chat = [];
+        for (const e of chat) {
+          const prev = recent[recent.length - 1];
+          const isDup = prev && prev.from === e.from && prev.text === e.text;
+          if (!isDup) recent.push(e);
+          if (recent.length >= 5) break;
+        }
+        if (recent.length) {
+          lines.push('', '### Чат (последние)');
+          for (const e of recent) {
+            const ch = e.kind === 'whisper' ? `whisper ${e.whisperDirection === 'To' ? '→' : '←'}` : e.chatChannel;
+            lines.push(`- ${ch} · ${e.from}: ${e.text}`);
+          }
+        }
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -145,5 +165,127 @@ export function registerLogTools(server: McpServer): number {
     },
   );
 
-  return 2;
+  // P4-в (№281-W2): хвост лога — сырые строки/типизированные события для дебага.
+  server.registerTool(
+    'poe2_log_tail',
+    {
+      title: 'PoE2 Log Tail',
+      description: `Последние строки Client.txt: сырые или типизированные события (level_up/area_change/death/chat_message/whisper...). Для дебага парсера и живого контекста "что сейчас происходит".
+
+Аргументы:
+  - count (number, опц.): сколько последних событий показать (по умолчанию 20, макс. 200).
+  - kinds (string[], опц.): фильтр типов, напр. ["death","chat_message"] (raw — сырые строки вместо событий).
+  - raw (boolean, опц.): сырые строки вместо типизированных событий.
+  - log_path (string, опц.): явный путь к Client.txt (иначе автодетект).
+  - poe2_install_path (string, опц.): корень установки PoE2.
+  - full_history (boolean, опц.): полный Client.txt вместо LatestClient.txt.
+  - tail_bytes (number, опц.): окно хвоста в байтах (по умолчанию 1048576).
+
+Чисто локальный источник.`,
+      inputSchema: {
+        count: z.number().int().min(1).max(200).optional().describe('Сколько последних событий/строк'),
+        kinds: z.array(z.string()).optional().describe('Фильтр типов событий'),
+        raw: z.boolean().optional().describe('Сырые строки вместо событий'),
+        log_path: z.string().optional().describe('Явный путь к логу'),
+        poe2_install_path: z.string().optional().describe('Корень установки PoE2'),
+        full_history: z.boolean().optional().describe('Читать полный Client.txt'),
+        tail_bytes: z.number().int().min(4096).max(16_777_216).optional().describe('Окно хвоста, байт'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ count, kinds, raw, log_path, poe2_install_path, full_history, tail_bytes }) => {
+      try {
+        const st = core.log.getClientState({
+          logPath: log_path,
+          poe2InstallPath: poe2_install_path,
+          fullHistory: full_history,
+          tailBytes: tail_bytes,
+        });
+        if (!st.available) {
+          return { content: [{ type: 'text', text: `Лог недоступен: ${st.reason ?? '?'}` }] };
+        }
+        const n = count ?? 20;
+        const lines = [`## Хвост лога (последние ${n})`, `- Лог: \`${st.logPath}\``, ''];
+        if (raw) {
+          const rawLines = core.log.readLogTailBytes(st.logPath!, tail_bytes ?? 1_048_576);
+          for (const l of rawLines.slice(-n).reverse()) lines.push(l);
+        } else {
+          let events = st.events;
+          if (kinds?.length) events = events.filter((e) => kinds.includes(e.kind));
+          for (const e of events.slice(-n).reverse()) {
+            const bits: string[] = [`- ${e.timestamp} [${e.kind}]`];
+            if (e.character && e.level != null) bits.push(`${e.character} lvl ${e.level}`);
+            else if (e.character) bits.push(e.character);
+            if (e.areaCode) bits.push(`${e.areaCode} (ур. ${e.areaLevel ?? '?'})`);
+            if (e.chatChannel) bits.push(`${e.chatChannel}${e.from ? ` ${e.from}` : ''}${e.text ? `: ${e.text}` : ''}`);
+            lines.push(bits.join(' ').trimEnd());
+          }
+        }
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+      }
+    },
+  );
+
+  // P4-в (№281-W2): сводка сессии — runs/deaths/уровни/чат → markdown-блок
+  // (для ручного коллапса в журнал сессии; НЕ автозапись — правило №7 ядра).
+  server.registerTool(
+    'poe2_log_summary',
+    {
+      title: 'PoE2 Log Session Summary',
+      description: `Markdown-сводка игровой сессии из Client.txt: runs (визиты в карты: зоны, тиры, смерти, ~минуты), дельта уровней, посещённые зоны, последний чат (trade/global/whisper, анти-спам). Готовый блок для вставки в журнал/конспект.
+
+Аргументы:
+  - log_path (string, опц.): явный путь к Client.txt (иначе автодетект).
+  - poe2_install_path (string, опц.): корень установки PoE2.
+  - full_history (boolean, опц.): полный Client.txt вместо LatestClient.txt.
+  - tail_bytes (number, опц.): окно хвоста в байтах (больше окно — больше охват).
+
+Чисто локальный источник.`,
+      inputSchema: {
+        log_path: z.string().optional().describe('Явный путь к логу'),
+        poe2_install_path: z.string().optional().describe('Корень установки PoE2'),
+        full_history: z.boolean().optional().describe('Читать полный Client.txt'),
+        tail_bytes: z.number().int().min(4096).max(16_777_216).optional().describe('Окно хвоста, байт'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ log_path, poe2_install_path, full_history, tail_bytes }) => {
+      try {
+        const st = core.log.getClientState({
+          logPath: log_path,
+          poe2InstallPath: poe2_install_path,
+          fullHistory: full_history,
+          tailBytes: tail_bytes,
+        });
+        if (!st.available) {
+          return { content: [{ type: 'text', text: `Лог недоступен: ${st.reason ?? '?'}` }] };
+        }
+        // Runs-FSM поверх событий окна (P4-б редьюсер), затем слепок сессии.
+        const closed = core.runsTracker.closeRuns(
+          core.runsTracker.reduceRuns(st.events, `window-${st.logPath ?? 'log'}`),
+          st.lastEventTime ?? st.events[st.events.length - 1]?.timestamp ?? '',
+        );
+        const md = core.runsTracker.sessionMarkdown(closed.finishedSession);
+        const chat = st.events.filter(
+          (e) => (e.kind === 'chat_message' && e.chatChannel && e.chatChannel !== 'local') || e.kind === 'whisper',
+        );
+        const lines = ['## Сводка сессии (окно лога)', '', md];
+        if (chat.length) {
+          lines.push('', `**Чат в окне: ${chat.length} сообщений** (последние 3):`);
+          for (const e of chat.slice(-3).reverse()) {
+            lines.push(`- ${e.kind === 'whisper' ? `whisper ${e.whisperDirection}` : e.chatChannel} · ${e.from}: ${e.text}`);
+          }
+        }
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+      }
+    },
+  );
+
+  return 4;
 }
