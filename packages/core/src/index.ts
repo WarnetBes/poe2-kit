@@ -8,6 +8,7 @@ export * from './leveling.js';
 export * from './repoe.js';
 export * from './ai.js';
 export * from './parse.js';
+export * from './modTiers.js';
 export * from './http.js';
 // rate-limit v2 (порт poe-ninja-build-cost, P1): избирательные экспорты с
 // алиасами — имя RateLimiter в публичном API ядра уже занято статическим
@@ -133,6 +134,7 @@ import * as craftMod from './craftGuide.js';
 import * as pobcodeMod from './pobcode.js';
 import * as resultMod from './result.js';
 import * as priceAnalysisMod from './priceAnalysis.js';
+import * as modTiersMod from './modTiers.js';
 
 export const core = {
   trade,
@@ -141,6 +143,7 @@ export const core = {
   repoe,
   ai,
   parse,
+  modTiers: modTiersMod,
   http,
   log: logmod,
   wiki: wikimod,

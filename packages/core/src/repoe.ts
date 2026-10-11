@@ -64,6 +64,14 @@ interface RepoeBaseEntry {
 }
 
 let baseItemIndex: BaseItemIndex | null = null;
+let modIndex: ModIndex | null = null;
+
+/** Сброс модульных индексов RePoE (юнит-тесты/refresh-data; в рантайме НЕ звать —
+ *  повторная загрузка индексов = лишние сетевые запросы). */
+export function resetRepoeCaches(): void {
+  baseItemIndex = null;
+  modIndex = null;
+}
 
 /** Загрузить и заиндексировать базу предметов (лениво, один раз). */
 async function ensureBaseItemIndex(): Promise<BaseItemIndex> {
@@ -151,8 +159,6 @@ interface IndexedModTier {
 
 type ModIndex = Map<string, IndexedModTier[]>;
 
-let modIndex: ModIndex | null = null;
-
 /** Убрать RePoE-разметку из текста мода. */
 function stripMarkup(text: string): string {
   return text.replace(/\[([^\]|]+)\|([^\]]+)\]/g, '$2').replace(/\[([^\]]+)\]/g, '$1');
@@ -160,13 +166,22 @@ function stripMarkup(text: string): string {
 
 /** Нормализовать текст мода в шаблон: все числа (и диапазоны) заменяются на "#". */
 function normalizeTemplate(text: string): string {
-  return text
-    .replace(/\([\d.]+-[\d.]+\)/g, '#')
-    .replace(/[\d.]+/g, '#')
-    .replace(/\+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  return (
+    text
+      .replace(/\([\d.]+-[\d.]+\)/g, '#')
+      // «(+1.01-1.5)%»-обёртки и одиночные числа → '#'
+      .replace(/[\d.]+/g, '#')
+      // RePoE-диапазон вне скобок после замены даёт «# %», клиент — «#%»:
+      // выравниваем, иначе реальные моды («13% increased Attack Speed») не
+      // матчятся с шаблоном «(5-7)% increased Attack Speed» (живая находка P2).
+      .replace(/#\s*([%+\-])/g, '#$1')
+      // «(# of X)» маркеры-обёртки после замены чисел → раскрыть к «# of X»
+      .replace(/\(\s*([^()#]*#[^()#]*)\s*\)/g, '$1')
+      .replace(/\+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  );
 }
 
 function extractFirstNumber(text: string): number | null {

@@ -16,6 +16,50 @@ function fmtDef(def: { armour?: unknown; evasion?: unknown; energyShield?: unkno
   return parts.join(', ') || '—';
 }
 
+/** Секция «Тиры модов» для parse_item: таблица тиров + свободные P/S-слоты
+ *  (формат донора poe2-mcp-server formatEnrichmentSection, MIT). Пустое досье → ''. */
+function formatTierDossier(dossier: core.modTiers.ModTierDossier, item: core.parse.ParsedItem): string {
+  if (!dossier.modTiers.length && !dossier.base) return '';
+  const lines: string[] = ['### Тиры модов (RePoE)'];
+  if (dossier.base) {
+    const bi = dossier.base;
+    const statParts: string[] = [];
+    if (bi.baseEs !== null) statParts.push(`база ES ${bi.baseEs}`);
+    if (bi.baseArmour !== null) statParts.push(`база брони ${bi.baseArmour}`);
+    if (bi.baseEvasion !== null) statParts.push(`база уклонения ${bi.baseEvasion}`);
+    if (bi.basePhysDamageMin !== null && bi.basePhysDamageMax !== null) {
+      statParts.push(`база физ ${bi.basePhysDamageMin}-${bi.basePhysDamageMax}`);
+    }
+    lines.push(`**База:** ${bi.name}${statParts.length ? ` — ${statParts.join(' | ')}` : ''}`);
+  }
+  if (dossier.modTiers.length) {
+    const ilvlLabel = item.itemLevel !== null ? String(item.itemLevel) : '?';
+    lines.push('', `Окна тиров при ilvl ${ilvlLabel}:`);
+    lines.push('| Мод | Ролл | Тир | Диапазон | Идеал@ilvl | P/S | Ролл % |');
+    lines.push('|---|---|---|---|---|---|---|');
+    for (const t of dossier.modTiers) {
+      const ps = t.prefixSuffix === 'prefix' ? 'P' : 'S';
+      const best = t.bestTierAtIlvl !== null ? `T${t.bestTierAtIlvl}` : '—';
+      const pct = t.rollPct !== null ? `${t.rollPct}%` : '—';
+      lines.push(
+        `| ${t.modText} | ${t.value} | T${t.tier}/${t.totalTiers} | ${t.range[0]}–${t.range[1]} | ${best} | ${ps} | ${pct} |`,
+      );
+    }
+    if (dossier.maxPrefixes > 0 || dossier.maxSuffixes > 0) {
+      const openP = dossier.openPrefix;
+      const openS = dossier.openSuffix;
+      lines.push('');
+      lines.push(
+        `Слоты аффиксов: **${openP >= 0 ? openP : 0} свободных префиксов / ${openS >= 0 ? openS : 0} свободных суффиксов** (макс ${dossier.maxPrefixes}P/${dossier.maxSuffixes}S для ${item.rarity}; заполнено ${dossier.prefixCount}P/${dossier.suffixCount}S)`,
+      );
+    }
+  }
+  if (dossier.unmatchedExplicits.length) {
+    lines.push('', `Без тира (не в RePoE-индексе): ${dossier.unmatchedExplicits.length} шт.`);
+  }
+  return lines.join('\n');
+}
+
 export function registerItemTools(server: McpServer): number {
   server.registerTool(
     'poe2_parse_item',
@@ -28,6 +72,11 @@ export function registerItemTools(server: McpServer): number {
 
 Возвращает: редкость, имя, базовый тип, Item Class, Item Level, качество, защиты,
 нападение (для оружия), требования и список модов с типами (explicit/implicit/rune/...).
+
+Для Rare/Magic дополнительно enrichment по RePoE (P2): тиры каждого explicit-мода
+(T{n}/{total}, диапазон тира, лучший тир при текущем ilvl, префикс/суффикс, совершенство
+ролла в %), базовые статы базы и число открытых слотов аффиксов. Требует сеть только
+на первый вызов (кэш RePoE); при недоступности данных секция тиров просто опускается.
 
 Пример входных данных:
 Rarity: Rare
@@ -50,6 +99,9 @@ Adds 3 to 8 Cold Damage
     async ({ item_text }) => {
       try {
         const item = core.parse.parseItemText(item_text);
+        // P2 mod-tier enrichment: тиры RePoE + открытые слоты (никогда не бросает;
+        // офлайн/не-EN база → секции просто не будет, парсер остаётся чистым).
+        const dossier = await core.modTiers.resolveModTiers(item_text);
         const mods = item.mods.map((m) => `- [${m.type}] ${m.text}`).join('\n');
         const req = item.requirements;
         const text = [
@@ -71,6 +123,8 @@ Adds 3 to 8 Cold Damage
           '',
           '### Моды',
           mods || '(нет модов)',
+          '',
+          formatTierDossier(dossier, item),
         ];
         return { content: [{ type: 'text', text: text.filter(Boolean).join('\n') }] };
       } catch (error) {

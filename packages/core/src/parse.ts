@@ -220,7 +220,7 @@ function parseDamageRange(line: string): DamageRange | null {
 }
 
 /** Определить тип мода по маркеру в конце строки. */
-function parseMod(line: string): ItemMod {
+export function parseMod(line: string): ItemMod {
   let type: ModType = 'explicit';
   let text = line.trim();
   for (const [modType, re] of Object.entries(MOD_MARKERS)) {
