@@ -11,6 +11,7 @@ export * from './parse.js';
 export * from './modTiers.js';
 export * from './metaLadder.js';
 export * from './invokerGuide.js';
+export * from './regexOptimizer.js';
 export * from './http.js';
 // rate-limit v2 (порт poe-ninja-build-cost, P1): избирательные экспорты с
 // алиасами — имя RateLimiter в публичном API ядра уже занято статическим
