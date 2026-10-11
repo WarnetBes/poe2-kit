@@ -109,6 +109,22 @@ export const FRESHNESS_DATASETS: FreshnessSpec[] = [
     datePath: ['_meta', 'fetched'],
     schemaPath: ['_meta', 'git_rev'],
   },
+  {
+    // L3 (§2а хвост): срез RePoE-fork — аффиксы item-domain (тиры модов).
+    rel: 'repoe/mods.json',
+    sourceId: 'repoe',
+    kind: 'datamined',
+    update: 'auto',
+    datePath: ['_meta', 'fetchedAt'],
+  },
+  {
+    // L3 (§2а хвост): тонкий base_items-каталог RePoE-fork (один refresh-шаг с mods.json).
+    rel: 'repoe/base_items.json',
+    sourceId: 'repoe',
+    kind: 'datamined',
+    update: 'auto',
+    datePath: ['_meta', 'fetchedAt'],
+  },
 ];
 
 /** Результат свежести одного датасета. */

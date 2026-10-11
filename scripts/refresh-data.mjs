@@ -77,8 +77,18 @@ const REFRESH_STEPS = [
     // stat-id матчинга → его протухание/отсутствие несёт exit-код 1.
     required: true,
   },
+  {
+    // L3 (§2а хвост): срез RePoE-fork — один обновлятель на оба файла.
+    rel: 'repoe/mods.json',
+    rels: ['repoe/mods.json', 'repoe/base_items.json'],
+    name: 'repoe/mods.json + base_items.json (срез RePoE-fork)',
+    script: ['scripts/fetch-repoe-mods.mjs'],
+    // не required: runtime (core/repoe.ts) тянет RePoE live со своим кэшем;
+    // срез — офлайн-консистентность + freshness. Протухание = честный 🔴 в сводке.
+    required: false,
+  },
 ];
-const REFRESHABLE_RELS = new Set(REFRESH_STEPS.map((s) => s.rel));
+const REFRESHABLE_RELS = new Set(REFRESH_STEPS.flatMap((s) => s.rels ?? [s.rel]));
 
 // ── Сводка свежести ПЕРЕД шагами (единый реестр core, №248) ──────────────
 // knownPatchAt внутри core.freshness по умолчанию — дата последнего
@@ -108,7 +118,7 @@ for (const d of before) {
 let steps = REFRESH_STEPS;
 if (staleOnly) {
   const staleRels = new Set(before.filter((d) => d.stale).map((d) => d.rel));
-  steps = REFRESH_STEPS.filter((s) => staleRels.has(s.rel));
+  steps = REFRESH_STEPS.filter((s) => (s.rels ?? [s.rel]).some((r) => staleRels.has(r)));
   const skipped = REFRESH_STEPS.length - steps.length;
   console.log(
     `\n--stale-only: обновляем ${steps.length} из ${REFRESH_STEPS.length} refreshable` +
@@ -130,7 +140,9 @@ const snapOf = (rel) => {
     return null; // файла нет — честный «новый файл» в отчёте
   }
 };
-const targets = steps.map((s) => ({ rel: s.rel, before: dryRun ? null : snapOf(s.rel) }));
+const targets = steps.flatMap((s) =>
+  (s.rels ?? [s.rel]).map((rel) => ({ rel, before: dryRun ? null : snapOf(rel) })),
+);
 
 let reportLines = [];
 if (dryRun) {

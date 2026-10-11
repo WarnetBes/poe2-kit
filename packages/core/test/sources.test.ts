@@ -10,6 +10,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'game');
 import {
   listWebSources,
   getWebSource,
@@ -187,5 +192,42 @@ describe('freshness: датасеты (№245)', () => {
     for (const d of list) {
       expect(d.fetchedAt != null || d.note != null).toBe(true);
     }
+  });
+});
+
+describe('repoe-срез (L3, §2а хвост): mods.json + base_items.json (№457)', () => {
+  it('оба спека в реестре, refresh-совместимы (fetchedAt читается из реальных файлов)', () => {
+    const list = datasetFreshnessList();
+    const mods = list.find((d) => d.rel === 'repoe/mods.json')!;
+    expect(mods.sourceId).toBe('repoe');
+    expect(mods.fetchedAt).toBeTruthy(); // снапшот уже в репо — меты быть обязаны
+    const bases = list.find((d) => d.rel === 'repoe/base_items.json')!;
+    expect(bases.sourceId).toBe('repoe');
+    expect(bases.fetchedAt).toBeTruthy();
+  });
+
+  it('mods.json: только item-аффиксы prefix/suffix, тот же фильтр, что в core/repoe.ts', () => {
+    const raw = readFileSync(join(DATA_DIR, 'repoe', 'mods.json'), 'utf8');
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const ids = Object.keys(j).filter((k) => k !== '_meta');
+    expect(ids.length).toBeGreaterThan(2000); // полный срез ~2.5К аффиксов
+    for (const id of ids.slice(0, 50)) {
+      const m = j[id] as { domain: string; generation_type: string; is_essence_only?: boolean; spawn_weights?: unknown[] };
+      expect(m.domain).toBe('item');
+      expect(['prefix', 'suffix']).toContain(m.generation_type);
+      expect(m.is_essence_only).toBeFalsy(); // в срез поле вообще не пишем
+      expect(Array.isArray(m.spawn_weights)).toBe(true); // тиры считаются по весам
+    }
+  });
+
+  it('base_items.json: тонкий каталог (name/item_class/drop_level) покрывает базы', () => {
+    const raw = readFileSync(join(DATA_DIR, 'repoe', 'base_items.json'), 'utf8');
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const ids = Object.keys(j).filter((k) => k !== '_meta');
+    expect(ids.length).toBeGreaterThan(5000); // полный срез ~5.5К баз
+    const first = ids[0]!;
+    const b = j[first] as { name: string; item_class: string };
+    expect(typeof b.name).toBe('string');
+    expect(typeof b.item_class).toBe('string');
   });
 });
