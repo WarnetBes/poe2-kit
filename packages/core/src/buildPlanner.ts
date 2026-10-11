@@ -376,16 +376,23 @@ export function toBuildPlanner(build: BuildImport, opts: ToBuildPlannerOptions =
   const passives = convertPassives(build.passiveNodes ?? [], warnings);
   const skills = convertSkills(build, warnings);
 
+  // SCHEMA v1: шесть ключей ОБЯЗАТЕЛЬНЫ (author/ascendancy/name/
+  // inventory_slots/passives/skills — Tincture SCHEMA.md:13-23, buildfile.py
+  // эмиттит все шесть всегда). Пустые массивы валидны; пропущенный ключ —
+  // риск молчаливого отказа игры, поэтому пустые пишем явно.
+  // Исключение — ascendancy: если код не разрешён, поле ЧЕСТНО опускается
+  // (не выдумываем) — поймает validateBuildPlanner перед записью.
   const out: BuildPlannerBuild = {
     name: opts.name ?? [build.class, build.ascendancy].filter(Boolean).join(' — ') ?? 'Imported build',
+    author: opts.author ?? 'poe2-kit',
+    passives,
+    skills,
+    inventory_slots: [],
   };
   if (!out.name) out.name = 'Imported build';
-  if (opts.author) out.author = opts.author;
   if (opts.link) out.link = opts.link;
   if (opts.description) out.description = opts.description;
   if (ascendancy) out.ascendancy = ascendancy;
-  if (passives.length > 0) out.passives = passives;
-  if (skills.length > 0) out.skills = skills;
 
   if (opts.gearItems && opts.gearItems.length > 0) {
     const inv = convertInventory(opts.gearItems, warnings);
@@ -403,6 +410,201 @@ export function toBuildPlanner(build: BuildImport, opts: ToBuildPlannerOptions =
     warnings,
     filename: buildPlannerFilename(out.name),
   };
+}
+
+// ─── Валидация *.build (гейт до записи: игра на малформ отвечает молча) ─────
+
+/** Результат валидации: valid = нет structural-ошибок; warnings информативны. */
+export interface BuildPlannerValidation {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/** Shape асценданси-кода: «{Class}{N}» + буквенный вариант «Witch3b». */
+const ASC_CODE_SHAPE = /^[A-Z][a-z]+\d+[a-z]?$/;
+
+/** Словарь inventory_id из SLOT_TO_INVENTORY (то, что эмиттим сами). */
+const KNOWN_INVENTORY_IDS = new Set<string>(Object.values(SLOT_TO_INVENTORY));
+
+/** Пассивка: строка-slug или {id: slug}. */
+function passiveId(p: unknown): string | undefined {
+  if (typeof p === 'string') return p.trim() ? p : undefined;
+  if (typeof p === 'object' && p !== null) {
+    const id = (p as Record<string, unknown>).id;
+    return typeof id === 'string' && id.trim() ? id : undefined;
+  }
+  return undefined;
+}
+
+/** level_interval: пара чисел [min, max]. */
+function isLevelInterval(v: unknown): boolean {
+  return (
+    Array.isArray(v) &&
+    v.length === 2 &&
+    typeof v[0] === 'number' &&
+    typeof v[1] === 'number'
+  );
+}
+
+/**
+ * Проверить объект *.build (или его JSON-строку) против схемы v1.
+ * Ошибки (errors) — то, на чём игра молча откажется грузить файл:
+ * битый JSON, не-объект, отсутствие обязательных ключей, неверные типы/shape
+ * слотов/пассивок/скиллов. Предупреждения (warnings) — информативное
+ * (имя > 40 симв. обрежется в display, неизвестный игре код асценданси,
+ * пустые секции, слот в обоих форматах сразу).
+ *
+ * Список обязательных ключей — из Tincture SCHEMA.md:13-23 (6 ключей,
+ * reverse-engineered с реальных экспортов 0.5.0); unknown-id слотов и
+ * асценданси — warning, а не error (словарь донора «observed», не enum).
+ */
+export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  let root: unknown = input;
+  if (typeof root === 'string') {
+    try {
+      root = JSON.parse(root);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return { valid: false, errors: [`битый JSON (${msg}) — игра молча откажется грузить файл`], warnings };
+    }
+  }
+  if (typeof root !== 'object' || root === null || Array.isArray(root)) {
+    errors.push('корень файла — не объект Build (массив/не-объект)');
+    return { valid: false, errors, warnings };
+  }
+  const b = root as Record<string, unknown>;
+
+  // Шесть обязательных ключей (SCHEMA.md:13-23).
+  for (const key of ['author', 'ascendancy', 'name', 'inventory_slots', 'passives', 'skills']) {
+    if (!(key in b)) errors.push(`нет обязательного ключа «${key}»`);
+  }
+
+  // Имя: непустая строка; длинное — режется только display, не запись.
+  if (typeof b.name !== 'string' || !b.name.trim()) {
+    errors.push('name — непустая строка');
+  } else if (b.name.length > 40) {
+    warnings.push(`name длиннее 40 симв. (${b.name.length}) — игра обрежет только display`);
+  }
+
+  if ('author' in b && typeof b.author !== 'string') errors.push('author — строка');
+  if ('description' in b && typeof b.description !== 'string') errors.push('description — строка');
+  if ('link' in b && typeof b.link !== 'string') errors.push('link — строка');
+
+  // Асценданси: код «{Class}{N}»/«Witch3b». Неизвестный код — warning:
+  // датасет может отставать от игры; сломанный shape — error.
+  if ('ascendancy' in b) {
+    const asc = b.ascendancy;
+    if (typeof asc !== 'string' || !ASC_CODE_SHAPE.test(asc)) {
+      errors.push(`ascendancy «${String(asc)}» не соответствует shape «{Class}{N}[b]»`);
+    } else if (!ascendancyCodeExists(asc)) {
+      warnings.push(`асценданси-код «${asc}» не найден в ascendancies.json — уточнить актуальность датасета`);
+    }
+  }
+
+  // inventory_slots: слот = inventory_id + (unique_name | additional_text).
+  if ('inventory_slots' in b) {
+    const slots = b.inventory_slots;
+    if (!Array.isArray(slots)) {
+      errors.push('inventory_slots — массив');
+    } else {
+      if (slots.length === 0) warnings.push('inventory_slots пуст — билд без снаряжения (валидно)');
+      slots.forEach((s, i) => {
+        const label = `inventory_slots[${i}]`;
+        if (typeof s !== 'object' || s === null) {
+          errors.push(`${label} — объект`);
+          return;
+        }
+        const slot = s as Record<string, unknown>;
+        const inv = slot.inventory_id;
+        const unique = slot.unique_name;
+        const text = slot.additional_text;
+        if (typeof inv !== 'string' || !inv.trim()) {
+          errors.push(`${label}.inventory_id — непустая строка`);
+        } else if (!KNOWN_INVENTORY_IDS.has(inv)) {
+          warnings.push(`${label}.inventory_id «${inv}» вне наблюдённого словаря формата`);
+        }
+        const hasUnique = typeof unique === 'string' && unique.trim();
+        const hasText = typeof text === 'string' && text.trim();
+        if (!hasUnique && !hasText) {
+          errors.push(`${label}: нет ни unique_name, ни additional_text — слот не описан`);
+        }
+        if (hasUnique && hasText) {
+          warnings.push(`${label}: unique_name и additional_text вместе — конвенция: уники только имя, рары только текст`);
+        }
+        if ('level_interval' in slot && !isLevelInterval(slot.level_interval)) {
+          errors.push(`${label}.level_interval — пара чисел [min, max]`);
+        }
+      });
+    }
+  }
+
+  // passives: slug-строки или {id}.
+  if ('passives' in b) {
+    const ps = b.passives;
+    if (!Array.isArray(ps)) {
+      errors.push('passives — массив');
+    } else {
+      if (ps.length === 0) warnings.push('passives пуст — билд без узлов (валидно)');
+      ps.forEach((p, i) => {
+        if (passiveId(p) === undefined) {
+          errors.push(`passives[${i}]: нет id (ожидается slug-строка или {id})`);
+        }
+      });
+    }
+  }
+
+  // skills: {id: Metadata/Items/Gems/…, support_skills: [...]}; сегмент
+  // Gems/Gem непоследователен в реальных данных — shape мягкий.
+  if ('skills' in b) {
+    const sk = b.skills;
+    if (!Array.isArray(sk)) {
+      errors.push('skills — массив');
+    } else {
+      if (sk.length === 0) warnings.push('skills пуст — билд без камней (валидно)');
+      sk.forEach((s, i) => {
+        const label = `skills[${i}]`;
+        if (typeof s !== 'object' || s === null) {
+          errors.push(`${label} — объект`);
+          return;
+        }
+        const skill = s as Record<string, unknown>;
+        if (typeof skill.id !== 'string' || !skill.id.trim()) {
+          errors.push(`${label}.id — непустая строка (Metadata-путь камня)`);
+        } else if (!/^Metadata\/Items\/Gem/.test(skill.id)) {
+          warnings.push(`${label}.id «${skill.id}» вне конвенции Metadata/Items/Gems/…`);
+        }
+        if ('level_interval' in skill && !isLevelInterval(skill.level_interval)) {
+          errors.push(`${label}.level_interval — пара чисел [min, max]`);
+        }
+        const sup = skill.support_skills;
+        if (!Array.isArray(sup)) {
+          errors.push(`${label}.support_skills — массив`);
+          return;
+        }
+        sup.forEach((x, j) => {
+          const ok =
+            (typeof x === 'string' && x.trim()) ||
+            (typeof x === 'object' && x !== null && typeof (x as Record<string, unknown>).id === 'string');
+          if (!ok) errors.push(`${label}.support_skills[${j}]: строка или {id}`);
+        });
+      });
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/** Есть ли код (в любом регистре) среди значений ascendancies.json. */
+function ascendancyCodeExists(code: string): boolean {
+  try {
+    return [...ascendancyCodes().values()].some((c) => c.toLowerCase() === code.toLowerCase());
+  } catch {
+    return false;
+  }
 }
 
 // ─── TODO (следующие итерации, НЕ реализовано) ───────────────────────────────

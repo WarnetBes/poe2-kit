@@ -11,6 +11,8 @@ import {
   showLevelingPlan,
   showBuildImport,
   showBuildPrice,
+  decantToBuildPlanner,
+  decantSupported,
   showBuildTreeFromText,
   showBuildTreeFromLast,
   showAIChat,
@@ -151,10 +153,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="aitools">
           <button id="btn-build" class="primary">Разобрать</button>
           <button id="btn-build-price" class="ghost">Оценить снаряжение</button>
+          <button id="btn-build-decant" class="ghost" hidden title="Конвертировать в официальный *.build и записать в папку Build Planner игры (нужен браузер с File System Access)">Перелить в игру (.build)</button>
         </div>
         <div id="out-build" class="out"></div>
         <div id="out-supports" class="out"></div>
         <div id="out-build-price" class="out"></div>
+        <div id="out-build-decant" class="out"></div>
       </section>
 
       <section id="pane-keybinds" class="pane">
@@ -455,6 +459,14 @@ document.querySelector('#btn-build')!.addEventListener('click', () =>
 document.querySelector('#btn-build-price')!.addEventListener('click', () =>
   showBuildPrice((document.querySelector('#build-input') as HTMLTextAreaElement).value),
 );
+// E4 «Decant»: кнопка видна только в браузерах с File System Access;
+// запись *.build в папку Build Planner с валидацией ДО записи.
+if (decantSupported()) {
+  document.querySelector<HTMLButtonElement>('#btn-build-decant')!.hidden = false;
+  document.querySelector('#btn-build-decant')!.addEventListener('click', () =>
+    void decantToBuildPlanner((document.querySelector('#build-input') as HTMLTextAreaElement).value),
+  );
+}
 document.querySelector('#btn-tree')!.addEventListener('click', () =>
   showBuildTreeFromText((document.querySelector('#tree-input') as HTMLTextAreaElement).value),
 );

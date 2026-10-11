@@ -441,6 +441,91 @@ export async function showBuildImport(code: string): Promise<void> {
   }
 }
 
+// ── «Перелить в игру»: экспорт *.build через File System Access (E4) ────────
+
+/** Типы FSA (File System Access API) — в TS lib нет, инжектим минимально. */
+interface FsaWritableFile {
+  createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
+}
+interface FsaDirectoryHandle {
+  getFileHandle(name: string, opts?: { create?: boolean }): Promise<FsaWritableFile>;
+}
+type ShowDirectoryPicker = (opts: { id: string; mode: 'readwrite'; startIn?: string }) => Promise<FsaDirectoryHandle>;
+
+function directoryPicker(): ShowDirectoryPicker | undefined {
+  return (window as unknown as { showDirectoryPicker?: ShowDirectoryPicker }).showDirectoryPicker;
+}
+
+/** Видимость кнопки «Перелить в игру» — только если браузер умеет FSA. */
+export function decantSupported(): boolean {
+  return typeof window !== 'undefined' && directoryPicker() !== undefined;
+}
+
+/**
+ * Конвертировать билд PoB в *.build и записать в выбранную папку (обычно
+ * Documents/My Games/Path of Exile 2/BuildPlanner) через File System Access.
+ * Валидация — ДО записи: структурные ошибки (молчаливый отказ игры) блокируют
+ * файл, юзер видит отчёт. Атрибуция: link/description с источником кода.
+ */
+export async function decantToBuildPlanner(code: string): Promise<void> {
+  const el = out('out-build-decant');
+  const picker = directoryPicker();
+  if (!picker) {
+    el.innerHTML = '<p class="err">Браузер не поддерживает выбор папки (File System Access) — сохрани JSON из MCP-тула poe2_export_build_planner вручную.</p>';
+    return;
+  }
+  if (!code?.trim()) {
+    el.innerHTML = '<p class="err">Вставь share-код PoB в поле выше и нажми «Разобрать».</p>';
+    return;
+  }
+  el.innerHTML = '<em>Декод PoB…</em>';
+  setStatus('Готовлю *.build…');
+  try {
+    const xml = await core.build.toXml(code.trim());
+    const [imported, gearItems] = await Promise.all([
+      core.build.importBuild(xml),
+      core.build.buildCodeToGear(code.trim()).catch(() => []),
+    ]);
+    const isUrl = /^https?:\/\//i.test(code.trim());
+    const res = core.buildPlanner.toBuildPlanner(imported, {
+      ...(isUrl ? { link: code.trim() } : {}),
+      description: `Источник: ${isUrl ? code.trim() : 'PoB share-код'} · сконвертировано poe2-kit`,
+      ...(gearItems.length ? { gearItems } : {}),
+    });
+
+    // Гейт до записи: битый *.build игра молча не грузит (SCHEMA.md:5-6).
+    const v = core.buildPlanner.validateBuildPlanner(res.build);
+    if (!v.valid) {
+      el.innerHTML =
+        '<p class="err">Файл НЕ записан — структурные ошибки схемы:</p><ul class="kv">' +
+        v.errors.map((e) => `<li>✖ ${esc(e)}</li>`).join('') +
+        '</ul>';
+      setStatus('Валидация не пройдена.');
+      return;
+    }
+
+    const dir = await picker({ id: 'poe2-buildplanner', mode: 'readwrite' });
+    const handle = await dir.getFileHandle(res.filename, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(res.json);
+    await writable.close();
+
+    const warnLines = [...v.warnings, ...res.warnings];
+    el.innerHTML = [
+      `<p><b>Записано: ${esc(res.filename)}</b> — перезапусти игру, Настройки → Импорт билда.</p>`,
+      warnLines.length ? '<p class="note">' + warnLines.map(esc).join(' · ') + '</p>' : '',
+    ].join('');
+    setStatus('*.build записан.');
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      el.innerHTML = '<p class="note">Выбор папки отменён.</p>';
+      return;
+    }
+    el.innerHTML = `<p class="err">Ошибка экспорта: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
+    setStatus('Ошибка экспорта .build.');
+  }
+}
+
 /** Узлы последнего разобранного билда (для карты дерева). */
 let _lastBuildNodes: string[] = [];
 

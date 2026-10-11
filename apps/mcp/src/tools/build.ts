@@ -4,8 +4,19 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { core } from '@poe2-kit/core';
 import type { BuildImport, BuildEstimate, BuildAdvice, LadderRow, BuildGearItem } from '@poe2-kit/core';
+
+/** Папка Build Planner игры (переопределяется POE2K_BUILDPLANNER_DIR). */
+function buildPlannerDir(): string {
+  return (
+    process.env.POE2K_BUILDPLANNER_DIR ??
+    path.join(os.homedir(), 'Documents', 'My Games', 'Path of Exile 2', 'BuildPlanner')
+  );
+}
 
 /** Человекочитаемая расширенная сводка билда (использует новые поля парсера). */
 function formatBuild(b: BuildImport): string {
@@ -526,12 +537,18 @@ export function registerBuildTools(server: McpServer): number {
 Аргументы:
   - code (string): PoB share-код ИЛИ ссылка (pobb.in, poe.ninja/poe2/pob/...).
   - name (string, опц.): имя билда (по умолчанию «Класс — Асценданси»; игра режет ~40 символов).
-  - author (string, опц.): автор.
+  - author (string, опц.): автор (по умолчанию «poe2-kit»).
   - link (string, опц.): ссылка-источник (попадает в link билда).
   - description (string, опц.): заметка/описание.
+  - write (boolean, опц.): записать файл в папку Build Planner игры
+    (~/Documents/My Games/Path of Exile 2/BuildPlanner/, переопределяется
+    POE2K_BUILDPLANNER_DIR). По умолчанию false — только JSON в ответе.
+    Перед записью файл проходит validateBuildPlanner: структурные ошибки
+    (битый файл = молчаливый отказ игры) блокируют запись.
 
-Возвращает: JSON-содержимое *.build в код-блоке, имя файла и предупреждения конвертации
-(что НЕ попало: неизвестные скиллы/узлы, гир без клир-текста). Гир экспортируется
+Возвращает: JSON-содержимое *.build в код-блоке, имя файла, вердикт валидации
+и предупреждения конвертации (что НЕ попало: неизвестные скиллы/узлы, гир без
+клир-текста). При write=true — путь к записанному файлу. Гир экспортируется
 только из полных item-текстов (уники — по имени, рарники — additional_text).
 `,
       inputSchema: {
@@ -540,10 +557,11 @@ export function registerBuildTools(server: McpServer): number {
         author: z.string().optional().describe('Автор'),
         link: z.string().optional().describe('Ссылка-источник'),
         description: z.string().optional().describe('Описание'),
+        write: z.boolean().optional().describe('Записать файл в папку Build Planner игры (по умолчанию false)'),
       },
-      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+      annotations: { idempotentHint: true, openWorldHint: true },
     },
-    async ({ code, name, author, link, description }) => {
+    async ({ code, name, author, link, description, write }) => {
       try {
         const [imported, gearItems] = await Promise.all([
           core.build.importBuild(code),
@@ -556,17 +574,58 @@ export function registerBuildTools(server: McpServer): number {
           ...(description ? { description } : {}),
           ...(gearItems.length ? { gearItems } : {}),
         });
+
+        // Гейт до записи: малформ = молчаливый отказ игры (SCHEMA.md:5-6).
+        const v = core.buildPlanner.validateBuildPlanner(res.build);
+        if (write && !v.valid) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: [
+                  `Файл НЕ записан — валидация нашла ${v.errors.length} структурных ошибок:`,
+                  ...v.errors.map((e) => `- ✖ ${e}`),
+                  '',
+                  'Игра молча отказывается грузить битый *.build — почини источник и повтори.',
+                ].join('\n'),
+              },
+            ],
+          };
+        }
+
         const lines = [
           `## *.build экспорт — ${res.filename}`,
           '',
+          `- Валидация: ${v.valid ? '**OK**' : `✖ ${v.errors.length} ошибок`}`,
+          ...(v.errors.length ? v.errors.map((e) => `- ✖ ${e}`) : []),
+          ...(v.warnings.length ? v.warnings.map((w) => `- ⚠ ${w}`) : []),
           ...res.warnings.map((w) => `- ⚠ ${w}`),
-          ...(res.warnings.length ? [''] : []),
-          '```json',
-          res.json,
-          '```',
           '',
-          `_Сохранить как «${res.filename}» (UTF-8) и импортировать в игре. Формат: pathofexile.com/developer/docs/game#buildplanner._`,
         ];
+
+        if (write) {
+          const dir = buildPlannerDir();
+          const existed = fs.existsSync(dir);
+          fs.mkdirSync(dir, { recursive: true });
+          const file = path.join(dir, res.filename);
+          fs.writeFileSync(file, res.json, 'utf8');
+          lines.push(`- **Записано:** \`${file}\``);
+          if (!existed) {
+            lines.push(
+              `- ⚠ Папка «${dir}» не существовала и была создана. Если Documents ` +
+                'перенаправлен в OneDrive — перенеси файл в OneDrive-копию Documents.',
+            );
+          }
+          lines.push('', '_Игра подхватит файл при следующем запуске (File Watcher). Настройки → Импорт билда._');
+        }
+
+        lines.push('```json', res.json, '```', '');
+        if (!write) {
+          lines.push(
+            `_Сохранить как «${res.filename}» (UTF-8), или вызови с write=true — запишу в папку Build Planner. Формат: pathofexile.com/developer/docs/game#buildplanner._`,
+          );
+        }
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
