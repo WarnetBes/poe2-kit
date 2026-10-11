@@ -13,6 +13,19 @@
   (имена предметов/уникалей/гемов RU→EN + лейблы/паттерны клир-текста),
   исполняется только через JSON.parse, никогда не eval (см. packages/core/SECURITY.md).
 
+## packages/core/data/game/i18n/mods_ru.json
+
+- **Exiled Exchange 2** — https://github.com/Kvan7/Exiled-Exchange-2 — лицензия **MIT**
+  (`dataParser/output/ru/stats.ndjson`): RU-строки модов ↔ EN ref. Сжатая
+  регенерация: `poe2-kit/scripts/gen-ru-locale-data.mjs` (2026-10-11).
+
+## packages/core/data/game/i18n/item_classes_ru.json
+
+- **xiletrade** — https://github.com/maxensas/xiletrade — лицензия **MIT**
+  (`licenses/LICENSE_XiletradeJson`, данные `src/Xiletrade.Library/Data/Lang/ru-RU/ItemClassTwo.json`):
+  RU→EN значения «Класс предмета:» PoE2-клиента. Регенерация тем же скриптом.
+
+
 ## Прочие портированные модули (MIT, указано в шапках файлов)
 
 - `livefilter/injector.ts` и др. — порт Go-донора (см. комментария в файлах).

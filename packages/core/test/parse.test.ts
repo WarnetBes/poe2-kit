@@ -173,3 +173,74 @@ describe('parse: itemDisplayName', () => {
     expect(itemDisplayName(parseItemText(RU_NORMAL_ARMOUR))).toBe('Ar Armour Plating');
   });
 });
+
+describe('parse: RU PoE2 (многострочные требования, класс, сокеты)', () => {
+  // Формат RU-клиента PoE2 (фикстура xiletrade armor-rare.txt, MIT;
+  // лейблы сверены с ExE2 client_strings).
+  const RU_POE2_RARE_BOOTS = `Класс предмета: Обувь
+Редкость: Редкий
+Gale Dash
+Wyvernscale Boots
+--------
+Броня: 269 (augmented)
+Уклонение: 269 (augmented)
+--------
+Требования:
+Уровень: 84
+Сила: 98
+Ловк: 98
+--------
+Гнезда: R-G-G G
+--------
+Уровень предмета: 85
+--------
++45 к максимуму здоровья
++28% к сопротивлению молнии
+--------
+Осквернено
+`;
+
+  it('itemClass канонизуется RU → EN (Boots)', () => {
+    expect(parseItemText(RU_POE2_RARE_BOOTS).itemClass).toBe('Boots');
+  });
+
+  it('многострочные требования RU парсятся (level/str/dex)', () => {
+    const r = parseItemText(RU_POE2_RARE_BOOTS).requirements;
+    expect(r.level).toBe(84);
+    expect(r.strength).toBe(98);
+    expect(r.dexterity).toBe(98);
+  });
+
+  it('лейблы Требования/Гнезда НЕ попадают в моды', () => {
+    const texts = parseItemText(RU_POE2_RARE_BOOTS).mods.map((m) => m.text);
+    expect(texts.some((t) => t.includes('Требования') || t.includes('Гнезда'))).toBe(false);
+    expect(texts.some((t) => t.includes('Уровень: 84'))).toBe(false);
+  });
+
+  it('моды сохраняют RU-текст как есть (перевод — не в parse)', () => {
+    const texts = parseItemText(RU_POE2_RARE_BOOTS).mods.map((m) => m.text);
+    expect(texts).toContain('+45 к максимуму здоровья');
+  });
+
+  it('флаг Осквернено → corrupted', () => {
+    expect(parseItemText(RU_POE2_RARE_BOOTS).corrupted).toBe(true);
+  });
+
+  it('EN-многострочные требования (Requirements:/Level:/Str:) тоже парсятся', () => {
+    const en = parseItemText(`Item Class: Boots
+Rarity: Rare
+Gale Dash
+Wyvernscale Boots
+--------
+Requirements:
+Level: 84
+Str: 98
+Dex: 98
+--------
+Item Level: 85
+`);
+    expect(en.requirements.level).toBe(84);
+    expect(en.requirements.strength).toBe(98);
+    expect(en.requirements.dexterity).toBe(98);
+  });
+});

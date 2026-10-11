@@ -128,3 +128,167 @@ export function ruEnMap(
 ): ReadonlyMap<string, string> {
   return new Map(load().maps[kind]);
 }
+
+// ═══ RU-моды и классы (§5, RU mod-patterns) ═════════════════════════════════
+
+/**
+ * RU-строки модов → EN ref (датасет ExE2 stats.ndjson, MIT) и RU-значения
+ * «Класс предмета:» → EN (xiletrade ItemClassTwo.json, MIT).
+ *
+ * Перевод не заменяет парсинг: ParsedItem.mods.text остаётся как в клире,
+ * канонизация в EN происходит только на входе estimate (defense/verdict).
+ * Классы наоборот канонизуются в parse — они учавствуют в сравнении
+ * RU-кандидат vs EN-гиры билда (itemVerdict) и определении слота оружия.
+ */
+
+interface RuModEntry {
+  ru: string;
+  en: string;
+  negate?: boolean;
+}
+
+interface RuModsData {
+  _meta?: { source?: string; built?: string };
+  mods: RuModEntry[];
+}
+
+interface RuClassesData {
+  _meta?: { source?: string; built?: string };
+  classes: [string, string][];
+}
+
+interface CompiledMatcher {
+  re: RegExp;
+  en: string;
+  negate: boolean;
+}
+
+let modCache: { meta: RuModsData['_meta']; matchers: CompiledMatcher[] } | null = null;
+let classCache: { meta: RuClassesData['_meta']; map: Map<string, string> } | null = null;
+
+function i18nPath(file: string): string {
+  return pathMod!.join(
+    pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)),
+    '..',
+    'data',
+    'game',
+    'i18n',
+    file,
+  );
+}
+
+/**
+ * RU-матчер → RegExp: '#' → знаковое число (за ним допустима скобка
+ * диапазона "(40-54)" из poe2db/PoB-аннотаций), пробелы толерантны.
+ */
+function compileRuMatcher(ru: string): string {
+  const NUM = '([+-]?\\d+(?:\\.\\d+)?)(?:\\s*\\(\\d+(?:\\.\\d+)?\\s*-\\s*\\d+(?:\\.\\d+)?\\))?';
+  const escaped = ru
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+  return '^' + escaped.split('#').join(NUM) + '\\s*$';
+}
+
+function loadMods(): { meta: RuModsData['_meta']; matchers: CompiledMatcher[] } {
+  if (modCache) return modCache;
+  const empty = { meta: undefined, matchers: [] as CompiledMatcher[] };
+  if (!HAS_DISK) return (modCache = empty);
+  try {
+    const raw = JSON.parse(fsMod!.readFileSync(i18nPath('mods_ru.json'), 'utf8')) as RuModsData;
+    const matchers: CompiledMatcher[] = (raw.mods ?? []).map((m) => ({
+      re: new RegExp(compileRuMatcher(m.ru), 'i'),
+      en: m.en,
+      negate: m.negate === true,
+    }));
+    modCache = { meta: raw._meta, matchers };
+    return modCache;
+  } catch {
+    return (modCache = empty);
+  }
+}
+
+function loadClasses(): { meta: RuClassesData['_meta']; map: Map<string, string> } {
+  if (classCache) return classCache;
+  if (!HAS_DISK) return (classCache = { meta: undefined, map: new Map() });
+  try {
+    const raw = JSON.parse(fsMod!.readFileSync(i18nPath('item_classes_ru.json'), 'utf8')) as RuClassesData;
+    const map = new Map<string, string>();
+    for (const [ru, en] of raw.classes ?? []) {
+      if (ru && en && ru !== en) map.set(ru.trim().toLowerCase(), en.trim());
+    }
+    classCache = { meta: raw._meta, map };
+    return classCache;
+  } catch {
+    return (classCache = { meta: undefined, map: new Map() });
+  }
+}
+
+const HAS_CYRILLIC = /[а-яё]/i;
+
+/** Подставить числа матча в EN-шаблон ("#% to Fire Resistance" → "+28% to Fire Resistance"). */
+function fillEnTemplate(en: string, m: RegExpExecArray, negate: boolean): string {
+  let i = 1;
+  let out = en.replace(/#/g, () => {
+    const raw = m[i++];
+    if (raw == null) return '#';
+    let v = raw;
+    if (negate && !/^[+-]/.test(v)) v = '-' + v;
+    return v;
+  });
+  // Отрицательные ref-шаблоны донора ("#% reduced ...") с negate-матчером:
+  // значение уже с минусом, ref без negate — знак оставляем числу как есть.
+  if (!out.startsWith('+') && /^\d/.test(out)) out = '+' + out;
+  return out;
+}
+
+/**
+ * RU-строка мода → EN-канон (или null, если строка не RU / не из таблицы).
+ * Сначала точный матч, затем повтор без хвостового маркера "(...)" вроде
+ * "(crafted)" — таблица их не содержит.
+ */
+export function translateRuModLine(line: string): string | null {
+  if (!line || !HAS_CYRILLIC.test(line)) return null;
+  const trimmed = line.trim();
+  const matchers = loadMods().matchers;
+  for (const m of matchers) {
+    const hit = m.re.exec(trimmed);
+    if (hit) return fillEnTemplate(m.en, hit, m.negate);
+  }
+  const stripped = trimmed.replace(/\s*\([^()]*\)\s*$/, '');
+  if (stripped && stripped !== trimmed) {
+    for (const m of matchers) {
+      const hit = m.re.exec(stripped);
+      if (hit) return fillEnTemplate(m.en, hit, m.negate);
+    }
+  }
+  return null;
+}
+
+/**
+ * Массив строк модов RU→EN (точечно: непереведённое проходит как есть).
+ * Точка инжекта — сбор модов в estimate: дальше вердикт/EHP-оси работают
+ * на EN-regex'ах без изменений.
+ */
+export function translateRuMods(mods: string[]): string[] {
+  return mods.map((t) => translateRuModLine(t) ?? t);
+}
+
+/** RU-значение «Класс предмета:» → EN-канон; иначе ''. */
+export function ruToEnItemClass(itemClass: string | null | undefined): string {
+  const key = String(itemClass ?? '').trim().toLowerCase();
+  if (!key || !HAS_CYRILLIC.test(key)) return '';
+  return loadClasses().map.get(key) ?? '';
+}
+
+/** Метаданные датасетов (для логов/тулов). */
+export function ruModsMeta(): { mods: number; classes: number; source?: string; built?: string } {
+  const mods = loadMods();
+  const classes = loadClasses();
+  return {
+    mods: mods.matchers.length,
+    classes: classes.map.size,
+    source: mods.meta?.source,
+    built: mods.meta?.built,
+  };
+}

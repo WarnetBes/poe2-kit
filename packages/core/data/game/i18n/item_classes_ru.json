@@ -1,0 +1,365 @@
+{
+ "_meta": {
+  "note": "RU→EN значения «Класс предмета:» из клир-текста PoE2 (RU-клиент)",
+  "source": "https://github.com/maxensas/xiletrade (MIT) — src/Xiletrade.Library/Data/Lang/ru-RU/ItemClassTwo.json",
+  "built": "2026-10-11"
+ },
+ "classes": [
+  [
+   "Флаконы жизни",
+   "Life Flasks"
+  ],
+  [
+   "Флаконы маны",
+   "Mana Flasks"
+  ],
+  [
+   "Вещи на обмен",
+   "Currency"
+  ],
+  [
+   "Амулеты",
+   "Amulets"
+  ],
+  [
+   "Кольца",
+   "Rings"
+  ],
+  [
+   "Когти",
+   "Claws"
+  ],
+  [
+   "Кинжалы",
+   "Daggers"
+  ],
+  [
+   "Жезлы",
+   "Wands"
+  ],
+  [
+   "Одноручные мечи",
+   "One Hand Swords"
+  ],
+  [
+   "Одноручные топоры",
+   "One Hand Axes"
+  ],
+  [
+   "Одноручные булавы",
+   "One Hand Maces"
+  ],
+  [
+   "Луки",
+   "Bows"
+  ],
+  [
+   "Посохи",
+   "Staves"
+  ],
+  [
+   "Двуручные мечи",
+   "Two Hand Swords"
+  ],
+  [
+   "Двуручные топоры",
+   "Two Hand Axes"
+  ],
+  [
+   "Двуручные булавы",
+   "Two Hand Maces"
+  ],
+  [
+   "Камни умений",
+   "Skill Gems"
+  ],
+  [
+   "Камни поддержки",
+   "Support Gems"
+  ],
+  [
+   "Колчаны",
+   "Quivers"
+  ],
+  [
+   "Пояса",
+   "Belts"
+  ],
+  [
+   "Перчатки",
+   "Gloves"
+  ],
+  [
+   "Обувь",
+   "Boots"
+  ],
+  [
+   "Нательные доспехи",
+   "Body Armours"
+  ],
+  [
+   "Шлемы",
+   "Helmets"
+  ],
+  [
+   "Щиты",
+   "Shields"
+  ],
+  [
+   "Малые реликвии",
+   "Small Relics"
+  ],
+  [
+   "Средние реликвии",
+   "Medium Relics"
+  ],
+  [
+   "Большие реликвии",
+   "Large Relics"
+  ],
+  [
+   "Валюта",
+   "Stackable Currency"
+  ],
+  [
+   "Вещи для заданий",
+   "Quest Items"
+  ],
+  [
+   "Скипетры",
+   "Sceptres"
+  ],
+  [
+   "Обереги",
+   "Charms"
+  ],
+  [
+   "Путевые камни",
+   "Waystones"
+  ],
+  [
+   "Удочки",
+   "Fishing Rods"
+  ],
+  [
+   "Обрывки карт",
+   "Map Fragments"
+  ],
+  [
+   "Предметы убежища",
+   "Hideout Doodads"
+  ],
+  [
+   "Микротранзакции",
+   "Microtransactions"
+  ],
+  [
+   "Самоцветы",
+   "Jewels"
+  ],
+  [
+   "Гадальные карты",
+   "Divination Cards"
+  ],
+  [
+   "Прочие предметы карт",
+   "Misc Map Items"
+  ],
+  [
+   "Камни лиги",
+   "Leaguestones"
+  ],
+  [
+   "Души Пантеона",
+   "Pantheon Souls"
+  ],
+  [
+   "Фрагменты",
+   "Pieces"
+  ],
+  [
+   "Самоцветы Бездны",
+   "Abyss Jewels"
+  ],
+  [
+   "Предметы Вмешательства",
+   "Incursion Items"
+  ],
+  [
+   "Валюта Спуска",
+   "Delve Socketable Currency"
+  ],
+  [
+   "Инкубаторы",
+   "Incubators"
+  ],
+  [
+   "Осколки",
+   "Shards"
+  ],
+  [
+   "Стержни осколков",
+   "Shard Hearts"
+  ],
+  [
+   "Боевые посохи",
+   "Quarterstaves"
+  ],
+  [
+   "Предметы улучшения Атласа",
+   "Atlas Upgrade Items"
+  ],
+  [
+   "Сокрытые предметы",
+   "Hidden Items"
+  ],
+  [
+   "Контракты",
+   "Contracts"
+  ],
+  [
+   "Разбойничьи принадлежности",
+   "Heist Gear"
+  ],
+  [
+   "Разбойничий инструмент",
+   "Heist Tools"
+  ],
+  [
+   "Разбойничьи накидки",
+   "Heist Cloaks"
+  ],
+  [
+   "Разбойничьи броши",
+   "Heist Brooches"
+  ],
+  [
+   "Чертежи",
+   "Blueprints"
+  ],
+  [
+   "Украшения",
+   "Trinkets"
+  ],
+  [
+   "Предметы кражи",
+   "Heist Targets"
+  ],
+  [
+   "Журналы экспедиции",
+   "Expedition Logbooks"
+  ],
+  [
+   "Журнал экспедиции",
+   "Expedition Logbook"
+  ],
+  [
+   "Свойства Возмездия",
+   "Archnemesis Mods"
+  ],
+  [
+   "Копья",
+   "Spears"
+  ],
+  [
+   "Самострелы",
+   "Crossbows"
+  ],
+  [
+   "Фокусы",
+   "Foci"
+  ],
+  [
+   "Местные предметы области",
+   "Instance Local Items"
+  ],
+  [
+   "Часовые",
+   "Sentinels"
+  ],
+  [
+   "Воспоминания",
+   "Memories"
+  ],
+  [
+   "Кистени",
+   "Flails"
+  ],
+  [
+   "Реликвии",
+   "Relics"
+  ],
+  [
+   "Священные реликвии",
+   "Sanctified Relics"
+  ],
+  [
+   "Камни Разлома",
+   "Breachstones"
+  ],
+  [
+   "Ключи от хранилищ",
+   "Vault Keys"
+  ],
+  [
+   "Монеты Испытания",
+   "Trial Coins"
+  ],
+  [
+   "Баклеры",
+   "Bucklers"
+  ],
+  [
+   "Ловушки",
+   "Traps"
+  ],
+  [
+   "Начертанные Ультиматумы",
+   "Inscribed Ultimatum"
+  ],
+  [
+   "Усилители",
+   "Augment"
+  ],
+  [
+   "Плитки",
+   "Tablet"
+  ],
+  [
+   "Предзнаменования",
+   "Omen"
+  ],
+  [
+   "Талисманы",
+   "Talismans"
+  ],
+  [
+   "Неогранённые камни умений",
+   "Uncut Skill Gems"
+  ],
+  [
+   "Неогранённые камни поддержки",
+   "Uncut Support Gems"
+  ],
+  [
+   "Неогранённые камни духа",
+   "Uncut Spirit Gems"
+  ],
+  [
+   "Вознесённая рука",
+   "Transcendent Arm"
+  ],
+  [
+   "Вознесённая нога",
+   "Transcendent Leg"
+  ],
+  [
+   "Дары утробы",
+   "Wombgifts"
+  ],
+  [
+   "Верховные ключи",
+   "Pinnacle Keys"
+  ]
+ ]
+}

@@ -18,6 +18,7 @@
  */
 
 import { parseItemText } from './parse.js';
+import { translateRuModLine } from './ruLocale.js';
 import type { BuildGearItem } from './types.js';
 import { buildCodeToGear, toXml } from './build.js';
 
@@ -118,7 +119,7 @@ function sumModValues(mods: string[], re: RegExp, sign = false): number {
 function collectMods(itemText: string): string[] {
   try {
     const parsed = parseItemText(itemText);
-    return parsed ? parsed.mods.map((m) => m.text) : [];
+    return parsed ? parsed.mods.map((m) => translateRuModLine(m.text) ?? m.text) : [];
   } catch {
     return [];
   }
@@ -176,7 +177,12 @@ export function defenseForItem(item: BuildGearItem): SlotDefense {
   } catch {
     parsed = null;
   }
-  const mods: string[] = parsed ? parsed.mods.map((m) => m.text) : collectMods(item.itemText);
+  // RU-клир-текст: строки модов канонизуем в EN (таблица ExE2, ruLocale.ts) —
+  // дальше все EN-regex'ы estimate/verdict работают без изменений. EN-моды
+  // проходят насквозь (translateRuModLine возвращает null без кириллицы).
+  const mods: string[] = (
+    parsed ? parsed.mods.map((m) => m.text) : collectMods(item.itemText)
+  ).map((t) => translateRuModLine(t) ?? t);
 
   if (parsed) {
     s.armour += parsed.defences.armour?.value ?? 0;

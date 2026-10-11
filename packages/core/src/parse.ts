@@ -12,6 +12,8 @@
  * модов во многих языках. Авторская реализация, не копия исходных файлов.
  */
 
+import { ruToEnItemClass } from './ruLocale.js';
+
 // ═══ Разделитель секций и маркеры модов ═══════════════════════════════════
 
 const SECTION_DELIMITER = '--------';
@@ -36,8 +38,10 @@ const ITEM_CLASS_PATTERN =
   /^(?:Item Class|Класс предмета|아이템 종류|物品種類|物品類別|物品类别|Gegenstandsklasse|Classe d'objet|アイテムクラス|Clase de objeto|Classe (?:do|de) [Ii]tem|ประเภทไอเท็ม|ประเภทไอเทม|ชนิดไอเท็ม|ชนิดไอเทม)[：:]\s*/;
 
 /** Паттерн строки "Item Level: N". */
-const ITEM_LEVEL_PATTERN =
-  /^(?:Item Level|Уровень предмета|아이템 레벨|物品等級|物品等级|Gegenstandsstufe|Niveau de l'objet|アイテムレベル|Nivel (?:del? )?objeto|Nível do [Ii]tem|เลเวลไอเท็ม|เลเวลไอเทม)[：:]\s*(\d+)/;
+const ITEM_LEVEL_PATTERN =  /^(?:Item Level|Уровень предмета|아이템 레벨|物品等級|物品等级|Gegenstandsstufe|Niveau de l'objet|アイテムレベル|Nivel (?:del? )?objeto|Nível do [Ii]tem|เลเวลไอเท็ม|เลเวลไอเทม)[：:]\s*(\d+)/;
+
+/** Метки секций, чьи строки — не моды (RU-клиент «Гнезда: R-G-G G», EN «Sockets:»). */
+const SOCKETS_LABEL = /^(?:Sockets|Гнезда)[:：]/i;
 
 /** Многоязычные альтернативные написания редкости (рода/транслит). */
 const RARITY_ALTERNATES: Record<string, string[]> = {
@@ -192,14 +196,16 @@ const KEY = {
   quality: /^(?:Quality|Качество|품질|品質|Qualität|Qualité|品質|Calidad|Qualidade|คุณภาพ|ความเสียหาย)/i,
   armour: /^(?:Armour|Броня|방어도|護甲|護甲|Rüstung|Armure|Armadura|Armadura|เกราะ)/i,
   evasion: /^(?:Evasion|Уклонение|회피|閃避|閃避|Ausweichen|Évasion|Evasión|Esquiva|หลบหลีก)/i,
-  energyShield: /^(?:Energy Shield|Шкала энергии|에너지 보호막|能量護盾|能量護盾|Energieschild|Bouclier d'énergie|Escudo de energía|Escudo de Energia|โล่พลังงาน)/,
+  energyShield:
+    /^(?:Energy Shield|Энергетический щит|Энерг\. щит|Шкала энергии|에너지 보호막|能量護盾|能量護盾|Energieschild|Bouclier d'énergie|Escudo de energía|Escudo de Energia|โล่พลังงาน)/,
   blockChance: /^(?:Block Chance|Шанс блока|방어 확률|格擋機率|格挡机率|Blockchance|Chance de blocage|Probabilidad de bloqueo|Chance de Bloqueio|ความน่าจะเป็นในการบล็อก)/i,
   critChance: /^(?:Critical (?:Strike|Hit) Chance|Шанс крит(?:\.|ического) удара|치명타 확률|暴擊率|暴击率|Kritische Trefferchance|Chances de coup critique|クリティカル率|Probabilidad de impacto crítico|Chance de Acerto Crítico|โอกาสคริติคอล)/i,
   attackSpeed: /^(?:Attacks per Second|Атак в секунду|Время между атаками|초당 공격 횟수|每秒攻擊次數|每秒攻击次数|Angriffe pro Sekunde|Attaques par seconde|毎秒攻撃回数|Ataques por segundo|Ataques por Segundo|จำนวนครั้งการโจมตีต่อวินาที)/i,
   reloadTime: /^(?:Reload Time|Время перезарядки|재장전 시간|裝填時間|装填时间|Nachladezeit|Temps de rechargement|Tiempo de recarga|Tempo de Recarga|เวลารีโหลด)/i,
   physicalDamage: /^(?:Physical Damage|Физический урон|물리 피해|物理傷害|物理伤害|Physischer Schaden|Dégâts physiques|Daño físico|Dano Físico|ความเสียหายกายภาพ)/i,
   elementalDamage: /^(?:Elemental Damage|Стихийный урон|원소 피해|元素傷害|元素伤害|Elementarschaden|Dégâts élémentaires|Daño elemental|Dano Elemental|ความเสียหายธาตุ)/i,
-  requirement: /^(?:Requires?|Требуется|요구|需求|需用|Benötigt|Requis|Requiere|Requer|ต้องการ)/i,
+  requirement:
+    /^(?:Requires?|Requirements|Требуется|Требования|요구|需求|需用|Benötigt|Requis|Requiere|Requer|ต้องการ)/i,
   weapons: /^(?:Weapons|Оружие|무기|武器|Waffen|Armes|Armas|Armas|อาวุธ)/i,
 };
 
@@ -251,7 +257,12 @@ export function parseItemText(text: string): ParsedItem {
   for (let i = 0; i < header.length; i++) {
     const line = normalizeColons(header[i]!);
     if (ITEM_CLASS_PATTERN.test(line)) {
+      // RU-клиент отдаёт значение класса по-русски («Обувь», «Боевые посохи»).
+      // Канонизуем в EN сразу: дальше itemClass участвует в сравнениях
+      // RU-кандидат vs EN-гиры билда (itemVerdict) и в определении слота.
       itemClass = line.replace(ITEM_CLASS_PATTERN, '').trim();
+      const en = ruToEnItemClass(itemClass);
+      if (en) itemClass = en;
     } else if (KEY.rarity.test(line)) {
       const rarityStr = line.replace(/^[^:]*[:：]/, '').trim();
       rarity = mapRarity(rarityStr);
@@ -309,10 +320,10 @@ export function parseItemText(text: string): ParsedItem {
   let unidentified = false;
 
   // Ярлыки состояния предмета: одиночные строки-секции. Приём из ExileOracle
-  // parser-item-text.ts. Ловим EN-клиент (документально подтверждённые строки);
-  // для остальных локалей ярлыки просто не сработают, рецепт дополнит learn-log.
-  const FLAG_CORRUPTED = /^corrupted$/i;
-  const FLAG_MIRRORED = /^mirrored$/i;
+  // parser-item-text.ts. EN-клиент (документально подтверждённые строки) +
+  // RU (ExE2 client_strings: «Осквернено », «Отражено» — GGG RU-канон).
+  const FLAG_CORRUPTED = /^(?:corrupted|осквернено)\s*$/i;
+  const FLAG_MIRRORED = /^(?:mirrored|отражено)\s*$/i;
   const FLAG_UNIDENTIFIED = /^unidentified$/i;
 
   // Сначала пробегаем ВСЕ секции в поиске Item Level (может быть в последней).
@@ -359,32 +370,40 @@ export function parseItemText(text: string): ParsedItem {
         }
       }
 
-      // Требования (inline и многострочный формат)
+      // Требования (inline и многострочный формат). Строки-лейблы многострочного
+      // блока ("Level: 84" / "Уровень: 84" / "Str: 98" / "Сила: 98") идут сами
+      // по себе после заголовка "Requirements:" / "Требования:" — KEY.requirement
+      // их не покрывает, ловим отдельными лейбл-паттернами на любой строке.
+      {
+        const lvlM2 = line.match(/^(?:Level|Уровень)[:：]\s*(\d+)/i);
+        if (lvlM2) requirements.level = parseInt(lvlM2[1]!, 10);
+        const strM2 = line.match(/^(?:Str(?:ength)?|Сила)[:：]\s*(\d+)/i);
+        if (strM2) requirements.strength = parseInt(strM2[1]!, 10);
+        const dexM2 = line.match(/^(?:Dex(?:terity)?|Ловк(?:ость)?)[:：]\s*(\d+)/i);
+        if (dexM2) requirements.dexterity = parseInt(dexM2[1]!, 10);
+        const intM2 = line.match(/^(?:Int(?:elligence)?|Инт(?:еллект)?)[:：]\s*(\d+)/i);
+        if (intM2) requirements.intelligence = parseInt(intM2[1]!, 10);
+      }
       if (KEY.requirement.test(line)) {
-        const level = line.match(/Level[:：]?\s*(\d+)/i);
+        const level = line.match(/(?:Level|Уровень)[:：]?\s*(\d+)/i);
         if (level) requirements.level = parseInt(level[1]!, 10);
         // Внутристроковые стат-требования вида "Requires Level 35, 98 Int"
-        const full = line.match(/(\d+)\s*(?:Inc?t|Str|Dex|Int)\b/gi);
+        // и RU-инлайн "Требуется: Уровень 35, 98 Инт" (донорский REQUIRES_LINE).
+        const full = line.match(/(\d+)\s*(?:Inc?t|Str|Dex|Int|Инт|Сила|Ловк(?!ы))/gi);
         if (full) {
           for (const f of full) {
-            const m = f.match(/(\d+)\s*(Inc?t|Str|Dex|Int)/i);
+            const m = f.match(/(\d+)\s*(Inc?t|Str|Dex|Int|Инт|Сила|Ловк)/i);
             if (!m) continue;
             const v = parseInt(m[1]!, 10);
             const s = m[2]!.toLowerCase();
-            if (s.startsWith('str')) requirements.strength = v;
-            else if (s.startsWith('dex')) requirements.dexterity = v;
-            else if (s.startsWith('int')) requirements.intelligence = v;
+            if (s.startsWith('str') || s.startsWith('сила')) requirements.strength = v;
+            else if (s.startsWith('dex') || s.startsWith('ловк')) requirements.dexterity = v;
+            else if (s.startsWith('int') || s.startsWith('инт')) requirements.intelligence = v;
           }
         }
-        // Многострочный формат: "Level: 35", "Str: 98"
+        // Многострочный формат PoE2: уровень может прийти и без лейбла
         const lvlM = line.match(/(?:^|[^A-Za-z])Level[:：]\s*(\d+)/i);
         if (lvlM) requirements.level = parseInt(lvlM[1]!, 10);
-        const strM = line.match(/^Str(?:ength)?[:：]\s*(\d+)/i);
-        if (strM) requirements.strength = parseInt(strM[1]!, 10);
-        const dexM = line.match(/^Dex(?:terity)?[:：]\s*(\d+)/i);
-        if (dexM) requirements.dexterity = parseInt(dexM[1]!, 10);
-        const intM = line.match(/^Int(?:elligence)?[:：]\s*(\d+)/i);
-        if (intM) requirements.intelligence = parseInt(intM[1]!, 10);
       }
 
       if (FLAG_CORRUPTED.test(line.trim())) {
@@ -453,9 +472,12 @@ function looksLikeMod(line: string, keys: KeySet): boolean {
   if (keys.rarity.test(line)) return false;
   if (keys.requirement.test(line)) return false;
   if (keys.weapons.test(line)) return false;
+  if (SOCKETS_LABEL.test(line)) return false;
   // Секции-ярлыки отдельных статов сами по себе не моды, но строка-заголовок
   // "Armour: 42" захвачена выше. Здесь отсекаем только чисто заголовочные.
-  if (/^[A-Za-zÀ-ÿ][^\n]*[:：]\s*\d/.test(line)) {
+  // Расширено кириллицей («Уровень: 84», «Сила: 98») — иначе строки
+  // многострочного блока требований RU-клиента замусоривают моды.
+  if (/^[A-Za-zÀ-ÿА-Яа-яЁё][^\n]*[:：]\s*\d/.test(line)) {
     // заголовок стата с числом — обработан выше, но если дошёл — это не мод
     return false;
   }
