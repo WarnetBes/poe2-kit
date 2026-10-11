@@ -8,6 +8,7 @@ export * from './leveling.js';
 export * from './repoe.js';
 export * from './ai.js';
 export * from './pobHost.js';
+export * from './pobSession.js';
 export * from './parse.js';
 export * from './modTiers.js';
 export * from './metaLadder.js';
@@ -155,6 +156,7 @@ import * as modTiersMod from './modTiers.js';
 import * as regexOptimizerMod from './regexOptimizer.js';
 import * as runsTrackerMod from './runsTracker.js';
 import * as pobHostMod from './pobHost.js';
+import * as pobSessionMod from './pobSession.js';
 import * as metaLadderMod from './metaLadder.js';
 import * as livefilterMod from './livefilter/conditions.js';
 import * as livefilterRulesMod from './livefilter/rules.js';
@@ -175,6 +177,7 @@ export const core = {
   regexOptimizer: regexOptimizerMod,
   runsTracker: runsTrackerMod,
   pobHost: pobHostMod, // эпика headless-оракул Фаза 1: recomputeBuild/resolvePobHostPaths
+  pobSession: pobSessionMod, // эпика headless-оракул Фаза 3: персист-сессия (долгоживущий хост)
   metaLadder: metaLadderMod,
   livefilter: livefilterMod,
   livefilterRules: livefilterRulesMod,

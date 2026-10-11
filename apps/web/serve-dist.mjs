@@ -9,6 +9,99 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// ── Фаза 3: персист headless-PoB сессии ─────────────────────────────────
+// Долгоживущий движок (boot ~11 с — ОДИН раз), дальше RPC за миллисекунды.
+// @poe2-kit/core — production-зависимость (переживает npm prune --omit=dev);
+// если модуля нет (лайт-сборка) или рантайм не сетаплен — честный 503 + хинт.
+let pobCorePromise = null;
+function loadPobCore() {
+  if (!pobCorePromise) {
+    pobCorePromise = import('@poe2-kit/core').then(
+      (mod) => mod,
+      () => false,
+    );
+  }
+  return pobCorePromise;
+}
+let pobSession = null;
+async function getPobSession() {
+  const mod = await loadPobCore();
+  if (mod === false) throw new Error('@poe2-kit/core недоступен (лайт-сборка)');
+  if (!pobSession) pobSession = new mod.PobSession(process.env);
+  return pobSession;
+}
+
+// Whitelist RPC над сессией (безопасный surface: НЕ отдаём произвольный Lua,
+// только методы хоста; загрузка/восстановление билда — только через /api/pob/load).
+const POB_RPC_METHODS = new Set([
+  'ping', 'stats', 'whatif', 'set_level', 'set_config', 'restore_config',
+  'get_config_schema', 'snapshot_build',
+]);
+
+function pobUnavailable(res, err) {
+  const msg = String(err?.message ?? err);
+  const lite = msg.includes('лайт-сборка');
+  res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({
+    ok: false,
+    error: msg,
+    hint: lite
+      ? 'Сборка без @poe2-kit/core: персист-PoB доступен только в полной сборке.'
+      : 'Сетап: node oracle/setup-headless.mjs + клон PathOfBuilding-PoE2 + POE2K_POB2_SRC (см. oracle/README.md).',
+  }));
+}
+
+async function handlePobApi(req, res, urlPath, body) {
+  // GET /api/pob/status — состояние сессии (НЕ поднимает движок).
+  if (req.method === 'GET' && urlPath === '/api/pob/status') {
+    const mod = await loadPobCore();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      ok: true,
+      core: mod !== false,
+      session: pobSession ? pobSession.info : null,
+    }));
+    return true;
+  }
+  // POST /api/pob/load {pob_code|xml} — загрузить билд в сессию (boot лениво).
+  if (req.method === 'POST' && urlPath === '/api/pob/load') {
+    try {
+      const s = await getPobSession();
+      const buildOut = await s.load({ pobCode: body?.pob_code, xml: body?.xml });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, build: buildOut, session: s.info }));
+    } catch (err) {
+      pobUnavailable(res, err);
+    }
+    return true;
+  }
+  // POST /api/pob/rpc {method, params} — RPC поверх персист-сессии (whitelist).
+  if (req.method === 'POST' && urlPath === '/api/pob/rpc') {
+    const method = String(body?.method ?? '');
+    if (!POB_RPC_METHODS.has(method)) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        ok: false,
+        error: `Метод не в whitelist: ${method || '<пусто>'}.`,
+        allowed: [...POB_RPC_METHODS],
+      }));
+      return true;
+    }
+    try {
+      const s = await getPobSession();
+      const frame = await s.rpc(method, body?.params && typeof body.params === 'object' ? body.params : undefined);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(frame));
+    } catch (err) {
+      pobUnavailable(res, err);
+    }
+    return true;
+  }
+  return false;
+}
+// ── конец персист-PoB блока ─────────────────────────────────────────────
+
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, 'dist');
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 5173);
@@ -124,6 +217,18 @@ function toArray(iter) {
 const server = http.createServer(async (req, res) => {
   try {
     const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
+    // Фаза 3: персист-PoB API (до статики и SPA-фолбэка).
+    if (urlPath === '/api/pob' || urlPath.startsWith('/api/pob/')) {
+      let apiBody;
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        const raw = Buffer.concat(await toArray(req));
+        try { apiBody = raw.length ? JSON.parse(raw.toString('utf8')) : undefined; } catch { apiBody = undefined; }
+      }
+      if (await handlePobApi(req, res, urlPath, apiBody)) return;
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: `Неизвестный /api/pob роут: ${req.method} ${urlPath}` }));
+      return;
+    }
     if (await handleProxy(req, res, urlPath)) return;
     let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
     // защита от выхода за пределы dist (path traversal)

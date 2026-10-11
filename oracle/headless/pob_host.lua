@@ -46,11 +46,11 @@ end
 io.write = function(...) io.stderr:write(...); return io.stderr end
 
 local json = require("dkjson")
--- Contract 3: +whatif — батч what-if сценариев в одном движке (Фаза 3): каждый
--- сценарий поверх baseline с CAS-откатом (конфиг через снимок before, уровень
--- через прежний characterLevel/characterLevelAutoMode); невалидный enum в одном
--- сценарии НЕ применяется и НЕ рушит остальные.
-local HEADLESS_RUNTIME_CONTRACT = 3
+-- Contract 4: restore_config через JSON round-trip стал реально рабочим:
+-- dkjson при decode ПРОПУСКАЕТ "ключ":null (проба probe_dknull: 0 entries),
+-- поэтому снапшот before дополнен явным списком remove (ключи к удалению);
+-- whatif — батч what-if сценариев (Фаза 3, one-boot матрица).
+local HEADLESS_RUNTIME_CONTRACT = 4
 
 local booted, bootErr = pcall(dofile, "HeadlessWrapper.lua")
 if not booted or not build then
@@ -297,10 +297,18 @@ function methods.set_config(p)
 	-- Ключи, которые реально лягут в input: запрос + авто-резисты босса.
 	local effective, appliedResists = expandBossResists(p.input)
 	local before = configBefore(effective)
+	-- Контракт 4 (см. HEADLESS_RUNTIME_CONTRACT): dkjson при decode ПРОПУСКАЕТ
+	-- "ключ":null — «удалить ключ» через JSON round-trip не выражается значением.
+	-- Поэтому снапшот дублируется списком remove; restore_config принимает оба.
+	local remove = {}
+	for k, v in pairs(before) do
+		if v == json.null then remove[#remove + 1] = k end
+	end
 	applyConfigInput(effective)
 	local res = {
 		applied = effective,
 		before = before,
+		remove = remove,
 		stats = collectStats(p.keys),
 	}
 	if appliedResists ~= nil then res.autoResists = appliedResists end
@@ -308,16 +316,29 @@ function methods.set_config(p)
 	return res
 end
 
--- Откат CAS: вернуть значения из `before` (снимок set_config). nil → ключ удалён.
+-- Откат CAS: вернуть значения из снапшота set_config. Контракт 4:/values —
+-- восстановить (снимок `before`), `remove` — список ключей УДАЛИТЬ (	nil-исходное
+-- через JSON round-trip не выражается — dkjson decode пропускает null, поэтому
+-- set_config партичит список remove). Внутри Lua до сих пор можно слать before
+-- с json.null (whatif так и делает) — это обратно совместимо.
 function methods.restore_config(p)
-	assert(type(p) == "table" and type(p.before) == "table", "restore_config requires params.before")
-	local warnings, errors = validateConfigInput(p.before)
+	assert(type(p) == "table" and (type(p.before) == "table" or type(p.remove) == "table"),
+		"restore_config requires params.before and/or params.remove")
+	local values = p.before or {}
+	local remove = p.remove or {}
+	local warnings, errors = validateConfigInput(values)
 	if #errors > 0 then
 		return { ok = false, errorCode = "invalid_config_value", errors = errors, warnings = warnings }
 	end
-	local before = configBefore(p.before)
-	applyConfigInput(p.before)
-	local res = { restored = p.before, before = before, stats = collectStats(p.keys) }
+	-- Мержим: значения + удаления (удаление = json.null внутри Lua).
+	local effective = {}
+	for k, v in pairs(values) do effective[k] = v end
+	for _, k in ipairs(remove) do
+		if type(k) == "string" then effective[k] = json.null end
+	end
+	local before = configBefore(effective)
+	applyConfigInput(effective)
+	local res = { restored = effective, before = before, remove = remove, stats = collectStats(p.keys) }
 	if #warnings > 0 then res.warnings = warnings end
 	return res
 end
