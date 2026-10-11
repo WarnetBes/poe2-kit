@@ -10,6 +10,11 @@
 import type { BuildBuffs, BuildGearItem, BuildImport, BuildSkillGroup } from './types.js';
 import { getSkillGemDetails } from './dataset.js';
 import { PobCodeError, decodeShareCode, encodeShareCode } from './pobcode.js';
+import { httpText, httpJson } from './http.js';
+
+// UA импорта билдов: ссылки pobb.in/pastebin тоже публичный скрейп — даём
+// описательный агент (политика GGG; Cloudflare 403 без UA).
+const POB_UA = 'poe2-kit/1.0 (open-source toolkit; contact: https://git.sourcecraft.dev/volkovpartilaholin/poe2-kit)';
 
 // Публичный API декодера переехал в pobcode.ts (оптимизированный), сохраняем
 // доступ через namespace build.* для обратной совместимости.
@@ -17,26 +22,31 @@ export { PobCodeError, decodeShareCode, encodeShareCode, clearPobCodeCache } fro
 
 
 const _WS = /\s+/g;
-const _POBB = /^https?:\/\/(?:www\.)?pobb\.in\/([A-Za-z0-9_-]+)\/?$/i;
+// pobb.in: ID может быть вложенным (u/username/id); /raw-суффикс срезаем (donor poe2-mcp-server pob.ts:282-291)
+const _POBB = /^https?:\/\/(?:www\.)?pobb\.in\/([A-Za-z0-9_/-]+?)\/?$/i;
 const _PASTEBIN = /^https?:\/\/(?:www\.)?pastebin\.com\/(?:raw\/)?([A-Za-z0-9]+)\/?$/i;
 // poe.ninja: шard-билд /poe2/pob/{id} (есть raw-эндпоинт /pob/raw/{id})
 const _NINJA_BUILD = /^https?:\/\/(?:www\.)?poe\.ninja\/poe2\/pob\/(\d+)\/?$/i;
+// pob2://poeninja/ID — протокол-хендлер PoB2 (donor pob.ts:326-338)
+const _NINJA_PROTOCOL = /^pob2:[/\\]+poeninja[/\\]+(.+?)\/?$/i;
 // poe.ninja: страница персонажа профиля /poe2/profile/{account}/{league}/character/{name}
 const _NINJA_PROFILE_CHAR =
   /^https?:\/\/(?:www\.)?poe\.ninja\/poe2\/profile\/([^/\s?#]+)\/([^/\s?#]+)\/character\/([^/\s?#]+)\/?/i;
 // Сайты, отдающие HTML-страницу, а не сырой код — их нельзя скрейпить.
 const _PAGE_HOSTS = /^https?:\/\/(?:www\.)?(maxroll\.gg|pobarchives\.com|poe\.ninja|poe2\.ninja|mobalytics\.gg|pathofexile\.com)\//i;
 
-/** Классифицировать вход: ссылка или код. */
+/** Классифицировать вход: ссылка (http(s):// или глубокая pob2://) или код. */
 function isLink(source: string): boolean {
-  return /^https?:\/\//i.test(source.trim());
+  return /^(?:https?:\/\/|pob2:\/\/)/i.test(source.trim());
 }
 
 /** Сопоставить URL-ссылку с raw-эндпоинтом. */
 function toRawUrl(url: string): string {
   const t = url.trim();
+  const proto = _NINJA_PROTOCOL.exec(t);
+  if (proto) return `https://poe.ninja/poe2/pob/raw/${proto[1]!.replace(/\/raw$/, '')}`;
   const pb = _POBB.exec(t);
-  if (pb) return `https://pobb.in/${pb[1]}/raw`;
+  if (pb) return `https://pobb.in/${pb[1]!.replace(/\/raw$/, '')}/raw`;
   const pin = _PASTEBIN.exec(t);
   if (pin) return `https://pastebin.com/raw/${pin[1]}`;
   const ninja = _NINJA_BUILD.exec(t);
@@ -44,26 +54,50 @@ function toRawUrl(url: string): string {
   return t;
 }
 
-/** Скачать сырой PoB-код по ссылке. */
+// ─── Link-кэш (E1): LRU по raw-URL — paste иммутабелен ───────────────────────
+// Один importBuild-цикл гоняет одну ссылку 3× (importBuild + buildCodeToGear +
+// buildGemSetups); poe.ninja делит лимит 10/5мин с API — кэш не оптимизация (donor pob.ts:170-171).
+const _LINK_CACHE_MAX = 8;
+const _linkCache = new Map<string, string>();
+
+/** Очистить link-кэш (тесты/самодиагностика). */
+export function clearBuildLinkCache(): void {
+  _linkCache.clear();
+}
+
+/** Скачать сырой PoB-код по ссылке (через http-слой: очередь + rate-лимит хоста). */
 async function fetchCode(url: string, timeoutMs = 15000): Promise<string> {
   const rawUrl = toRawUrl(url);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(rawUrl, {
-      headers: { 'User-Agent': 'poe2-kit/0.1.0' },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      throw new PobCodeError(`не удалось получить билд по ${rawUrl} (HTTP ${res.status})`);
-    }
-    return (await res.text()).trim();
-  } catch (e) {
-    if (e instanceof PobCodeError) throw e;
-    throw new PobCodeError(`не удалось получить билд по ${rawUrl} (${String(e)})`);
-  } finally {
-    clearTimeout(timer);
+  const key = rawUrl.toLowerCase();
+  const hit = _linkCache.get(key);
+  if (hit !== undefined) {
+    _linkCache.delete(key);
+    _linkCache.set(key, hit);
+    return hit;
   }
+  let text: string;
+  try {
+    text = await httpText(rawUrl, { timeoutMs, headers: { 'User-Agent': POB_UA } });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // http-слой бросает "HTTP {status} from {url}" — дифференцируем честно (E1);
+    // 404 не ретраится сам по себе (isTransient5xx — только 5xx и триггерит их httpJson-слой).
+    const st = /^HTTP (\d+)/.exec(msg)?.[1];
+    if (st === '404') {
+      throw new PobCodeError(`билд не найден или удалён (${rawUrl}). Проверьте ссылку — paste мог истечь.`);
+    }
+    if (st === '429') {
+      throw new PobCodeError(`превышен rate-лимит хоста (${rawUrl}). Подождите минуту и повторите.`);
+    }
+    throw new PobCodeError(msg);
+  }
+  const content = text.trim();
+  if (!content) throw new PobCodeError(`ссылка ${url} вернула пустой контент`);
+  if (_linkCache.size >= _LINK_CACHE_MAX) {
+    _linkCache.delete(_linkCache.keys().next().value!);
+  }
+  _linkCache.set(key, content);
+  return content;
 }
 
 /** Превратить любое содержимое ссылки в XML, толерантно к raw-эндпоинтам. */
@@ -850,33 +884,28 @@ export async function fetchProfileCharacterCode(
 ): Promise<string> {
   const ref = typeof input === 'string' ? parseProfileCharacterUrl(input) : input;
   if (!ref) throw new PobCodeError('не ссылка на персонажа poe.ninja');
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    for (let version = 0; version <= 3; version++) {
-      const res = await fetch(profileCharacterModelUrl(ref, version), {
-        headers: { 'User-Agent': 'poe2-kit/0.1.0' },
-        signal: controller.signal,
-      });
-      if (res.status === 404) continue; // этой версии нет — следующая
-      if (!res.ok) throw new PobCodeError(`model API poe.ninja: HTTP ${res.status}`);
-      const json = JSON.parse(await res.text()) as NinjaProfileModel;
-      if (json.type !== 'found' || !json.charModel?.pathOfBuildingExport) {
-        throw new PobCodeError(`model API poe.ninja: неожиданный ответ (type=${String(json.type)})`);
-      }
-      return json.charModel.pathOfBuildingExport;
+  // Через http-слой (E1): poe.ninja делит лимит 10/5мин с API — raw fetch
+  // обходил бы лимитер и мог выстрелить себе в ногу при параллельном прайс-чеке.
+  for (let version = 0; version <= 3; version++) {
+    let json: NinjaProfileModel;
+    try {
+      json = await httpJson<NinjaProfileModel>(profileCharacterModelUrl(ref, version), { timeoutMs });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/^HTTP 404/.test(msg)) continue; // этой версии модели нет — следующая
+      throw new PobCodeError(`model API poe.ninja: ${msg}`);
     }
-    throw new PobCodeError(
-      `персонаж «${ref.character}» (${ref.league}) недоступен на poe.ninja: профиль приватный, ` +
-        `персонаж не отслеживается сайтом или модель выпала из кэша. ` +
-        `Откройте страницу профиля в браузере (обновляет модель) и повторите.`,
-    );
-  } catch (e) {
-    if (e instanceof PobCodeError) throw e;
-    throw new PobCodeError(`model API poe.ninja недоступен (${String(e)})`);
-  } finally {
-    clearTimeout(timer);
+    if (json.type !== 'found' || !json.charModel?.pathOfBuildingExport) {
+      throw new PobCodeError(`model API poe.ninja: неожиданный ответ (type=${String(json.type)})`);
+    }
+    return json.charModel.pathOfBuildingExport;
   }
+  // Все версии модели 404 — профиль недоступен.
+  throw new PobCodeError(
+    `персонаж «${ref.character}» (${ref.league}) недоступен на poe.ninja: профиль приватный, ` +
+      `персонаж не отслеживается сайтом или модель выпала из кэша. ` +
+      `Откройте страницу профиля в браузере (обновляет модель) и повторите.`,
+  );
 }
 
 /**

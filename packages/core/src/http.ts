@@ -140,6 +140,7 @@ export interface HttpOptions {
 // Известные лимиты публичных API (окно "N за W мс").
 const HOST_LIMITS: Record<string, [number, number]> = {
   'poe.ninja': [10, 5 * 60 * 1000], // 10 запросов / 5 минут
+  'pobb.in': [10, 60 * 1000], // недокументирован, консервативно (donor poe2-mcp-server: RateLimiter(10, 60_000))
   'poe2scout.com': [10, 60 * 1000], // консервативно, документированного лимита нет
   'repoe-fork.github.io': [5, 60 * 1000],
   // trade2 (pathofexile.com): при пробитии — 429 и временный бан по IP,
