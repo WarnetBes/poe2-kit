@@ -25,7 +25,7 @@
 | **1. Хост v1 + MCP poe2_recompute** | setup-headless, pob_host.lua (ping/new_build/load_build_xml/set_level/set_config/stats), core/pobHost.ts, тул poe2_recompute, тесты | ✅ сделано (эталон Invoker 95 живьём: TotalDPS 5.99M, EHP 31 675) |
 | **2. CAS-конфиг + валидация enum** | set_config CAS: снимок `before` затронутых ключей + `restore_config`; `get_config_schema` (списки движка из Modules/ConfigOptions); невалидные enum → отказ, не no-op; авто-резисты босс-тира (Boss 30 / Pinnacle 50 / Uber 50 — апстрим в headless применяет только как GUI-плейсхолдеры); полный `snapshot_build`/`restore_build` (XML через SaveDB). Долгоживущий персист-сессия web — остаётся Фазе 3 | ✅ сделано (живьём: Uber 1.80M vs baseline 5.99M, откат точный до копейки; contract 2) |
 | **3. Интеграция с estimate/evaluate** | связка с poe2_build_estimate/compare: ручной FullDPS what-if на живом движке, дерево целей. Шаг 1: what-if МАТРИЦА `scenarios` в poe2_recompute — один boot движка на всю матрицу (до 12 сценариев {name, config, level}, `methods.whatif`): CAS-изоляция, точечный отказ сценария не рушит матрицу, Δ-таблица. Шаг 2 (№461, `1a64c11`): ПЕРСИСТ-СЕССИЯ — `core/pobSession.ts` (PobSession: boot один раз → RPC ~3 мс, FIFO, ленивый рестарт; stateful-RPC с умершим движком = отказ) + serve-dist.mjs `/api/pob/{load,rpc,status}` (whitelist, честный 503 без рантайма). Шаг 3 (№461, `9c6778c`): ДЕРЕВО ЦЕЛЕЙ — poe2_build_estimate `goals` (≤8 вех) → live-whatif таблица DPS/Life/EHP + Δ | ✅ сделано (живьём: 12-сценарная смешанная матрица level+config — 0 fails, after-matrix = baseline; персист boot 2.5 с → RPC ~3 мс ×10 одним спавном; дерево целей lvl92/95/100 точными дельтами) |
-| **4. Патч-конвейер и 1.0-готовность** | PINNED.md (ревизия апстрима, SHA бинарей), драйф TreeData/0_5→1.0, CI-job oracle-headless | 🔶 частично (№461, `19495b6`): PINNED.md (v0.23.1, zip SHA256, luajit SHA-гейты, контракт 4) + кросс-платформенный selftest `oracle/headless-selftest.mjs` (Windows ОК) + CI-workflow pob-headless в .sourcecraft/ci.yaml; НЕ проверен сам Linux-CI-ран (ждёт cloud worker); TreeData/0_5→1.0-конвейер — не начат |
+| **4. Патч-конвейер и 1.0-готовность** | PINNED.md (ревизия апстрима, SHA бинарей), драйф TreeData/0_5→1.0, CI-job oracle-headless | 🔶 частично (№461, `19495b6`): PINNED.md (v0.23.1, zip SHA256, luajit SHA-гейты, контракт 4) + кросс-платформенный selftest `oracle/headless-selftest.mjs` (Windows ОК) + CI-workflow pob-headless в .sourcecraft/ci.yaml. Дрейф-конвейер определён как ПРОЦЕДУРА (PINNED.md «Конвейер дрейфа»): деревьев 1.0 в v0.23.1 нет (latestTreeVersion=0_5), детектор = eженедельный golden-гейт pob-oracle; шаги перебазировки пина при красном ране описаны. НЕ проверен сам Linux-CI-ран (ждёт cloud worker) |
 
 ## Гейты каждой фазы
 
@@ -62,7 +62,9 @@ tsc 0 → vitest всё зелёное → build mcp+overlay 0 → smoke «Regis
   мультисессия/параллельные клиенты `/api/pob/*` не гонялись.
 - **Дни-аптайм персист-сессии** — утечки luajit-хоста на длительном горизонте не мерились;
   ленивый рестарт после краша покрыт тестами (fake child).
-- **Дрейф TreeData/0_5→1.0** — конвейер не начат (последний пункт Фазы 4).
+- **Дрейф TreeData/0_5→1.0** — деревьев 1.0 в pinned v0.23.1 нет (latestTreeVersion=0_5);
+  конвейер оформлен как процедура обновления пина в oracle/PINNED.md, детектор —
+  еженедельный golden-гейт pob-oracle; процедура пока не отработана на живом дрейфе.
 - Zip SHA256 v0.23.1 (aaa1ce76…c2af) — замерен 11.10.2026 один раз; codeload-архивы не
   гарантируют побайтовую стабильность, CI печатает sha256sum для глазной сверки с PINNED.md.
 - Live-OAuth GGG-upload — блокер `POE2K_GGG_CLIENT_ID` (вне этой эпики).

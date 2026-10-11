@@ -23,6 +23,30 @@
 2. `restore_config` принимает `before` и/или `remove`.
 3. `whatif` — матрица сценариев (≤12) в одном движке, CAS-изоляция.
 
+## Конвейер дрейфа TreeData/0_5→1.0 (закрытие пункта Фазы 4)
+
+Факт: в pinned v0.23.1 `treeVersionList = {0_1..0_5}` (`src/GameVersions.lua:10`),
+`latestTreeVersion = 0_5`. Дерева 1.0 в апстриме ещё нет (игровой PoE2 1.0 — релиз
+с конца 2026). Дрейф — событие будущего, не текущая работа. Когда апстрим выпустит
+1.0 (или любое изменение данных/формул), еженедельный **pob-oracle** упадёт по
+golden-сравнению — это и есть детектор. Процедура при красном pob-oracle:
+
+1. Сверить `sha256sum pob2.zip` в логе CI c таблицей выше и с
+   https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases —
+   красный ран почти всегда = новый тег (дрейф данных), а не баг кита.
+2. Осознанно перебазировать пин: новый тег → обновить URL+SHA в ЭТОМ файле, в
+   `.sourcecraft/ci.yaml` (Workflows pob-oracle И pob-headless — URL дублируется).
+3. Перегенерировать golden `oracle/oracle-output.jsonl` локально
+   (`sh oracle/run-oracle.sh <pob2>/src` на свежем клоне) и прочитать диф глазами:
+   изменение цифр ≠ изменение семантики; скачки на порядок = смотреть changes
+   апстрима, не коммитить вслепую.
+4. Прогнать `oracle/headless-selftest.mjs` на новом клоне (контракт 4, CAS).
+5. Д义词 `treeVersion` 1.0: эталонные билды кита (decoder, estimate) останутся на
+   0_5 — PoB2 сам конвертирует спеки между версиями (`PassiveSpec:Init(convert)`),
+   но live-цифры вех/д_COMPARE могут поплыть → обновить golden-эталоны диффами.
+6. Kit-датасеты (base_items и пр., репо 0.5.5) — отдельный re-extract
+   (см. docs/DATA_SOURCES_RESEARCH.md), НЕ часть этого конвейера.
+
 ## История
 
 - 11.10.2026: замер пинов, контракт 4 (Фаза 4 эпики headless-оракула).
