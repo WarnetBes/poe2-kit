@@ -78,6 +78,7 @@
 - **poe2_ladder_top** — топ-билды лиги.
 - **poe2_ladder_leagues** — снапшот-лиги poe.ninja.
 - **poe2_skill_meta** — мета по скиллу: классы, комбо, перцентиль.
+- **poe2_meta_ladder** — мета-ладдер лиги (build-index-state): доли/тренды ascendancy, размер ладдера.
 
 **Справочники и AI**
 - **poe2_wiki_lookup** — poe2wiki.net.

@@ -185,5 +185,58 @@ export function registerLadderTools(server: McpServer): number {
       }
     },
   );
-  return 3;
+  server.registerTool(
+    'poe2_meta_ladder',
+    {
+      title: 'PoE2 Meta Ladder (build-index-state)',
+      description: `Мета-ладдер poe.ninja PoE2 (build-index-state): доли ascendancy-классов по лиге, тренды (растёт/падает/стабильно), оценочные численности и общий размер ладдера. Источник не даёт доминирующего скилла (только ascendancy) и не публикует breakdown для permanent-лиг (Standard — честная заглушка).
+
+Аргументы:
+  - league (string, опц.): display-имя или url-slug лиги ("Forbidden Rites", "forbiddenrites"); без аргумента — первая (текущая challenge) лига feed.
+  - limit (number, опц., по умолч. 10): сколько ascendancy-топов показать (макс. 30).
+
+Полезно для «какая мета сейчас», « насколько популярен Invoker/Stormweaver», «стоит ли качать X в этой лиге». estCount — РЕКОНСТРУКЦИЯ по доле×total (не измерение poe.ninja).`,
+      inputSchema: {
+        league: z.string().optional().describe('Лига: display-имя или slug (иначе текущая challenge-лига)'),
+        limit: z.number().int().min(1).max(30).optional().describe('Число ascendancy-топов (1-30, по умолчанию 10)'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ league, limit }) => {
+      try {
+        const all = await core.metaLadder.fetchMetaLadder();
+        const l = await core.metaLadder.fetchMetaLadderLeague(league);
+        if (!l) {
+          const avail = all.map((x) => x.url).join(', ') || '(пусто)';
+          return {
+            content: [
+              { type: 'text', text: `Лига "${league ?? ''}" не найдена в build-index-state. Доступные: ${avail}` },
+            ],
+          };
+        }
+        const tops = l.tops.slice(0, limit ?? 10);
+        const lines: string[] = [];
+        lines.push(`## Мета-ладдер: ${l.name} (${l.url})`);
+        lines.push(`Персонажей в ладдере: **${l.total.toLocaleString('ru-RU')}** (данные poe.ninja build-index-state).`);
+        if (!tops.length) {
+          lines.push('', '_poe.ninja не публикует breakdown билдов для этой лиги (permanent-лиги). Выберите challenge-лигу для живой меты._');
+        } else {
+          lines.push('', '| Ascendancy | Класс | Доля | Тренд | ~Число |');
+          lines.push('|---|---|---|---|---|');
+          for (const t of tops) {
+            lines.push(
+              `| ${t.asc} | ${t.className || '—'} | ${t.sharePct.toFixed(1)}% | ${core.metaLadder.trendLabel(t.trend)} | ~${t.estCount.toLocaleString('ru-RU')} |`,
+            );
+          }
+        }
+        const others = all.map((x) => `${x.url} (${x.total.toLocaleString('ru-RU')})`).join(', ');
+        lines.push('', `_Другие лиги feed: ${others}_`);
+        return { content: [{ type: 'text', text: lines.join('\n') }] };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { isError: true, content: [{ type: 'text', text: `Ошибка meta-ladder: ${msg}` }] };
+      }
+    },
+  );
+  return 4;
 }

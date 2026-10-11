@@ -1,5 +1,5 @@
 // №256-смок (Радар, Этап 4-2): MCP-тулы poe2_known_issues + poe2_tricks.
-// Проверяет: (1) dist-компиляция тулов, (2) регистрация в index (ровно 66),
+// Проверяет: (1) dist-компиляция тулов, (2) регистрация в index (ровно 67),
 // (3) handler-кейсы: live-фильтр, точечный id, query-подстрока, unverified-пометки,
 // fixed с fixed_in, tricks query/category, пустой результат - не ошибка.
 // Требует собранных dist (npm run build в core и mcp) — как соседние смоки.
@@ -25,8 +25,8 @@ const distIndex = readFileSync('apps/mcp/dist/index.js', 'utf8');
 need(/registerRadarTools/.test(distIndex), 2, 'dist/index.js: registerRadarTools');
 const smoke = spawnSync(process.execPath, ['apps/mcp/dist/index.js', '--smoke'], { encoding: 'utf8' });
 const smokeOut = smoke.stderr + smoke.stdout;
-need(smoke.status === 0 && /\[smoke\] Registered tools: 66\b/.test(smokeOut),
-  3, 'index --smoke: exit 0, ровно 66 тулов');
+need(smoke.status === 0 && /\[smoke\] Registered tools: 67\b/.test(smokeOut),
+  3, 'index --smoke: exit 0, ровно 67 тулов');
 need(/^\s*- poe2_known_issues$/m.test(smokeOut) && /^\s*- poe2_tricks$/m.test(smokeOut),
   4, 'index --smoke: оба радар-тула в списке __poe2Registered');
 
