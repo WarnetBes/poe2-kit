@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "id": "invoker_leveling",
+    "title": "Ice Strike Invoker (CI) — SSF дорожная карта по уровням",
+    "patch": "0.5.5e",
+    "as_of": "2026-10-11",
+    "sources": [
+      {
+        "name": "poe2-leveling (act guides 1-4 + interludes)",
+        "license": "MIT",
+        "path": "_research/poe2-leveling/poe2_act{1..4}_guide.html",
+        "used_for": "Зонный чейн кампании (в core это LEVELING_ZONES/zoneNotes — НЕ дублируется), Plunder's Point required в Forbidden Rites (act4:335-336)"
+      },
+      {
+        "name": "builds_roadmap.md (наш КАМ-выпуск КУБ-1, эталон poe.ninja/poe2/pob/28880)",
+        "license": "own",
+        "path": "BildPOE2/builds_roadmap.md",
+        "used_for": "Этапы 1-30/30-60/60-80/80-95, цели, CI-гейт, SSF-приоритеты, финальные слоты PoB"
+      },
+      {
+        "name": "path-of-levelling-2",
+        "license": "MIT",
+        "path": "_research/path-of-levelling-2 (zoneReferenceData)",
+        "used_for": "G-коды зон (совместимы с zoneNotes.json)"
+      }
+    ],
+    "note": "Гемы по диапазонам уровней живут в leveling.ts MONK_LEVELING_TIPS (poe2_leveling_class) — здесь только этапные цели/переходы, без дублей."
+  },
+  "build": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "mainSkill": "Ice Strike",
+    "defense": "CI (Chaos Inoculation): жизнь=1, защита на ES + Уклонении",
+    "mode": "SSF (без торговли)",
+    "pobRef": "https://poe.ninja/poe2/pob/28880",
+    "league": "Forbidden Rites",
+    "targets": {
+      "totalDps": 449539,
+      "totalEhp": 38702,
+      "es": 8645,
+      "evasion": 8930,
+      "spirit": 236,
+      "critChancePct": 75.45,
+      "critMulti": 5.29,
+      "resistsEndgame": [75, 75, 75],
+      "keyBuffs": ["Herald of Ash", "Herald of Ice", "Herald of Thunder", "Precision", "Rage", "Wind Dancer"],
+      "curse": "Temporal Chains через Blasphemy"
+    }
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "levelRange": [1, 30],
+      "acts": "Акты 1-2",
+      "title": "«Мясной» период: жизни + стихийный урон",
+      "theme": "Играем на жизнях, CI ещё НЕ берём.",
+      "skillOrder": ["Ice Strike", "Herald of Ice (как хватит Духа)", "Wind Dancer", "Precision"],
+      "supportPriority": "Ice Strike: Cold Attunement (Added Cold) → Rapid Attacks (Martial Tempo) → элементы крита",
+      "gear": "физический/холодный урон к атакам, скорость атак, +Str/Dex",
+      "tree": "узлы холод/атаки → метко-крит → немного жизни/уклонения",
+      "watchOut": "Резисты в минусе — норма для ранних актов, чинить на Акте 2-3"
+    },
+    {
+      "stage": 2,
+      "levelRange": [30, 60],
+      "acts": "Акты 2-4",
+      "title": "Включение ES + уклонения",
+      "theme": "Гибрид «жизни + ES»; Plunder's Point в Forbidden Rites ОБЯЗАТЕЛЬНА (Runeseeker → Verisium Anvil → Runeforging, см. poe2_leveling_plan league).",
+      "skillOrder": ["Herald of Thunder (при достатке Духа)"],
+      "supportPriority": "Меняем физические узлы на крит-узлы; Ice Strike держим на 3-4 суппортах в тир-ап линке",
+      "gear": "Энергощит (шлем, броня, сапоги с ES)",
+      "tree": "крит-узлы + ES/EV гибрид",
+      "watchOut": "Не прыгать на CI раньше ~60 и раньше накопления 3.5k+ ES"
+    },
+    {
+      "stage": 3,
+      "levelRange": [60, 80],
+      "acts": "Акт 5-6 / альтернативы",
+      "title": "Ascendancy Invoker и переход к CI",
+      "theme": "Испытания → Invoker; ключевая асцендансная нода — Meditate (ES по нажатию).",
+      "skillOrder": ["Blasphemy + Temporal Chains"],
+      "supportPriority": "Полный набор баффов = 236 Духа; до этого — вестники постепенно",
+      "gear": "~3.5-4.5k ES на жёстких слотах ДО взятия CI",
+      "tree": "по PoB (высокая валидация: узлы уже совпадают с эталоном)",
+      "ciGate": "CI брать только когда ES >= 2.5-3x текущих жизней, иначе хрупко",
+      "watchOut": "Blasphemy+Temporal Chains в PoB даёт ~45% урона через конфиг"
+    },
+    {
+      "stage": 4,
+      "levelRange": [80, 95],
+      "acts": "эндгейм",
+      "title": "Финальная сборка по PoB 28880",
+      "theme": "Крит 75%+ / мульти 5x+ / ES 8k+; резисты 75/75/75.",
+      "skillOrder": [],
+      "gearSlots": {
+        "helmet": "Brimstone Cowl (Ancestral Tiara): +58 ES, 138% inc ES, 43% ES Recharge, резист огня",
+        "body": "Victory Cloak (Sleek Jacket): EV 1414 / ES 530, 41% inc EV+ES, 47% faster start ES recharge",
+        "gloves": "Pandemonium Paw (Sirenscale): +2 Melee Skills (fractured), 32% Attack Speed, 100% effect socketed",
+        "boots": "Mind Dash (Sekhema Sandals): 30% MS, 73% inc ES, тройной резист",
+        "belt": "Darkness Enthroned ×2-сокет: 93-97% effect socketed jewels",
+        "amulet": "Doom Pendant (Amber): +3 Melee Skills, 35% крит, 37% крит-мульти, Allocates Subterfuge Mask",
+        "rings": "Kraken Grasp (холод к атакам, резист) + Dread Whorl (молния к атакам, мана, резисты)",
+        "jewels": "Heart of the Well (Rage on hit, extra lightning) / Dragon Wound (ES+крит) / Ghoul Ruin (ES+крит)",
+        "flasks": "Bubbling Ultimate Life Flask (инстант) + Simmering Ultimate Mana Flask",
+        "weapon": "Экспорт PoB пуст (id=0): целевой — высокий DPS стаф 2H с холодом/молнией к атакам и критом"
+      },
+      "tree": "116 нод, ascendancy Invoker, treeVersion 0_3",
+      "watchOut": "Fractured +2 Melee на перчатках и +3 на амулете — главные мультипликаторы Ice Strike"
+    }
+  ],
+  "ssfPriorities": [
+    "Фарм актов, по ходу добирая лут с ES",
+    "Гемы по порядку: Ice Strike → Herald of Ice → Wind Dancer → Precision → Herald of Thunder → Herald of Ash → Blasphemy+Temporal Chains → Tempest Bell + Rage",
+    "CI не раньше ~60 уровня и 3.5k+ ES",
+    "Финиш: крит 75%+ / мульти 5x+ / ES 8k+"
+  ]
+}

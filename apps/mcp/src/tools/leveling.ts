@@ -141,5 +141,82 @@ export function registerLevelingTools(server: McpServer): number {
     },
   );
 
-  return 2;
+  // P8 ч.2 (№281-W2): Invoker-гайд по этапам 1-30/30-60/60-80/80-95 (Ice Strike CI, SSF).
+  server.registerTool(
+    'poe2_leveling_guide',
+    {
+      title: 'PoE2 Invoker Leveling Guide (stages)',
+      description: `Дорожная карта Ice Strike Invoker (CI, SSF) по этапам уровней 1-30 / 30-60 / 60-80 / 80-95: цели этапа, порядок камней (Ice Strike → вестники → Blasphemy+Temporal Chains), приоритеты суппортов, шмот/дерево, CI-гейт (ES >= 2.5-3x жизней), финальные слоты по PoB 28880 (Brimstone Cowl, Pandemonium Paw и др.) и SSF-приоритеты.
+
+Аргументы:
+  - level (number, опц.): текущий уровень — вернуть карточку «вашего» этапа + следующий.
+  - stage (number, опц., 1-4): конкретный этап (1=1-30, 2=30-60, 3=60-80/Ascendancy+CI, 4=80-95/эндгейм).
+  - overview (boolean, опц.): true — все этапы списком (по умолчанию, если ни level, ни stage не заданы).
+
+Примеры:
+  - "Я 45lvl Invoker, что дальше?" → level=45
+  - "Когда переходить на CI?" → stage=3
+  - "Покажи весь роадмап" → overview=true
+`,
+      inputSchema: {
+        level: z.number().int().min(1).max(120).optional().describe('Текущий уровень персонажа'),
+        stage: z.number().int().min(1).max(4).optional().describe('Номер этапа (1-4)'),
+        overview: z.boolean().optional().describe('true — обзор всех этапов'),
+      },
+    },
+    async ({ level, stage, overview }) => {
+        try {
+          const g = core.invokerGuide.getInvokerGuide();
+          const st = stage
+            ? core.invokerGuide.getInvokerGuide().stages.find((s) => s.stage === stage)
+            : core.invokerGuide.getInvokerStage(level);
+          const lines = [
+            `## ${g._meta.title}`,
+            `_${g.build.mainSkill} · ${g.build.ascendancy} (${g.build.class}) · ${g.build.mode} · эталон: ${g.build.pobRef}_`,
+            '',
+          ];
+          const fmtStage = (s: NonNullable<typeof st>): string => {
+            const out = [
+              `### Этап ${s.stage}: уровни ${s.levelRange[0]}-${s.levelRange[1]} (${s.acts}) — ${s.title}`,
+              s.theme,
+            ];
+            if (s.skillOrder?.length) out.push(`- Камни по порядку: ${s.skillOrder.join(' → ')}`);
+            if (s.supportPriority) out.push(`- Суппорты/дерево: ${s.supportPriority}`);
+            if (s.gear) out.push(`- Экипировка: ${s.gear}`);
+            if (s.gearSlots) {
+              out.push('- Целевые слоты (PoB):');
+              for (const [slot, item] of Object.entries(s.gearSlots)) out.push(`    - ${slot}: ${item}`);
+            }
+            if (s.tree) out.push(`- Дерево: ${s.tree}`);
+            if (s.ciGate) out.push(`- ⚠ CI-гейт: ${s.ciGate}`);
+            if (s.watchOut) out.push(`- ⚠ ${s.watchOut}`);
+            return out.join('\n');
+          };
+          if (!overview && (level != null || stage != null)) {
+            if (!st) {
+              lines.push(`Этап не найден. Доступны 1-4 (${g.stages.map((s) => `${s.stage}=${s.levelRange[0]}-${s.levelRange[1]}`).join(', ')}).`);
+            } else {
+              lines.push(fmtStage(st));
+              if (level != null) lines.push(`\n**Ваш уровень ${level} — Этап ${st.stage}.**`);
+              const next = core.invokerGuide.getNextInvokerStage(st.stage);
+              lines.push(next ? `\n**Следующий этап ${next.stage}** (${next.levelRange[0]}-${next.levelRange[1]}): ${next.title}` : '\nЭто финальный этап — далее только шлифовка под PoB-таргеты.');
+              const t = g.build.targets;
+              if (st.stage >= 3) {
+                lines.push('', `**PoB-таргеты:** DPS ${t.totalDps.toLocaleString('ru-RU')} · EHP ${t.totalEhp.toLocaleString('ru-RU')} · ES ${t.es} · крит ${t.critChancePct}% ×${t.critMulti} · Дух ${t.spirit}`);
+              }
+            }
+          } else {
+            for (const s of g.stages) lines.push(fmtStage(s), '');
+            lines.push(`**SSF-приоритеты:**`);
+            for (const p of g.ssfPriorities) lines.push(`- ${p}`);
+          }
+          return { content: [{ type: 'text', text: lines.join('\n') }] };
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return { isError: true, content: [{ type: 'text', text: `Ошибка: ${msg}` }] };
+        }
+      },
+  );
+
+  return 3;
 }
