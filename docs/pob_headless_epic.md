@@ -65,6 +65,11 @@ tsc 0 → vitest всё зелёное → build mcp+overlay 0 → smoke «Regis
 - **Дрейф TreeData/0_5→1.0** — деревьев 1.0 в pinned v0.23.1 нет (latestTreeVersion=0_5);
   конвейер оформлен как процедура обновления пина в oracle/PINNED.md, детектор —
   еженедельный golden-гейт pob-oracle; процедура пока не отработана на живом дрейфе.
+- **Web-вкладка PoB-оракул** (№463) — API-уровень проверен live E2E до копейки
+  (status/load/whatif, контракт 4), НО визуал в реальном браузере не открывался;
+  найденный по ходу факт: vite-сборка web была сломана со Фазы 2 (статические
+  named-imports node-builtins в pobHost/pobSession против __vite-browser-external)
+  — починено nodeenv-паттерном, web-dist снова собирается.
 - Zip SHA256 v0.23.1 (aaa1ce76…c2af) — замерен 11.10.2026 один раз; codeload-архивы не
   гарантируют побайтовую стабильность, CI печатает sha256sum для глазной сверки с PINNED.md.
 - Live-OAuth GGG-upload — блокер `POE2K_GGG_CLIENT_ID` (вне этой эпики).
