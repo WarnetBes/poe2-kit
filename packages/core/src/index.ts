@@ -14,6 +14,7 @@ export * from './livefilter/conditions.js';
 export * from './livefilter/rules.js';
 export * from './livefilter/selfcheck.js';
 export * from './livefilter/injector.js';
+export * from './livefilter/pipeline.js';
 export * from './invokerGuide.js';
 export * from './regexOptimizer.js';
 export * from './runsTracker.js';
@@ -150,6 +151,7 @@ import * as livefilterMod from './livefilter/conditions.js';
 import * as livefilterRulesMod from './livefilter/rules.js';
 import * as livefilterSelfcheckMod from './livefilter/selfcheck.js';
 import * as livefilterInjectorMod from './livefilter/injector.js';
+import * as livefilterPipelineMod from './livefilter/pipeline.js';
 import * as invokerGuideMod from './invokerGuide.js';
 
 export const core = {
@@ -167,6 +169,7 @@ export const core = {
   livefilterRules: livefilterRulesMod,
   livefilterSelfcheck: livefilterSelfcheckMod,
   livefilterInjector: livefilterInjectorMod,
+  livefilterPipeline: livefilterPipelineMod,
   invokerGuide: invokerGuideMod,
   http,
   log: logmod,
