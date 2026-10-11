@@ -643,7 +643,7 @@ export function registerBuildTools(server: McpServer): number {
 
 Аргументы:
   - current (string): текущий билд — PoB share-код, ссылка (pobb.in, poe.ninja) или сырой XML.
-  - reference (string, опц.): эталон — код/ссылка. По умолчанию — Ice Strike Invoker CI: https://poe.ninja/poe2/pob/28880.
+  - reference (string, опц.): эталон — код/ссылка. По умолчанию — Ice Strike Invoker CI (владелец, 11.10.2026): https://pobb.in/oIVi1ZMcXM9S.
   - format (string, опц.): "text" (RU-вердикт, по умолчанию) или "json" (машиночитаемо для evaluate/optimize-тулов).
 
 Возвращает: сводку в одну строку + по слоям. Пассивки резолвятся в имена узлов
@@ -655,7 +655,7 @@ export function registerBuildTools(server: McpServer): number {
         reference: z
           .string()
           .optional()
-          .describe('Эталон: PoB-код/ссылка. По умолчанию — https://poe.ninja/poe2/pob/28880'),
+          .describe('Эталон: PoB-код/ссылка. По умолчанию — https://pobb.in/oIVi1ZMcXM9S'),
         format: z.enum(['text', 'json']).optional().describe('text (RU-вердикт, по умолчанию) или json'),
       },
       annotations: { idempotentHint: true, openWorldHint: true },
@@ -663,7 +663,7 @@ export function registerBuildTools(server: McpServer): number {
     async ({ current, reference, format }) => {
       try {
         const cur = await core.build.importBuild(current);
-        const ref = await core.build.importBuild(reference ?? 'https://poe.ninja/poe2/pob/28880');
+        const ref = await core.build.importBuild(reference ?? 'https://pobb.in/oIVi1ZMcXM9S');
         const res = core.pobCompare.comparePobBuilds(cur, ref);
         const text =
           format === 'json' ? JSON.stringify(res, null, 2) : core.pobCompare.formatPobCompare(res);
