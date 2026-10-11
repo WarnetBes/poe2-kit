@@ -80,6 +80,20 @@ jobs:
 Linux-вариант: вместо luapower-бинаря — `ghcr.io/pathofbuildingcommunity/pathofbuilding-tests`
 (тот же образ, что и CI PoB2; внутри есть `luajit`). Задачаائق: `cd src && LUA_PATH='?.lua;../runtime/lua/?.lua' luajit ../../oracle/oracle.lua`.
 
+## Headless-хост v2 (эпика, Фаза 1 — 11.10.2026)
+
+Интерактивный line-JSON-RPC хост `headless/pob_host.lua` поверх того же движка:
+one-shot (stdin = запросы, EOF = выход), startup-фрейм `{ready, runtimeContract}`,
+методы `ping/new_build/load_build_xml/set_level/set_config/stats`.
+Потребляет MCP-тул `poe2_recompute` (обвязка `packages/core/src/pobHost.ts`).
+Спека фаз и границы: `docs/pob_headless_epic.md`.
+
+```powershell
+# рантайм LuaJIT (luapower mingw64, MIT © Mike Pall; SHA256-гейт, в git не идёт):
+node oracle\setup-headless.mjs
+# env как у run-oracle.ps1 (+ POE2K_POB2_SRC для MCP-тула), дальше — stdio.
+```
+
 ## Почему не GUI-экзешник
 `runtime\Path{space}of{space}Building-PoE2.exe` аргументы скриптов не принимает
 (проверено: запускает GUI) — headless-режим в PoB2 достигается только отдельным

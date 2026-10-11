@@ -7,6 +7,7 @@ export * from './build.js';
 export * from './leveling.js';
 export * from './repoe.js';
 export * from './ai.js';
+export * from './pobHost.js';
 export * from './parse.js';
 export * from './modTiers.js';
 export * from './metaLadder.js';
@@ -153,6 +154,7 @@ import * as priceAnalysisMod from './priceAnalysis.js';
 import * as modTiersMod from './modTiers.js';
 import * as regexOptimizerMod from './regexOptimizer.js';
 import * as runsTrackerMod from './runsTracker.js';
+import * as pobHostMod from './pobHost.js';
 import * as metaLadderMod from './metaLadder.js';
 import * as livefilterMod from './livefilter/conditions.js';
 import * as livefilterRulesMod from './livefilter/rules.js';
@@ -172,6 +174,7 @@ export const core = {
   modTiers: modTiersMod,
   regexOptimizer: regexOptimizerMod,
   runsTracker: runsTrackerMod,
+  pobHost: pobHostMod, // эпика headless-оракул Фаза 1: recomputeBuild/resolvePobHostPaths
   metaLadder: metaLadderMod,
   livefilter: livefilterMod,
   livefilterRules: livefilterRulesMod,
