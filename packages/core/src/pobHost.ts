@@ -21,11 +21,21 @@
  *   Отключение: env POE2K_RECOMPUTE=0.
  */
 
-import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import type * as CpType from 'node:child_process';
+import { IS_NODE, fsMod, pathMod, urlMod } from './nodeenv.js';
 import { decodeShareCode } from './pobcode.js';
+
+// nodeenv-паттерн (см. nodeenv.ts:5-11): статические named-imports node-builtins
+// ломают браузерную vite-сборку (rollup подменяет их __vite-browser-external без
+// экспортов). Браузерный клиент PoB-оракула ходит в /api/pob сервера, эти модули
+// исполняются только под Node (MCP/CLI/serve-dist).
+const cpMod = IS_NODE ? await import('node:child_process') : null;
+const spawnSync = cpMod?.spawnSync;
+const existsSync = (p: string): boolean => !!fsMod?.existsSync(p);
+const join = (...segs: string[]): string => (pathMod ? pathMod.join(...segs) : segs.join('/'));
+const dirname = (p: string): string => (pathMod ? pathMod.dirname(p) : p.replace(/[\\/][^\\/]*$/, ''));
+const fileURLToPath = (u: string): string =>
+  urlMod ? urlMod.fileURLToPath(u) : u.replace(/^file:\/\//, '').replace(/^\/(\w:)/, '$1');
 
 export const RECOMPUTE_TIMEOUT_MS = 180_000;
 
@@ -115,7 +125,7 @@ export interface RecomputeInput {
 export function recomputeBuild(
   input: RecomputeInput,
   env: NodeJS.ProcessEnv = process.env,
-  spawnImpl: typeof spawnSync = spawnSync,
+  spawnImpl: typeof CpType.spawnSync = spawnSync!,
 ): RecomputeResult {
   if (env.POE2K_RECOMPUTE === '0') {
     return { available: false, reason: 'Poe2 recompute отключён (POE2K_RECOMPUTE=0).' };

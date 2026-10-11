@@ -1159,3 +1159,58 @@ h2::after {
 .sim-collapse ul { margin: 8px 0 2px; }
 .sim-collapse li { margin: 4px 0; line-height: 1.45; }
 .sim-checklist .ghost { margin-bottom: 8px; }
+
+/* ── PoB-оракул (№463): статус-бар, пресеты, Δ-матрица ─────────────────── */
+.pob-statusbar {
+  font-size: 14px;
+  border: 1px solid var(--border, #3a2c1e);
+  background: rgba(20, 20, 27, 0.5);
+  padding: 8px 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+}
+.pob-statusbar:empty { display: none; }
+.pob-ok { color: #7fbf5f; font-weight: 600; }
+.pob-mid { color: var(--gold, #d6b36a); }
+.pob-bad { color: #e0705f; font-weight: 600; }
+.pob-err {
+  border: 1px solid #7a3020;
+  background: rgba(60, 20, 12, 0.4);
+  padding: 10px 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  color: #f0b0a0;
+}
+.pob-hint { margin-top: 6px; font-size: 13px; color: #c0a080; }
+.pob-meta { margin: 8px 0; color: #c8b890; }
+.pob-presets {
+  border: 1px solid var(--border, #3a2c1e);
+  border-radius: 10px;
+  margin: 12px 0;
+  padding: 10px 14px;
+}
+.pob-presets legend { color: var(--gold, #d6b36a); font-family: 'Cinzel', Georgia, serif; }
+.pob-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 14px 4px 0;
+  cursor: pointer;
+  font-size: 14px;
+}
+table.pob-stats {
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 14px;
+}
+table.pob-stats caption { color: var(--gold, #d6b36a); text-align: left; padding: 4px 0; }
+table.pob-stats th, table.pob-stats td {
+  border: 1px solid var(--border, #3a2c1e);
+  padding: 5px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+table.pob-stats th:first-child, table.pob-stats td:first-child { text-align: left; }
+.pob-up { color: #7fbf5f; }
+.pob-down { color: #e0705f; }
+.pob-fail td { color: #e0705f; }

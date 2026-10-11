@@ -17,10 +17,15 @@
  * возвращает meta.loaded=false после рестарта.
  */
 
-import { type ChildProcess, spawn as nodeSpawn } from 'node:child_process';
-import { join } from 'node:path';
+import { IS_NODE, pathMod } from './nodeenv.js';
 import { resolvePobHostPaths } from './pobHost.js';
 import { decodeShareCode } from './pobcode.js';
+
+// nodeenv-паттерн: node:* лениво и только под Node — браузерный web-клиент
+// сессии это HTTP /api/pob сервера, сам модуль в браузере не исполняется.
+const cpMod = IS_NODE ? await import('node:child_process') : null;
+const nodeSpawn = cpMod?.spawn;
+const join = (...segs: string[]): string => (pathMod ? pathMod.join(...segs) : segs.join('/'));
 
 export const SESSION_START_TIMEOUT_MS = 60_000;
 export const SESSION_RPC_TIMEOUT_MS = 120_000;
@@ -40,7 +45,7 @@ export type SpawnChildFn = (
 ) => SessionChild;
 
 const defaultSpawn: SpawnChildFn = (luajit, args, opts) =>
-  nodeSpawn(luajit, args, { cwd: opts.cwd, env: opts.env, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as SessionChild;
+  nodeSpawn!(luajit, args, { cwd: opts.cwd, env: opts.env, stdio: ['pipe', 'pipe', 'pipe'] }) as unknown as SessionChild;
 
 export interface RpcFrame {
   id?: number;

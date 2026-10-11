@@ -35,6 +35,7 @@ import { initLandingTab } from './landing';
 import { initCraftTab } from './craftGuide';
 import { initPinnacleTab } from './pinnacle';
 import { initSlangTab } from './slang';
+import { initPobOracleTab } from './pobOracle';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -76,6 +77,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button data-tab="build" data-group="build" class="tab">Импорт билда</button>
           <button data-tab="keybinds" data-group="build" class="tab">🎮 Раскладка</button>
           <button data-tab="compare" data-group="build" class="tab">Сравнение</button>
+          <button data-tab="poboracle" data-group="build" class="tab" title="Живой движок PoB2: персист-сессия, матрица what-if">🧮 PoB-оракул</button>
           <button data-tab="tree" data-group="build" class="tab">Дерево (мои узлы)</button>
           <button data-tab="map" data-group="build" class="tab">Дерево (полное)</button>
           <button data-tab="craft" data-group="build" class="tab">🔨 Крафт</button>
@@ -191,6 +193,29 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-compare-last" class="ghost" title="Взять PoB-код из поля «Импорт билда»">Из поля «Импорт билда»</button>
         </div>
         <div id="out-compare" class="out"></div>
+      </section>
+
+      <section id="pane-poboracle" class="pane">
+        <h2>🧮 PoB-оракул <small>живой движок PoB2 в персист-сессии сервера</small></h2>
+        <p class="hint">Расчёты делает настоящий движок PathOfBuilding-PoE2 (headless, припаян к серверу): загрузи билд раз — дальше пересчёты за миллисекунды. Что-если-матрица: боссы/пиннаклы/уровни поверх baseline, сценарии изолированы (CAS-откат в хосте, контракт 4). Нужен полный сетап сервера: @poe2-kit/core + oracle-рантайм + POE2K_POB2_SRC (см. oracle/README.md).</p>
+        <div class="pob-statusbar" id="pob-status">Проверяю состояние сессии…</div>
+        <div class="aitools">
+          <button id="btn-pob-status" class="ghost">⟳ Состояние</button>
+          <button id="btn-pob-load" class="primary">Загрузить билд</button>
+          <button id="btn-pob-load-last" class="ghost" title="Взять PoB-код из поля «Импорт билда»">Из поля «Импорт билда»</button>
+        </div>
+        <textarea id="pob-code-input" rows="6" placeholder="Вставь share-код PoB (AA…) — или XML билда…"></textarea>
+        <div id="out-pob" class="out"></div>
+        <fieldset class="pob-presets">
+          <legend>Сценарии what-if</legend>
+          <!-- чекбоксы рендерятся из PRESETS в pobOracle.ts чтобы не дублировать список -->
+          <div id="pob-presets-box"></div>
+          <div class="lvset">
+            <input id="pob-level" type="number" min="1" max="100" placeholder="свой уровень 1–100" style="width:12em" />
+            <button id="btn-pob-whatif" class="primary">Прогнать матрицу</button>
+          </div>
+        </fieldset>
+        <div id="out-pob-whatif" class="out"></div>
       </section>
 
       <section id="pane-tree" class="pane">
@@ -487,6 +512,7 @@ initLandingTab();
 initCraftTab();
 initPinnacleTab();
 initSlangTab();
+initPobOracleTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
