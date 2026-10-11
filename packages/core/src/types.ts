@@ -121,8 +121,8 @@ export interface BuildSkillGroup {
    * Отсутствие атрибутов (легаси-билды) распознаётся как 'both'.
    */
   weaponSet?: 'both' | '1' | '2';
-  /** Гемы группы (name, level, quality). */
-  gems: Array<{ name: string; level: number | null; quality: number | null }>;
+  /** Гемы группы (name, level, quality; levelInterval — из .build, там нет уровня гема). */
+  gems: Array<{ name: string; level: number | null; quality: number | null; levelInterval?: [number, number] }>;
 }
 
 /** Активные бафы/курсы из <Buffs> экспорта PoB (CSV имён). */
@@ -141,6 +141,12 @@ export interface BuildImport {
   skills: string[];
   /** Распределённые узлы дерева пассивок */
   passiveNodes: string[];
+  /**
+   * Привязка пассивок к оружейному набору (только из официального .build:
+   * {id, weapon_set: 1|2}). Ключ — id узла, значение — 1|2. Отсутствие =
+   * общий выбор. PoB-XML этих данных не несёт (дефер №106-aware).
+   */
+  passiveWeaponSets?: Record<string, 1 | 2>;
   /** Версия дерева активного <Spec treeVersion="0_3"> (PoB2: "0_1".."0_5"; undefined, если не указана). */
   treeVersion?: string;
   gear: Record<string, string>;

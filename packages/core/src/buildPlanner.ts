@@ -248,6 +248,32 @@ function isSupportName(name: string): boolean {
   return id ? /SupportGem/.test(id) : /\sSupport$/i.test(name);
 }
 
+let gemMetaToNameCache: Map<string, string> | null = null;
+
+/**
+ * Обратная карта gem_name_to_metadata: Metadata-путь гема → display-имя.
+ * Экспортировано для парсера .build (E6): там скиллы/саппорты заданы
+ * Metadata-путями, а consumers (pobCompare, gemSupports) работают по именам.
+ * Фолбэк при промахе — хвост пути,Caller решает сам.
+ */
+export function gemMetadataIdToName(id: string): string {
+  if (!gemMetaToNameCache) {
+    const inv = new Map<string, string>();
+    for (const [name, meta] of Object.entries(loadMap().gem_name_to_metadata)) {
+      // при дублях путей (несколько имён → один гем) держим первое имя
+      if (!inv.has(meta)) inv.set(meta, name);
+    }
+    gemMetaToNameCache = inv;
+  }
+  return gemMetaToNameCache.get(id) ?? gemMetadataToSibling(id);
+}
+
+/** Хвост Metadata-пути («…/SupportGemMartialTempoTwo» → «MartialTempoTwo»). */
+function gemMetadataToSibling(id: string): string {
+  const tail = id.split('/').pop() ?? id;
+  return tail.replace(/^(Skill|Support)Gem/, '');
+}
+
 /** Саппорт ли гем по имени: по Metadata-пути (SupportGem*), фолбэк — суффикс " Support" (PoE1-стиль).
  *  Экспортировано для pobCompare (E2): PoE2-саппорты НЕ несут суффикс в имени. */
 export function isSupportGemName(name: string): boolean {

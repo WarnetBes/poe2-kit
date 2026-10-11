@@ -22,6 +22,9 @@ dist/
 build/
 build/Release
 *.tsbuildinfo
+# …кроме фикстур официального .build-формата (E6, Tincture-корпус, MIT)
+!packages/core/test/fixtures/build/
+!packages/core/test/fixtures/build/**
 
 # Логи
 *.log

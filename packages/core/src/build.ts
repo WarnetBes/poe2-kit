@@ -11,6 +11,7 @@ import type { BuildBuffs, BuildGearItem, BuildImport, BuildSkillGroup } from './
 import { getSkillGemDetails } from './dataset.js';
 import { PobCodeError, decodeShareCode, encodeShareCode } from './pobcode.js';
 import { httpText, httpJson } from './http.js';
+import { gemMetadataIdToName } from './buildPlanner.js';
 
 // UA импорта билдов: ссылки pobb.in/pastebin тоже публичный скрейп — даём
 // описательный агент (политика GGG; Cloudflare 403 без UA).
@@ -423,17 +424,52 @@ function parseBuildJson(json: Record<string, unknown>): BuildImport {
   };
   const passivesRaw = Array.isArray(json.passives) ? json.passives : [];
   const passiveNodes: string[] = [];
+  const passiveWeaponSets: Record<string, 1 | 2> = {};
   for (const p of passivesRaw) {
-    if (typeof p === 'string') passiveNodes.push(p);
-    else if (p && typeof p === 'object') passiveNodes.push(String((p as { id?: unknown }).id ?? ''));
+    if (typeof p === 'string') {
+      passiveNodes.push(p);
+    } else if (p && typeof p === 'object') {
+      const o = p as { id?: unknown; weapon_set?: unknown };
+      const id = o.id != null ? String(o.id) : '';
+      if (id) passiveNodes.push(id);
+      // weapon_set 1|2 (E6, SCHEMA.md:96-98): узел точечно привязан к набору оружия.
+      if (o.weapon_set === 1 || o.weapon_set === 2) passiveWeaponSets[id] = o.weapon_set;
+    }
   }
+  // Скиллы/саппорты заданы Metadata-путями; consumers (pobCompare, gemSupports,
+  // buildPlanner) работают по display-именам — резолвим через инверс-карту
+  // gem_name_to_metadata, фолбэк — хвост пути (не выдумываем: сегмент источника).
   const skillsRaw = Array.isArray(json.skills) ? json.skills : [];
   const skills: string[] = [];
+  const skillGroups: BuildSkillGroup[] = [];
   for (const s of skillsRaw) {
-    if (s && typeof s === 'object') {
-      const id = (s as { id?: unknown }).id;
-      if (id) skills.push(String(id));
+    if (!s || typeof s !== 'object') continue;
+    const so = s as {
+      id?: unknown;
+      level_interval?: unknown;
+      support_skills?: Array<{ id?: unknown; level_interval?: unknown }>;
+    };
+    const id = so.id != null ? String(so.id) : '';
+    if (!id) continue;
+    const activeName = gemMetadataIdToName(id);
+    skills.push(activeName);
+    const interval = (v: unknown): [number, number] | undefined =>
+      Array.isArray(v) && v.length >= 2 && typeof v[0] === 'number' && typeof v[1] === 'number'
+        ? [v[0], v[1]]
+        : undefined;
+    const gems: BuildSkillGroup['gems'] = [
+      { name: activeName, level: null, quality: null, levelInterval: interval(so.level_interval) },
+    ];
+    for (const sup of so.support_skills ?? []) {
+      if (!sup || typeof sup !== 'object' || sup.id == null) continue;
+      gems.push({
+        name: gemMetadataIdToName(String(sup.id)),
+        level: null,
+        quality: null,
+        levelInterval: interval(sup.level_interval),
+      });
     }
+    skillGroups.push({ label: activeName, enabled: true, gems });
   }
   const items: Record<string, string> = {};
   const inv = Array.isArray(json.inventory_slots)
@@ -443,8 +479,10 @@ function parseBuildJson(json: Record<string, unknown>): BuildImport {
       : [];
   for (const it of inv) {
     if (it && typeof it === 'object') {
-      const o = it as { inventory_id?: unknown; unique_name?: unknown };
-      if (o.inventory_id) items[String(o.inventory_id)] = o.unique_name ? String(o.unique_name) : '';
+      const o = it as { inventory_id?: unknown; unique_name?: unknown; additional_text?: unknown };
+      // E6: рары/базовые описаны additional_text (первая строка — имя/база,
+      // дальше целевые аффиксы) — раньше попадало только unique_name (unique-shape).
+      if (o.inventory_id) items[String(o.inventory_id)] = String(o.unique_name ?? o.additional_text ?? '');
     }
   }
   return {
@@ -453,7 +491,9 @@ function parseBuildJson(json: Record<string, unknown>): BuildImport {
     ascendancy: str(json.ascendancy),
     level: lvl(json.level),
     skills,
+    skillGroups: skillGroups.length ? skillGroups : undefined,
     passiveNodes,
+    ...(Object.keys(passiveWeaponSets).length ? { passiveWeaponSets } : {}),
     gear: items,
     raw: json,
   };

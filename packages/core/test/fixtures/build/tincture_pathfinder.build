@@ -1,0 +1,670 @@
+{
+  "name": "Pathfinder — Spark (public ladder)",
+  "author": "Tincture — reconstructed from public ladder character \"дача\" (DayCha-3886)",
+  "description": "A representative Pathfinder build from the public runesofaldur ladder (character \"дача\", account \"DayCha-3886\", level 100), reconstructed by Tincture from poe.ninja: https://poe.ninja/poe2/builds/runesofaldur/character/DayCha-3886/%D0%B4%D0%B0%D1%87%D0%B0 . Path of Exile and its assets are owned by Grinding Gear Games; this tool isn't affiliated with or endorsed by GGG.",
+  "ascendancy": "Ranger3",
+  "passives": [
+    {
+      "id": "AscendancyRanger3Small6"
+    },
+    {
+      "id": "energy_shield34_"
+    },
+    {
+      "id": "energy_shield11"
+    },
+    {
+      "id": "AscendancyRanger3Start"
+    },
+    {
+      "id": "witch_sorceress_notable2"
+    },
+    {
+      "id": "energy_shield35"
+    },
+    {
+      "id": "attributes76"
+    },
+    {
+      "id": "attributes23"
+    },
+    {
+      "id": "intelligence64"
+    },
+    {
+      "id": "azmerianimals66"
+    },
+    {
+      "id": "energy_shield13"
+    },
+    {
+      "id": "life_flasks23_"
+    },
+    {
+      "id": "life_flasks22"
+    },
+    {
+      "id": "intelligence79"
+    },
+    {
+      "id": "intelligence6"
+    },
+    {
+      "id": "evasion_and_energy_shield20"
+    },
+    {
+      "id": "energy_shield37"
+    },
+    {
+      "id": "AscendancyRanger3Small4"
+    },
+    {
+      "id": "flasks21"
+    },
+    {
+      "id": "attributes24"
+    },
+    {
+      "id": "focus6"
+    },
+    {
+      "id": "evasion_and_energy_shield23"
+    },
+    {
+      "id": "intelligence84"
+    },
+    {
+      "id": "focus10"
+    },
+    {
+      "id": "life_regeneration25"
+    },
+    {
+      "id": "AscendancyRanger3Small8"
+    },
+    {
+      "id": "life_flasks18_"
+    },
+    {
+      "id": "dexterity41"
+    },
+    {
+      "id": "flasks13"
+    },
+    {
+      "id": "AscendancyRanger3Notable8_1"
+    },
+    {
+      "id": "life_flasks26"
+    },
+    {
+      "id": "life_flasks19"
+    },
+    {
+      "id": "evasion_and_energy_shield18"
+    },
+    {
+      "id": "evasion11"
+    },
+    {
+      "id": "attributes27"
+    },
+    {
+      "id": "dexterity70"
+    },
+    {
+      "id": "dexterity42"
+    },
+    {
+      "id": "energy_shield10_"
+    },
+    {
+      "id": "auras23"
+    },
+    {
+      "id": "energy_shield27"
+    },
+    {
+      "id": "life_flasks32"
+    },
+    {
+      "id": "AscendancyRanger3Notable8_Choice_"
+    },
+    {
+      "id": "strength87"
+    },
+    {
+      "id": "intelligence66"
+    },
+    {
+      "id": "dexterity75"
+    },
+    {
+      "id": "dexterity68"
+    },
+    {
+      "id": "dexterity64"
+    },
+    {
+      "id": "flasks19_"
+    },
+    {
+      "id": "dexterity21"
+    },
+    {
+      "id": "jewel_slot1979"
+    },
+    {
+      "id": "azmerianimals65"
+    },
+    {
+      "id": "life_flasks24"
+    },
+    {
+      "id": "attributes56"
+    },
+    {
+      "id": "AscendancyRanger3Notable2"
+    },
+    {
+      "id": "attributes19"
+    },
+    {
+      "id": "passive_keystone_oasis"
+    },
+    {
+      "id": "passive_keystone_resonance"
+    },
+    {
+      "id": "intelligence62"
+    },
+    {
+      "id": "life_flasks11"
+    },
+    {
+      "id": "dexterity40"
+    },
+    {
+      "id": "dexterity66"
+    },
+    {
+      "id": "dexterity20"
+    },
+    {
+      "id": "strength36"
+    },
+    {
+      "id": "flasks17"
+    },
+    {
+      "id": "attributes61"
+    },
+    {
+      "id": "dexterity38"
+    },
+    {
+      "id": "dexterity67_"
+    },
+    {
+      "id": "energy_shield14"
+    },
+    {
+      "id": "evasion_and_energy_shield12_"
+    },
+    {
+      "id": "life_flasks15"
+    },
+    {
+      "id": "life_flasks1"
+    },
+    {
+      "id": "flasks15"
+    },
+    {
+      "id": "dexterity39"
+    },
+    {
+      "id": "jewel_slot1976"
+    },
+    {
+      "id": "life_flasks16"
+    },
+    {
+      "id": "focus7"
+    },
+    {
+      "id": "evasion_and_energy_shield24"
+    },
+    {
+      "id": "passive_keystone_conduit"
+    },
+    {
+      "id": "energy_shield21"
+    },
+    {
+      "id": "attributes20-"
+    },
+    {
+      "id": "life_flasks6"
+    },
+    {
+      "id": "flasks16"
+    },
+    {
+      "id": "dexterity34"
+    },
+    {
+      "id": "ranger_huntress_notable1"
+    },
+    {
+      "id": "AscendancyRanger3Small9"
+    },
+    {
+      "id": "life_flasks12_"
+    },
+    {
+      "id": "intelligence17"
+    },
+    {
+      "id": "flasks23"
+    },
+    {
+      "id": "attributes26"
+    },
+    {
+      "id": "attributes68"
+    },
+    {
+      "id": "energy_shield7"
+    },
+    {
+      "id": "AscendancyRanger3Notable6"
+    },
+    {
+      "id": "dexterity65_"
+    },
+    {
+      "id": "attributes25"
+    },
+    {
+      "id": "dexterity86"
+    },
+    {
+      "id": "flasks24"
+    },
+    {
+      "id": "energy_shield15"
+    },
+    {
+      "id": "life_flasks3"
+    },
+    {
+      "id": "life_flasks20"
+    },
+    {
+      "id": "attributes69"
+    },
+    {
+      "id": "AscendancyRanger3Notable9"
+    },
+    {
+      "id": "flasks9"
+    },
+    {
+      "id": "attributes21"
+    },
+    {
+      "id": "jewel_slot1970"
+    },
+    {
+      "id": "intelligence85"
+    },
+    {
+      "id": "energy_shield12"
+    },
+    {
+      "id": "life_flasks21"
+    },
+    {
+      "id": "life_flasks8"
+    },
+    {
+      "id": "life_flasks13"
+    },
+    {
+      "id": "dexterity30_"
+    },
+    {
+      "id": "evasion12"
+    },
+    {
+      "id": "flasks20_"
+    },
+    {
+      "id": "life_regeneration17_"
+    },
+    {
+      "id": "intelligence25"
+    },
+    {
+      "id": "life_flasks5_"
+    },
+    {
+      "id": "flasks12"
+    },
+    {
+      "id": "evasion_and_energy_shield25"
+    },
+    {
+      "id": "flasks22"
+    },
+    {
+      "id": "intelligence63__"
+    },
+    {
+      "id": "passive_keystone_chaos_inoculation"
+    },
+    {
+      "id": "intelligence16"
+    },
+    {
+      "id": "dexterity9"
+    },
+    {
+      "id": "life_flasks9"
+    },
+    {
+      "id": "dexterity69"
+    },
+    {
+      "id": "life_flasks4"
+    },
+    {
+      "id": "azmerianimals63"
+    },
+    {
+      "id": "movement_speed3"
+    },
+    {
+      "id": "dexterity19"
+    },
+    {
+      "id": "jewel_slot1960"
+    },
+    {
+      "id": "life_flasks29"
+    },
+    {
+      "id": "movement_speed1"
+    },
+    {
+      "id": "intelligence69"
+    },
+    {
+      "id": "jewel_slot1972"
+    },
+    {
+      "id": "jewel_slot1961"
+    },
+    {
+      "id": "energy_shield33_"
+    },
+    {
+      "id": "energy_shield16"
+    },
+    {
+      "id": "strength37"
+    },
+    {
+      "id": "dexterity61"
+    },
+    {
+      "id": "attributes29"
+    },
+    {
+      "id": "dexterity36"
+    }
+  ],
+  "skills": [
+    {
+      "id": "Metadata/Items/Gems/SkillGemSpark",
+      "level_interval": [
+        78,
+        100
+      ],
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gem/SupportGemDeliberation",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemArcaneTempoTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemZenithTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemInspirationTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemElementalFocus",
+          "level_interval": [
+            1,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemProfaneRitual",
+      "level_interval": [
+        78,
+        100
+      ],
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemMobility",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemArcaneTempoTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemMagnifiedEffectTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemProfusionTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemWolfPounce",
+      "level_interval": [
+        36,
+        100
+      ],
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemIngenuityTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemOverpowerThree",
+          "level_interval": [
+            1,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemSkeletalCleric",
+      "level_interval": [
+        78,
+        100
+      ],
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemBrutusBrain",
+          "level_interval": [
+            65,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemAlchemistsBoon",
+      "level_interval": [
+        90,
+        100
+      ],
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemHerbalismTwo",
+          "level_interval": [
+            1,
+            100
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemDiscipline",
+      "level_interval": [
+        78,
+        100
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemEternalRage",
+      "level_interval": [
+        78,
+        100
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemChargeInfusion",
+      "level_interval": [
+        78,
+        100
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemSacrifice",
+      "level_interval": [
+        78,
+        100
+      ]
+    }
+  ],
+  "inventory_slots": [
+    {
+      "inventory_id": "Boots1",
+      "additional_text": "Sandsworn Sandals\n1. 35% increased Movement Speed\n2. +36% to [Resistances|Fire Resistance]\n3. +37% to [Resistances|Cold Resistance]\n4. +0.4 metres to Dodge Roll distance\n5. Can roll Chronomancy modifiers\n6. [ShamanOnlyMods|Bonded]: 16% increased [CooldownRecovery|Cooldown Recovery Rate]\n7. [ShamanOnlyMods|Bonded]: 48% increased [Armour] if you haven't Dodge Rolled [Recently]",
+      "level_interval": [
+        75,
+        100
+      ],
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Belt1",
+      "unique_name": "Shavronne's Satchel",
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Ring2",
+      "additional_text": "Ruby Ring\n1. +30% to [Resistances|Fire Resistance]\n2. 29% increased [Cold] Damage\n3. 26% increased [Chaos] Damage\n4. +322 to [Accuracy|Accuracy] Rating\n5. +39 to [Dexterity|Dexterity]\n6. +38 to [Intelligence|Intelligence]\n7. +38% to [Resistances|Lightning Resistance]",
+      "level_interval": [
+        60,
+        100
+      ],
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Gloves1",
+      "unique_name": "Hateforge",
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Weapon1",
+      "additional_text": "Stoic Sceptre\n1. 34% increased [Spirit|Spirit]\n2. [Allies|Allies] in your [Presence|Presence] deal 91% increased Damage\n3. [Allies|Allies] in your [Presence|Presence] deal 24 to 32 added [Attack|Attack] [Cold|Cold] Damage\n4. [Allies|Allies] in your [Presence|Presence] have 5% increased [Attack|Attack] Speed\n5. [Allies|Allies] in your [Presence|Presence] Regenerate 32.6 Life per second\n6. 50% increased [Presence|Presence] Area of Effect\n7. [Allies|Allies] in your [Presence|Presence] have 8% increased Movement Speed\n8. [ShamanOnlyMods|Bonded]: 4% increased Movement Speed\n9. [ShamanOnlyMods|Bonded]: [Minion|Minions] have 30% increased Area of Effect",
+      "level_interval": [
+        60,
+        100
+      ],
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Ring1",
+      "additional_text": "Ruby Ring\n1. +30% to [Resistances|Fire Resistance]\n2. Adds 5 to 8 [Physical|Physical] Damage to [Attack|Attacks]\n3. +75 to maximum Life\n4. +107 to maximum Mana\n5. +36 to [Dexterity|Dexterity]\n6. +38 to [Intelligence|Intelligence]\n7. +40% to [Resistances|Lightning Resistance]",
+      "level_interval": [
+        59,
+        100
+      ],
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Helm1",
+      "unique_name": "Alpha's Howl",
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "Amulet1",
+      "unique_name": "Revered Resin",
+      "slot_x": 0,
+      "slot_y": 0
+    },
+    {
+      "inventory_id": "BodyArmour1",
+      "additional_text": "Vile Robe\n1. +116 to maximum [EnergyShield|Energy Shield]\n2. 35% increased [EnergyShield|Energy Shield]\n3. +31% to [Resistances|Cold Resistance]\n4. 47% reduced Duration of [Bleeding] on You\n5. 60% increased Life and Mana Recovery from [Flask|Flasks]\n6. [ShamanOnlyMods|Bonded]: +60 to maximum Life\n7. [ShamanOnlyMods|Bonded]: +60 to maximum Mana",
+      "level_interval": [
+        65,
+        100
+      ],
+      "slot_x": 0,
+      "slot_y": 0
+    }
+  ]
+}
