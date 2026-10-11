@@ -25,6 +25,7 @@
 
 import type { BuildGearItem, BuildImport } from './types.js';
 import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
+import { getSkillGemDetails } from './dataset.js';
 
 // ─── Формат *.build (типы по спецификации GGG) ──────────────────────────────
 
@@ -38,6 +39,8 @@ export interface BuildPlannerPassive {
 export interface BuildPlannerSkill {
   id: string;
   additional_text?: string;
+  /** Гейт leveling-плана: [уровень появления, 100] (E7). */
+  level_interval?: [number, number];
   support_skills: Array<string | BuildPlannerSkill>;
 }
 
@@ -209,6 +212,27 @@ function convertPassives(nodes: string[], warnings: string[]): Array<string | Bu
 
 // ─── Скиллы: имя камня → Metadata/Items/Gems/… ──────────────────────────────
 
+/**
+ * Level_interval активного гема (E7): [min, 100] — с какого уровня персонажа
+ * гем появляется в leveling-плане игры. Min — требование уровня строки гема
+ * из датасета (skill_gems_v2 levels[].levelRequirement): если PoB несёт
+ * уровень гема — требование именно этой ступени (донорский канон Tincture
+ * build-from-ninja.cjs: «gate by each gem's REAL Level requirement»);
+ * без уровня — уровень открытия (первое требование > 0), иначе 1.
+ * Гем не найден в датасете — поле ЧЕСТНО опускается (не выдумываем).
+ * Саппорты: датасет требований не несёт — им level_interval не пишем.
+ */
+function gemLevelInterval(name: string, gemLevel: number | null): [number, number] | undefined {
+  const det = getSkillGemDetails(name);
+  if (!det || !det.levels || det.levels.length === 0) return undefined;
+  const idx = gemLevel && gemLevel >= 1 ? Math.min(gemLevel, det.levels.length) - 1 : -1;
+  const req =
+    idx >= 0
+      ? det.levels[idx].levelRequirement
+      : det.levels.find((l) => l.levelRequirement > 0)?.levelRequirement ?? 0;
+  return [req > 0 ? req : 1, 100];
+}
+
 function gemMetadataId(name: string): string | undefined {
   const exact = loadMap().gem_name_to_metadata[name];
   if (exact) return exact;
@@ -256,11 +280,13 @@ function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkil
             sup.push(sid);
           }
         }
-        out.push({ id, support_skills: sup });
+        const interval = gemLevelInterval(active.name, active.level);
+        out.push({ id, support_skills: sup, ...(interval ? { level_interval: interval as [number, number] } : {}) });
       }
     }
   } else if (build.skills.length > 0) {
-    // Групп нет (легаси-парсер) — плоский список имён без саппортов.
+    // Групп нет (легаси-парсер) — плоский список имён без саппортов;
+    // уровень гема не известен — гейт по уровню открытия гема из датасета.
     for (const name of build.skills) {
       const id = gemMetadataId(name);
       if (!id) {
@@ -269,7 +295,8 @@ function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkil
       }
       if (!seenSkill.has(id)) {
         seenSkill.add(id);
-        out.push({ id, support_skills: [] });
+        const interval = gemLevelInterval(name, null);
+        out.push({ id, support_skills: [], ...(interval ? { level_interval: interval as [number, number] } : {}) });
       }
     }
     if (build.skills.length > 0 && out.length > 0) {
@@ -608,9 +635,9 @@ function ascendancyCodeExists(code: string): boolean {
 }
 
 // ─── TODO (следующие итерации, НЕ реализовано) ───────────────────────────────
-// 1. level_interval: гейтинг камней/предметов по уровню (нужны требования
-//    уровней гема — есть в Gems.lua/датасете, но PoB-экспорт их не несёт;
-//    сейчас резервируемся всем [1,100] — честнее не писать поле вовсе).
+// 1. ✅ Закрыто (E7, №451): level_interval на активных гемах — требование
+//    ступени гема из датасета (skill_gems_v2 levels[].levelRequirement);
+//    саппортам/неизвестным гемам поле честно не пишется.
 // 2. weapon_set на пассивках: dual weapon-set деревья (passiveSelectionSet1/2
 //    — только в API GGG self-экспорте, в PoB-коде их нет).
 // 3. Jewels: формат только помечает jewel-слот аннотацией, placement невозможен.

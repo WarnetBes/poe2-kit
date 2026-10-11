@@ -52,15 +52,27 @@ describe('toBuildPlanner', () => {
     expect(res.warnings.some((w) => w.includes('999999999'))).toBe(true);
   });
 
-  it('мапит имена камней в Metadata-пути, саппорты — в support_skills', () => {
+  it('мапит имена камней в Metadata-пути, саппорты — в support_skills, level_interval — из датасета (E7)', () => {
     clearBuildPlannerCache();
     const res = toBuildPlanner(MONK_BUILD);
     expect(res.build.skills).toEqual([
       {
         id: 'Metadata/Items/Gems/SkillGemIceStrike',
+        // Ice Strike L20 → требование ступени из skill_gems_v2 (req@L20 = 90)
+        level_interval: [90, 100],
         support_skills: ['Metadata/Items/Gems/SupportGemMartialTempo'],
       },
     ]);
+  });
+
+  it('level_interval гейта: гем L20 без данных уровня — по уровню открытия из датасета', () => {
+    clearBuildPlannerCache();
+    const legacy = { ...MONK_BUILD, skillGroups: undefined };
+    const res = toBuildPlanner(legacy);
+    // Легаси-ветка: уровень гема неизвестен → первый req>0 (Ice Strike: 0,0,…→ уровень открытия).
+    const ice = res.build.skills!.find((s) => /IceStrike$/.test(s.id))!;
+    expect(ice.level_interval?.[1]).toBe(100);
+    expect(ice.level_interval![0]).toBeGreaterThanOrEqual(1);
   });
 
   it('даёт валидный JSON c обязательным name', () => {
