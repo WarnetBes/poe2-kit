@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerSimulacrumTools } from '../../apps/mcp/dist/tools/simulacrum.js';
+import { toolCountReassert, EXPECTED_TOOL_COUNT } from './expected-tools.mjs';
 
 let fail = 0;
 function need(ok, n, msg) {
@@ -25,8 +26,8 @@ const distIndex = readFileSync('apps/mcp/dist/index.js', 'utf8');
 need(/registerSimulacrumTools/.test(distIndex), 2, 'dist/index.js: registerSimulacrumTools');
 const smoke = spawnSync(process.execPath, ['apps/mcp/dist/index.js', '--smoke'], { encoding: 'utf8' });
 const smokeOut = smoke.stderr + smoke.stdout;
-need(smoke.status === 0 && /\[smoke\] Registered tools: 67\b/.test(smokeOut),
-  3, 'index --smoke: exit 0, ровно 67 тулов');
+need(smoke.status === 0 && toolCountReassert(smokeOut),
+  3, `index --smoke: exit 0, ровно ${EXPECTED_TOOL_COUNT} тулов (shared EXPECTED_TOOL_COUNT)`);
 need(/^\s*- poe2_simulacrum_guide$/m.test(smokeOut), 4, 'index --smoke: poe2_simulacrum_guide в списке __poe2Registered');
 
 // 3. Handler напрямую

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerMapPrepTools } from '../../apps/mcp/dist/tools/mapPrep.js';
+import { toolCountReassert, EXPECTED_TOOL_COUNT } from './expected-tools.mjs';
 
 let fail = 0;
 function need(ok, n, msg) {
@@ -27,8 +28,8 @@ const distIndex = readFileSync('apps/mcp/dist/index.js', 'utf8');
 need(/registerMapPrepTools/.test(distIndex), 2, 'dist/index.js: registerMapPrepTools');
 const smoke = spawnSync(process.execPath, ['apps/mcp/dist/index.js', '--smoke'], { encoding: 'utf8' });
 const smokeOut = smoke.stderr + smoke.stdout;
-const m62 = /\[smoke\] Registered tools: 67\b/.test(smokeOut);
-need(smoke.status === 0 && m62, 3, 'index --smoke: exit 0, ровно 67 тулов');
+const m62 = toolCountReassert(smokeOut);
+need(smoke.status === 0 && m62, 3, `index --smoke: exit 0, ровно ${EXPECTED_TOOL_COUNT} тулов (shared EXPECTED_TOOL_COUNT)`);
 need(/^\s*- poe2_map_prep$/m.test(smokeOut), 4, 'index --smoke: poe2_map_prep в списке __poe2Registered');
 
 // 3. Перехватываем registerTool (как index.ts) и зовём handler напрямую
