@@ -23,6 +23,7 @@ import {
   invalidateLeagues,
   clearScoutCache,
   clearRatesCache,
+  resetTradeRateState,
 } from '../src/trade.js';
 
 // ─── Чистые хелперы/классификация ───────────────────────────────────────────
@@ -162,6 +163,7 @@ describe('http: лента ошибок httpErrorsSince', () => {
 describe('trade: ...Result — «сеть упала» отличается от «не найдено»', () => {
   beforeEach(() => {
     resetHttpState(); // изоляция rate-лимитов/очередей от предыдущих кейсов
+    resetTradeRateState(); // P1: fake-ответы без X-Rate-Limit-* — чистые бакеты на каждый тест
     invalidateLeagues();
     clearScoutCache();
     clearRatesCache();

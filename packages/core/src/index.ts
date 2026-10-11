@@ -9,6 +9,21 @@ export * from './repoe.js';
 export * from './ai.js';
 export * from './parse.js';
 export * from './http.js';
+// rate-limit v2 (порт poe-ninja-build-cost, P1): избирательные экспорты с
+// алиасами — имя RateLimiter в публичном API ядра уже занято статическим
+// лимитером http.ts (та же коллизия, что GemSupportReco/GemSupportRecoLite №262).
+export {
+  RateLimiter as TradeRateLimiter,
+  Bucket as RateBucket,
+  createTradeRateState,
+  setBudgetShare,
+  getUserReserve,
+  parsePolicy,
+  BUDGET_SHARES,
+  DEFAULT_BUDGET_SHARE,
+  DESYNC_PAD,
+} from './rateLimit.js';
+export type { BucketState, BudgetShareId, ParsedPolicy, TradeRateState } from './rateLimit.js';
 export * from './result.js';
 export * from './log.js';
 export * from './wiki.js';

@@ -128,6 +128,13 @@ export interface HttpOptions {
   body?: unknown;
   /** Таймаут, мс */
   timeoutMs?: number;
+  /** Вызывается прямо перед реальным сетевым запросом (await) — точка взятия
+   *  квоты rate-лимитером (trade-слой), внутри очереди/статического лимитера хоста.
+   *  Для 429-ретраев и transient-5xx-ретраев №145 срабатывает на КАЖДЫЙ реальный заход. */
+  onBeforeRequest?: () => void | Promise<void>;
+  /** Вызывается на КАЖДЫЙ живой ответ (включая 429/5xx) с заголовками и статусом —
+   *  точка синка trade-лимитера с X-Rate-Limit-* и penalise по Retry-After. */
+  onHeaders?: (headers: Headers, status: number) => void;
 }
 
 // Известные лимиты публичных API (окно "N за W мс").
@@ -298,12 +305,25 @@ function gggWaitMs(host: string): number {
 /** fetch с динамическим GGG-бекофом: ждёт квоту до запроса, на 429 — ждёт и ретраит (≤MAX). */
 const GGG_MAX_429_RETRIES = 2;
 
-async function gggFetch(host: string, url: string, init: RequestInit): Promise<Response> {
+async function gggFetch(
+  host: string,
+  url: string,
+  init: RequestInit,
+  onHeaders?: HttpOptions['onHeaders'],
+): Promise<Response> {
     let attempt = 0;
   for (;;) {
     await waitGggQuota(host);
     const res = await fetch(url, init);
     updateGggStates(host, res.headers);
+    // Слейв-колбэк trade-лимитера: живой ответ (в т.ч. 429) с заголовками и статусом.
+    if (onHeaders) {
+      try {
+        onHeaders(res.headers, res.status);
+      } catch {
+        /* телеметрия не ломает запрос */
+      }
+    }
     if (res.status !== 429 || attempt >= GGG_MAX_429_RETRIES) return res;
     // 429: уважаем Retry-After (секунды), иначе — максимальный ban-счётчик правил, иначе 60с.
     const retryAfter = Number(res.headers.get('retry-after'));
@@ -339,6 +359,11 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
   const once = (): Promise<T> =>
     queueFor(host).enqueue(async () => {
       await limiterFor(host).wait();
+      // Взятие квоты trade-лимитером — как можно ближе к реальному отправлению:
+      // сюда не попадаем ни при кэш-хите (cachedJson выше по стеку), ни при
+      // коротком замыкании до этого блока. На ретрае 5xx квота берётся заново —
+      // повтор тоже тратит слот, и лимитер должен это видеть.
+      if (opts.onBeforeRequest) await opts.onBeforeRequest();
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -356,7 +381,7 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
         },
         body: opts.body ? JSON.stringify(opts.body) : undefined,
         signal: controller.signal,
-      });
+      }, opts.onHeaders);
 
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -414,7 +439,7 @@ export async function httpText(url: string, opts: HttpOptions = {}): Promise<str
           ...opts.headers,
         },
         signal: controller.signal,
-      });
+      }, opts.onHeaders);
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);
@@ -451,7 +476,7 @@ export async function httpBytes(url: string, opts: HttpOptions = {}): Promise<Ui
           ...opts.headers,
         },
         signal: controller.signal,
-      });
+      }, opts.onHeaders);
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status} from ${finalUrl}: ${body.slice(0, 200)}`);

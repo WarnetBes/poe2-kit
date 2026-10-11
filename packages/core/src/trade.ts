@@ -11,6 +11,7 @@
  */
 
 import { httpJson, httpErrorsSince } from './http.js';
+import { createTradeRateState, setBudgetShare, type TradeRateState } from './rateLimit.js';
 import { ok as okResult, err as errResult, classifyError, selectWorstError, type Result } from './result.js';
 import { cachedJson, cachedPostJson, DEFAULT_TTLS } from './cache.js';
 import { parseItemText, itemDisplayName } from './parse.js';
@@ -1059,19 +1060,46 @@ export async function searchTradeByStats(
 
 /** POST /search + /fetch: общая механика запроса официального trade API. */
 
-// Троттлинг POST /search: trade2 жёстко лимитирует запросы (429 → временный
-// бан IP). Глобальный интервал между поисками — минимум ~1.1 с, при 429 —
-// дополнительно выдерживаем окно бана.
-let lastSearchAt = 0;
+// Троттлинг POST /search: адаптивные bucket-окна rate-limit v2 (порт
+// poe-ninja-build-cost, MIT — P1 мастер-плана). Квоту берёт лимитер
+// `tradeRate.search` через HttpOptions.onBeforeRequest прямо перед реальным
+// отправлением (кэш-хиты квоту не тратят); после КАЖДОГО живого ответа
+// onHeaders синкает бакеты с X-Rate-Limit-* и penalise'ит по Retry-After.
+// Здесь остаётся только страховка по окну явного 429-бана (прокси-каналы
+// web-приложения могут отдавать 429 без GGG-заголовков).
 let tradeBanUntil = 0;
-const SEARCH_MIN_INTERVAL_MS = 1100;
 
 async function throttleTradeSearch(): Promise<void> {
   const banWait = tradeBanUntil - Date.now();
   if (banWait > 0) await new Promise((r) => setTimeout(r, banWait));
-  const wait = lastSearchAt + SEARCH_MIN_INTERVAL_MS - Date.now();
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  lastSearchAt = Date.now();
+}
+
+/** Отладка/отчёт: живое состояние trade-лимитеров (бакеты, waitedMs, политика)
+ *  — для web/MCP-диагностики «наши задержки vs GGG-медленность». */
+export function tradeRateState(): TradeRateState {
+  return tradeRate;
+}
+
+/** Пара лимитеров trade2: search и fetch — разные политики GGG
+ * (замер 11.10: search 5:10:60,..., fetch 12:4:10,16:12:300,...).
+ * `let` + reset: юнит-тесты гоняют несколько fake-поисков подряд без
+ * реальных GGG-заголовков — PESSIMISTIC-бакет (1/5с+pad) иначе растягивает их. */
+let tradeRate = createTradeRateState();
+
+/** Сброс trade-лимитеров (юнит-тесты/самодиагностика; в рантайме НЕ звать —
+ *  теряется серверная синхронизация и окно бана). */
+export function resetTradeRateState(): void {
+  tradeRate = createTradeRateState();
+}
+
+// Профиль бюджета (доля IP-квоты, оставляемая человеку под его ручной trade):
+// env POE2K_TRADE_BUDGET = fast|balanced|gentle, дефолт balanced (1/6).
+// Тот же opt-in-паттерн, что POE2K_LEARN. В браузере process нет — молчим.
+try {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  if (env?.POE2K_TRADE_BUDGET) setBudgetShare(env.POE2K_TRADE_BUDGET);
+} catch {
+  /* noscript/SSR-защита: бюджет остаётся дефолтным */
 }
 
 // Кэш POST-поисков в памяти (TTL 10 мин): повторный прайс-чек того же билда
@@ -1114,6 +1142,9 @@ async function postTradeSearchUncached(
     // прайс-чек того же набора не расходует жёсткую квоту trade2.
     // Пустые результаты НЕ кэшируем — повторы добирают пустые слоты.
     const TRADE_CACHE_TTL = 30 * 60 * 1000;
+    // Квота search-бакета берётся onBeforeRequest (только реальный сетевой
+    // POST), каждый живой ответ синкает окна; 429 → penalise(Retry-After)
+    // (замена старого слепого 60с-бана — берём столько, сколько просит GGG).
     const { data: search } = await cachedPostJson<{ id?: string; result?: string[] }>(
       `${TRADE_API}/search/poe2/${encodeURIComponent(league)}`,
       searchQuery,
@@ -1123,6 +1154,11 @@ async function postTradeSearchUncached(
         // POST /search выполняется на стороне trade2 до ~15 с (дефолт httpJson 10 с режет
         // живые ответы) + 429-окна бана. 30 с покрывает и слабые прокси-каналы web-приложения.
         timeoutMs: 30000,
+        onBeforeRequest: () => tradeRate.search.take(),
+        onHeaders: (headers, status) => {
+          tradeRate.search.sync(headers);
+          if (status === 429) tradeRate.search.penalise(headers.get('retry-after'));
+        },
       },
     );
     if (!search?.id || !search.result?.length) return [];
@@ -1142,7 +1178,17 @@ async function postTradeSearchUncached(
         result?: Array<{
           listing?: { price?: { amount?: number; currency?: string; type?: string } };
         } | null>;
-      }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, { ttlMs: 30 * 60 * 1000, timeoutMs: 30000 });
+      }>(`${TRADE_API}/fetch/${hashes}?query=${search.id}`, {
+        ttlMs: 30 * 60 * 1000,
+        timeoutMs: 30000,
+        // fetch-квота ЖЕСТЬЧЕ search (12:4:10,16:12:300,...) — отдельный лимитер:
+        // кэш-хиты чанков не тратят слоты, каждый реальный GET синкает окна.
+        onBeforeRequest: () => tradeRate.fetch.take(),
+        onHeaders: (headers, status) => {
+          tradeRate.fetch.sync(headers);
+          if (status === 429) tradeRate.fetch.penalise(headers.get('retry-after'));
+        },
+      });
       for (const entry of fetchRes?.result ?? []) {
         if (!entry) continue;
         const p = entry?.listing?.price;
