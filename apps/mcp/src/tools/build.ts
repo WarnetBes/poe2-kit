@@ -343,6 +343,10 @@ export function registerBuildTools(server: McpServer): number {
   - code (string, обяз.): PoB share-код ИЛИ готовый XML PathOfBuilding.
   - hit_size (number, опц.): ожидаемый урон за удар для расчёта брони (по умолчанию 1000).
   - accuracy (number, опц.): точность атакующего для уклонения (по умолчанию 2000).
+  - goals (number[], опц., до 8): уровневые вехи — при сетапленном headless-рантайме
+    к оценке добавится «дерево целей»: точные TotalDPS/Life/EHP по вехам
+    (what-if матрица живого движка PoB, CAS-изоляция) с дельтами к baseline.
+    Пример: goals=[92, 95, 100].
 
 Ограничения: учитывается только снаряжение; дерево пассивок, гемы и ауры НЕ входят — реальные числа выше.
 
@@ -354,10 +358,15 @@ export function registerBuildTools(server: McpServer): number {
         code: z.string().min(5).describe('PoB share-код или XML'),
         hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
         accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
+        goals: z.array(z.number().int().min(1).max(100)).max(8).optional().describe(
+          'Дерево целей на ЖИВОМ движке PoB (если рантайм сетаплен): уровневые вехи, ' +
+          'например [90, 95, 100] — к каждой посчитается точный TotalDPS/Life/EHP и дельта к текущему. ' +
+          'Автогейт: POE2K_POB2_SRC; без рантайма секция честно не выводится.',
+        ),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async ({ code, hit_size, accuracy }) => {
+    async ({ code, hit_size, accuracy, goals }) => {
       try {
         const est = await core.estimate.estimateBuild(code, {
           expectedHitSize: hit_size ?? 1000,
@@ -396,6 +405,38 @@ export function registerBuildTools(server: McpServer): number {
           for (const g of est.gaps) {
             lines.push(`- **[${g.severity.toFixed(1)}/10] ${g.type}** — ${g.description}`);
             lines.push(`  - Fix: ${g.recommendation}`);
+          }
+        }
+        // ── Дерево целей на ЖИВОМ движке (Фаза 3: связка estimate ↔ whatif) ──
+        if (goals?.length) {
+          const keys = ['Level', 'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Strength', 'Dexterity', 'Intelligence', 'Spirit'];
+          // code — share-код ИЛИ XML: движок пробует оба входа честно.
+          const scenarios = goals.slice(0, 8).map((lvl) => ({ name: `lvl${lvl}`, level: lvl }));
+          const tryLive = (input: { pobCode?: string; xml?: string }) =>
+            core.pobHost.recomputeBuild({ ...input, stats: keys, scenarios });
+          let live = await tryLive({ pobCode: code });
+          if (!live.available && /декодир/i.test(live.reason ?? '')) {
+            live = await tryLive({ xml: code });
+          }
+          if (!live.available) {
+            lines.push('', '### Дерево целей (живой движок PoB)', '', `Недоступно: ${live.reason}`);
+          } else {
+            const s = live.stats;
+            const num = (v: unknown) => (typeof v === 'number' ? v : null);
+            const baseDps = num(s.TotalDPS), baseLife = num(s.Life);
+            const f = (v: unknown) => (typeof v === 'number' ? Math.round(v).toLocaleString('ru-RU') : '—');
+            lines.push('', '### Дерево целей (живой движок PoB, what-if матрица)', '');
+            lines.push(`- Baseline: уровень ${live.characterLevel ?? s.Level ?? '?'}, TotalDPS **${f(s.TotalDPS)}**, Life **${f(s.Life)}**, EHP **${f(s.TotalEHP)}**`);
+            lines.push('', '| Веха | TotalDPS | Δ DPS | Life | Δ Life | EHP |', '|---|---|---|---|---|---|');
+            for (const sc of live.scenarios ?? []) {
+              const st = sc.stats ?? {};
+              const dps = num(st.TotalDPS), life = num(st.Life);
+              const dpct = dps != null && baseDps ? `${(((dps - baseDps) / baseDps) * 100).toFixed(1)}%` : '—';
+              const lpct = life != null && baseLife ? `${(((life - baseLife) / baseLife) * 100).toFixed(1)}%` : '—';
+              const row = `| **${sc.name}** | ${f(st.TotalDPS)} | ${dpct} | ${f(st.Life)} | ${lpct} | ${f(st.TotalEHP)} |`;
+              lines.push(sc.ok ? row : `| ${sc.name} | — | — | — | — | отклонён: ${sc.errorCode ?? ''} |`);
+            }
+            lines.push('', '_Каждая веха поверх baseline (CAS-изоляция); босс-тиры и конфиг-whatif — `poe2_recompute`._');
           }
         }
         lines.push('', '_Примечания:_');
