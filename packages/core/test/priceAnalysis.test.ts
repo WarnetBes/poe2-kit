@@ -136,3 +136,51 @@ describe('analyzePricesFull', () => {
     expect(a.insights.some((s) => s.includes('растёт'))).toBe(true);
   });
 });
+
+describe('currencyContext (P6, донор vanzan-poe2scout-mcp, divine-first)', () => {
+  // Divine = 764.68 ex, живая находка №280.
+  const divineLogs: PriceLog[] = [log(764.68, 0), log(760, 1), log(750, 2)];
+  const days: DailyStat[] = [];
+
+  it('Divine 764.68 ex при divineRate≈764.68 → «764.68 exalts (~1.00 divine)»', () => {
+    const a = analyzePricesFull('Divine Orb', divineLogs, days, { divineRate: 764.68, chaosRate: 0.5 });
+    const cc = a.currencyContext!;
+    expect(cc.hasRates).toBe(true);
+    expect(cc.equivalentDivine).toBeCloseTo(1.0, 2);
+    expect(cc.displayString).toBe('764.68 exalts (~1.00 divine)');
+    // кварк донора исправлен: divine-ветка первая, chaos не «побеждает»
+    expect(cc.displayString).not.toContain('chaos');
+  });
+
+  it('дешёвый предмет → chaos-ветка: 3 ex при chaosRate 0.7 → (~4.29 chaos)', () => {
+    const a = analyzePricesFull('Exalted Shard', [log(3, 0), log(3, 1)], days, { divineRate: 764.68, chaosRate: 0.7 });
+    expect(a.currencyContext!.displayString).toBe('3 exalts (~4.29 chaos)');
+  });
+
+  it('цена ниже обоих курсов → чистые exalts', () => {
+    const a = analyzePricesFull('Whetstone', [log(0.1, 0), log(0.1, 1)], days, { divineRate: 764.68, chaosRate: 0.5 });
+    expect(a.currencyContext!.displayString).toBe('0.1 exalts');
+    expect(a.currencyContext!.hasRates).toBe(true);
+  });
+
+  it('нет курсов → hasRates:false, эквивалентов нет (no-fallback принцип)', () => {
+    const a = analyzePricesFull('Divine Orb', divineLogs, days);
+    const cc = a.currencyContext!;
+    expect(cc.hasRates).toBe(false);
+    expect(cc.equivalentChaos).toBeUndefined();
+    expect(cc.equivalentDivine).toBeUndefined();
+    expect(cc.ratesUsed).toBeUndefined();
+    expect(cc.displayString).toBe('764.68 exalts');
+  });
+
+  it('нулевой/отрицательный курс игнорируется как невалидный', () => {
+    const a = analyzePricesFull('Divine Orb', divineLogs, days, { divineRate: 0, chaosRate: -1 });
+    expect(a.currencyContext!.hasRates).toBe(false);
+  });
+
+  it('пустая история → priceInExalts null, досье не падает', () => {
+    const a = analyzePricesFull('Nonsense', [], days, { divineRate: 800 });
+    expect(a.currencyContext!.priceInExalts).toBeNull();
+    expect(a.currencyContext!.equivalentDivine).toBeUndefined();
+  });
+});

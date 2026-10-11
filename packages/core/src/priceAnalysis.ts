@@ -47,6 +47,27 @@ export interface DailyTrend {
   slopePctPerDay: number | null;
 }
 
+/**
+ * Курсы для эквивалентов (P6): цена 1 Chaos/1 Divine в базовой валюте лиги
+ * (exalted). Только живые курсы — «no fallback values» (принцип донора).
+ */
+export interface CurrencyRates {
+  chaosRate?: number;
+  divineRate?: number;
+}
+
+/** Человекочитаемый контекст цены: эквиваленты в chaos/divine + строка. */
+export interface CurrencyContext {
+  priceInExalts: number | null;
+  equivalentChaos?: number;
+  equivalentDivine?: number;
+  /** Каскад: divine-приоритет (чинит кварк донора, где почти всегда
+   *  побеждала chaos-ветка и Divine показывался «~600 chaos»). */
+  displayString: string;
+  hasRates: boolean;
+  ratesUsed?: { chaosRate?: number; divineRate?: number };
+}
+
 export interface PriceAnalysis {
   item: string;
   currentPrice: number | null;
@@ -74,6 +95,8 @@ export interface PriceAnalysis {
   };
   dailyTrend: DailyTrend;
   insights: string[];
+  /** P6: эквиваленты/строка в chaos/divine; заполняется analyzePricesFull. */
+  currencyContext?: CurrencyContext;
 }
 
 /**
@@ -166,8 +189,10 @@ export function analyzePricesFull(
   item: string,
   logs: Array<PriceLog | null | undefined>,
   daily: DailyStat[],
+  rates?: CurrencyRates,
 ): PriceAnalysis {
   const base = analyzePrices(item, logs);
+  base.currencyContext = createCurrencyContext(base.currentPrice, rates);
   const dt = analyzeDailyTrend(daily);
   base.dailyTrend = dt;
   if (dt.changePct != null) {
@@ -183,6 +208,44 @@ export function analyzePricesFull(
 }
 
 // ── внутренние (пороги — канон донора poe2scout-mcp, см. шапку) ──
+
+/**
+ * Контекст цены (P6, донор vanzan-poe2scout-mcp createCurrencyContext, MIT).
+ * Эквиваленты считаются только по живым курсам; displayString — каскад
+ * divine-first, потом chaos, иначе чистые exalts.
+ */
+function createCurrencyContext(priceInExalts: number | null, rates?: CurrencyRates): CurrencyContext {
+  const chaosRate = typeof rates?.chaosRate === 'number' && rates.chaosRate > 0 ? rates.chaosRate : undefined;
+  const divineRate = typeof rates?.divineRate === 'number' && rates.divineRate > 0 ? rates.divineRate : undefined;
+
+  const ctx: CurrencyContext = {
+    priceInExalts,
+    displayString: priceInExalts != null ? `${priceInExalts} exalts` : '—',
+    hasRates: chaosRate != null || divineRate != null,
+  };
+  if (priceInExalts == null) return ctx;
+
+  if (divineRate != null) ctx.equivalentDivine = priceInExalts / divineRate;
+  if (chaosRate != null) ctx.equivalentChaos = priceInExalts / chaosRate;
+
+  // Цена из API приходит длинным float (776.7806004284864) — в displayString
+  // округляем до 2 знаков, если есть дробная часть.
+  const shown = Number.isInteger(priceInExalts) ? String(priceInExalts) : String(Math.round(priceInExalts * 100) / 100);
+
+  // Каскад: сначала divine (дорогое → в дивайнах), потом chaos, иначе exalts.
+  if (divineRate != null && priceInExalts >= divineRate) {
+    ctx.displayString = `${shown} exalts (~${(priceInExalts / divineRate).toFixed(2)} divine)`;
+  } else if (chaosRate != null && priceInExalts >= chaosRate) {
+    ctx.displayString = `${shown} exalts (~${(priceInExalts / chaosRate).toFixed(2)} chaos)`;
+  } else {
+    ctx.displayString = `${shown} exalts`;
+  }
+  const used: { chaosRate?: number; divineRate?: number } = {};
+  if (chaosRate != null) used.chaosRate = chaosRate;
+  if (divineRate != null) used.divineRate = divineRate;
+  if (chaosRate != null || divineRate != null) ctx.ratesUsed = used;
+  return ctx;
+}
 
 function emptyAnalysis(item: string): PriceAnalysis {
   return {

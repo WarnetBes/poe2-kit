@@ -5,6 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
+import type { ModTierDossier, ParsedItem } from '@poe2-kit/core';
 import { currentDefaultLeague } from '../leagues.js';
 
 function fmtDef(def: { armour?: unknown; evasion?: unknown; energyShield?: unknown; blockChance?: unknown }): string {
@@ -18,7 +19,7 @@ function fmtDef(def: { armour?: unknown; evasion?: unknown; energyShield?: unkno
 
 /** Секция «Тиры модов» для parse_item: таблица тиров + свободные P/S-слоты
  *  (формат донора poe2-mcp-server formatEnrichmentSection, MIT). Пустое досье → ''. */
-function formatTierDossier(dossier: core.modTiers.ModTierDossier, item: core.parse.ParsedItem): string {
+function formatTierDossier(dossier: ModTierDossier, item: ParsedItem): string {
   if (!dossier.modTiers.length && !dossier.base) return '';
   const lines: string[] = ['### Тиры модов (RePoE)'];
   if (dossier.base) {

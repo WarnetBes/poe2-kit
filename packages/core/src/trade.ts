@@ -203,6 +203,22 @@ async function leagueConversion(
   return { divineInBase: dp, chaosInBase: null };
 }
 
+/**
+ * Курсы для currencyContext (P6): цена 1 Chaos / 1 Divine в базовой валюте
+ * лиги (exalted). Донор-семантика vanzan/poe2scout-mcp: rate обязан быть
+ * живым (кэш leagueConversion), никаких зашитых констант.
+ */
+export async function fetchLeagueExaltRates(
+  league?: string | null,
+): Promise<{ chaosRate: number | null; divineRate: number | null }> {
+  const conv = await leagueConversion(league);
+  return {
+    // chaosInBase = 1 exalt в chaos → 1 chaos в exalts = 1/chaosInBase.
+    chaosRate: conv.chaosInBase != null && conv.chaosInBase > 0 ? 1 / conv.chaosInBase : null,
+    divineRate: conv.divineInBase,
+  };
+}
+
 /** Перевести цену из базовой валюты лиги в Chaos Orbs. */
 export async function priceToChaos(
   priceInBase: number,

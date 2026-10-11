@@ -49,7 +49,7 @@ export function registerPriceAnalysisTools(server: McpServer): number {
   - hours (number, опц., 1..500): сколько часовых точек истории. По умолчанию 48.
   - days (number, опц., 1..90): сколько дневных свечей. По умолчанию 7.
 
-Возвращает вердикт: сигнал_buy/sell, тренд, волатильность, диапазон цен, объёмы, дневное изменение. Используйте для вопросов вида «покупать/продавать Divine сейчас?», «оседать ли в Divines», «не манипуляция ли этот скачок цены».
+Возвращает вердикт: сигнал_buy/sell, тренд, волатильность, диапазон цен, объёмы, дневное изменение, эквиваленты цены в chaos/divine (живые курсы лиги). Используйте для вопросов вида «покупать/продавать Divine сейчас?», «оседать ли в Divines», «не манипуляция ли этот скачок цены».
 `,
       inputSchema: {
         item: z.string().describe('Название валюты (или ApiId): "Divine Orb", "divine", "chaos"...'),
@@ -78,9 +78,10 @@ export function registerPriceAnalysisTools(server: McpServer): number {
           };
         }
 
-        const [hourly, daily] = await Promise.all([
+        const [hourly, daily, exaltRates] = await Promise.all([
           core.trade.fetchScoutPriceHistory(apiId, { league: L, logCount: hours ?? 48 }),
           core.trade.fetchScoutDailyStats(apiId, { league: L, dayCount: days ?? 7 }),
+          core.trade.fetchLeagueExaltRates(L),
         ]);
         if (!hourly || hourly.length === 0) {
           return {
@@ -88,7 +89,15 @@ export function registerPriceAnalysisTools(server: McpServer): number {
           };
         }
 
-        const analysis = core.priceAnalysis.analyzePricesFull(item, hourly, daily ?? []);
+        // P6 currencyContext: живые курсы лиги (кэш leagueConversion; сбой курсов
+        // НЕ валит анализ — hasRates:false, донор-паттерн basicPOE2Tools.ts:574-585).
+        // Поверх анализируемой валюты курс не подставляем (донор :550,563 —
+        // не делить предмет на себя: Chaos не показывает «~N chaos»).
+        const rates: { chaosRate?: number; divineRate?: number } = {};
+        if (exaltRates.chaosRate != null && !/chaos/i.test(apiId)) rates.chaosRate = exaltRates.chaosRate;
+        if (exaltRates.divineRate != null && !/divine/i.test(apiId)) rates.divineRate = exaltRates.divineRate;
+
+        const analysis = core.priceAnalysis.analyzePricesFull(item, hourly, daily ?? [], rates);
         const a = analysis.priceAnalysis;
         const dt = analysis.dailyTrend;
         const lines: string[] = [];
@@ -96,6 +105,10 @@ export function registerPriceAnalysisTools(server: McpServer): number {
         lines.push(`## ${item} — анализ рынка (${L})`);
         lines.push('');
         lines.push(`- Текущая цена (в базовой валюте лиги): **${analysis.currentPrice}**`);
+        const cc = analysis.currencyContext;
+        if (cc) {
+          lines.push(`- В других валютах: **${cc.displayString}**${cc.hasRates ? '' : ' (нет живых курсов — только базовая валюта)'}`);
+        }
         lines.push(`- Тренд: **${TREND_RU[a.trend] ?? a.trend}** (${a.trendStrength}), волатильность: ${LEVEL_RU[a.volatility] ?? a.volatility}`);
         lines.push(`- Диапазон за окно: ${a.priceRange.min.toFixed(2)}…${a.priceRange.max.toFixed(2)} (среднее ${a.priceRange.avg.toFixed(2)})`);
         lines.push(`- Объём: ${VOL_RU[a.volumeLevel] ?? a.volumeLevel}${analysis.marketContext.recentVolumeSpike ? ', свежий всплеск объёма' : ''}`);
