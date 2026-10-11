@@ -118,6 +118,23 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
   process; no hooks; no input. Prefer zero user32 calls at all? Overlay →
   **Ctrl+F6** → untick “Bind to game window”: the overlay pins to a screen
   corner and learns nothing about the game window (“cautious mode”).
+- **PoB oracle (headless engine).** The “🧮 PoB oracle” tab computes build
+  stats with the real PathOfBuilding-PoE2 engine in a separate local offline
+  process. The engine is an unpatched clone of the official community
+  repository that you download yourself; the kit never patches or modifies
+  it. Without a configured clone the tab honestly refuses to work — no
+  silent fallbacks.
+- **MCP tooling.** The kit ships an MCP server (75 tools) for MCP clients
+  (OpenCode etc.): a plain local process you start yourself, talking to the
+  same public APIs as the web UI. The game client is never touched: log tools
+  read only the standard game log.
+- **Works without the game installed.** Most of the kit (builds, oracle,
+  economy, levelling, tree, crafting, maps) needs no installed game — just
+  Node.js and internet. Game-dependent sections (live log, radar, overlay)
+  honestly report the missing game log instead of inventing data.
+- **Portable build.** Releases ship as a portable zip: unpack → run
+  `start-web.bat`; no installation, byte-identical to the repository build,
+  writes nothing outside its own folder.
 - **Disclaimer.** Use of third-party tools is **at your own risk**.
   Grinding Gear Games does not guarantee the safety of third-party tools and
   has not officially endorsed this project. The kit follows the same pattern
