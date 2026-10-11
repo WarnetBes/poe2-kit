@@ -71,6 +71,7 @@ export function registerMapPrepTools(server: McpServer): number {
   - tier (number, опц.): waystone-тир 1–16 (задаёт area level 65–80; точнее, чем уровень карты).
   - pob (string, опц.): PoB share-код/XML билда — статы обороны берутся существующим конвейером импорта (как poe2_evaluate_build).
   - defensiveStats (object, опц.): готовые статы {life, energyShield?, armor?, evasion?, blockChance?, fireRes?, coldRes?, lightningRes?, chaosRes?} — если PoB-кода нет под рукой.
+  - search (string[], опц.): желаемые моды waystone ДЛЯ ПОИСКА в стэше/у купца (напр. 'rare', 'fire', 'magic') — вернёт search_regex: готовую ≤45-симв. строку для вставки в поиск игры (P9: poe2-quest-tracker MIT-паттерны + оптимизатор; база 2025-12, до 0.5 — Sandbox-проверяйте).
 
 Без pob/defensiveStats вердикт строится по угрозе карты (моды/босс/уровень), персональные EHP-чеки пропускаются с честной пометкой.
 
@@ -98,6 +99,7 @@ export function registerMapPrepTools(server: McpServer): number {
           })
           .optional()
           .describe('Готовые статы обороны вместо PoB-кода'),
+        search: z.array(z.string()).optional().describe('Желаемые моды для поиска waystone (напр. "rare", "fire", "magic"): вернёт search_regex для поиска игры'),
       },
       outputSchema: {
         threat: z.any(),
@@ -105,12 +107,13 @@ export function registerMapPrepTools(server: McpServer): number {
         advice_markdown: z.string(),
         unknown_mods: z.array(z.string()),
         build_provided: z.boolean(),
+        search_regex: z.any().optional(),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ map, mods, tier, pob, defensiveStats }) => {
+    async ({ map, mods, tier, pob, defensiveStats, search }) => {
       try {
-        if ((map == null || map === '') && !mods?.length && tier == null) {
+        if ((map == null || map === '') && !mods?.length && tier == null && !search?.length) {
           return {
             content: [
               {
@@ -158,14 +161,50 @@ export function registerMapPrepTools(server: McpServer): number {
         const checks: MapPrepCheck[] = stats ? core.mapPrep.mapPrepChecklist(stats, threat) : [];
         const advice = stats ? core.mapPrep.mapPrepAdvice(stats, threat) : adviceWithoutBuild(threat);
 
+        // 4) P9 (№281-W2): search-режим — regex-строка для поиска waystone
+        //    в стэше/у купца (donor poe2-quest-tracker MIT, 2025-12, до 0.5).
+        let searchRegex: unknown = undefined;
+        let searchNote = '';
+        if (search?.length) {
+          const pool = core.dataset.getWaystoneSearchRegex();
+          const terms = search.map((t) => t.toLowerCase().trim()).filter(Boolean);
+          const matched: typeof pool = [];
+          const missed: string[] = [];
+          for (const t of terms) {
+            const hit = pool.find((e) => !matched.includes(e) && (e.id.toLowerCase().includes(t) || e.name.toLowerCase().includes(t)));
+            if (hit) matched.push(hit);
+            else missed.push(t);
+          }
+          if (matched.length) {
+            const raw = matched.length === 1 ? matched[0]!.regex : `"(${matched.map((e) => e.regex).join('|')})"`;
+            const opt = core.regexOptimizer.optimizePattern(raw);
+            searchRegex = {
+              pattern: opt.pattern,
+              length: opt.length,
+              savedChars: opt.savedChars,
+              fits: opt.fits,
+              tooLong: opt.tooLong ?? undefined,
+              matched: matched.map((e) => ({ id: e.id, name: e.name, regex: e.regex, category: e.category })),
+              missed,
+              source: 'poe2-quest-tracker (MIT), база 2025-12 (до 0.5) — сверяйте в игре',
+            };
+            searchNote = opt.fits
+              ? `\n\n**🔍 Regex для поиска (лимит 45):** \`${opt.pattern}\` (${opt.length} симв.${opt.savedChars > 0 ? `, сэкономлено ${opt.savedChars}` : ''})`
+              : `\n\n**🔍 Regex не влез в лимит 45 (${opt.length} симв.).** ${opt.tooLong!.warning}\nAND-разбиение: ${opt.tooLong!.andSplit.map((p) => `\`${p}\``).join(' затем ')}`;
+          } else {
+            searchNote = `\n\n**🔍 Готовых regex-паттернов под ${terms.join(', ')} в базе нет** (48 записей 2025-12, до 0.5). Играйте вручную или уточните термин (напр. 'rare', 'magic', 'fire', 'ign').`;
+          }
+        }
+
         const payload = {
           threat,
           checks,
           advice_markdown: advice,
           unknown_mods: threat.unknownMods,
           build_provided: stats != null,
+          ...(searchRegex ? { search_regex: searchRegex } : {}),
         };
-        const text = statsNote ? `${advice}\n\n_${statsNote}_` : advice;
+        const text = `${advice}${searchNote}${statsNote ? `\n\n_${statsNote}_` : ''}`;
         return {
           content: [{ type: 'text' as const, text }],
           structuredContent: payload,

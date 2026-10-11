@@ -138,6 +138,7 @@ import * as pobcodeMod from './pobcode.js';
 import * as resultMod from './result.js';
 import * as priceAnalysisMod from './priceAnalysis.js';
 import * as modTiersMod from './modTiers.js';
+import * as regexOptimizerMod from './regexOptimizer.js';
 import * as metaLadderMod from './metaLadder.js';
 import * as invokerGuideMod from './invokerGuide.js';
 
@@ -149,6 +150,7 @@ export const core = {
   ai,
   parse,
   modTiers: modTiersMod,
+  regexOptimizer: regexOptimizerMod,
   metaLadder: metaLadderMod,
   invokerGuide: invokerGuideMod,
   http,

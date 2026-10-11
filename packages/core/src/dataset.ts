@@ -1002,10 +1002,40 @@ export interface WaystoneModGroup {
 interface WaystoneModsDataset {
   _meta: Record<string, unknown>;
   mods: WaystoneModGroup[];
+  /** P9 (№281-W2): regex-паттерны поиска waystone-модов — poe2-quest-tracker (MIT). */
+  search_regex?: WaystoneSearchRegexEntry[];
+}
+
+/** Regex-паттерн поиска waystone-мода (P9: донор poe2-quest-tracker, 2025-12, verified=false). */
+export interface WaystoneSearchRegexEntry {
+  id: string;
+  name: string;
+  category: string;
+  regex: string;
+  isPositive: boolean;
+  difficulty?: string;
+  rewardImpact?: string;
+}
+
+/** Regex-паттерн локального поиска по типу предмета (P9: vendor-items донора). */
+export interface VendorRegexEntry {
+  id: string;
+  name: string;
+  category: string;
+  regex: string;
+  isPositive?: boolean;
+  [k: string]: unknown;
+}
+
+interface VendorRegexDataset {
+  _meta: Record<string, unknown>;
+  items: VendorRegexEntry[];
 }
 
 let mapsCache: MapEntry[] | null = null;
 let waystoneModsCache: WaystoneModGroup[] | null = null;
+let waystoneSearchRegexCache: WaystoneSearchRegexEntry[] | null = null;
+let vendorRegexCache: VendorRegexEntry[] | null = null;
 
 /** Все карты (135 записей Этапа 1; источник PoB2 WorldAreas.lua, MIT). */
 export function getMapEntries(): MapEntry[] {
@@ -1017,4 +1047,17 @@ export function getMapEntries(): MapEntry[] {
 export function getWaystoneModGroups(): WaystoneModGroup[] {
   waystoneModsCache ??= loadJson<WaystoneModsDataset>('maps/waystone_mods.json').mods;
   return waystoneModsCache;
+}
+
+/** Regex-паттерны поиска waystone-модов (P9, №281-W2: poe2-quest-tracker MIT,
+ *  48 записей 2025-12, verified=false — до 0.5-пула; complement PoB-tier-групп). */
+export function getWaystoneSearchRegex(): WaystoneSearchRegexEntry[] {
+  waystoneSearchRegexCache ??= loadJson<WaystoneModsDataset>('maps/waystone_mods.json').search_regex ?? [];
+  return waystoneSearchRegexCache;
+}
+
+/** Regex-паттерны локального поиска по предметам (P9: vendor_regex, 78 записей). */
+export function getVendorRegexPatterns(): VendorRegexEntry[] {
+  vendorRegexCache ??= loadJson<VendorRegexDataset>('trade/vendor_regex.json').items;
+  return vendorRegexCache;
 }
