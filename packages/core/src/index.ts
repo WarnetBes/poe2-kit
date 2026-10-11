@@ -11,6 +11,7 @@ export * from './parse.js';
 export * from './modTiers.js';
 export * from './metaLadder.js';
 export * from './livefilter/conditions.js';
+export * from './livefilter/rules.js';
 export * from './invokerGuide.js';
 export * from './regexOptimizer.js';
 export * from './runsTracker.js';
@@ -144,6 +145,7 @@ import * as regexOptimizerMod from './regexOptimizer.js';
 import * as runsTrackerMod from './runsTracker.js';
 import * as metaLadderMod from './metaLadder.js';
 import * as livefilterMod from './livefilter/conditions.js';
+import * as livefilterRulesMod from './livefilter/rules.js';
 import * as invokerGuideMod from './invokerGuide.js';
 
 export const core = {
@@ -158,6 +160,7 @@ export const core = {
   runsTracker: runsTrackerMod,
   metaLadder: metaLadderMod,
   livefilter: livefilterMod,
+  livefilterRules: livefilterRulesMod,
   invokerGuide: invokerGuideMod,
   http,
   log: logmod,
