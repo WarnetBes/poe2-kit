@@ -24,8 +24,8 @@
 |---|---|---|
 | **1. Хост v1 + MCP poe2_recompute** | setup-headless, pob_host.lua (ping/new_build/load_build_xml/set_level/set_config/stats), core/pobHost.ts, тул poe2_recompute, тесты | ✅ сделано (эталон Invoker 95 живьём: TotalDPS 5.99M, EHP 31 675) |
 | **2. CAS-конфиг + валидация enum** | set_config CAS: снимок `before` затронутых ключей + `restore_config`; `get_config_schema` (списки движка из Modules/ConfigOptions); невалидные enum → отказ, не no-op; авто-резисты босс-тира (Boss 30 / Pinnacle 50 / Uber 50 — апстрим в headless применяет только как GUI-плейсхолдеры); полный `snapshot_build`/`restore_build` (XML через SaveDB). Долгоживущий персист-сессия web — остаётся Фазе 3 | ✅ сделано (живьём: Uber 1.80M vs baseline 5.99M, откат точный до копейки; contract 2) |
-| **3. Интеграция с estimate/evaluate** | связка с poe2_build_estimate/compare: ручной FullDPS what-if на живом движке, дерево целей. Шаг 1 (сделан): what-if МАТРИЦА `scenarios` в poe2_recompute — один boot движка на всю матрицу (до 12 сценариев {name, config, level}), внутри хоста `methods.whatif` (contract 3): CAS-изоляция (конфиг через before, уровень через прежние characterLevel/AutoMode), точечный отказ сценария не рушит матрицу, Δ-таблица в выводе тула. Осталось: персист-сессия web (долгоживущий хост), дерево целей estimate/compare поверх матрицы | 🔶 частично (шаг 1: живьём Boss 0.0%/Pinnacle+Chaos75 −26.2%/Uber −70.0%/lvl90, изоляция доказана, clean-run = baseline) |
-| **4. Патч-конвейер и 1.0-готовность** | PINNED.md (ревизия апстрима, SHA бинарей), драйф TreeData/0_5→1.0, CI-job oracle-headless | ⬜ |
+| **3. Интеграция с estimate/evaluate** | связка с poe2_build_estimate/compare: ручной FullDPS what-if на живом движке, дерево целей. Шаг 1: what-if МАТРИЦА `scenarios` в poe2_recompute — один boot движка на всю матрицу (до 12 сценариев {name, config, level}, `methods.whatif`): CAS-изоляция, точечный отказ сценария не рушит матрицу, Δ-таблица. Шаг 2 (№461, `1a64c11`): ПЕРСИСТ-СЕССИЯ — `core/pobSession.ts` (PobSession: boot один раз → RPC ~3 мс, FIFO, ленивый рестарт; stateful-RPC с умершим движком = отказ) + serve-dist.mjs `/api/pob/{load,rpc,status}` (whitelist, честный 503 без рантайма). Шаг 3 (№461, `9c6778c`): ДЕРЕВО ЦЕЛЕЙ — poe2_build_estimate `goals` (≤8 вех) → live-whatif таблица DPS/Life/EHP + Δ | ✅ сделано (живьём: 12-сценарная смешанная матрица level+config — 0 fails, after-matrix = baseline; персист boot 2.5 с → RPC ~3 мс ×10 одним спавном; дерево целей lvl92/95/100 точными дельтами) |
+| **4. Патч-конвейер и 1.0-готовность** | PINNED.md (ревизия апстрима, SHA бинарей), драйф TreeData/0_5→1.0, CI-job oracle-headless | 🔶 частично (№461, `19495b6`): PINNED.md (v0.23.1, zip SHA256, luajit SHA-гейты, контракт 4) + кросс-платформенный selftest `oracle/headless-selftest.mjs` (Windows ОК) + CI-workflow pob-headless в .sourcecraft/ci.yaml; НЕ проверен сам Linux-CI-ран (ждёт cloud worker); TreeData/0_5→1.0-конвейер — не начат |
 
 ## Гейты каждой фазы
 
@@ -50,16 +50,20 @@ tsc 0 → vitest всё зелёное → build mcp+overlay 0 → smoke «Regis
 `recomputeBuild` обязан разворачивать это в honest unavailable, иначе мусорное
 значение конфига тихо проглатывается (старое поведение = тот же класс бага).
 
-## Что НЕ проверено (Фазы 1–3)
+## Что НЕ проверено (Фазы 1–4, №461)
 
 - Поведение на машине друга (нет клона PoB2 на F:\ — тул честно ответит available:false;
   нужен `git clone https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2` +
   `set POE2K_POB2_SRC`).
-- CI Linux-путь хоста (run-oracle.sh — существующий CI работает на старом batch-скрипте;
-  хост в CI подключается в Фазе 4).
-- Долгоживущий процесс (персист-сессия web — осталась в Фазе 3), утечки/стабильность под серией
-  запросов; многоконфигсетные билды (configSets >1) на живом движке (юнит-путь тот же).
-- Матрица `scenarios`: проверена живьём на эталоне Invoker (7 сценариев, контракт 3, CAS-откат
-  до копейки, from-scratch boot ~11 с на 5+1 прогонов) — но НЕ проверена стабильность при
-  12 сценариях с level+config вместе в одной матрице (реальная утечка исключена CAS-логикой
-  хоста, но живого прогона с полным набором не было).
+- **Первый Linux-CI-ран pob-headless** — workflow в .sourcecraft/ci.yaml ждёт запуска
+  cloud worker'ом (selftest локально на Windows против эталонного клона — ОК).
+- **Персист-сессия HTTP под конкурентной нагрузкой** — сериализация очередью доказана
+  юнит-тестами (FIFO, id-матчинг) и одним live-спавном на 10 RPC; реальная
+  мультисессия/параллельные клиенты `/api/pob/*` не гонялись.
+- **Дни-аптайм персист-сессии** — утечки luajit-хоста на длительном горизонте не мерились;
+  ленивый рестарт после краша покрыт тестами (fake child).
+- **Дрейф TreeData/0_5→1.0** — конвейер не начат (последний пункт Фазы 4).
+- Zip SHA256 v0.23.1 (aaa1ce76…c2af) — замерен 11.10.2026 один раз; codeload-архивы не
+  гарантируют побайтовую стабильность, CI печатает sha256sum для глазной сверки с PINNED.md.
+- Live-OAuth GGG-upload — блокер `POE2K_GGG_CLIENT_ID` (вне этой эпики).
+
