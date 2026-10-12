@@ -25,6 +25,7 @@ export const OVERLAY_SHELL = `<body>
       <button data-tab="craft" title="Окно крафта: план по предмету (Ctrl+C в игре), все рецепты 0.5.5, эссенции и омены">⚒ Крафт</button>
       <button data-tab="rates" title="Курсы валют по лигам: сколько стоит валюта в chaos (poe2scout + poe.ninja)">💱 Курс</button>
       <button data-tab="gen" title="Генератор билдов: живые билды топ-игроков poe.ninja по всем классам — скиллы, узлы, DPS/EHP">🧬 Билды</button>
+      <button data-tab="starterbuilds" title="Стартовые билды 0.5.5: готовые сборки для новичка — механика, стадии-бюджеты, ключевые уники, PoB (офлайн)">🧬 Стартовые</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
       <button data-tab="radar" title="Радар: live-баги патча с воркараундами и трюки механик (офлайн)">🛡 Радар</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
@@ -86,6 +87,9 @@ export const OVERLAY_SHELL = `<body>
       </div>
       <div id="genWrap" class="hide">
         <div id="genContent"></div>
+      </div>
+      <div id="starterbuildsWrap" class="hide">
+        <div id="starterbuildsContent"></div>
       </div>
       <div id="suppadvWrap" class="hide">
         <div id="suppadvContent"></div>

@@ -91,6 +91,9 @@ export interface OverlayAPI {
   /** №196-bis (S7-UI): сброс кэшей stat-матчинга (кнопка Reload в баннере
    *  «N модов не распознано»); следующий прайс-чек пойдёт с чистой мемоизацией. */
   reloadTradeStats(): Promise<unknown>;
+  /** №479: открыть PoB-ссылку стартового билда во внешнем браузере
+   *  (https-allowlist poe.ninja/pobb.in в main; CSP оверлея мёртва для <a>). */
+  openPob(url: string): Promise<unknown>;
 }
 
 const api: OverlayAPI = {
@@ -236,6 +239,7 @@ const api: OverlayAPI = {
   // №234-Э4: Map Prep мост (панель «🗺 Эндгейм» → «Вердикт карты»).
   mapPrepCheck: (payload) => ipcRenderer.invoke('mapprep:check', payload),
   reloadTradeStats: () => ipcRenderer.invoke('trade:reloadStats'),
+  openPob: (url) => ipcRenderer.invoke('starter:openpob', url),
 };
 
 contextBridge.exposeInMainWorld('poe2k', api);

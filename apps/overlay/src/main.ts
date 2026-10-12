@@ -17,6 +17,7 @@ import {
   ipcMain,
   Notification,
   screen,
+  shell,
 } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -207,7 +208,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'radar', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'starterbuilds', 'radar', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -3814,6 +3815,27 @@ function setupIPC(): void {
     statEvent('starterAscendancy:pick', asc.name);
     saveBuildState();
     sendBuildUpdate({ status: 'ready' });
+    return { ok: true };
+  });
+
+  // №479: стартовые билды (гайды 0.5.5) — данные статичны и запечены в rendererHtml
+  // (starterGuidesData.ts), IPC нужен ТОЛЬКО для PoB-ссылок: CSP оверлея
+  // (default-src 'none') запрещает навигацию, открываем в системном браузере.
+  ipcMain.handle('starter:openpob', (_e, url: unknown) => {
+    if (typeof url !== 'string' || !url) return { ok: false, error: 'нет ссылки' };
+    let u: URL;
+    try {
+      u = new URL(url);
+    } catch {
+      return { ok: false, error: 'битая ссылка' };
+    }
+    // https + allowlist host'ов PoB starter_builds.json (poe.ninja / pobb.in).
+    const hostOk = u.protocol === 'https:' &&
+      (/(^|\.)poe\.ninja$/.test(u.hostname) || /(^|\.)pobb\.in$/.test(u.hostname));
+    if (!hostOk) return { ok: false, error: `хост не разрешён: ${u.hostname}` };
+    console.log(`[overlay] starter PoB: ${u.hostname}${u.pathname}`);
+    statEvent('starterOpenPob', u.hostname);
+    void shell.openExternal(u.href);
     return { ok: true };
   });
 

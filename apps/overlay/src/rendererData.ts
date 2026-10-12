@@ -15,8 +15,19 @@ export const T_DICT: Record<string, string> = {
     '📖 Слэнг': '📖 Slang', '⚒ Крафт': '⚒ Craft', '💱 Курс': '💱 Rates',
     '🧬 Билды': '🧬 Builds', '🛡 Пиннакл': '🛡 Pinnacle', '⚙ Настройки': '⚙ Settings',
     '🛡 Радар': '🛡 Radar',
+    '🧬 Стартовые': '🧬 Starter',
     '🛡 Радар патча': '🛡 Patch radar',
     'Live-баги патча': 'Live patch bugs', 'Хитрости (трюки)': 'Tricks',
+    'Стартовые билды 0.5.5 для новичка': 'Starter builds 0.5.5 for a newcomer',
+    'Готовые сборки: механика, стадии-бюджеты, уники, PoB-ссылки. Все — офлайн, срез гайдов (НЕ живые цены).':
+      'Ready-made builds: mechanics, stage budgets, uniques, PoB links. All offline, a snapshot from guides (NOT live prices).',
+    'Механика:': 'Mechanics:',
+    'Стадии (бюджеты гайдов):': 'Stages (guide budgets):',
+    'Ключевые уники:': 'Key uniques:',
+    'PoB:': 'PoB:',
+    '← Назад ко всем билдам': '← Back to all builds',
+    'Выбери класс чипсом выше — покажу готовые сборки: механика, стадии-бюджеты, уники, PoB.':
+      'Pick a class with the chips above — I will show ready-made builds: mechanics, stage budgets, uniques, PoB.',
     'Воркараунд:': 'Workaround:', 'Как:': 'How:', 'Механизм:': 'Mechanism:',
     '🎮 Раскладка по билду': '🎮 Keybinds for build',
     'Билд не импортирован — сначала Ctrl+F3.': 'Build not imported — press Ctrl+F3 first.',
@@ -286,6 +297,10 @@ export const TAB_INFO: Record<string, { t: string; h: string; b: string[] }> = {
     radar: { t: '🛡 Радар', h: '—', b: [
       'Live-баги текущего патча: что в игре сломано сейчас + воркараунды (те же данные, что web-вкладка «Радар»).',
       'Хитрости (трюки) механик 0.5.x: как использовать, рискованность.',
-      'Работает офлайн: данные запечены в панель из ядра при сборке.' ] }
+      'Работает офлайн: данные запечены в панель из ядра при сборке.' ] },
+    starterbuilds: { t: '🧬 Стартовые', h: '—', b: [
+      'Готовые стартовые сборки 0.5.5 для новичка (18 билдов, те же данные, что web-вкладка «🧬 Билды» и MCP-тул poe2_starter_builds).',
+      'По каждому билду: механика, стадии с бюджетами гайдов (что покупать), ключевые уники, PoB-ссылки (клик — браузер).',
+      'Чипсы классов — мышь, без клавиатуры. Работает офлайн: данные запечены в панель из ядра при сборке; цены — срез гайдов, НЕ живые.' ] }
   };
 

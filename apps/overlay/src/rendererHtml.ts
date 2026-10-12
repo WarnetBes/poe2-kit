@@ -6,6 +6,7 @@
 import { T_DICT, CRAFT_SYSTEMS, TAB_INFO } from './rendererData.js';
 import { SLANG_SECTIONS, SLANG_GLOSSARY } from '@poe2-kit/core';
 import { liveIssues, listKnownTricks } from '@poe2-kit/core';
+import { compactStarterBuildGuides, compactStarterClasses, compactStarterMeta } from './starterGuidesData.js';
 import { OVERLAY_CSS } from './rendererCss.js';
 import { OVERLAY_SHELL } from './rendererShell.js';
 
@@ -272,6 +273,7 @@ ${OVERLAY_SHELL}<script>
     $('importWrap').classList.toggle('hide', mode !== 'import');
     $('suppadvWrap').classList.toggle('hide', mode !== 'suppadv');
     $('radarWrap').classList.toggle('hide', mode !== 'radar');
+    $('starterbuildsWrap').classList.toggle('hide', mode !== 'starterbuilds');
     updateScrollCtl();
   }
 
@@ -279,7 +281,7 @@ ${OVERLAY_SHELL}<script>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap', 'radarWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap', 'radarWrap', 'starterbuildsWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -505,6 +507,132 @@ ${OVERLAY_SHELL}<script>
     $('itemName').textContent = '🛡 Радар патча';
     showMode('radar');
     renderRadarTab();
+    requestSize();
+  }
+  // ─── Вкладка «🧬 Стартовые» (№479): готовые сборки новичка 0.5.5 ────────────
+  // Данные — компактификатор starterGuidesData.ts поверх core.starterBuildGuides,
+  // запечены JSON-инжектом при сборке (паттерн №262 RADAR_LIVE): ноль IPC на
+  // данные, ноль сети, офлайн-вкладка. Поиск не заводим — UX оверлея mouse-only
+  // (№134/№133): фильтр — чипсы классов. PoB-ссылки открываются по IPC
+  // starter:openpob (CSP default-src 'none' запрещает навигацию из оверлея).
+  var STARTER_GUIDES = ${JSON.stringify(compactStarterBuildGuides(), null, 2)};
+  var STARTER_CLASSES = ${JSON.stringify(compactStarterClasses(), null, 2)};
+  var STARTER_META = ${JSON.stringify(compactStarterMeta(), null, 2)};
+  var STARTER_STAGE_LABEL = { starter: 'Старт', mid: 'Мид', main: 'Мейн', max: 'Макс' };
+  var starterFilter = 'all'; // 'all' | class_ru — чипс
+  var starterSel = null;     // id выбранного билда | null — список
+  function starterChips() {
+    var chips = [['all', 'Все (' + STARTER_GUIDES.length + ')']].concat(STARTER_CLASSES.map(function (c) {
+      return [c.ru, c.ru + ' (' + c.total + ')'];
+    }));
+    return '<div class="tree-chips">' + chips.map(function (s) {
+      return '<button class="tree-chip' + (starterFilter === s[0] ? ' on' : '') + '" data-sb="' + esc(s[0]) + '">' + esc(s[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+  function starterCard(g) {
+    var html = '<button class="tabbtn" id="starterBack" style="margin:4px 0">← Назад ко всем билдам</button>' +
+      '<div class="sub-h sub" style="margin-top:2px">' + esc(g.t) + '</div>' +
+      '<div class="sub">' + esc(g.cls) + (g.asc ? ' · ' + esc(g.asc) : '') +
+      ' · скилл: <b>' + esc(g.main) + '</b>' + (g.mainLvl ? ' (гем ур. ' + g.mainLvl + ')' : '') + '</div>';
+    if (g.warn) html += '<div class="err-box">⚠ ' + esc(g.warn) + '</div>';
+    if (g.variant) html += '<div class="lvl-hint"><b>Вариант:</b> ' + esc(g.variant) + '</div>';
+    html += '<div class="lvl-hint"><b>Механика:</b> ' + esc(g.mech) + '</div>';
+    if (g.stages.length) {
+      html += '<div class="sub-h sub">Стадии (бюджеты гайдов):</div><table class="bld">';
+      for (var si = 0; si < g.stages.length; si++) {
+        var st = g.stages[si];
+        var cost = st.cost ? '<b>' + esc(st.cost) + '</b>' : '<span class="sub">цена не опубликована</span>';
+        if (st.rub) cost += ' <span class="sub" title="₽-прайс витрины УСЛУГ lootkeeper — НЕ стоимость гира">витрина: ' + esc(st.rub) + '</span>';
+        if (st.note) cost += ' <span class="sub">(' + esc(st.note) + ')</span>';
+        html += '<tr><td class="slot">' + esc(STARTER_STAGE_LABEL[st.k] || st.k) + '</td><td>' + cost +
+          (st.delta ? '<br><span class="sub">' + esc(st.delta) + '</span>' : '') + '</td></tr>';
+      }
+      html += '</table>';
+    }
+    if (g.uniques.length) {
+      html += '<div class="sub-h sub">Ключевые уники:</div><div class="starter-row">';
+      for (var ui = 0; ui < g.uniques.length; ui++) {
+        var u = g.uniques[ui];
+        html += '<span class="starter-btn" title="' + esc(u.note || '') + '">' + esc(u.name) +
+          (u.note ? ' ❓' : '') + '</span>';
+      }
+      html += '</div>';
+    }
+    if (g.pobs.length) {
+      html += '<div class="sub-h sub">PoB:</div><div class="starter-row">';
+      for (var pi = 0; pi < g.pobs.length; pi++) {
+        html += '<button class="tree-chip" data-sbp="' + esc(g.pobs[pi]) + '">PoB ' + (pi + 1) + '</button>';
+      }
+      html += '</div>';
+    }
+    return html;
+  }
+  function renderStartersTab() {
+    var host = $('starterbuildsContent');
+    if (!host) return;
+    var html = '';
+    if (starterSel) {
+      var g = null;
+      for (var gi = 0; gi < STARTER_GUIDES.length; gi++) {
+        if (STARTER_GUIDES[gi].id === starterSel) { g = STARTER_GUIDES[gi]; break; }
+      }
+      html = g ? starterCard(g) : '<div class="lvl-hint">Билд не найден.</div>';
+    } else {
+      html = starterChips() +
+        '<div class="slang-hint">Выбери класс чипсом выше — покажу готовые сборки: механика, стадии-бюджеты, уники, PoB.</div>';
+      var shown = 0;
+      for (var bi = 0; bi < STARTER_GUIDES.length; bi++) {
+        var b = STARTER_GUIDES[bi];
+        if (starterFilter !== 'all' && b.cls !== starterFilter) continue;
+        shown++;
+        var anyCost = null;
+        for (var ci = 0; ci < b.stages.length; ci++) if (b.stages[ci].cost) { anyCost = b.stages[ci].cost; break; }
+        html += '<div class="slang-row" data-sbi="' + esc(b.id) + '" style="cursor:pointer">' +
+          '<div class="slang-term">' + esc(b.t) + (b.warn ? ' <span style="color:#d05555">⚠</span>' : '') + '</div>' +
+          '<div class="slang-def">' + esc(b.cls) + (b.asc ? ' · ' + esc(b.asc) : '') +
+          ' · <b>' + esc(b.main) + '</b>' +
+          (anyCost ? ' · от <b>' + esc(anyCost) + '</b>' : '') + '</div></div>';
+      }
+      if (!shown) html += '<div class="lvl-hint">Билдов этого класса нет.</div>';
+      html += '<div class="sub" style="color:#9aa4b0;margin-top:6px">' + esc(STARTER_META.patch || '0.5.5') +
+        ' · срез гайдов ' + esc(STARTER_META.asOf || '—') + ' · цены НЕ живые (оффлайн-выжимка core.starterBuildGuides)</div>';
+    }
+    host.innerHTML = html;
+    var chipEls = host.querySelectorAll('[data-sb]');
+    for (var c0 = 0; c0 < chipEls.length; c0++) {
+      chipEls[c0].addEventListener('click', function () {
+        starterFilter = this.getAttribute('data-sb');
+        renderStartersTab();
+      });
+    }
+    var rowEls = host.querySelectorAll('[data-sbi]');
+    for (var r0 = 0; r0 < rowEls.length; r0++) {
+      rowEls[r0].addEventListener('click', function () {
+        starterSel = this.getAttribute('data-sbi');
+        renderStartersTab();
+      });
+    }
+    var pobEls = host.querySelectorAll('[data-sbp]');
+    for (var p0 = 0; p0 < pobEls.length; p0++) {
+      pobEls[p0].addEventListener('click', function () {
+        var url = this.getAttribute('data-sbp');
+        if (url) window.poe2k.openPob(url).catch(function () {});
+      });
+    }
+    var back = host.querySelector('#starterBack');
+    if (back) back.addEventListener('click', function () {
+      starterSel = null;
+      renderStartersTab();
+    });
+  }
+  function showStartersView() {
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    var h = $('priceHead');
+    if (h) h.classList.remove('hide');
+    $('itemName').textContent = '🧬 Стартовые билды 0.5.5 для новичка';
+    showMode('starterbuilds');
+    renderStartersTab();
     requestSize();
   }
   var craftCatalog = null; // кэш ответа craft:catalog
@@ -2776,6 +2904,7 @@ ${OVERLAY_SHELL}<script>
     ['craft', '⚒ Крафт'],
     ['rates', '💱 Курс'],
     ['gen', '🧬 Билды'],
+    ['starterbuilds', '🧬 Стартовые'],
     ['pinnacle', '🛡 Пиннакл'],
     ['radar', '🛡 Радар'],
     ['settings', '⚙ Настройки'],
@@ -3225,6 +3354,8 @@ ${OVERLAY_SHELL}<script>
           showImportView(); // №101: свой вью; запуск импорта — кнопкой/Ctrl+F3
         } else if (tab === 'radar') {
           showRadarView(); // №262: live-баги/трюки — офлайн, данные запечены
+        } else if (tab === 'starterbuilds') {
+          showStartersView(); // №479: стартовые билды — офлайн, данные запечены
         } else {
           window.poe2k.panelOpen(tab).catch(function () {});
         }

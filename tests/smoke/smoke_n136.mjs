@@ -21,7 +21,7 @@ ok(/topSkills/.test(render) && /topPassives/.test(render) && /medianDps/.test(re
 ok(/genWrap::-webkit-scrollbar/.test(render), 'renderer: скроллбар genWrap');
 ok(/buildgen:meta/.test(main), 'main: хендлер buildgen:meta');
 ok(/searchLadderBuilds/.test(main) && /parseNinjaNumber/.test(main), 'main: core.ladder-источники');
-ok(/'rates', 'gen', 'radar', 'settings'/.test(main), 'main: PANEL_TABS rates+gen+radar');
+ok(/'rates', 'gen', 'starterbuilds', 'radar', 'settings'/.test(main), 'main: PANEL_TABS rates+gen+starterbuilds+radar');
 ok(/data-tab="radar"/.test(render) && /showRadarView/.test(render), 'main: радар-вкладка №262 (кнопка + вью)');
 ok(/BUILDGEN_TTL_MS/.test(main), 'main: кэш 30 мин');
 ok(/genLeague = null; \/\/ классы/.test(main) === false, 'main: без мусорных комментариев (не проверяем)'),
