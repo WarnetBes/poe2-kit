@@ -21,7 +21,14 @@ ok(/topSkills/.test(render) && /topPassives/.test(render) && /medianDps/.test(re
 ok(/genWrap::-webkit-scrollbar/.test(render), 'renderer: скроллбар genWrap');
 ok(/buildgen:meta/.test(main), 'main: хендлер buildgen:meta');
 ok(/searchLadderBuilds/.test(main) && /parseNinjaNumber/.test(main), 'main: core.ladder-источники');
-ok(/'rates', 'gen', 'starterbuilds', 'radar', 'settings'/.test(main), 'main: PANEL_TABS rates+gen+starterbuilds+radar');
+// Устойчивая проверка PANEL_TABS (урок №487): точная строка ломается от каждой
+// новой вкладки. Извлекаем лист и проверяем вхождение каждого литерала отдельно.
+const panelTabsLine = main.match(/const PANEL_TABS[^\n]+/)?.[0] || '';
+ok(/'starterbuilds'/.test(panelTabsLine), 'main: PANEL_TABS starterbuilds (NS487)');
+ok(/'gen'/.test(panelTabsLine) && /'radar'/.test(panelTabsLine), 'main: PANEL_TABS gen+radar');
+ok(/starterbuilds'?: {t:|data-tab="starterbuilds"/.test(render), 'renderer: вкладка «Стартовые» (кнопка)');
+ok(/starter:openpob/.test(main) && /poe\.ninja/.test(main) && /pobb\.in/.test(main), 'main: IPC starter:openpob + allowlist PoB');
+
 ok(/data-tab="radar"/.test(render) && /showRadarView/.test(render), 'main: радар-вкладка №262 (кнопка + вью)');
 ok(/BUILDGEN_TTL_MS/.test(main), 'main: кэш 30 мин');
 ok(/genLeague = null; \/\/ классы/.test(main) === false, 'main: без мусорных комментариев (не проверяем)'),
