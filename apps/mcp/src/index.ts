@@ -40,6 +40,7 @@ import { registerLiveFilterTools } from './tools/liveFilter.js';
 import { registerItemFilterUploadTools } from './tools/itemFilterUpload.js';
 import { registerItemVerdictTools } from './tools/itemVerdict.js';
 import { registerRecomputeTools } from './tools/recompute.js';
+import { registerStarterBuildsTools } from './tools/starterBuilds.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -90,6 +91,7 @@ export function buildServer(): number {
   count += registerItemFilterUploadTools(server);
   count += registerItemVerdictTools(server);
   count += registerRecomputeTools(server);
+  count += registerStarterBuildsTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;

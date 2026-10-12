@@ -1,0 +1,2252 @@
+{
+  "_meta": {
+    "version": 1,
+    "league": "Forbidden Rites",
+    "patch": "0.5.5",
+    "as_of": "2026-10-12",
+    "sources": [
+      "guides.lootkeeper.com (RU-гайды 0.5.x)",
+      "maxroll.gg (Palsteron, Velyna, manni)",
+      "poe2db.tw /us/ + /ru/ (RU-канон имён)",
+      "poe.ninja (PoB-коды, ладдер)",
+      "_research/* (журнал №471-№477)",
+      "_research/starter_pob_decode_2026-10-12.md (декод 31 PoB, журнал №482)",
+      "_research/gap479_stage_costs_2026-10-12.md (₽-прайсы витрины, журнал №484)"
+    ],
+    "note": "Курируемые стартовые/продаваемые билды PoE2 0.5.x. Цены стадий - где опубликованы гайдами (Div = 9.45-10.4 chaos на 12.10.26); неопубликованные - честно null. EN-канон ставился только при сверке poe2db/maxroll/гайдом, иначе только RU (или только EN для lootkeeper-уников без RU-локализации в выжимках). «Титан Вихревой налёт» - фейк-позиция продавца, НЕ билд: см. warning в titan-earthshatter. Стадии (starter/mid/main/max) - бюджеты эндгейма (PoB-стадии L75-100), НЕ прокачка: левелинг - отдельные PoB (23380 L16, 20981 L46, 1d7ee L62 - tree-only, гемов не содержат; 27e85 - ED, 20a6a - Entangle). Поле lootkeeper_rub - ₽-прайс витрины УСЛУГ lootkeeper (надбавка к базе 1 ₽, срез 12.10.2026), НЕ стоимость гира; дропдаун лиги витрины - «Руны Альдура»/«Стандарт», НЕ Forbidden Rites."
+  },
+  "builds": [
+    {
+      "id": "druid-oracle-grim-pillars",
+      "title_ru": "Оракул: Колдующие тотемы и Ужасные столпы (Grim Pillars)",
+      "title_en": "Oracle Grim Pillars Spell Totem",
+      "class_ru": "Друид",
+      "class_en": "Druid",
+      "ascendancy_ru": "Оракул",
+      "ascendancy_en": "Oracle",
+      "author": "Palsteron (maxroll)",
+      "main_skill": {
+        "ru": "Колдующий тотем → Ужасные столпы",
+        "en": "Spell Totem → Grim Pillars",
+        "gem_level": 14,
+        "note": "Spell Totem держится РОВНО на L14 после 4-го восхождения (лимит тотема 1→2 при L14+); детонация столпов через Оплетание (Entangle) + Прокусывающий мороз I (Biting Frost I); Ancestral Bond - урон только от тотемов"
+      },
+      "supports": [],
+      "ascendancy_order": [
+        {
+          "ru": "Незримый путь"
+        },
+        {
+          "ru": "Меньшее зло"
+        },
+        {
+          "ru": "Насильственный результат"
+        },
+        {
+          "ru": "Безымянная сердцевина"
+        }
+      ],
+      "key_uniques": [],
+      "gear_tips": {
+        "spirit": "цели по духу: 75 / 150 / 225 / 300",
+        "defense": "эндгейм - респек в CI (атрибут-инверт)"
+      },
+      "mechanics_ru": "Тотемная артиллерия: Spell Totem L14+ второй тотем без штрафа духа, Grim Pillars ставят ice-кристаллы (Runic Ward тотемом не платится), детонация связкой Entangle + Biting Frost I. Ancestral Bond выключает собственный урон - весь DPS от тотемов. Эндгейм - респек в CI. Порядок восхождений выверен автором гайда (maxroll, Palsteron).",
+      "pros": [
+        "тотемы воюют сами",
+        "мета-архетип Oracle (8926 билдов в ладдере forbiddenrites, Grim Pillars в топе скиллов)",
+        "заметный в топах poe.ninja"
+      ],
+      "cons": [
+        "тотемный геймплей - не всем нравится",
+        "строгий уровень камня (L14, апгрейд ломает лимит)",
+        "цены стадий в гайде не опубликованы"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "note": "н/д (гайд без лейст-прайсов)"
+        },
+        "mid": {
+          "cost": null
+        },
+        "main": {
+          "cost": null,
+          "lootkeeper_rub": "+2990 ₽"
+        },
+        "max": {
+          "cost": null,
+          "delta": "CI-респек эндгейм",
+          "lootkeeper_rub": "+7290 ₽"
+        }
+      },
+      "pob_links": [],
+      "sources": [
+        "maxroll.gg (Palsteron, Grim Pillars Spell Totem Oracle)",
+        "журнал №474",
+        "lootkeeper.com/ru/poe2/orakl-kolduyushchij-totem (₽-прайс витрины, журнал №484)"
+      ]
+    },
+    {
+      "id": "druid-oracle-entangle",
+      "title_ru": "Оракул через Оплетание и Растительные взрывы",
+      "title_en": "Oracle Entangle + Thunderstorm",
+      "class_ru": "Друид",
+      "class_en": "Druid",
+      "ascendancy_ru": "Оракул",
+      "ascendancy_en": "Oracle",
+      "author": "Velyna (maxroll)",
+      "main_skill": {
+        "ru": "Оплетание",
+        "en": "Entangle",
+        "gem_level": 20,
+        "note": "Entangle + Гроза (Thunderstorm) = взрывы Overgrown; по боссам - Молотящие лианы (Thrashing Vines, Plant, физ 5-151, крит 10%)"
+      },
+      "supports": [],
+      "ascendancy_order": [],
+      "key_uniques": [
+        {
+          "ru": null,
+          "en": "Atalui's Bloodletting",
+          "note": "дорогой саппорт-камень каста за жизнь, ~пара Div"
+        },
+        {
+          "ru": null,
+          "en": "Tecrod's Gaze",
+          "note": "уник-камень семейства Текрода (тип gem/jewel в выжимке не сверен)"
+        },
+        {
+          "ru": null,
+          "en": "Undying Hate",
+          "note": "каст за жизнь"
+        }
+      ],
+      "gear_tips": {
+        "defense": "MoM (Mana on Mind?) + Eldritch Battery: каст за жизнь/щиты",
+        "spirit": "н/д"
+      },
+      "mechanics_ru": "Растения-мины: Оплетание вешает ростки, Гроза детонирует их цепными Overgrown-взрывами (зачистка экранами), боссы - Молотящие лианы. Защита построена на MoM + Eldritch Battery: каст идёт «за жизнь», компенсируется регенерацией. Entangle - один из топ-скиллов Oracle в ладдере poe.ninja (8926 билдов).",
+      "pros": [
+        "цепная зачистка экранами",
+        "бюджетные конверты магических колец",
+        "топ-скилл меты своей асценденси"
+      ],
+      "cons": [
+        "каст за жизнь требует контроля HP",
+        "точный лес пассивок чувствителен к ошибкам",
+        "цены стадий не опубликованы (только Bloodletting ~2 Div)"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "lootkeeper_rub": "+2890 ₽"
+        },
+        "mid": {
+          "cost": null,
+          "note": "фрагментарно: Atalui's Bloodletting ~2 Div",
+          "lootkeeper_rub": "+3190 ₽"
+        },
+        "main": {
+          "cost": null,
+          "lootkeeper_rub": "+6590 ₽"
+        },
+        "max": {
+          "cost": null
+        }
+      },
+      "pob_links": [],
+      "sources": [
+        "maxroll.gg (Velyna, Entangle Oracle)",
+        "журнал №474",
+        "lootkeeper.com/ru/poe2/orakl-kaster-rasteniya (₽-прайс витрины, журнал №484)"
+      ]
+    },
+    {
+      "id": "druid-shaman-bear-calamity",
+      "title_ru": "Шаман: Медведь-Катастрофа (Demon Calamity)",
+      "title_en": "Shaman Bear Demon Calamity (Maul / Walking Calamity)",
+      "class_ru": "Друид",
+      "class_en": "Druid",
+      "ascendancy_ru": "Шаман",
+      "ascendancy_en": "Shaman",
+      "author": "Palsteron (maxroll)",
+      "main_skill": {
+        "ru": "Удар молотом / Яростный удар → Ходячая катастрофа",
+        "en": "Maul / Furious Slam → Walking Calamity",
+        "gem_level": 20,
+        "note": "Fury of the King конвертирует в Molten Crash (лавовый прыжок-удар); связка требует дорогих камней Fury of the King + Rakiata's Flow"
+      },
+      "supports": [
+        {
+          "ru": "Буйство",
+          "en": "Rampage",
+          "note": "⚠ ОПЦИОНАЛ, сам автор гайда его НЕ играет; Tier 11, медведь-чардж 5 свирепости/сек, 2.5с бесплатно"
+        }
+      ],
+      "ascendancy_order": [],
+      "key_uniques": [],
+      "gear_tips": {
+        "fury": "свирепость - топливо формы, +3 к максимуму свирепости узлом Шамана"
+      },
+      "mechanics_ru": "Медведь-трансформ: копишь свирепость (шаман +3 к максимуму), вхожишь в Walking Calamity, Fury of the King превращает удары в Molten Crash - лавовый AoE-слэм с прыжком. Rampage (чардж) автор держит ОПЦИОНАЛЬНЫМ - билд полного урона и без него. Дорогие компоненты: Fury of the King, Rakiata's Flow («дорого», без цифр).",
+      "pros": [
+        "брутальный мид-ренж слэм-геймплей",
+        "шибко масштабируется формой",
+        "свежая асценденси 0.5 (Shaman 1598 билдов, растёт)"
+      ],
+      "cons": [
+        "Rampage автора - «на любителя»",
+        "нужны дорогие уники/камни стадии",
+        "цены стадий не опубликованы"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "lootkeeper_rub": "+2890 ₽"
+        },
+        "mid": {
+          "cost": null,
+          "lootkeeper_rub": "+3190 ₽"
+        },
+        "main": {
+          "cost": null,
+          "note": "Fury of the King + Rakiata's Flow - «дорого», без цифр",
+          "lootkeeper_rub": "+4690 ₽"
+        },
+        "max": {
+          "cost": null
+        }
+      },
+      "pob_links": [],
+      "sources": [
+        "maxroll.gg (Palsteron, Demon Calamity Bear Shaman)",
+        "журнал №474",
+        "lootkeeper.com/ru/poe2/medved-shaman-bujstvo (₽-прайс витрины, журнал №484)"
+      ]
+    },
+    {
+      "id": "chronomancer-incinerate-chaos-dot",
+      "title_ru": "Хрономант через Испепеление и Хаос ДоТ",
+      "title_en": "Chronomancer Incinerate + Chaos DoT (Sorceress)",
+      "class_ru": "Чародейка",
+      "class_en": "Sorceress",
+      "ascendancy_ru": "Хрономант",
+      "ascendancy_en": "Chronomancer",
+      "seller_note": "Продавец продаёт как «Ведьму» - фактически класс Чародейка (сам гайд называется «Билд на Чародейку»)",
+      "main_skill": {
+        "ru": "Испепеление",
+        "en": "Incinerate",
+        "gem_level": 20,
+        "note": "20→21 в максимальной; воспламенение конвертировано в хаос через Blackflame; зачистка: Похищение сущности (Essence Drain) + Инфекция (Contagion); ❓ декод №482: в main-связках всех стадийных PoB - Despair/ED + Contagion (20059/2005a - Despair 19, 22301 - Essence Drain 20, 22300 - Despair 20), Incinerate в декодированных связках не найден; keystones Whispers of Doom + Blackflame Covenant"
+      },
+      "supports": [
+        {
+          "ru": "Очищающее пламя",
+          "en": "Scouring Flame"
+        },
+        {
+          "ru": "Разрастание II",
+          "en": "Burgeon II"
+        },
+        {
+          "ru": "Извлечение",
+          "en": "Extraction"
+        },
+        {
+          "ru": "Вдумчивое сотворение",
+          "en": "Considered Casting"
+        },
+        {
+          "ru": "Средоточие",
+          "en": "Concentrated Area"
+        },
+        {
+          "ru": "Зенит II",
+          "en": "Zenith II"
+        },
+        {
+          "ru": "Стремительный недуг II",
+          "en": "Swift Affliction II"
+        },
+        {
+          "ru": "Цепь III",
+          "en": "Chain III"
+        },
+        {
+          "ru": "Увеличенная область II",
+          "en": "Magnified Area II"
+        },
+        {
+          "ru": "Интенсивная агония",
+          "en": "Intense Agony"
+        },
+        {
+          "ru": "Переизбыток II",
+          "en": "Overabundance II"
+        },
+        {
+          "ru": "Возвышенное проклятие",
+          "en": "Heightened Curse"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Наивысшая точка",
+          "en": "Apex of the Moment",
+          "note": "защита; альтернатива - Зыбучие песочные часы (Quicksand Hourglass) под зачистку"
+        },
+        {
+          "ru": "Безграничный повтор",
+          "en": "Unbound Encore"
+        },
+        {
+          "ru": "Высшее управление",
+          "en": "Ultimate Command",
+          "note": "даёт Остановку времени (Time Freeze)"
+        },
+        {
+          "ru": "Призрачная форма",
+          "en": "Phased Form"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Чёрное пламя",
+          "en": "Blackflame",
+          "note": "Amethyst Ring; поджог наносит урон хаосом; +80-100% Ignite Magnitude; Wither не истекает на подожжённых; ОБЯЗАТЕЛЕН"
+        },
+        {
+          "ru": "Призма убеждений",
+          "en": "Prism of Belief",
+          "note": "+1..+3 к ED или Incinerate"
+        },
+        {
+          "ru": "Из ничего",
+          "en": "From Nothing",
+          "note": "самоцвет-множитель, основная+ версия"
+        },
+        {
+          "ru": "Латунный свод",
+          "en": "The Brass Dome",
+          "note": "макс. версия, 1800+ барьера"
+        },
+        {
+          "ru": "Волшебная кровь",
+          "en": "Mageblood",
+          "note": "опция максимальной версии"
+        }
+      ],
+      "gear_tips": {
+        "attr": "157 Int / 55 Dex / 40 Str",
+        "spirit": "85 (Богохульство+Путы времени 55 + Истощающее присутствие 30)",
+        "weapon": "посох +N Chaos Spell Gems / 2-й набор: жезл +N Fire Spell Gems",
+        "helmet_rune": "Идол Ишты (Idol of Eeshta) в шлем - снижение стоимости маны"
+      },
+      "mechanics_ru": "Зачистка: Инфекция + Похищение сущности (эпидемия ДоТ - смерть заражённого переносит все ДоТ на соседей). Боссы: Испепеление (ченнел-огонь, Ignited Ground 8 сек) с хаос-конверсией через кольцо Чёрное пламя + Wither; фишка билда - Остановка времени (Time Freeze, заморозка боссов) и Момент времени (Time Snap) для отката. Богохульство+Путы времени замедляет и продлевает ДоТ. Прокачка: акты на Contagion+Entangle/Spark → ED, со 2-го акта - Возвышение Ученицы Варашты до ~65 уровня, потом респек в Хрономанта.",
+      "pros": [
+        "универсален (зачистка + боссы без свапа)",
+        "Time Freeze - уникальный босс-киллер",
+        "SSF-дружелюбен",
+        "бюджетный старт"
+      ],
+      "cons": [
+        "много кнопок (Инфекция+ED+чучело+Тайм-фриз)",
+        "босс-урон требует правильной подачи",
+        "не одна кнопка"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "20-50 chaos",
+          "delta": "Blackflame + редкий жезл, до т15 (PoB 20059); декод №482: PoB 20059 (L89) - Отчаяние 19 + Инфекция 19"
+        },
+        "mid": {
+          "cost": "5-10 Divine",
+          "delta": "переходное оружие, Призма убеждений +2, пояс Воцарившаяся тьма (PoB 2005a); декод №482: PoB 2005a (L89) - Отчаяние 19 + Инфекция 19"
+        },
+        "main": {
+          "cost": "50-80 Divine",
+          "delta": "Из ничего, амулет +3 спеллы, ED/Incinerate 20/20q (PoB 22301); декод №482: Essence Drain 20 + Инфекция 20 (L92)"
+        },
+        "max": {
+          "cost": "110-250+ Divine",
+          "delta": "камни 21, Призма +3, Латунный свод, опция Волшебная кровь (PoB 22300); декод №482: Отчаяние 20 + Инфекция 20 (L91)"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/22300",
+        "https://poe.ninja/poe2/pob/22301",
+        "https://poe.ninja/poe2/pob/2005a",
+        "https://poe.ninja/poe2/pob/20059",
+        "https://poe.ninja/poe2/pob/20a6a"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-hronomant-ispepelenie-haos-dot",
+        "poe2db.tw/us/Blackflame",
+        "журнал №475",
+        "журнал №482 (декод PoB). PoB 20a6a - левелинг: Ученица Варашты (Disciple of Varashta) L65, Оплетание 4 + Инфекция 4, не Хрономант (уточнение №482 поверх мех. описания, дыр не вводит)"
+      ]
+    },
+    {
+      "id": "spark-stormweaver-mana-remnants",
+      "title_ru": "Ткач бурь через Искру и Сгустки маны",
+      "title_en": "Stormweaver Spark + Mana Remnants",
+      "class_ru": "Чародейка",
+      "class_en": "Sorceress",
+      "ascendancy_ru": "Ткач бурь",
+      "ascendancy_en": "Stormweaver",
+      "main_skill": {
+        "ru": "Искра",
+        "en": "Spark",
+        "gem_level": 20,
+        "note": "второй скилл - Сфера бурь (Orb of Storms); «Сгустки» = Mana Remnants, НЕ Orb of Storms"
+      },
+      "supports": [
+        {
+          "ru": "Высвобождение",
+          "en": "Unleash"
+        },
+        {
+          "ru": "Быстрое сотворение I",
+          "en": "Swift Cast I"
+        },
+        {
+          "ru": "Ускорение снарядов II",
+          "en": "Projectile Acceleration II"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Бесконечный шторм"
+        },
+        {
+          "ru": "Память о буре"
+        },
+        {
+          "ru": "Отражённое насыщение / Сила воли"
+        },
+        {
+          "ru": "Бьёт дважды"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Вдовья доля",
+          "en": "Widowhail",
+          "note": "лук, 200-280% эффекта квиверных камней"
+        },
+        {
+          "ru": "Накидка непокорности",
+          "en": "Cloak of Defiance",
+          "note": "мана в защиту"
+        },
+        {
+          "ru": "Виртуозность Малигаро",
+          "en": "Maligaro's Virtuosity",
+          "note": "фикс. крит 50% (Lucky до капа)"
+        },
+        {
+          "ru": "Зов братьев",
+          "en": "Call of the Brotherhood",
+          "note": "конверт молнии в холод на старте"
+        },
+        {
+          "ru": "Находчивость",
+          "en": "Ingenuity",
+          "note": "пояс"
+        },
+        {
+          "ru": "Из ничего",
+          "en": "From Nothing",
+          "note": "самоцвет на асценденси-узлы"
+        },
+        {
+          "ru": "Управляемый метаморфоз",
+          "en": "Controlled Metamorphosis",
+          "note": "самоцвет"
+        }
+      ],
+      "gear_tips": {
+        "spirit": "резервы 151 дух: Архимаг 91 + Сгустки маны 20 + Управление зарядами 30",
+        "runes": "Великого вола (воля), Ядро душ Азкапы (дух), Фенумы (крит-перчатки)"
+      },
+      "mechanics_ru": "Мистический накопитель (Eldritch Battery) + мана-стаки через «Сгустки маны» (Mana Remnants); Архимаг конвертирует мана-стаки в урон. Искра + Высвобождение мультиплицирует снаряды, Сфера бурь - второй скилл. Мана-кост фактически нулевой. Spark заметен в топ-100 DPS poe.ninja (~9%, у Infernalist/Gemling).",
+      "pros": [
+        "дешёвый старт",
+        "одна кнопка зачистки",
+        "масштабируется до уберов"
+      ],
+      "cons": [
+        "зависимость от мана-стаков",
+        "хрупкость до Вдовьей доли"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "~1 Divine",
+          "delta": "PoB 20834"
+        },
+        "mid": {
+          "cost": "5-10 Divine",
+          "delta": "PoB 20832"
+        },
+        "main": {
+          "cost": "20-40 Divine",
+          "delta": "PoB 20833"
+        },
+        "max": {
+          "cost": null,
+          "note": "не указано"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/20833",
+        "https://poe.ninja/poe2/pob/20832",
+        "https://poe.ninja/poe2/pob/20834",
+        "https://poe.ninja/poe2/pob/1b399"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-tkach-bur-iskra-i-sglystki-many",
+        "журнал №476"
+      ]
+    },
+    {
+      "id": "lich-ed-contagion",
+      "title_ru": "Лич: Похищение сущности и Инфекция (Хаос ДоТ)",
+      "title_en": "Lich Essence Drain + Contagion Chaos DoT",
+      "class_ru": "Ведьма",
+      "class_en": "Witch",
+      "ascendancy_ru": "Лич",
+      "ascendancy_en": "Lich",
+      "main_skill": {
+        "ru": "Похищение сущности + Инфекция",
+        "en": "Essence Drain + Contagion",
+        "gem_level": 20,
+        "note": "Contagion сознательно L1-3 (дешёвый разносчик), ED 20/20q; второй источник - Тёмное чучело (Dark Effigy)"
+      },
+      "supports": [
+        {
+          "ru": "Увеличенная область II",
+          "en": "Magnified Area II"
+        },
+        {
+          "ru": "Высвобождение",
+          "en": "Unleash"
+        },
+        {
+          "ru": "Быстрое сотворение II",
+          "en": "Rapid Casting II"
+        },
+        {
+          "ru": "Хаотичная заморозка",
+          "en": "Chaotic Freeze"
+        },
+        {
+          "ru": "Зенит II",
+          "en": "Zenith II"
+        },
+        {
+          "ru": "Мастерство хаоса",
+          "en": "Chaos Mastery"
+        },
+        {
+          "ru": "Стремительный недуг II",
+          "en": "Swift Affliction II"
+        },
+        {
+          "ru": "Цепь III",
+          "en": "Chain III"
+        },
+        {
+          "ru": "Гнев Сионы",
+          "en": "Sione's Temper"
+        },
+        {
+          "ru": "Разлагающая порча",
+          "en": "Decaying Hex"
+        },
+        {
+          "ru": "Колдовской выброс",
+          "en": "Arcane Surge"
+        },
+        {
+          "ru": "Ритуальное проклятие",
+          "en": "Ritualistic Curse"
+        },
+        {
+          "ru": "Сила замедления",
+          "en": "Slow Potency"
+        },
+        {
+          "ru": "Переизбыток II",
+          "en": "Overabundance II"
+        },
+        {
+          "ru": "Отравление II",
+          "en": "Poison II"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Бездушная форма / Мистическое усиление",
+          "en": "Soulless Form / Eldritch Empowerment",
+          "note": "первым - при 500+ ES берётся Soulless Form"
+        },
+        {
+          "ru": "второй из них"
+        },
+        {
+          "ru": "Вечная жизнь",
+          "en": "Eternal Life"
+        },
+        {
+          "ru": "Кристальный филактерий",
+          "en": "Crystalline Phylactery"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Презрение Атзири",
+          "en": "Atziri's Disdain",
+          "note": "шлем: 10% урона мимо ES - с Eternal Life игнорируется = -10% урона"
+        },
+        {
+          "ru": "Сердце Колодца",
+          "en": "Heart of the Well",
+          "note": "самоцвет, 3+ свойства"
+        },
+        {
+          "ru": "Лик Айи",
+          "en": "Visage of Ayah",
+          "note": "только для low-life сетапа, надевается/снимается"
+        },
+        {
+          "ru": "Воцарившаяся тьма",
+          "en": "Darkness Enthroned",
+          "note": "опция-пояс"
+        },
+        {
+          "ru": null,
+          "en": "Doedre's Tenure",
+          "note": "жезл; декод №482: во всех стадийных PoB 11cab-11cad; RU-канон не сверен"
+        },
+        {
+          "ru": null,
+          "en": "Nascent Hope",
+          "note": "талисман (charm); декод №482: старт-осн. стадии"
+        }
+      ],
+      "gear_tips": {
+        "attr": "Dex 20-30 / Str 20-25",
+        "spirit": "минимум 114 (Оздоровление + Истощающее присутствие + Богохульство 20q)",
+        "weapon": "жезл +3→+5 Chaos Spell Gems; 2-й набор: посох Grants Sigil of Power + отдельное дерево проклятий; переход - Осколок солнца (Sunsplinter)",
+        "defense": "8000+ ES; -25% входящего через Eternal Life-комбо (Бездушная форма 10% + Презрение Атзири 10% + Крепкий барьер 5%)"
+      },
+      "mechanics_ru": "ED + Инфекция - хаос-ДоТ-эпидемия (смерть заражённого переносит ДоТ на соседей). Тёмное чучело стреляет доп. снарядом за каждый тип хаос-ДоТ на цели (Инфекция, ED, яд, Разлагающая порча). Отчаяние снижает хаос-резист, Богохульство+Путы времени замедляют и продлевают ДоТ, Истощающее присутствие вешает Wither ×10 (+50% хаос-урона). Вечная жизнь: урон в обход ES игнорируется, пока есть ES. Урон: уровни камней > % хаос/спелл > cast speed.",
+      "pros": [
+        "дешёвый (осн. 10-20 Div)",
+        "танковый (8000+ ES + Eternal Life)",
+        "SSF",
+        "приятная зачистка экранами"
+      ],
+      "cons": [
+        "ДоТ - не скипает механики убер-боссов",
+        "много кнопок",
+        "умения жрут ES (Eldritch Empowerment)",
+        "не для Т4 симулякра"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "delta": "жезл +3 chaos gems (PoB 11cab); декод №482: Essence Drain 16 + Тёмное чучело 16 (L88)"
+        },
+        "mid": {
+          "cost": null,
+          "delta": "Atziri's Disdain на 3-м восхождении (PoB по гайду не опубликован, прогрессия прямолинейная)"
+        },
+        "main": {
+          "cost": "10-20 Divine",
+          "delta": "PoB 11cac; декод №482: Essence Drain 20 + Тёмное чучело 20 (L95)"
+        },
+        "max": {
+          "cost": null,
+          "delta": "PoB 11cad (Лич) / 11e4a (Лич Бездны); «придётся потратиться»; декод №482: 11cad (L100) - main Отчаяние 15 (Разлагающая порча) + ED 20 в группе; 11e4a (L100) - Тёмное чучело 20 + Хаос-болт 18"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/11e4a",
+        "https://poe.ninja/poe2/pob/11cad",
+        "https://poe.ninja/poe2/pob/11cac",
+        "https://poe.ninja/poe2/pob/11cab"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/pohishchenie-sushchnosti-infekciya-haos-dot",
+        "журнал №475",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "lich-abyssal",
+      "title_ru": "Лич Бездны: эндгейм-альтернатива ED/Инфекция",
+      "title_en": "Abyssal Lich Essence Drain (endgame variant)",
+      "class_ru": "Ведьма",
+      "class_en": "Witch",
+      "ascendancy_ru": "Лич Бездны",
+      "ascendancy_en": "Abyssal Lich",
+      "variant_note": "Секретное восхождение (альтернативная ветка того же гайда lich-ed-contagion); отдельная запись - собственный порядок узлов и PoB. Доступно после ~184 духа.",
+      "main_skill": {
+        "ru": "Похищение сущности + Инфекция",
+        "en": "Essence Drain + Contagion",
+        "gem_level": 20,
+        "note": "та же ДоТ-эпидемия + скелеты-«виртуальные» бафы Тёмного колодца; доп. саппорты: Едкость (Acrimony), Казнь III (Execute III), Расцвет порчи (Hex Bloom), Encumbrance ❓ (RU не сверено); декод №482 (PoB 11e4a, L100): main-гем - Тёмное чучело 20 (Dark Effigy) + Хаос-болт 18; асц Abyssal Lich подтверждена декодом"
+      },
+      "supports": [],
+      "ascendancy_order": [
+        {
+          "ru": "Бездушная форма",
+          "en": "Soulless Form"
+        },
+        {
+          "ru": "Тёмный колодец",
+          "en": "Umbral Well"
+        },
+        {
+          "ru": "Вечная жизнь",
+          "en": "Eternal Life"
+        },
+        {
+          "ru": "Кристальный филактерий",
+          "en": "Crystalline Phylactery"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Презрение Атзири",
+          "en": "Atziri's Disdain",
+          "note": "декод №482: в PoB 11e4a (та же роль, что в базовом личе)"
+        },
+        {
+          "ru": null,
+          "en": "Empyrean Braid",
+          "note": "декод №482: PoB 11e4a; тип предмета/RU-канон не сверен"
+        }
+      ],
+      "gear_tips": {
+        "spirit": "~184 духа для запуска ветки",
+        "minions": "скелеты Cleric (+30% перезарядки ES), Storm Mage (+25% spell damage), Frost Mage (+35% max ES), Reaver (+6% skill speed)"
+      },
+      "mechanics_ru": "Тёмный колодец бафает за каждого «виртуального» скелета: Cleric +30% перезарядки ES, Storm Mage +25% spell damage, Frost Mage +35% max ES, Reaver +6% skill speed. Скелеты при этом свой урон почти не дают - это батарея бафов. Остальная механика - базовый ED+Contagion билда (чучело, Отчаяние+Разлагающая порча, Богохульство+Путы времени).",
+      "pros": [
+        "сильнее базового Лича в эндгейме",
+        "масштабируется духом"
+      ],
+      "cons": [
+        "высокий порог входа (~184 духа)",
+        "больше требований к гиру",
+        "тот же ДоТ-фундамент - те же минусы против убер-боссов"
+      ],
+      "stages": {
+        "main": {
+          "cost": null,
+          "note": "цены стадий не публиковались"
+        },
+        "max": {
+          "cost": null,
+          "delta": "PoB 11e4a; декод №482: Тёмное чучело 20 + Хаос-болт 18 (L100)"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/11e4a"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/pohishchenie-sushchnosti-infekciya-haos-dot",
+        "журнал №475",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "lich-minions",
+      "title_ru": "Лич через скелетов: маги льда / снайперы / поджигатели",
+      "title_en": "Lich Skeletal Minions (Frost Mages / Snipers / Arsonists)",
+      "class_ru": "Ведьма",
+      "class_en": "Witch",
+      "ascendancy_ru": "Лич",
+      "ascendancy_en": "Lich",
+      "warning": "Гайд в статусе «Не обновлен» (базовая дата 18.12.2024, частично правился под 0.4) - под 0.5.x возможны расхождения; сам автор: «по билду можно стартовать, возможны небольшие различия».",
+      "main_skill": {
+        "ru": "Скелет-маг льда / Скелет-снайпер / Скелет-поджигатель",
+        "en": "Skeletal Frost Mage / Skeletal Sniper / Skeletal Arsonist",
+        "gem_level": 20,
+        "note": "постоянные миньоны (дух со скипетра 100+), уровни камня до 40; три варианта = зачистка vs дальний бой vs без меткости"
+      },
+      "supports": [
+        {
+          "ru": "Подношение боли",
+          "en": "Pain Offering"
+        },
+        {
+          "ru": "Пляска смерти",
+          "en": "Danse Macabre"
+        },
+        {
+          "ru": "Последний вздох",
+          "en": "Last Gasp"
+        },
+        {
+          "ru": "Мастерство приспешников",
+          "en": "Minion Mastery"
+        },
+        {
+          "ru": "Стихийное оружие",
+          "en": "Elemental Armament"
+        },
+        {
+          "ru": "Восприимчивость к огню",
+          "en": "Fire Exposure",
+          "note": "через Неистовые духи (Raging Spirits)"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Проводник некромантии",
+          "en": "Necromantic Conduit",
+          "note": "Unholy Might: 30% всего урона хаосом вам и миньонам"
+        },
+        {
+          "ru": "Бездушная форма",
+          "en": "Soulless Form"
+        },
+        {
+          "ru": "Вечная жизнь",
+          "en": "Eternal Life"
+        },
+        {
+          "ru": "Кристальный филактерий / Очерневшее сердце",
+          "en": "Crystalline Phylactery / Blackened Heart"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Призматический страж",
+          "en": "Prism Guardian",
+          "note": "щит, опция"
+        },
+        {
+          "ru": "Игра Вентора",
+          "en": "Ventor's Gamble",
+          "note": "кольца, опция"
+        },
+        {
+          "ru": "Кости Уллра",
+          "en": "Bones of Ullr",
+          "note": "ботинки"
+        },
+        {
+          "ru": "Скипетр предвестия",
+          "en": "Omen Sceptre",
+          "note": "даёт ауру Злость (Malice): +крит-заряды до 10%"
+        },
+        {
+          "ru": "Скипетр стоика",
+          "en": "Stoic Sceptre",
+          "note": "Дисциплина, ≈1900 ES в макс."
+        },
+        {
+          "ru": "Осколок солнца",
+          "en": "Sunsplinter",
+          "note": "декод №482: в гире всех трёх PoB-вариантов"
+        },
+        {
+          "ru": null,
+          "en": "Viper Braid",
+          "note": "декод №482: гир PoB-вариантов; RU-канон не сверен"
+        },
+        {
+          "ru": null,
+          "en": "Mind Cry",
+          "note": "декод №482: swap-вариант; RU-канон не сверен"
+        }
+      ],
+      "gear_tips": {
+        "attr": "80 Dex / 54-65 Str / 205 Int",
+        "weapon": "скипетры: дух > уровни миньонов; 2-й набор - Осколок солнца (Sunsplinter, 80 Dex)",
+        "defense": "8000+ ES + опциональный блок-щит; миньоны: кап резистов 83% с дерева + 40% хаос"
+      },
+      "mechanics_ru": "Миньоны-автопилот: маги льда фризят (включая боссов) и взрывают снаряды перекрытием областей, снайперы - дальнобойный физ (курс Слабость, снятие брони), поджигатели - огненные взрывы без меткости. Проводник некромантии даёт Unholy Might 30% хаоса; Правая рука тьмы (Right Hand of Darkness) - миньоны вешают Wither. Стена пламени бафает их снаряды, Подношение боли жертвует 2 миньонов ради бафа, Печать силы на боссов со 2-го набора. По признанию автора, PoB урон миньонов считает некорректно - PoB для дерева/гира.",
+      "pros": [
+        "миньоны всё делают сами",
+        "высокий босс-урон",
+        "бюджет (автор: «невысокая цена предметов»)",
+        "SSF/HC-дружелюбен"
+      ],
+      "cons": [
+        "миньоны тупят/отстают в узких коридорах",
+        "гайд НЕ обновлён под 0.5 (главный риск)",
+        "PoB не считает урон миньонов корректно"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "note": "цены не опубликованы",
+          "lootkeeper_rub": "Стандарт +4430 ₽ / Руны Альдура +2890 ₽"
+        },
+        "mid": {
+          "cost": null,
+          "note": "цены не опубликованы",
+          "lootkeeper_rub": "Руны Альдура +3190 ₽"
+        },
+        "main": {
+          "cost": null,
+          "note": "«невысокая/доступная» цена по автору, цифр нет",
+          "lootkeeper_rub": "Стандарт +7690 ₽",
+          "delta": "декод №482: три PoB-варианта основной - Скелет-поджигатель 20 (ucocI42V9a1o, L94) / Скелет-маг льда 20 (0VrXWL0qT-SY, L94) / Скелет-снайпер 20 (NHXiQBSAUuvE, L97)"
+        },
+        "max": {
+          "cost": null
+        }
+      },
+      "pob_links": [
+        "https://pobb.in/ucocI42V9a1o",
+        "https://pobb.in/0VrXWL0qT-SY",
+        "https://pobb.in/NHXiQBSAUuvE"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-minony-skelety-podzhigateli",
+        "журнал №475",
+        "lootkeeper.com/ru/poe2/lich-minony (₽-прайс витрины, журнал №484)",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "bloodmage-reap",
+      "title_ru": "Маг крови через Кровавую Жатву (Reap)",
+      "title_en": "Blood Mage Reap",
+      "class_ru": "Ведьма",
+      "class_en": "Witch",
+      "ascendancy_ru": "Маг крови",
+      "ascendancy_en": "Blood Mage",
+      "main_skill": {
+        "ru": "Кровавая жатва (Reap; даётся посохом Пожинающий посох)",
+        "en": "Reap (granted by Reaping Staff)",
+        "gem_level": 20,
+        "note": "гема Blood Harvest НЕ существует; Reap - заклинание ближнего боя с механикой атаки (авто-подскок к врагу), скейлится от Cast Speed; встроенный execute 30/20/10/5% по обычным/волшебным/редким/уникам"
+      },
+      "supports": [
+        {
+          "ru": "Тяжесть",
+          "en": "Heft"
+        },
+        {
+          "ru": "Средоточие",
+          "en": "Concentrated Area"
+        },
+        {
+          "ru": "Мастерство физического урона",
+          "en": "Physical Mastery"
+        },
+        {
+          "ru": "Зенит I",
+          "en": "Zenith I"
+        },
+        {
+          "ru": "Целеустремлённость",
+          "en": "Deliberation"
+        },
+        {
+          "ru": "Жизнеотвод",
+          "en": "Lifetap",
+          "note": "→ Кровопускание Аталуи (Atalui's Bloodletting) в максимальной"
+        },
+        {
+          "ru": "Эхо магии",
+          "en": "Spell Echo"
+        },
+        {
+          "ru": "Быстрое сотворение II",
+          "en": "Rapid Casting II"
+        },
+        {
+          "ru": "Астральная проекция",
+          "en": "Astral Projection",
+          "note": "Костяная клетка кастуется в точку = дальний бой"
+        },
+        {
+          "ru": "Бренные останки II",
+          "en": "Harmonic Remnants II"
+        },
+        {
+          "ru": "Мощные останки I",
+          "en": "Remnant Potency I"
+        },
+        {
+          "ru": "Возвышенное проклятие",
+          "en": "Heightened Curse"
+        },
+        {
+          "ru": "Проклятая земля",
+          "en": "Cursed Ground"
+        },
+        {
+          "ru": "Мастерство молнии",
+          "en": "Lightning Mastery"
+        },
+        {
+          "ru": "Эффективность II",
+          "en": "Efficiency II"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Вытягивание жизни",
+          "en": "Vitality Siphon",
+          "note": "10% spell leech"
+        },
+        {
+          "ru": "Цепкие раны",
+          "en": "Grasping Wounds",
+          "note": "25% удара откладывается 4 сек ДоТ"
+        },
+        {
+          "ru": "Раскол плоти",
+          "en": "Sunder the Flesh",
+          "note": "base spell crit 15%; в переходной сбрасывается, берётся с Кровавым шипом"
+        },
+        {
+          "ru": "Багровое могущество / Кровавый шип",
+          "en": "Crimson Power / Gore Spike",
+          "note": "Crimson Power: жизнь = 100% ES от брони; Gore Spike: +крит-бонус за каждые 50 HP"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Пожинающий посох",
+          "en": "Reaping Staff",
+          "note": "Grants Level 18/20 Reap +N phys spell gems - единственный источник Reap; ОБЯЗАТЕЛЕН"
+        },
+        {
+          "ru": "Сердце Каома",
+          "en": "Kaom's Heart",
+          "note": "+1500 HP, 0 духа; в пару - 2× Ядро душ Джиквани (+3% HP каждое); подтверждён декодом №482 (главная броня переходной и основной стадий, PoB 27e80/27e83)"
+        },
+        {
+          "ru": "Плоскостопы",
+          "en": "Trampletoe",
+          "note": "ботинки: 30% избыточного урона = взрыв зачистки"
+        },
+        {
+          "ru": "Сердце Колодца",
+          "en": "Heart of the Well",
+          "note": "самоцвет"
+        },
+        {
+          "ru": "Покров ночи",
+          "en": "Veil of the Night",
+          "note": "опция для опытных, только убер"
+        },
+        {
+          "ru": null,
+          "en": "Atalui's Bloodletting",
+          "note": "❗ это САППОРТ-камень в связке Костяной клетки основной стадии (декод №482, PoB 27e83), не предмет"
+        }
+      ],
+      "gear_tips": {
+        "attr": "амулет +2/+3 к спеллам, зачарование Варварская сила (Barbaric Strength)",
+        "spirit": "Сердце Каома лишает духа - ауры минимальны",
+        "defense": "HP-стак: max-HP тир на каждом редком слоте + Greater Body Rune; ~25% брони; Цепкие раны откладывают 25% урона"
+      },
+      "mechanics_ru": "Кровомантия: умения стоят ману + жизнь, дают Сгустки жизни (хил; при полном HP - до +50% max HP). Reap - взмах косы с авто-подскоком, +0.5% крит-уязвимости за взмах до 10%. Костяная клетка - вторая кнопка (нова + шипы). Боссы: Беззащитность (снятие брони) + Проклятая земля, Буря маны (+шок). Зачистка: цепные взрывы Плоскостопов от избыточного урона. Прокачка: акты на Инфекция+Похищение сущности+Тёмное чучело через Лича, респек в Мага крови после ~65.",
+      "pros": [
+        "гигантский HP-пул (+Сгустки)",
+        "две мощные кнопки (Reap/Клетка)",
+        "взрывная зачистка Trampletoe",
+        "босс-киллер"
+      ],
+      "cons": [
+        "Reap доступен только с уник-посоха",
+        "каст из жизни - нужен контроль HP",
+        "крит-зависим"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "delta": "PoB 27e82 (стоимость не опубликована); декод №482: Костяная клетка 20 (L79)",
+          "lootkeeper_rub": "Стандарт +4690 ₽ / Руны Альдура +2890 ₽"
+        },
+        "mid": {
+          "cost": null,
+          "delta": "PoB 27e80; сет Kaom/посох/HP-тиры; декод №482: Кровавая жатва 18 (L90); Сердце Каома + Плоскостопы",
+          "lootkeeper_rub": "Руны Альдура +3190 ₽"
+        },
+        "main": {
+          "cost": null,
+          "delta": "PoB 27e83; Кровопускание Аталуи, амулет +3; декод №482: Кровавая жатва 20 + Костяная клетка 20 с саппортом Кровопускание Аталуи (L94)",
+          "lootkeeper_rub": "Стандарт +5990 ₽"
+        },
+        "max": {
+          "cost": null,
+          "note": "максимальная стадия в гайде не выделена",
+          "lootkeeper_rub": "Стандарт +15790 ₽"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/27e83",
+        "https://poe.ninja/poe2/pob/27e80",
+        "https://poe.ninja/poe2/pob/27e82",
+        "https://poe.ninja/poe2/pob/27e85"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bloodmage-krovavaya-zhatva",
+        "журнал №475",
+        "lootkeeper.com/ru/poe2/mag-krovi-krovavaya-zhatva (₽-прайс витрины, журнал №484)",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "spiritwalker-companions",
+      "title_ru": "Ходящая среди духов: жертвенная обезьяна и компаньоны",
+      "title_en": "Spirit Walker Tame Beast Companions (Sacrificial Monkey)",
+      "class_ru": "Копейщица",
+      "class_en": "Huntress",
+      "ascendancy_ru": "Ходящая среди духов",
+      "ascendancy_en": "Spirit Walker",
+      "seller_note": "Продавец продаёт как «Ведьму» - фактически Huntress/Копейщица (гайд начинается с атак копьём: Смерч/Вихревой удар). Spirit Walker - третья асценденси Копейщицы, добавлена в 0.5.",
+      "main_skill": {
+        "ru": "Приручение зверя (компаньон-обезьяна Могучий седой кулак)",
+        "en": "Tame Beast (Mighty Silverfist companion)",
+        "gem_level": 20,
+        "note": "место поимки: Развалины в джунглях (акт 3), Tier 7; на картах - с доп. свойствами (Ледяная пещера/Приречье/Прорыв); второй компаньон - кабан; плюс Скелет-снайпер + Скелет-клерик со скипетра"
+      },
+      "supports": [
+        {
+          "ru": "Свирепость III",
+          "en": "Rage III"
+        },
+        {
+          "ru": "Сборище",
+          "en": "Muster"
+        },
+        {
+          "ru": "Голодное остервенение I/II",
+          "en": "Feeding Frenzy I/II"
+        },
+        {
+          "ru": "Быстрые атаки II",
+          "en": "Rapid Attacks II"
+        },
+        {
+          "ru": "Пылающий легион I",
+          "en": "Infernal Legion I",
+          "note": "ОБЯЗАТЕЛЬНО L1 - выжигает 10% HP/сек; L2 даёт огонь-резист и ЛОМАЕТ механику"
+        },
+        {
+          "ru": "Последний вздох",
+          "en": "Last Gasp"
+        },
+        {
+          "ru": "Пляска смерти",
+          "en": "Danse Macabre"
+        },
+        {
+          "ru": "Жертвенное подношение",
+          "en": "Sacrificial Offering"
+        },
+        {
+          "ru": "Мастерство приспешников",
+          "en": "Minion Mastery"
+        },
+        {
+          "ru": "Расплата Ромиры",
+          "en": "Romira's Requital"
+        },
+        {
+          "ru": "Вечный марш",
+          "en": "Eternal March",
+          "note": "воскрешение за барьер: HP приспешника / 27 при 30 уровне камня; ❓ декод №482: в PoB 1d7e0 НЕ найден - только Месть Текрода (гем) + Пылающий легион I L1"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Дикий защитник",
+          "en": "Wild Protector",
+          "note": "компаньон-медведь, защитный круг"
+        },
+        {
+          "ru": "Естественный порядок",
+          "en": "The Natural Order",
+          "note": "таминг уникальных зверей"
+        },
+        {
+          "ru": "Равновесие Каты",
+          "en": "The Catha's Balance"
+        },
+        {
+          "ru": "Идолопоклонство / Буйное стадо",
+          "en": "Idolatry / Vivid Stampede",
+          "note": "в основной - четвёртым Idolatry"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Стук-Постук",
+          "en": "Chober Chaber",
+          "note": "+3 к миньон-гемам, веризиум; работает ТОЛЬКО парой с Вертекс"
+        },
+        {
+          "ru": "Вертекс",
+          "en": "The Vertex",
+          "note": "нет требований к характеристикам"
+        },
+        {
+          "ru": "Месть Текрода",
+          "en": "Tecrod's Revenge",
+          "note": "Soul Eater: миньон не умирает при 0 HP ещё 20 сек с бафом - ядро механики"
+        },
+        {
+          "ru": "Из ничего",
+          "en": "From Nothing",
+          "note": "самоцвет основной версии"
+        },
+        {
+          "ru": "Зачинщики разрушений",
+          "en": "Wake of Destruction",
+          "note": "ранние ботинки"
+        },
+        {
+          "ru": "Тёмная хватка",
+          "en": "Dunkelhalt",
+          "note": "щит-блок, 2-й набор"
+        }
+      ],
+      "gear_tips": {
+        "attr": "Str 50 / Dex 157 / Int 157 (закрывает Вертекс)",
+        "spirit": "210 (100 база + 100 скипетр + 10 узел)",
+        "barrier": "веризиум-апгрейды всех предметов + Барьерные руны укрепления/панциря; расчёт под HP обезьяны / 27",
+        "roadblock": "❗ никаких пассивок/аур на сопротивление огню - обезьяна должна умирать (Purity of Fire на скипетре исключена)"
+      },
+      "mechanics_ru": "Жертвенная обезьяна: Пылающий легион I (выжигает 10% HP/сек) + Месть Текрода (Soul Eater - 20 сек на нуле HP с растущим бафом) → смерть на пике бафа → Вечный марш воскрешает за барьер → цикл. Плюс кабан, медведь (Дикий защитник), скелеты-снайпер/клерик, метки (Метка снайпера, Вечная метка), Подношение боли. Основная версия требует ручного расчёта барьера под здоровье пойманного зверя («понадобится калькулятор»).",
+      "pros": [
+        "дешёвый (осн. 35-40 Div)",
+        "убивает всех убер-боссов",
+        "автопилот-миньоны",
+        "подходит новичкам"
+      ],
+      "cons": [
+        "средняя/медленная зачистка",
+        "миньоны тупят",
+        "ручной расчёт барьера",
+        "не симулякр/не замазанные ритуалы",
+        "зависимость от ролла пойманного зверя"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "~30 Exalted (~0.03 Divine)",
+          "delta": "PoB 1d5d3; декод №482: PoB 1d5d3 (L82) - Дикий защитник 1 + кабан Diretusk 18"
+        },
+        "mid": {
+          "cost": "5-10 Divine",
+          "delta": "обезьяна с крит-свойствами, самоцветы на crit dmg (PoB 1d5ff); декод №482: PoB 1d5ff (L90) - кабан 19 + Громоздкие миньоны (Hulking Minions)"
+        },
+        "main": {
+          "cost": "35-40 Divine",
+          "delta": "Стук-Постук + Вертекс, Месть Текрода, Вечный марш 20→30 ур., амулет +3 миньонов (PoB 1d7e0); декод №482: PoB 1d7e0 (L91) - кабан Diretusk 20 + Пылающий легион I (L1) + Месть Текрода (L1), keystone Giant's Blood; Вертекс + Стук-Постук подтверждены"
+        },
+        "max": {
+          "cost": null,
+          "note": "стадии нет - три стадии"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/1d7e0",
+        "https://poe.ninja/poe2/pob/1d5ff",
+        "https://poe.ninja/poe2/pob/1d5d3",
+        "https://poe.ninja/poe2/pob/1d7ee"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/hodyashchaya-sredi-duhov-kompanony",
+        "журнал №475",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "amazon-twister",
+      "title_ru": "Амазонка через Ветерки (Смерч)",
+      "title_en": "Amazon Twister",
+      "class_ru": "Копейщица",
+      "class_en": "Huntress",
+      "ascendancy_ru": "Амазонка",
+      "ascendancy_en": "Amazon",
+      "main_skill": {
+        "ru": "Смерч",
+        "en": "Twister",
+        "gem_level": 20,
+        "note": "генерация - Вихревой удар (Whirling Slash, L1); боссы на прокачке - Взрывное копьё"
+      },
+      "supports": [
+        {
+          "ru": "Вихревой удар",
+          "en": "Whirling Slash",
+          "note": "уровень 1, генерирует смерчи"
+        },
+        {
+          "ru": "Шквал",
+          "en": null,
+          "note": "❓ EN-канон не снят - сверить poe2db /us/"
+        },
+        {
+          "ru": "Очередь",
+          "en": null,
+          "note": "❓ EN-канон не снят - сверить poe2db /us/"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Мистическая жатва"
+        },
+        {
+          "ru": "Критический удар / Инстинкт хищницы"
+        },
+        {
+          "ru": "Пронзание"
+        },
+        {
+          "ru": "Крадущаяся пантера"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Зачинщики разрушений",
+          "en": "Wake of Destruction"
+        },
+        {
+          "ru": "Алое облачение",
+          "en": "Couture of Crimson"
+        },
+        {
+          "ru": "Плетёный язык",
+          "en": "Tangletongue",
+          "note": "крит-копьё"
+        },
+        {
+          "ru": "Небесный осколок",
+          "en": "Skysliver"
+        },
+        {
+          "ru": "Зов братьев",
+          "en": "Call of the Brotherhood",
+          "note": "начальная стадия"
+        }
+      ],
+      "gear_tips": {
+        "spirit": "дух 160 → 210 → 250 (Триединство 90)",
+        "notes": "Амазонка существует с 0.2 Dawn of the Hunt, НЕ новая 0.5.5"
+      },
+      "mechanics_ru": "Вихревой удар порождает смерчи, Смерч - основной урон; Взрывное копьё на боссов при прокачке. Twister ≈2% топ-100 DPS poe.ninja (заметен у Gemling), Amazon ≈628 билдов в ладдере forbiddenrites.",
+      "pros": [
+        "сильный сингл по боссам",
+        "масштабируется до 100 Div",
+        "живая мобильная игра"
+      ],
+      "cons": [
+        "дорогая основная версия (70-100 Div)",
+        "кнопочная ротация"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "~1 Divine"
+        },
+        "mid": {
+          "cost": "7-10 Divine"
+        },
+        "main": {
+          "cost": "70-100 Divine",
+          "delta": "крит-стадия: Tangletongue + Skysliver (PoB 1b8d2 - с критами, 1b8d4 - без)"
+        },
+        "max": {
+          "cost": null,
+          "delta": "Tangletongue + Skysliver топ-роллы"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/1b8f9",
+        "https://poe.ninja/poe2/pob/1b8d2",
+        "https://poe.ninja/poe2/pob/1b8d4",
+        "https://poe.ninja/poe2/pob/1b8c3",
+        "https://poe.ninja/poe2/pob/1bc9e"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-amazonka-veterki-twister",
+        "журнал №476"
+      ]
+    },
+    {
+      "id": "witchhunter-galvanic-crossbow",
+      "title_ru": "Охотник на ведьм с арбалетом, урон молнией",
+      "title_en": "Witchhunter Galvanic Shards + Stormblast Bolts",
+      "class_ru": "Наёмник",
+      "class_en": "Mercenary",
+      "ascendancy_ru": "Охотник на ведьм",
+      "ascendancy_en": "Witchhunter",
+      "main_skill": {
+        "ru": "Электризующие осколки",
+        "en": "Galvanic Shards",
+        "gem_level": 20,
+        "note": "«2 кнопки»: зачистка - осколки-«дробовик», боссы - Штормовой болт (Stormblast Bolts)"
+      },
+      "supports": [
+        {
+          "ru": "Хватка Владыки",
+          "en": "Dominus' Grasp"
+        },
+        {
+          "ru": "Нападение Раты",
+          "en": "Ratha's Assault",
+          "note": "+3 болта, перезарядка кувырком"
+        },
+        {
+          "ru": "Медаль Аржуна",
+          "en": "Arjun's Medal",
+          "note": "25% перезарядка болта при убийстве"
+        },
+        {
+          "ru": "Стихийное оружие II",
+          "en": "Elemental Armament II"
+        },
+        {
+          "ru": "Возбуждение",
+          "en": "Innervate"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Рьяная инквизиция",
+          "en": "Zealous Inquisition"
+        },
+        {
+          "ru": "Навязчивые ритуалы",
+          "en": "Obsessive Rituals"
+        },
+        {
+          "ru": "Церемониальное омовение",
+          "en": "Ceremonial Ablution"
+        },
+        {
+          "ru": "Безжалостный убийца",
+          "en": "Pitiless Killer"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Вой Альфы",
+          "en": "Alpha's Howl",
+          "note": "шлем +100/+115 дух"
+        },
+        {
+          "ru": "Ярость Хайрри",
+          "en": "Hyrri's Ire",
+          "note": "x2 уклонение → щит Чародейского барьера"
+        },
+        {
+          "ru": "Дух Лавианги",
+          "en": "Lavianga's Spirits",
+          "note": "флакон маны"
+        },
+        {
+          "ru": "Сердце Колодца",
+          "en": "Heart of the Well",
+          "note": "lucky-молния 20%+"
+        },
+        {
+          "ru": "Противление тьме",
+          "en": "Against the Darkness",
+          "note": "значимые пассивки в радиусе дают extra elemental dmg"
+        },
+        {
+          "ru": "Охотник за головами",
+          "en": "Headhunter",
+          "note": "опция пояса для зачистки"
+        }
+      ],
+      "gear_tips": {
+        "weapon": "край арбалета на синей базе Самострел опустошения (Desolate Crossbow) с 155%+ физуры → сущности Абразии + Предзнаменование кристаллизации правши → суффиксы Exalt/Perfect Exalt; требования: 700+ физДПС, 30%+ Gain as Extra Physical, +3 к скиллам снарядов/атак; ❗ НЕ брать базу Тератновская пушка (Trarthan Cannon) - не перезаряжается",
+        "spirit": "начальная 160 → переходная 250 → основная 280 (амулет +50/65, Вой Альфы +115, руна Азкапы +15)",
+        "attr": "Сила 101-157 (уровень Вечной ярости/Берсерка), Ловкость 157, Инт 25"
+      },
+      "mechanics_ru": "Нападение Раты + Медаль Аржуна = почти бесконечные болты на зачистке (обойма 4 болта, перезарядка кувырком). Боссы: накидать Штормовых болтов → кувырок создаёт клона (Призрачный лучник, Взрывной выстрел) → клон детонирует болты; подстраховка - Мортира + Взрывная граната; Экстренная перезарядка +31% урона болтов; Свирепость до 44% (Боевой транс + Берсерк +67% эффекта ≈ 76% more). Witchhunter ≈1702 билда в ладдере. Может: все убер-боссы, обмазанные т16, Симулякр 15 волн.",
+      "pros": [
+        "одна кнопка зачистки",
+        "дешёвый",
+        "высокая выживаемость (уклонение+отведение)",
+        "старт лиги"
+      ],
+      "cons": [
+        "ротация из нескольких кнопок на боссах",
+        "меньше урона по подвижным боссам",
+        "уязвим к ДоТ-урону"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "1-2 Divine",
+          "delta": "PoB 1b589"
+        },
+        "mid": {
+          "cost": "~10 Divine",
+          "delta": "PoB 1b58b"
+        },
+        "main": {
+          "cost": "40-70 Divine",
+          "delta": "крафт Desolate Crossbow, Сердце Колодца, Противление тьме (PoB 1b586)"
+        },
+        "max": {
+          "cost": null,
+          "delta": "Охотник за головами + Танцующий с ветром в обоих сетах (280 дух)"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/1b586",
+        "https://poe.ninja/poe2/pob/1b58b",
+        "https://poe.ninja/poe2/pob/1b589",
+        "https://poe.ninja/poe2/pob/1aecf"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-ohotnik-na-vedm-arbalet-molniya",
+        "журнал №476"
+      ]
+    },
+    {
+      "id": "tactician-mortar-grenades",
+      "title_ru": "Тактик через Мортиры и Гранаты",
+      "title_en": "Tactician Mortar Cannon + Explosive Grenade",
+      "class_ru": "Наёмник",
+      "class_en": "Mercenary",
+      "ascendancy_ru": "Тактик",
+      "ascendancy_en": "Tactician",
+      "main_skill": {
+        "ru": "Мортира",
+        "en": "Mortar Cannon",
+        "gem_level": 20,
+        "note": "граната → тотем-баллиста; Взрывная граната (Explosive Grenade) - 1372% эффективности"
+      },
+      "supports": [
+        {
+          "ru": "Взрывная граната",
+          "en": "Explosive Grenade",
+          "note": "снаряд мортиры"
+        },
+        {
+          "ru": "Спешные тотемы III",
+          "en": "Urgent Totems III"
+        },
+        {
+          "ru": "Поток Ракиаты",
+          "en": "Rakiata's Flow"
+        },
+        {
+          "ru": "Боезаряд",
+          "en": "Payload"
+        },
+        {
+          "ru": "Власть молний",
+          "en": "Lightning Attunement",
+          "note": "на убер-боссов вместо Боезаряда"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Огонь на подавление",
+          "en": "Suppressing Fire"
+        },
+        {
+          "ru": "Там, где нам нужно",
+          "en": "Right Where We Want Them"
+        },
+        {
+          "ru": "Надёжный план",
+          "en": "A Solid Plan",
+          "note": "резервации -50%"
+        },
+        {
+          "ru": "Полировка снаряжения",
+          "en": "Polish That Gear"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Порок Валако",
+          "en": "Valako's Vice",
+          "note": "перчатки: 100% огонь → молния, шок"
+        },
+        {
+          "ru": "Удушающее веление",
+          "en": "Constricting Command",
+          "note": "шлем: «окружён» при 1+ враге в 3.6 м; ⚠ в 0.5 нужен враг рядом"
+        },
+        {
+          "ru": "Идол Улдурна",
+          "en": "Idol of Uldurn",
+          "note": "амулет +1 баллиста (до основного арбалета)"
+        },
+        {
+          "ru": "Решительность Олрота",
+          "en": "Olroth's Resolve",
+          "note": "флакон"
+        },
+        {
+          "ru": "Падение топора",
+          "en": "The Fall of the Axe",
+          "note": "оберег, боевой раж"
+        }
+      ],
+      "gear_tips": {
+        "weapon": "арбалет: +1 граната в базе, 600+ физДПС, +1 баллиста, +5 скиллы снарядов",
+        "jewels": "Изумруды: 18%+ урона по редким/уникам",
+        "defense": "уклонение 2000+ с отведением 20%+",
+        "spirit": "Надёжный план = резервации -50%; постоянно: Танцующий с ветром, Знамя войны, Подавляющее присутствие"
+      },
+      "mechanics_ru": "3 баллисты (база 1, +1 Артналёт, +1 арбалет/Идол). Связка «граната+баллиста» считается и гранатой, и баллистой → двойные таланты дерева. Снепшот дерева тотемами: раскладка 1 = защита/скорость после установки, раскладка 2 = урон. Взрывной выстрел детонирует гранаты в полёте. Ротация боссов: Электрическая граната ×2 (электризация) → 3 баллисты → кувырок → Знамя войны → ~1.5 сек ожидания → подрыв. Контроль: обездвиживание + электризация = босс ничего не делает. Прокачка: взрывной огонь до 41 ур. (Поджигающий выстрел + Газовая граната), баллисты с 41; 2× Руна шторма в арбалет каждые 5-7 уровней. Tactician ≈1523 билда в ладдре.",
+      "pros": [
+        "живучесть (2000+ HP, 65% уклон, ~60% отведение)",
+        "полный контроль боссов",
+        "дешёвый старт (~20 Exalted)",
+        "SSF/HC-совместим"
+      ],
+      "cons": [
+        "тотемный геймплей",
+        "визуальный хаос, нагрузка на железо",
+        "средняя скорость зачистки",
+        "гайд-версия 0.4-архив («в 0.5 билд не изменился» по автору)"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "~20 Exalted (~0.2 Divine)",
+          "delta": "PoB 1200d"
+        },
+        "mid": {
+          "cost": "~100 Exalted (~1 Divine)",
+          "delta": "PoB 12003"
+        },
+        "main": {
+          "cost": "30-45 Divine",
+          "delta": "PoB 12004"
+        },
+        "max": {
+          "cost": null,
+          "delta": "2200+ уклонение, 2 рунных гнезда в перчатках, амулет +3 снарядов"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/12004",
+        "https://poe.ninja/poe2/pob/12003",
+        "https://poe.ninja/poe2/pob/1200d",
+        "https://poe.ninja/poe2/pob/12005"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-taktik-mortiry-granaty",
+        "журнал №476"
+      ]
+    },
+    {
+      "id": "deadeye-lightning-arrow",
+      "title_ru": "Снайпер: Стрела молнии",
+      "title_en": "Deadeye Lightning Arrow",
+      "class_ru": "Охотница",
+      "class_en": "Ranger",
+      "ascendancy_ru": "Снайпер",
+      "ascendancy_en": "Deadeye",
+      "main_skill": {
+        "ru": "Стрела молнии",
+        "en": "Lightning Arrow",
+        "gem_level": 20,
+        "note": "конверт 80% физ→молния в 0.5; ротация: Громоотвод (макс 10 стрел, срабатывание раз в 0.1 с - нерф 0.5) + Вихрь стрел + Очередь + Громовая метка"
+      },
+      "supports": [
+        {
+          "ru": "Громовая метка / зарядовые саппорты",
+          "en": null,
+          "note": "❓ точный EN-канон связки LA в выжимке не зафиксирован - сверить poe2db /us/"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Порывы ветра",
+          "en": "Gale Winds"
+        },
+        {
+          "ru": "Стрельба в упор",
+          "en": "Point Blank"
+        },
+        {
+          "ru": "Нескончаемые боеприпасы",
+          "en": "Endless Munitions"
+        },
+        {
+          "ru": "последний узел Снайпера",
+          "en": null,
+          "note": "❓ EN-канон сверить в poe2db /us/"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Поток Ракиаты",
+          "en": "Rakiata's Flow",
+          "note": "макс-стадия"
+        },
+        {
+          "ru": "Ярость Хийрри",
+          "en": "Hyrri's Ire",
+          "note": "макс-стадия"
+        },
+        {
+          "ru": "Ездовой роа",
+          "en": "Rhoa Mount",
+          "note": "100 дух (маунт 0.5)"
+        },
+        {
+          "ru": "Длань мудрости и действия",
+          "en": "Hand of Wisdom and Action"
+        },
+        {
+          "ru": "Внутренний колчан",
+          "en": "Visceral Quiver"
+        },
+        {
+          "ru": "Охотник за головами",
+          "en": "Headhunter"
+        },
+        {
+          "ru": "Руна шторма",
+          "en": "Storm Rune",
+          "note": "в оружие"
+        }
+      ],
+      "gear_tips": {
+        "stages": "стадии по maxroll: Campaign → Hybrid → Crit → CI; конверт 80% физ → молния"
+      },
+      "mechanics_ru": "Уклонение/отклонение/энергощит; Громоотвод макс 10 стрел × срабатывание раз в 0.1 с (нерф 0.5); LA конверт 80% физ→молния; Wind Ward удалён, Ghost Dance макс 3 заряда. Deadeye - самый популярный класс ладдера forbiddenrites (7453 билда); при этом LA НЕ в топ-100 DPS (event-мета = Detonate Dead, искажена ивентом).",
+      "pros": [
+        "высокая мобильность",
+        "быстрая зачистка",
+        "масштаб урона",
+        "популярность = много референсов в трейде"
+      ],
+      "cons": [
+        "нерфы 0.5 (Wind Ward удалён, Ghost Dance 3 заряда)",
+        "кнопочный сингл-таргет",
+        "гайд-база 0.4.0 + maxroll-довеска 0.5.5"
+      ],
+      "stages": {
+        "starter": {
+          "cost": null,
+          "delta": "PoB 1445c"
+        },
+        "mid": {
+          "cost": null,
+          "delta": "PoB 1445b"
+        },
+        "main": {
+          "cost": null,
+          "delta": "крит-стадия, PoB 14459"
+        },
+        "max": {
+          "cost": null,
+          "delta": "CI-крит, PoB 14458 (вариант 1445a)"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/14458",
+        "https://poe.ninja/poe2/pob/14459",
+        "https://poe.ninja/poe2/pob/1445a",
+        "https://poe.ninja/poe2/pob/1445b",
+        "https://poe.ninja/poe2/pob/1445c"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-snayper-strela-molnii (0.4.0)",
+        "maxroll LA Deadeye 0.5.5",
+        "журнал №476"
+      ]
+    },
+    {
+      "id": "invoker-hollow-form",
+      "title_ru": "Монк через клонов: Полая форма и Вихревой налёт",
+      "title_en": "Invoker Hollow Form + Whirling Assault (clone builds)",
+      "class_ru": "Монах",
+      "class_en": "Monk",
+      "ascendancy_ru": null,
+      "ascendancy_en": "Martial Artist",
+      "note_ru": "RU-эквивалент maxroll-гайда manni «Hollow Form Whirling Assault». ❗ Декод №482: все 4 PoB (2321d/1feca/20cf6/20981) - асценденси Martial Artist, НЕ Invoker (как в maxroll-заголовке); RU-имя асценденси с poe2db не сверен.",
+      "main_skill": {
+        "ru": "Полая форма",
+        "en": "Hollow Form",
+        "gem_level": 20,
+        "note": "свап-саппорт Вихревой налёт (Whirling Assault) в связке; запуск Полой формы через зачарование Колодец силы (Well of Power) на Змеином яйце; прокачка - Техника пустой длани + Ледяной каскад (Glacial Cascade) / Замерзающее святилище (Frozen Locus)"
+      },
+      "supports": [
+        {
+          "ru": "Вихревой налёт",
+          "en": "Whirling Assault"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": null,
+          "en": "Lochtonial Caress",
+          "note": "переходная стадия"
+        },
+        {
+          "ru": null,
+          "en": "Serpent's Egg",
+          "note": "зачарование Well of Power → запуск Hollow Form"
+        },
+        {
+          "ru": null,
+          "en": "Vestige of Darkness",
+          "note": "основная стадия"
+        },
+        {
+          "ru": null,
+          "en": "Vorana's Siege",
+          "note": "основная стадия; ❗ декод №482: это САППОРТ-гем (L1) в основной связке PoB 20cf6, в гире отсутствует"
+        },
+        {
+          "ru": null,
+          "en": "Amor Mandragora",
+          "note": "основная стадия"
+        },
+        {
+          "ru": null,
+          "en": "Demon Song",
+          "note": "посох основной стадии (декод №482, PoB 20cf6); RU-канон не сверен"
+        },
+        {
+          "ru": null,
+          "en": "Tempest Curtain",
+          "note": "декод №482, PoB 20cf6; RU-канон не сверен"
+        }
+      ],
+      "gear_tips": {
+        "spirit": "145 духа в основной версии",
+        "aura": "Богохульство + Отталкивание (Blasphemy + Repulsion)"
+      },
+      "mechanics_ru": "Клоны из Полой формы воюют Вихревым налётом; в начальной версии вместо Полой формы - Путь горы. Прокачка через Технику пустой длани с Ледяным каскадом/Замерзающим святилищем, затем переход на клон-механику. Асценденси-порядок (RU): Путь каменного кулака → Техника полой формы → Рунные меридианы → Техника гулкой концентрации.",
+      "pros": [
+        "клоны воюют сами",
+        "дешёвый вход на Вихревом налёте",
+        "масштабируется до топов"
+      ],
+      "cons": [
+        "зависимость от зачарования Well of Power (Змеиное яйцо)",
+        "много кнопок",
+        "RU-имена асценденси-узлов не сверены с poe2db-каноном"
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Путь каменного кулака"
+        },
+        {
+          "ru": "Техника полой формы"
+        },
+        {
+          "ru": "Рунные меридианы"
+        },
+        {
+          "ru": "Техника гулкой концентрации"
+        }
+      ],
+      "stages": {
+        "starter": {
+          "cost": "20-50 Exalted",
+          "delta": "старт без Полой формы - Путь горы; декод №482: PoB 2321d (L76) - Вихревой налёт 17 (без Полой формы)"
+        },
+        "mid": {
+          "cost": "5-10 Divine",
+          "delta": "Lochtonial Caress + Serpent's Egg (зачарование Well of Power) → запуск Hollow Form; декод №482: PoB 1feca (L86) - Полая форма 20 + Вихревой налёт 19"
+        },
+        "main": {
+          "cost": "40-70 Divine",
+          "delta": "Vestige of Darkness, Vorana's Siege, Amor Mandragora, Богохульство+Отталкивание, 145 духа; декод №482: PoB 20cf6 (L94) - Полая форма 20 + Вихревой налёт 20, саппорт Vorana's Siege"
+        },
+        "max": {
+          "cost": null,
+          "note": "не указано"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/20cf6",
+        "https://poe.ninja/poe2/pob/1feca",
+        "https://poe.ninja/poe2/pob/2321d",
+        "https://poe.ninja/poe2/pob/20981"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2 (Монк через клонов, вихревой налет; 30.06.26, обн. 10.10.26)",
+        "maxroll (manni Hollow Form Whirling Assault)",
+        "журнал №477",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "invoker-flicker-strike",
+      "title_ru": "Монах Фликер: Внезапный удар",
+      "title_en": "Invoker/Monk Flicker Strike (lootkeeper)",
+      "class_ru": "Монах",
+      "class_en": "Monk",
+      "ascendancy_ru": null,
+      "ascendancy_en": "Invoker",
+      "seller_prices_ru": "у продавца сборки: начальная +2890 ₽ / переходная +3190 ₽ / основная +8130 ₽ (funpay-кластер 342-21100 ₽)",
+      "main_skill": {
+        "ru": "Внезапный удар",
+        "en": "Flicker Strike",
+        "gem_level": 20,
+        "note": "Tier 13, посох, телепорт к врагу; тратит заряды энергии = +2 телепорт-удара за заряд с 285% more AS; двигатель - Заряженный посох (Charged Staff)"
+      },
+      "supports": [
+        {
+          "ru": "Ближний бой II",
+          "en": "Close Combat II"
+        },
+        {
+          "ru": "Удар в бегство",
+          "en": "Hit and Run"
+        },
+        {
+          "ru": "Средоточие",
+          "en": "Concentrated Area"
+        },
+        {
+          "ru": "Вечный заряд / Свирепость Ригвальда / Поток Ракиаты",
+          "en": "Perpetual Charge / Rigwald's Ferocity / Rakiata's Flow"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": null,
+          "en": "Shavronne's Satchel",
+          "note": "обязателен (lootkeeper 0.5)"
+        },
+        {
+          "ru": null,
+          "en": "Unset Ring",
+          "note": "×2, обязателен"
+        },
+        {
+          "ru": null,
+          "en": "Ailith's Chimes"
+        },
+        {
+          "ru": null,
+          "en": "Oisín's Oath"
+        },
+        {
+          "ru": null,
+          "en": "Nascent Hope"
+        },
+        {
+          "ru": null,
+          "en": "Headhunter (Охотник за головами)",
+          "note": "опция у топ-ладдерных фликеров"
+        }
+      ],
+      "gear_tips": {
+        "defense": "в переходной - CI; скелет ладдера: посох + заряды энергии (One with the Storm, The Power Within, The Fabled Stag, Overflowing Power), ветка Wind Dancer + ES/EV",
+        "aura": "херальды (HoT/HoA), CoC-варианты с Profane Ritual"
+      },
+      "mechanics_ru": "Двигатель: Заряженный посох заряжает заряды → Внезапный удар тратит их на телепорт-удары (285% more AS, +2 удара за заряд). После 0.5 фликер требует перезарядки зарядов - луп: Charged Staff → Flicker. Топ-100 Invoker poe.ninja: 20% персонажей на фликере (L94-98, DPS 0.87M-30M); Martial Artist фликеры L99-100 до 101M DPS. Похоже на CI-билды с Mageblood у 4 из 5 топов.",
+      "pros": [
+        "высокая мобильность (постоянное перемещение)",
+        "масштабируется до топ-ладдера",
+        "дешёвый старт (≈2-3 Div по гайду)"
+      ],
+      "cons": [
+        "много кнопок (луп Flicker + Charged Staff + вспомогательные)",
+        "зависимость от зарядов энергии (провалы DPS без них)",
+        "танка на ES/EV - чувствителен к точечным бурстам"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "2-3 Divine",
+          "delta": "PoB 15e86"
+        },
+        "mid": {
+          "cost": "~10 Divine",
+          "delta": "CI-переход"
+        },
+        "main": {
+          "cost": "70-100 Divine",
+          "delta": "PoB 15e88"
+        },
+        "max": {
+          "cost": "250+ Divine",
+          "delta": "PoB 15e89"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/15e86",
+        "https://poe.ninja/poe2/pob/15e87",
+        "https://poe.ninja/poe2/pob/15e88",
+        "https://poe.ninja/poe2/pob/15e89"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2/bild-monakh-invoker-fliker",
+        "lootkeeper.com /ru/poe2/kupit-bild/monakh-invoker-fliker",
+        "журнал №471/№472/№473"
+      ]
+    },
+    {
+      "id": "titan-earthshatter",
+      "title_ru": "Титан: Разлом земли",
+      "title_en": "Titan Earthshatter",
+      "class_ru": "Воин",
+      "class_en": "Warrior",
+      "ascendancy_ru": "Титан",
+      "ascendancy_en": "Titan",
+      "warning": "⚠ «Титан Вихревой налёт» (позиция каталога продавца) - ФЕЙК: Вихревой налёт (Whirling Assault) - умение Монаха/Martial Artist, требующее боевой посох; у Титана (Воина) его нет. В топ-100 poe.ninja фликер/вихревые варианты - только у Martial Artist. Не покупайте эту связку как «билд Титана» (проверка журнала №477).",
+      "main_skill": {
+        "ru": "Разлом земли",
+        "en": "Earthshatter",
+        "gem_level": 20,
+        "note": "саппорты (сверено poe2db us↔ru): Возмущение (Upheaval), Ритм (Cadence), Ходячий камень (Skittering Stone), Ветвящиеся расселины (Branching Fissures), Остаточная волна (Aftershock), Стычка (Clash), Тяжёлый замах (Heavy Swing), Тяжесть (Heft)"
+      },
+      "supports": [
+        {
+          "ru": "Возмущение",
+          "en": "Upheaval"
+        },
+        {
+          "ru": "Ритм",
+          "en": "Cadence"
+        },
+        {
+          "ru": "Ходячий камень",
+          "en": "Skittering Stone"
+        },
+        {
+          "ru": "Ветвящиеся расселины",
+          "en": "Branching Fissures"
+        },
+        {
+          "ru": "Остаточная волна",
+          "en": "Aftershock"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Землелом",
+          "en": null,
+          "note": "❓ EN-канон узла не сверен"
+        },
+        {
+          "ru": "Усиление предков",
+          "en": null,
+          "note": "❓ EN-канон узла не сверен"
+        },
+        {
+          "ru": "Колоссальная вместимость",
+          "en": null,
+          "note": "❓ EN-канон узла не сверен"
+        },
+        {
+          "ru": "Огромная форма",
+          "en": null,
+          "note": "❓ EN-канон узла не сверен"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": "Милосердие садиста",
+          "en": null,
+          "note": "старт → заменяется Мьёльниром"
+        },
+        {
+          "ru": "Мьёльнир",
+          "en": "Mjolner",
+          "note": "молотовый прок-арсенал; в пару - 2× Ядро душ Квиполатля"
+        },
+        {
+          "ru": "Наследие Тьмы",
+          "en": null,
+          "note": "❓ EN-канон не сверен"
+        },
+        {
+          "ru": "Стальной раж",
+          "en": null,
+          "note": "❓ EN-канон не сверен; декод №482: в гире 2ab92/23c5f есть Horror's Flight (перчатки) и Thrillsteel - точный RU-матч не сверен"
+        },
+        {
+          "ru": "Полёт ужаса",
+          "en": null,
+          "note": "❓ EN-канон не сверен; декод №482: вероятно Horror's Flight (перчатки), RU-канон не сверен"
+        },
+        {
+          "ru": "Волшебная кровь",
+          "en": "Mageblood",
+          "note": "декод №482: Mageblood подтверждён в макс-стадии (23c5f); в осн. 2ab92 вместо него пояс Miracle Bind"
+        },
+        {
+          "ru": "Из ничего",
+          "en": "From Nothing",
+          "note": "❓ декод №482: в гире PoB 2ab92 не найден (возможно, самоцвет вне decode-вывода)"
+        },
+        {
+          "ru": null,
+          "en": "Thrillsteel",
+          "note": "декод №482: гир 2ab92/23c5f; возможно RU «Стальной раж» ❓ (канон не сверен)"
+        },
+        {
+          "ru": null,
+          "en": "Miracle Bind",
+          "note": "пояс осн. стадии (декод №482, 2ab92); возможно RU «Волшебная кровь» этого пояса ❓"
+        }
+      ],
+      "gear_tips": {
+        "spirit": "дух 100: Вестник пепла (HoA) + Знамя войны + Чистота мыслей → основная HoI + HoT",
+        "attr": "200 силы / 200 инт / 137 ловкости"
+      },
+      "mechanics_ru": "Разлом земли - слэм-спам с шоквейвами: саппорты ветвят расселины и добавляют остаточные волны, Мьёльнир (молот) прокает молнии по расселинам. Огромная форма (4-е восхождение) - баф размеров/урона. Зачистка экраном, боссы - стационарный бурст. Топ-стадия - Волшебная кровь (пояс) и Из ничего (самоцвет).",
+      "pros": [
+        "высокий бурст-урон по боссам",
+        "зачистка слэмами по площади",
+        "одна из самых дешёвых стартовых версий (20-50 Exalted)"
+      ],
+      "cons": [
+        "медленная мобильность слэма",
+        "зависимость от дорогих уников топ-стадии (400-600+ Div)",
+        "проверяй покупные «вариации»: маркетинговые связки с чужими скиллами - фейк (см. warning)"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "20-50 Exalted",
+          "delta": "Милосердие садиста, стартовый гир; декод №482: PoB 2ab94 (L76) - Разлом земли 17"
+        },
+        "mid": {
+          "cost": "5-10 Divine",
+          "delta": "декод №482: PoB 2ab93 (L85) - Разлом земли 19 + саппорт Тяжесть (Heft); Милосердие садиста, Наследие Тьмы"
+        },
+        "main": {
+          "cost": "40-70 Divine",
+          "delta": "Мьёльнир + 2× Ядро душ Квиполатля; декод №482: PoB 2ab92 (L95) - Разлом земли 20; keystones Iron Reflexes + Dance with Death"
+        },
+        "max": {
+          "cost": "400-600+ Divine",
+          "delta": "Волшебная кровь, Из ничего, сбор резистов/атрибутов; декод №482: PoB 23c5f (L100) - Разлом земли 20, Мьёльнир + Волшебная кровь (Mageblood) подтверждены; ❓ Из ничего в гире PoB не найден"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/23c5f",
+        "https://poe.ninja/poe2/pob/2ab92",
+        "https://poe.ninja/poe2/pob/2ab93",
+        "https://poe.ninja/poe2/pob/2ab94",
+        "https://poe.ninja/poe2/pob/23380"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2 (Титан Разлом земли; 11.07.26, обн. 04.10.26)",
+        "журнал №477",
+        "журнал №482 (декод PoB)"
+      ]
+    },
+    {
+      "id": "warbringer-soaring-midnight",
+      "title_ru": "Вестник войны: Разлом земли и Парящая полночь",
+      "title_en": "Warbringer Earthshatter + Soaring Midnight",
+      "class_ru": "Воин",
+      "class_en": "Warrior",
+      "ascendancy_ru": "Вестник войны",
+      "ascendancy_en": "Warbringer",
+      "main_skill": {
+        "ru": "Разлом земли + Парящая полночь (даруется щитом Nightfall)",
+        "en": "Earthshatter + Soaring Midnight (granted by Nightfall shield)",
+        "gem_level": 18,
+        "note": "Warbringer-версия Earthshatter, альтернатива Shield Wall-направлению; декод №482: играется через Парящую полночь 17-18 (дар щита Nightfall), Разлом земли в main-связках PoB 2ab09-2ab0b отсутствует; keystone Blood Magic"
+      },
+      "supports": [
+        {
+          "ru": "стая волков",
+          "en": "Wolf Pack",
+          "note": "паки-приспешники"
+        },
+        {
+          "ru": "останки Калгуура",
+          "en": "Remnants of Kalguur"
+        },
+        {
+          "ru": "Отвержение",
+          "en": "Refutation"
+        }
+      ],
+      "ascendancy_order": [
+        {
+          "ru": "Набат войны",
+          "en": "Warcaller's Bellow"
+        },
+        {
+          "ru": "Тяжесть наковальни",
+          "en": "Anvil's Weight"
+        },
+        {
+          "ru": "Взрывные воздействия",
+          "en": "Imploding Impacts"
+        },
+        {
+          "ru": "Нефритовое наследие",
+          "en": "Jade Heritage"
+        }
+      ],
+      "key_uniques": [
+        {
+          "ru": null,
+          "en": "Nightfall",
+          "note": "щит, дарует Парящую полночь (Soaring Midnight)"
+        },
+        {
+          "ru": "Латунный свод",
+          "en": "The Brass Dome",
+          "note": "рунный барьер 950+"
+        },
+        {
+          "ru": "Призматический страж",
+          "en": "Prism Guardian",
+          "note": "+150 духа"
+        }
+      ],
+      "gear_tips": {
+        "defense": "Латунный свод с рунным барьером 950+",
+        "spirit": "Prism Guardian +150 духа"
+      },
+      "mechanics_ru": "Разлом земли как у Титана, но в защита-парадигме Вестника: щит Nightfall добавляет второе умение - Парящая полночь; Волчья стая и Останки Калгуура - миньоны-поддержка; Отвержение - реактивная защита. Тяжесть наковальни + Взрывные воздействия усиливают слэм-урон, Нефритовое наследие под барьер.",
+      "pros": [
+        "двумя кнопками: слэм + гнев-полночь",
+        "танковая статиика (барьер 950+)",
+        "дешёвый старт (~1 Div)"
+      ],
+      "cons": [
+        "дорогая топ-стадия (500-700 Div)",
+        "щит Nightfall обязателен для второй кнопки",
+        "мид-стадия заметно дороже стартовой"
+      ],
+      "stages": {
+        "starter": {
+          "cost": "~1 Divine",
+          "delta": "декод №482: PoB 2ab09 (L75) - Парящая полночь 17; гир: Nightfall, Латунный свод, Призматический страж, Наследие Тьмы, Милосердие садиста"
+        },
+        "mid": {
+          "cost": "10-15 Divine",
+          "delta": "декод №482: PoB 2ab0a (L85) - Парящая полночь 18; + Empyrean Fingers"
+        },
+        "main": {
+          "cost": "70-100 Divine",
+          "delta": "декод №482: PoB 2ab0b (L94) - Парящая полночь 18; + Glyph Breaker, Plague Knuckle, Behemoth Pace"
+        },
+        "max": {
+          "cost": "500-700 Divine",
+          "note": "❓ PoB 2ab0c в декод-прогон №482 не входил"
+        }
+      },
+      "pob_links": [
+        "https://poe.ninja/poe2/pob/2ab0c",
+        "https://poe.ninja/poe2/pob/2ab0b",
+        "https://poe.ninja/poe2/pob/2ab0a",
+        "https://poe.ninja/poe2/pob/2ab09"
+      ],
+      "sources": [
+        "guides.lootkeeper.com/poe2 (Вестник войны. Разлом земли и Парящая полночь; 03.10.26)",
+        "журнал №477",
+        "журнал №482 (декод PoB)"
+      ]
+    }
+  ]
+}

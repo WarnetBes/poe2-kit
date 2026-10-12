@@ -36,6 +36,7 @@ import { initCraftTab } from './craftGuide';
 import { initPinnacleTab } from './pinnacle';
 import { initSlangTab } from './slang';
 import { initPobOracleTab } from './pobOracle';
+import { initStarterBuildsTab } from './starterBuilds';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -81,6 +82,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button data-tab="tree" data-group="build" class="tab">Дерево (мои узлы)</button>
           <button data-tab="map" data-group="build" class="tab">Дерево (полное)</button>
           <button data-tab="craft" data-group="build" class="tab">🔨 Крафт</button>
+          <button data-tab="starterbuilds" data-group="build" class="tab" title="Курируемые стартовые билды 0.5.5: стадии, цены, уники, PoB">🧬 Билды</button>
           <button data-tab="atlas" data-group="endgame" class="tab">Атлас</button>
           <button data-tab="mapprep" data-group="endgame" class="tab">🗺 Карты</button>
           <button data-tab="simulacrum" data-group="endgame" class="tab">🌀 Simulacrum</button>
@@ -240,6 +242,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div id="out-craft" class="out"></div>
       </section>
 
+      <section id="pane-starterbuilds" class="pane">
+        <h2>🧬 Билды <small>стартовые билды 0.5.5 · стадии · цены гайдов · PoB</small></h2>
+        <p class="hint">Курируемые стартовые билды PoE2 0.5.x (ресёрч-волны №471-№477: lootkeeper/maxroll/poe.ninja): что покупать на старте/миде/мейне/максе, ключевые уники, порядок узлов асценденси. Цены — срез гайдов, не Live-курс. ⚠-карточки — фейк-связки/предостережения, ❓ — данные не сверены. Неопубликованные цены честно пустые.</p>
+        <div class="lvset"><input id="starterbuilds-filter" type="text" placeholder="поиск: класс, асценденси, скилл, id…" /></div>
+        <div id="out-starterbuilds" class="out"></div>
+      </section>
+
       <section id="pane-atlas" class="pane">
         <h2>Карта Атласа <small>40 очков · ветки механик</small></h2>
         <p class="hint">Древо атласа (atlas skills): клик по узлу берёт/снимает очко (только рядом со стартом или взятым узлом — как в игре, с refund), счётчик в тулбаре. Панорамирование (перетаскивание), масштаб (колесо), поиск по имени/статах, ссылка с планом (#a=) и авто-сохранение в браузере.</p>
@@ -367,7 +376,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h3>PoB-оракул (headless-движок)</h3>
         <p>Вкладка «🧮 PoB-оракул» считает статы билда <strong>настоящим движком Path of Building (PoE2)</strong> в отдельном локальном процессе на вашем ПК (offline): вы сами скачиваете непатченный клон PoB2 с официального репозитория сообщества и указываете путь к нему. Кит не патчит и не изменяет движок; настройки и вычисления происходят локально, никуда не отправляясь. Если клон не указан, вкладка честно сообщает об этом и не работает — без молчаливых фолбэков.</p>
         <h3>MCP-инструментарий (OpenCode и др.)</h3>
-        <p>В комплект входит <strong>MCP-сервер</strong> (Model Context Protocol, 75 инструментов), который вы можете подключить к поддерживающим MCP-клиентам (например, OpenCode). Сервер — обычный локальный процесс: команды запускаются вами, запросы идут к тем же публичным API, что и веб-интерфейс. Ни одна функция MCP не затрагивает клиент игры: log-инструменты читают только стандартный игровой лог, оракул — локальный движок PoB2 (см. выше).</p>
+        <p>В комплект входит <strong>MCP-сервер</strong> (Model Context Protocol, 76 инструментов), который вы можете подключить к поддерживающим MCP-клиентам (например, OpenCode). Сервер — обычный локальный процесс: команды запускаются вами, запросы идут к тем же публичным API, что и веб-интерфейс. Ни одна функция MCP не затрагивает клиент игры: log-инструменты читают только стандартный игровой лог, оракул — локальный движок PoB2 (см. выше).</p>
         <h3>Работа без установленной игры</h3>
         <p>Большая часть кита (билды, PoB-оракул, экономика, прокачка, дерево, крафт, карты) работает <strong>без установленной игры</strong> — достаточно Node.js и интернета. Разделы, требующие игры (live-лог, радар, оверлей поверх окна), честно сообщают об отсутствии игрового лога и не «изобретают» данные.</p>
         <h3>Portable-версия</h3>
@@ -521,6 +530,7 @@ initCraftTab();
 initPinnacleTab();
 initSlangTab();
 initPobOracleTab();
+initStarterBuildsTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());

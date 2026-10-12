@@ -5,7 +5,7 @@
 // Формат выхода: "[smoke] Registered tools: <N>" (apps/mcp/src/index.ts:98).
 
 /** Ожидаемое число зарегистрированных poe2_* тулов в apps/mcp. */
-export const EXPECTED_TOOL_COUNT = 75;
+export const EXPECTED_TOOL_COUNT = 76;
 
 /** Готовая regex-проверка строки "[smoke] Registered tools: <N>". */
 export function toolCountReassert(out) {

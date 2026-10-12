@@ -117,7 +117,7 @@ cd /d C:\poe2-kit
 node apps\mcp\dist\index.js --smoke
 ```
 
-Должно вывести `Registered tools: 75`. Подключение в конфиг MCP-клиента —
+Должно вывести `Registered tools: 76`. Подключение в конфиг MCP-клиента —
 `node C:\poe2-kit\apps\mcp\dist\index.js` (stdio). Живой оракул доступен тулам
 `poe2_recompute` (в т.ч. `scenarios=[...]` — что-если-матрица до 12 сценариев),
 `poe2_build_estimate` (option `goals` — дерево целей по уровням).
