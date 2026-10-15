@@ -124,7 +124,7 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
   repository that you download yourself; the kit never patches or modifies
   it. Without a configured clone the tab honestly refuses to work — no
   silent fallbacks.
-- **MCP tooling.** The kit ships an MCP server (76 tools) for MCP clients
+- **MCP tooling.** The kit ships an MCP server (77 tools) for MCP clients
   (OpenCode etc.): a plain local process you start yourself, talking to the
   same public APIs as the web UI. The game client is never touched: log tools
   read only the standard game log.
