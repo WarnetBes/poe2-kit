@@ -23,8 +23,6 @@ import {
 export interface OverlayStarterStage {
   k: 'starter' | 'mid' | 'main' | 'max';
   cost: string | null;
-  /** ₽-прайс витрины УСЛУГ lootkeeper (НЕ стоимость гира, №484). */
-  rub?: string;
   delta?: string;
   note?: string;
 }
@@ -78,7 +76,6 @@ function compactBuild(b: StarterBuildGuide): OverlayStarterGuide {
     .map((k) => {
       const s = b.stages![k]!;
       const out: OverlayStarterStage = { k, cost: s.cost ?? null };
-      if (s.lootkeeper_rub) out.rub = s.lootkeeper_rub;
       const d = clip(s.delta, DELTA_MAX);
       if (d) out.delta = d;
       const n = clip(s.note, NOTE_MAX);

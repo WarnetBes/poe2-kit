@@ -45,11 +45,6 @@ function lookupBlock(lk: PoeshopMarketLookup): string {
       `- **Вердикт:** ${lk.verdict ? lk.verdict.text : 'цены в свежих лигах нет'}`,
       `- Рыночный агрегат (лига ${lk.league}): ${fmtNum(p.divine)} div / ${fmtNum(p.exalt)} ex / ${fmtNum(p.chaos)} chaos`,
     );
-    if (p.rub != null) {
-      lines.push(
-        `- Витрина: ~${fmtNum(p.rub, ' ₽')} (цена услуг RMT — НЕ стоимость гира${p.rub <= 60 ? ', возможен floor 50₽' : ''})`,
-      );
-    }
     if (p.change7d != null) lines.push(`- Динамика 7д: ${p.change7d > 0 ? '+' : ''}${p.change7d}%`);
     lines.push(`- Свежесть среза: ${lk.freshness ?? '?'}`);
   } else {
@@ -73,9 +68,9 @@ export function registerPoeshopMarketTools(server: McpServer): number {
     'poe2_unique_market',
     {
       title: 'PoE2 Unique Market (poeshop offline)',
-      description: `Офлайн-цены уников PoE2 по витрине poeshop.ru (д датасет кита): вердикт «ценная вещь — не выкидывай», рыночный агрегат в div/ex/chaos, цена витрины в рублях с честным дисклеймером. Матчинг и EN («Temporalis Silk Robe», «Temporalis»), и RU («Темпоралис») имён — работает с Ctrl+C из RU-клиента.
+      description: `Офлайн-цены уников PoE2 по витрине poeshop.ru (датасет кита): вердикт «ценная вещь — не выкидывай», рыночный агрегат в div/ex/chaos. Матчинг и EN («Temporalis Silk Robe», «Temporalis»), и RU («Темпоралис») имён — работает с Ctrl+C из RU-клиента.
 
-⚠️ Дисклеймер: poeshop — витрина услуг (RMT). divine/exalt/chaos — рыночный агрегат, rub — цена витрины, НЕ рыночная стоимость. Срез Standard устаревает — смотри fetchedAt.
+⚠️ Дисклеймер: poeshop — витрина RMT-услуг, НЕ официальный рынок. divine/exalt/chaos — рыночный агрегат по витрине; рубли НЕ показываются в тексте (кит бесплатный и ничего не продаёт), rub попадает только в structured-данные. Срез Standard устаревает — смотри fetchedAt.
 
 Вход:
   - name (string): имя уника (EN/RU, полное или каноническое) или предмета.
@@ -94,6 +89,7 @@ export function registerPoeshopMarketTools(server: McpServer): number {
       outputSchema: {
         markdown: z.string(),
         found: z.number(),
+        rub: z.number().nullable().optional().describe('₽-цена витрины RMT-услуг (только structured, НЕ рыночная стоимость гира)'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     },
@@ -110,7 +106,7 @@ export function registerPoeshopMarketTools(server: McpServer): number {
           const lk = lookupPoeshopMarket(name, league ?? null);
           if (lk.entry) {
             const md = ['# 🛒 Витрина poeshop', lookupBlock(lk), ...footer].join('\n');
-            return { content: [{ type: 'text', text: md }], structuredContent: { markdown: md, found: 1 } };
+            return { content: [{ type: 'text', text: md }], structuredContent: { markdown: md, found: 1, rub: lk.prices?.rub ?? null } };
           }
           if (lk.variants.length) {
             // Каноническое имя с вариантами баз (Runeforged/Runemastered и т.п.)

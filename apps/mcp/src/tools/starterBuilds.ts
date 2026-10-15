@@ -39,7 +39,6 @@ function nameRef(r: StarterBuildNameRef | undefined): string {
 
 function stageBlock(key: 'starter' | 'mid' | 'main' | 'max', s: StarterBuildStage): string {
   const lines = [`  - ${STAGE_LABEL[key]}: ${s.cost ?? 'цена не опубликована'}`];
-  if (s.lootkeeper_rub) lines.push(`    · витрина услуг lootkeeper (НЕ стоимость гира): ${s.lootkeeper_rub}`);
   if (s.delta) lines.push(`    · что меняется: ${s.delta}`);
   if (s.note) lines.push(`    · примечание: ${s.note}`);
   return lines.join('\n');

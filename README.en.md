@@ -34,7 +34,12 @@ poe2scout, poe.ninja and trade2.*
 - **💰 Price check on a hotkey** — hover an item → Ctrl+C → Ctrl+F1: price
   estimate with confidence and the raw market table from free public APIs
   ([poe.ninja](https://poe.ninja), [poe2scout](https://poe2scout.com), the
-  official Path of Exile 2 `trade2` API). No API keys required.
+  official Path of Exile 2 `trade2` API). No API keys required. Uniques are
+  also cross-checked against an offline snapshot of the poeshop.ru showcase
+  (`poe2_unique_market`) — that is an RMT showcase, **not** a market: only the
+  in-game aggregate (div/exalted/chaos) and a "don't vendor it" verdict are
+  shown; rubles and anything purchasable are **never** displayed — the kit is
+  completely free and sells nothing.
 - **🛒 Build shopping list** — paste a PoB2 share-code (Ctrl+F3): target gear
   per slot with live prices, “bought” checkmarks synced from your public
   character page, total budget.

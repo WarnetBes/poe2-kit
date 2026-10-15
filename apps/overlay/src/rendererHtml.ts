@@ -542,7 +542,6 @@ ${OVERLAY_SHELL}<script>
       for (var si = 0; si < g.stages.length; si++) {
         var st = g.stages[si];
         var cost = st.cost ? '<b>' + esc(st.cost) + '</b>' : '<span class="sub">цена не опубликована</span>';
-        if (st.rub) cost += ' <span class="sub" title="₽-прайс витрины УСЛУГ lootkeeper — НЕ стоимость гира">витрина: ' + esc(st.rub) + '</span>';
         if (st.note) cost += ' <span class="sub">(' + esc(st.note) + ')</span>';
         html += '<tr><td class="slot">' + esc(STARTER_STAGE_LABEL[st.k] || st.k) + '</td><td>' + cost +
           (st.delta ? '<br><span class="sub">' + esc(st.delta) + '</span>' : '') + '</td></tr>';

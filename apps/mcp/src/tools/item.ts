@@ -212,7 +212,6 @@ SSF-план: не тратит сеть и валюту, выдаёт реко�
                   `- Рыночный агрегат (${lk.league ?? '?'}): **${div}**${ex ? ` (${ex})` : ''}${p.chaos != null ? `, ${p.chaos} chaos` : ''}`,
                 );
                 if (lk.verdict) lines.push(`- **${lk.verdict.text}**`);
-                if (p.rub != null) lines.push(`- Витрина: ~${p.rub} ₽ (RMT-услуги, НЕ стоимость гира)`);
                 lines.push(`- Срез: ${lk.freshness ?? '?'}; без листингов сверяй с trade2`);
               } else if (lk.variants.length > 1) {
                 lines.push(`- Несколько вариантов баз (${lk.variants.length}) — см. тул poe2_unique_market.`);

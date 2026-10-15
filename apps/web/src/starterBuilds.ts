@@ -48,9 +48,8 @@ function stagesHtml(b: StarterBuildGuide): string {
     .map((k) => {
       const s = b.stages![k]!;
       const cost = s.cost ? `<b>${esc(s.cost)}</b>` : '<span class="dim">цена не опубликована</span>';
-      const rub = s.lootkeeper_rub ? ` <span class="dim" title="₽-прайс витрины услуг lootkeeper (НЕ стоимость гира)">витрина: ${esc(s.lootkeeper_rub)}</span>` : '';
       const note = s.note ? ` <span class="dim">(${esc(s.note)})</span>` : '';
-      return `<tr><td>${STAGE_LABEL[k]}</td><td>${cost}${rub}${note}${s.delta ? `<br><span class="dim">${esc(s.delta)}</span>` : ''}</td></tr>`;
+      return `<tr><td>${STAGE_LABEL[k]}</td><td>${cost}${note}${s.delta ? `<br><span class="dim">${esc(s.delta)}</span>` : ''}</td></tr>`;
     });
   if (!rows.length) return '';
   return `<div class="sim-scroll"><table class="tbl"><thead><tr><th>Стадия</th><th>Цена / что меняется</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
