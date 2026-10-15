@@ -41,6 +41,7 @@ import { registerItemFilterUploadTools } from './tools/itemFilterUpload.js';
 import { registerItemVerdictTools } from './tools/itemVerdict.js';
 import { registerRecomputeTools } from './tools/recompute.js';
 import { registerStarterBuildsTools } from './tools/starterBuilds.js';
+import { registerPoeshopMarketTools } from './tools/poeshopMarket.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -92,6 +93,8 @@ export function buildServer(): number {
   count += registerItemVerdictTools(server);
   count += registerRecomputeTools(server);
   count += registerStarterBuildsTools(server);
+
+  count += registerPoeshopMarketTools(server);
 
   // Запомним сервер для подключения
   (globalThis as any).__poe2Server = server;

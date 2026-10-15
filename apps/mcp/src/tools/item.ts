@@ -5,7 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { core } from '@poe2-kit/core';
-import type { ModTierDossier, ParsedItem } from '@poe2-kit/core';
+import type { ModTierDossier, ParsedItem, PoeshopMarketLookup } from '@poe2-kit/core';
 import { currentDefaultLeague } from '../leagues.js';
 
 function fmtDef(def: { armour?: unknown; evasion?: unknown; energyShield?: unknown; blockChance?: unknown }): string {
@@ -192,6 +192,36 @@ SSF-план: не тратит сеть и валюту, выдаёт реко�
           );
         } else {
           lines.push('- **Оценка:** нет данных (предмет не найден в бесплатных источниках)');
+        }
+        // Витрина poeshop (офлайн-датасет): для уников — вторая оценка + вердикт
+        // «не выкидывай»; особенно ценна, когда scout/trade2 оценки не дали.
+        if (res.rarity === 'Unique') {
+          try {
+            const lk: PoeshopMarketLookup = core.poeshopMarket.lookupPoeshopMarket(
+              res.itemName,
+              leagueName,
+            );
+            const target = lk.entry ?? null;
+            if (target && (lk.prices || lk.variants.length > 1)) {
+              const p = lk.prices;
+              lines.push('', '### Витрина poeshop (офлайн-датасет)');
+              if (p) {
+                const div = p.divine != null ? `${p.divine} div` : '—';
+                const ex = p.exalt != null ? `${p.exalt} ex` : '';
+                lines.push(
+                  `- Рыночный агрегат (${lk.league ?? '?'}): **${div}**${ex ? ` (${ex})` : ''}${p.chaos != null ? `, ${p.chaos} chaos` : ''}`,
+                );
+                if (lk.verdict) lines.push(`- **${lk.verdict.text}**`);
+                if (p.rub != null) lines.push(`- Витрина: ~${p.rub} ₽ (RMT-услуги, НЕ стоимость гира)`);
+                lines.push(`- Срез: ${lk.freshness ?? '?'}; без листингов сверяй с trade2`);
+              } else if (lk.variants.length > 1) {
+                lines.push(`- Несколько вариантов баз (${lk.variants.length}) — см. тул poe2_unique_market.`);
+              }
+              if (!res.estimate) lines.push('- ⚠️ Бесплатные источники оценки не дали — это единственная доступная оценка.');
+            }
+          } catch {
+            // офлайн-датасет недоступен (браузер) — секции просто не будет
+          }
         }
         if (res.listings.length) {
           lines.push('', '### Листинги (trade2)');

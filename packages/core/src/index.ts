@@ -49,6 +49,7 @@ export * from './tradeSnapshot.js';
 export * from './statMatching.js';
 export * from './oauth.js';
 export * from './uniques.js';
+export * from './poeshopMarket.js';
 export * from './learnlog.js';
 export * from './learnedStats.js';
 
@@ -135,6 +136,7 @@ import * as tradeSnapshotMod from './tradeSnapshot.js';
 import * as statMatchingMod from './statMatching.js';
 import * as oauthmod from './oauth.js';
 import * as unqmod from './uniques.js';
+import * as poeshopMarketMod from './poeshopMarket.js';
 import * as p2dbmod from './poe2db.js';
 import * as znmod from './zoneNotes.js';
 import * as bossesmod from './bosses.js';
@@ -200,6 +202,7 @@ export const core = {
   statMatching: statMatchingMod,
   oauth: oauthmod,
   uniques: unqmod,
+  poeshopMarket: poeshopMarketMod,
   poe2db: p2dbmod,
   zoneNotes: znmod,
   bosses: bossesmod,
