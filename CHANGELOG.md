@@ -3,7 +3,24 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
-## [Unreleased]
+## [1.0.33] — 2026-10-19 (сессии №496—№568: гайды/планнер poeshop-волна, иконки гемов/уников, данные патча)
+
+### Added
+- **Вкладка «📖 Гайды» (poeshop-стиль):** карточная сетка 298 гайдов с GGG-обложками, тир-лист S–C, чип-фильтры со счётчиками, аккордеон; датасет guides/poeshop_guides.json (генератор gen-poeshop-guides.mjs, только фактура + url-атрибуция).
+- **Планнер по мотивам poeshop.ru/planner:** скилл-группы с клик-ячейками, пикер с поиском и рекомендованными, share-ссылка #pl= (base64url, приоритетнее LS), 11 клик-слотов экипировки с иконками уников + пикер + кастом-имя.
+- **Иконки гемов/уников (poe2db, CC BY-NC-SA, GGG-арт):** skill_gems/icons 831 + uniques/icons 430 + индексы-манифесты; генераторы fetch-gem-icons.mjs (слаг poe2db регистрозависим: of/the строчные, римские цифры RR, дефисы Title, percent-хекс верхний) и fetch-item-icons.mjs; dist-зеркала gem_icons/item_icons через copy-datasets.mjs.
+- **UX (№568):** deep-links #t=<tab> на все вкладки (соседствует с a=/pl=, restore после init-хендлеров), кнопки «Из буфера» ×4 (build/compare/keybinds/pob), Escape → закрытие пикеров, lastTabInGroup → LS.
+### Changed
+- **Карточный редизайн «🧬 Билды»:** обложки классов, цен-бейджи, фейк-рамки, чип-фильтры классов/цен, аккордеон.
+- **₽-цены убраны из UI (№496, решение владельца):** остаются только в structured-данных и raw-датасетах; из markdown-тулов poe2_unique_market / poe2_price_check / poe2_starter_builds, tooltip’ов web и overlay — удалены. README RU/EN дополнен честной строкой про источник poeshop (RMT-витрина, НЕ рынок; кит ничего не продаёт).
+- **fullMap.ts:** syncPlanHash теперь сохраняет чужие hash-сегменты (не затирает #t=/#a=).
+### Verified
+- build web OK; vitest 585/585; npm run smoke ALL OK; живой E2E: пикер гемов 380/381 <img>, гир 52/53, deep-links #t=, share #pl=…&t=planner, Escape, paste-кнопки ×4.
+### Not verified
+- 52 иконки гемов (мусорные mod-подписи / tier-II без страниц / CDN-403) — фолбэк-жетоны by design, докач = убывающая отдача.
+- CI-раны SourceCraft после push — принять глазами.
+
+
 
 ### Changed
 - **Рубли убраны из всех текстовых выводов и UI (решение владельца: кит бесплатный, цены услуг не показывать).** ₽-цифры витрин (poeshop rub, lootkeeper_rub) остаются только в structured-данных и raw-датасетах: из markdown-ответов тулов `poe2_unique_market` / `poe2_price_check` / `poe2_starter_builds`, tooltip'ов web-вкладки «🧬 Билды» и overlay-панели «🧬 Стартовые» (вкл. запекаемый в renderer датасет) — удалены. README RU/EN дополнен честной строкой про источник poeshop (RMT-витрина, НЕ рынок; кит ничего не продаёт).
