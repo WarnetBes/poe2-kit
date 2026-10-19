@@ -7,7 +7,21 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+
+// ── ⚡ Ускорение отдачи (№570): gzip (in-mem кэш по mtime) + immutable-кэш ─
+const GZIP_EXTS = new Set(['.html', '.js', '.css', '.json', '.svg', '.map']);
+const gzipCache = new Map(); // path → { mtimeMs, gz }
+async function gzipFor(file, data) {
+  const { mtimeMs } = await fs.stat(file);
+  let e = gzipCache.get(file);
+  if (!e || e.mtimeMs !== mtimeMs) {
+    e = { mtimeMs, gz: gzipSync(data, { level: 6 }) };
+    gzipCache.set(file, e);
+  }
+  return e.gz;
+}
 
 // ── Фаза 3: персист headless-PoB сессии ─────────────────────────────────
 // Долгоживущий движок (boot ~11 с — ОДИН раз), дальше RPC за миллисекунды.
@@ -244,8 +258,23 @@ const server = http.createServer(async (req, res) => {
       file = path.join(ROOT, 'index.html');
       data = await fs.readFile(file);
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream' });
-    res.end(data);
+    const ext = path.extname(file).toLowerCase();
+    const accept = String(req.headers['accept-encoding'] ?? '');
+    // /assets/* и /datasets/* — контентно-адресные (хеш в имени) → кэш навсегда
+    const immutable = urlPath.startsWith('/assets/') || urlPath.startsWith('/datasets/');
+    const headers = {
+      'Content-Type': TYPES[ext] ?? 'application/octet-stream',
+      'Cache-Control': immutable
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=300',
+    };
+    if (accept.includes('gzip') && GZIP_EXTS.has(ext) && data.length > 512) {
+      res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip' });
+      res.end(await gzipFor(file, data));
+    } else {
+      res.writeHead(200, headers);
+      res.end(data);
+    }
   } catch (err) {
     // Молчаливый 500 — плохая диагностика (№202): логируем причину и URL.
     console.error(`[serve-dist] 500 on ${req.method} ${req.url}:`, err?.message ?? err);

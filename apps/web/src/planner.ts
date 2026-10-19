@@ -15,16 +15,22 @@
  */
 
 import { core, setStatus } from './ui';
+import { ruToEnName } from '@poe2-kit/core';
 
 // ─── Типы ────────────────────────────────────────────────────────────────────
 
 interface PlannerSupport { en: string; ru: string | null }
 interface PlannerGroup { gem: string; supports: PlannerSupport[] }
-interface PlannerState { groups: PlannerGroup[]; gear: Record<string, string> }
+/** План дерева (числовые GGG skill-id; контракт = treeGame mount GamePlan). */
+interface TreePlan { class: string; allocated: number[]; ascendancy?: string }
+interface PlannerState { groups: PlannerGroup[]; gear: Record<string, string>; tree?: TreePlan }
 
 const LS_KEY = 'poe2kit-planner-v1';
 const MAX_SUPPORTS = 5;
-const MAX_GROUPS = 3;
+/** Потолок скилл-групп (как у зрелых планнеров — независимо от оружия/сетов). */
+const MAX_GROUPS = 12;
+/** Базовое число видимых карточек; фактический рендер — занятые группы + 1 резерв (до MAX_GROUPS). */
+const BASE_GROUPS = 3;
 
 /** Слоты гира: id → (RU-лейбл, категории uniques_catalog для datalist). */
 const GEAR_SLOTS: Array<{ id: string; label: string; cats: string[] }> = [
@@ -42,6 +48,52 @@ const GEAR_SLOTS: Array<{ id: string; label: string; cats: string[] }> = [
 ];
 
 interface UniquesByCategory { [cat: string]: string[] }
+
+// ─── Импорт билда из «Билдов»/«Гайдов» (одноразовая очередь через sessionStorage) ──
+
+export interface PlannerImport {
+  /** Название билда (для статуса-строки). */
+  title: string;
+  /** Базовый класс display-именем GGG ('Monk'). */
+  class?: string;
+  /** Асценданси display-именем ('Invoker'). */
+  ascendancy?: string;
+  /** Скилл-группы: главный гем + саппорты (EN). */
+  groups?: Array<{ gem: string; supports: string[] }>;
+  /** Ключевые уники (EN) — раскладка по слотам через uniques_catalog. */
+  uniques?: string[];
+}
+
+const IMPORT_KEY = 'poe2kit-planner-import';
+
+/** Из карточки билда/гайда: положить билд в очередь и открыть Планнер. */
+export function queuePlannerImport(q: PlannerImport): void {
+  try { sessionStorage.setItem(IMPORT_KEY, JSON.stringify(q)); } catch { /* очередь недоступна — молча */ }
+  const tab = document.querySelector<HTMLButtonElement>('[data-tab="planner"]');
+  tab?.click();
+  setStatus(`«${q.title}» → Планнер: гемы, уники по слотам${q.class ? ', класс и стартовое кольцо дерева' : ''}. Качай узлы кликами.`);
+}
+
+function readImportQueue(): PlannerImport | null {
+  try {
+    const raw = sessionStorage.getItem(IMPORT_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(IMPORT_KEY); // очередь одноразовая
+    const q = JSON.parse(raw) as PlannerImport;
+    if (!q || typeof q !== 'object') return null;
+    return q;
+  } catch { return null; }
+}
+
+/** Уник → слот по категориям uniques_catalog (первый свободный подходящий). */
+function slotForUnique(name: string, byCategory: UniquesByCategory, occupied: Set<string>): (typeof GEAR_SLOTS)[number] | null {
+  const lower = name.trim().toLowerCase();
+  for (const slot of GEAR_SLOTS) {
+    if (occupied.has(slot.id)) continue;
+    if (slot.cats.some((c) => (byCategory[c] ?? []).some((n) => n.trim().toLowerCase() === lower))) return slot;
+  }
+  return null;
+}
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +115,9 @@ function fetchJson(url: string): Promise<unknown> {
 function encodeShare(s: PlannerState): string {
   try {
     const min = s.groups.map((g) => [g.gem, g.supports.map((x) => x.en)]);
-    return btoa(JSON.stringify({ g: min, gear: s.gear }))
+    // дерево: t=[class, asc|'', allocated] — компактно, v1-читатели игнорируют
+    const t = s.tree ? [s.tree.class, s.tree.ascendancy ?? '', s.tree.allocated] : undefined;
+    return btoa(JSON.stringify({ g: min, gear: s.gear, ...(t ? { t } : {}) }))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   } catch { return ''; }
 }
@@ -74,13 +128,20 @@ function decodeShare(seg: string): PlannerState | null {
     const raw = JSON.parse(atob(b64)) as {
       g?: Array<[string, string[]]>;
       gear?: Record<string, string>;
+      t?: [string, string, number[]];
     };
     if (!Array.isArray(raw.g)) throw new Error('схема');
     const groups = raw.g.slice(0, MAX_GROUPS).map(([gem, sup]) => ({
       gem: String(gem ?? ''),
       supports: (sup ?? []).slice(0, MAX_SUPPORTS).map((en) => ({ en: String(en), ru: null })),
     }));
-    return { groups, gear: raw.gear ?? {} };
+    // v2-дерево: валидируем форму, чтобы битые ссылки не роняли планнер
+    let tree: TreePlan | undefined;
+    if (raw.t && typeof raw.t[0] === 'string' && Array.isArray(raw.t[2])) {
+      tree = { class: raw.t[0], allocated: raw.t[2].filter((n) => Number.isInteger(n) && n > 0) };
+      if (raw.t[1]) tree.ascendancy = raw.t[1];
+    }
+    return { groups, gear: raw.gear ?? {}, ...(tree ? { tree } : {}) };
   } catch { return null; }
 }
 
@@ -90,7 +151,7 @@ function loadState(): PlannerState {
   if (m) {
     const shared = decodeShare(m[1]);
     if (shared) {
-      while (shared.groups.length < MAX_GROUPS) shared.groups.push({ gem: '', supports: [] });
+      while (shared.groups.length < BASE_GROUPS) shared.groups.push({ gem: '', supports: [] });
       return shared;
     }
   }
@@ -99,7 +160,20 @@ function loadState(): PlannerState {
     if (!raw) throw new Error('пусто');
     const parsed = JSON.parse(raw) as PlannerState;
     if (!Array.isArray(parsed.groups) || typeof parsed.gear !== 'object') throw new Error('схема');
-    return { groups: parsed.groups.slice(0, MAX_GROUPS), gear: parsed.gear ?? {} };
+    // v2: сохранённый tree-план (числовые id из treeGame mount)
+    let tree: TreePlan | undefined;
+    if (parsed.tree && typeof parsed.tree.class === 'string' && Array.isArray(parsed.tree.allocated)) {
+      tree = {
+        class: parsed.tree.class,
+        allocated: parsed.tree.allocated.filter((n) => Number.isInteger(n) && n > 0),
+        ...(parsed.tree.ascendancy ? { ascendancy: parsed.tree.ascendancy } : {}),
+      };
+    }
+    return {
+      groups: parsed.groups.slice(0, MAX_GROUPS),
+      gear: parsed.gear ?? {},
+      ...(tree ? { tree } : {}),
+    };
   } catch {
     return { groups: [], gear: {} };
   }
@@ -416,6 +490,9 @@ function summaryText(state: PlannerState): string {
   });
   const gear = GEAR_SLOTS.filter((s) => state.gear[s.id]).map((s) => `${s.label}: ${state.gear[s.id]}`);
   if (gear.length) lines.push('Гир: ' + gear.join('; '));
+  if (state.tree?.allocated.length) {
+    lines.push(`Дерево: ${state.tree.class}${state.tree.ascendancy ? ` (${state.tree.ascendancy})` : ''} — ${state.tree.allocated.length} очков`);
+  }
   return lines.join('\n') || 'Планнер пуст.';
 }
 
@@ -423,10 +500,140 @@ function summaryText(state: PlannerState): string {
 
 export function initPlannerTab(): void {
   let rendered = false;
+  type PlannerGame = import('./treeGame/mount').GameHandle;
+  type NodeInfo = import('./treeGame/mount').GameNodeInfo;
+  let game: PlannerGame | null = null;
+  /** Стабильный DOM узла дерева: живёт вне innerHTML-перерендеров (appendChild переносит, контекст WebGL не теряется). */
+  let treeUI: HTMLElement | null = null;
   const btn = document.querySelector<HTMLButtonElement>('[data-tab="planner"]');
   const out = () => document.getElementById('out-planner');
   const state = loadState();
-  while (state.groups.length < MAX_GROUPS) state.groups.push({ gem: '', supports: [] });
+  // каркас минимум — при рендере число групп пересчитывается (занятые + 1 резерв)
+  while (state.groups.length < BASE_GROUPS) state.groups.push({ gem: '', supports: [] });
+
+  // ── Дерево пассивных (D1): WebGL mount из treeGame-чанка ────────────────────
+
+  /** Клик по узлу: взять/снять с path-валидацией (паттерн fullMap handlePlanClick). */
+  const handleTreeNodeClick = (info: NodeInfo | null, skill: number): void => {
+    if (!game) return;
+    const hint = document.querySelector<HTMLElement>('[data-pl-tree-hint]');
+    if (!info) { if (hint) hint.textContent = 'структурный узел без имени — не аллоцируется'; return; }
+    if (info.isMastery) { if (hint) hint.textContent = 'мастерство — не отдельное очко'; return; }
+    if (!state.tree) {
+      // первый клик: автостарт от асценданси узла (если есть) или выбранного класса
+      const clsSel = document.querySelector<HTMLSelectElement>('[data-pl-class]');
+      let cls = info.ascendancy
+        ? ([...game.ascByClass.entries()].find(([, ascs]) => ascs.includes(info.ascendancy!))?.[0]
+          ?? clsSel?.value ?? 'Monk')
+        : (clsSel?.value || 'Monk');
+      game.initPlan(cls, info.ascendancy);
+      state.tree = { class: cls, allocated: [] };
+    }
+    const r = game.toggleNode(skill);
+    if (r.ok && r.plan) {
+      state.tree = { class: r.plan.className, allocated: r.plan.allocated, ...(r.plan.ascendancy ? { ascendancy: r.plan.ascendancy } : {}) };
+      // Перекраска сцены (как fullMap applyAllocation): без setBuild WebGL молчит
+      game.setBuild(r.plan.allocated.length ? { allocated: r.plan.allocated, ascendId: r.plan.ascendancy || undefined } : null);
+      if (hint) hint.textContent = '';
+      saveState(state); // план дерева — в общий LS+hash, гемы/гир не трогаем
+      refreshTreeUI();
+    } else if (hint) {
+      hint.textContent = r.hint ?? 'не удалось изменить план';
+    }
+  };
+
+  /** Счётчик очков + подпись класса/асценданси в UI дерева (и факт-плитка вкладки). */
+  function refreshTreeUI(): void {
+    const pts = document.querySelector<HTMLElement>('[data-pl-points]');
+    if (pts) pts.textContent = String(state.tree?.allocated.length ?? 0);
+    const fact = document.querySelector<HTMLElement>('#pl-fact-tree');
+    if (fact) fact.textContent = String(state.tree?.allocated.length ?? 0);
+    const clsSel = document.querySelector<HTMLSelectElement>('[data-pl-class]');
+    const ascSel = document.querySelector<HTMLSelectElement>('[data-pl-asc]');
+    if (clsSel && state.tree) clsSel.value = state.tree.class;
+    if (ascSel && state.tree?.ascendancy) ascSel.value = state.tree.ascendancy;
+  }
+
+  /** Ленивый монтаж WebGL-дерева (один раз на вкладку; Pixi живёт в стаб-узле). */
+  async function ensureTreeUI(): Promise<void> {
+    const el = out();
+    if (!el || treeUI) return;
+    treeUI = document.createElement('div');
+    treeUI.className = 'pl-tree-ui';
+    treeUI.innerHTML = `
+      <h3>Пассивное дерево</h3>
+      <div class="pl-tree-ctl">
+        <label>класс <select data-pl-class></select></label>
+        <label>асценданси <select data-pl-asc><option value="">—</option></select></label>
+        <span class="pl-tree-pts">очков: <b data-pl-points>0</b></span>
+        <button type="button" class="tab" data-pl-tree-reset>♻ Сброс дерева</button>
+      </div>
+      <div class="pl-tree-mount" data-pl-tree-mount><span class="dim">⏳ грузим WebGL-данные дерева…</span></div>
+      <p class="hint" data-pl-tree-hint>Клик по узлу — взять очко (с достройкой пути от старта класса), повторный — снять. План дерева входит в общий план (localStorage + ссылка).</p>`;
+    el.appendChild(treeUI);
+
+    const host = treeUI.querySelector<HTMLElement>('[data-pl-tree-mount]')!;
+    const clsSel = treeUI.querySelector<HTMLSelectElement>('[data-pl-class]')!;
+    const ascSel = treeUI.querySelector<HTMLSelectElement>('[data-pl-asc]')!;
+    try {
+      const mod = await import('./treeGame/mount');
+      game = await mod.mountGameTree(host, { onNodeClick: handleTreeNodeClick, allocation: null });
+      // race: вкладку могли покинуть, пока шёл async-mount → host уже оторван от DOM.
+      // Незамедлительно демонтируем, иначе Pixi-контекст повиснет на detached-узле.
+      if (!host.isConnected) { game.unmount(); game = null; return; }
+      // селекторы: классы/асценданси из GGG data.json
+      clsSel.innerHTML = [...game.ascByClass.keys()].sort().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      const fillAsc = (cls: string) => {
+        const ascs = game?.ascByClass.get(cls) ?? [];
+        const cur = ascSel.value;
+        ascSel.innerHTML = ['<option value="">—</option>', ...ascs.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`)].join('');
+        if (ascs.includes(cur)) ascSel.value = cur;
+      };
+      clsSel.addEventListener('change', () => { fillAsc(clsSel.value); if (game) game.setClass(clsSel.value || undefined); });
+      ascSel.addEventListener('change', () => {
+        if (!game) return;
+        if (state.tree) {
+          game.planSetAscendancy(ascSel.value || undefined);
+          const p = game.getPlan();
+          if (p) {
+            state.tree = { class: p.className, allocated: p.allocated, ...(p.ascendancy ? { ascendancy: p.ascendancy } : {}) };
+            game.setBuild(p.allocated.length ? { allocated: p.allocated, ascendId: p.ascendancy || undefined } : null); // перекраска под новую ветку
+            saveState(state);
+          }
+        } else game.setAscendancy(ascSel.value || undefined);
+        refreshTreeUI();
+      });
+      // восстановить сохранённый план (LS/ссылка) в живое дерево
+      if (state.tree && state.tree.allocated.length) {
+        const ok = game.restorePlan({ className: state.tree.class, allocated: state.tree.allocated, ascendancy: state.tree.ascendancy });
+        if (ok) { fillAsc(state.tree.class); game.setClass(state.tree.class); }
+        // и сразу подсветить взятые узлы (иначе план восстановлен, а сцена пуста)
+        game.setBuild({ allocated: state.tree.allocated, ascendId: state.tree.ascendancy || undefined });
+      } else {
+        const cls = state.tree?.class ?? 'Monk';
+        game.setClass(clsSel.value = cls);
+        fillAsc(cls);
+        // пустой план с выбранным классом (импорт из Билдов/Гайдов): кольцо + диск ветки сразу
+        if (state.tree?.ascendancy) {
+          game.setAscendancy(state.tree.ascendancy);
+          ascSel.value = state.tree.ascendancy;
+        }
+      }
+      refreshTreeUI();
+      treeUI.querySelector('[data-pl-tree-reset]')?.addEventListener('click', () => {
+        game?.resetPlan();
+        game?.setBuild(null); // снять подсветку всех узлов
+        state.tree = undefined;
+        saveState(state);
+        refreshTreeUI();
+        const hint = treeUI?.querySelector<HTMLElement>('[data-pl-tree-hint]');
+        if (hint) hint.textContent = '';
+      });
+    } catch (e) {
+      host.innerHTML = `<p class="note">⚠ Дерево не загрузилось: ${esc(String(e))}</p>`;
+    }
+  }
+
 
   async function render(): Promise<void> {
     const el = out();
@@ -438,7 +645,11 @@ export function initPlannerTab(): void {
     await ensureItemIcons();
 
     const groupHtmls: string[] = [];
-    for (let i = 0; i < MAX_GROUPS; i++) {
+    // динамический счётчик карточек: занятые + одна свободная под набор, минимум BASE_GROUPS
+    const filled = state.groups.filter((g) => g.gem || g.supports.length).length;
+    const renderCount = Math.min(MAX_GROUPS, Math.max(BASE_GROUPS, filled + 1));
+    while (state.groups.length < renderCount) state.groups.push({ gem: '', supports: [] });
+    for (let i = 0; i < renderCount; i++) {
       const gem = state.groups[i]?.gem ?? '';
       const recos: RecoLite[] = gem ? core.gemSupports.supportsForActive(gem) : [];
       groupHtmls.push(groupHtml(i, state, recos, colors, box.ruByEn));
@@ -458,6 +669,7 @@ export function initPlannerTab(): void {
         <div class="sim-fact"><b>${box.allSupports.length}</b><span>саппортов в пикере</span></div>
         <div class="sim-fact"><b>${state.groups.filter((g) => g.gem).length}/${MAX_GROUPS}</b><span>скилл-групп занято</span></div>
         <div class="sim-fact"><b>${GEAR_SLOTS.filter((s) => state.gear[s.id]).length}/${GEAR_SLOTS.length}</b><span>слотов гира заполнено</span></div>
+        <div class="sim-fact"><b id="pl-fact-tree">${state.tree?.allocated.length ?? 0}</b><span>очков дерева взято</span></div>
       </div>
       <div class="pl-groups">${groupHtmls.join('')}</div>
       ${pickerPart}
@@ -467,6 +679,8 @@ export function initPlannerTab(): void {
       ${gearPicker ? gearPickerHtml(gearPicker.slot, state, byCategory) : ''}
       <div class="lvset" style="margin-top:12px"><button id="pl-copy" class="tab">📋 Копировать сводку</button> <button id="pl-share" class="tab">🔗 Поделиться планом</button></div>
       <p class="dim" id="pl-summary-note"></p>`;
+    // стаб-узел дерева переживает innerHTML: appendChild переносит тот же DOM (+WebGL-контекст)
+    if (treeUI) el.appendChild(treeUI);
   }
 
   function persistAndRender(): void {
@@ -504,11 +718,88 @@ export function initPlannerTab(): void {
     persistAndRender();
   }
 
+  /**
+   * Освободить WebGL-дерево при уходе со вкладки (риск «память ×2», D1).
+   * GameHandle.unmount → React-cleanup TreeView → app.destroy(true,{children:true})
+   * (контекст/тикер/листенеры чистятся, await-init-guard защищает быстрый switch).
+   * Модульный кэш mount.ts (данные+атласы) НЕ сбрасываем: он общий с вкладкой «Карта»
+   * и делает повторный mount быстрым — резидентская цена принята осознанно.
+   */
+  function teardownTree(): void {
+    if (!game && !treeUI) return;
+    try { game?.unmount(); } catch { /* React-18 warns на setState после unmount — не критично */ }
+    game = null;
+    treeUI?.remove();
+    treeUI = null;
+    // восстановленный план дерева не теряется: он в state.tree → LS/hash
+  }
+
+  // Уход со вкладки ловим MutationObserver'ом класса #pane-planner: это закрывает ВСЕ пути
+  // (клики по табам и selectGroup('now'), который скрывает панели напрямую, без tab-click).
+  const pane = document.getElementById('pane-planner');
+  if (pane) {
+    new MutationObserver(() => {
+      if (!pane.classList.contains('active')) teardownTree();
+    }).observe(pane, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  /** Применить импорт из очереди к текущему состоянию (перезаписывает план). */
+  async function applyImport(q: PlannerImport): Promise<void> {
+    const groups = (q.groups ?? []).slice(0, MAX_GROUPS).map((g) => ({
+      gem: String(g.gem ?? ''),
+      supports: (g.supports ?? []).slice(0, MAX_SUPPORTS).map((en) => ({ en: String(en), ru: null })),
+    }));
+    while (groups.length < BASE_GROUPS) groups.push({ gem: '', supports: [] });
+    state.groups = groups;
+    state.gear = {};
+    if (q.uniques?.length) {
+      const { byCategory } = await ensureUniques();
+      const occupied = new Set<string>();
+      for (const n of q.uniques) {
+        // карточки гайдов дают RU-имена уников — резолвим в EN (core ruLocale)
+        // и кладём в слот каноничное EN-имя (оно же уходит в пикер/uniques_catalog)
+        const en = slotForUnique(n, byCategory, occupied) ? n : ruToEnName(n) ?? '';
+        const slot = en ? slotForUnique(en, byCategory, occupied) : null;
+        if (slot) { state.gear[slot.id] = en; occupied.add(slot.id); }
+      }
+    }
+    // класс/асценданси: дерево сразу показывает стартовое кольцо и диск ветки
+    if (q.class) {
+      // если ранее через вкладку «Древо» импортировался PoB этого же класса —
+      // переносим его узлы в план (честно: у карточек нет своих PoB-кодов)
+      let pre: number[] = [];
+      try {
+        const saved = JSON.parse(localStorage.getItem('poe2k.plan') ?? '') as { c?: string; n?: number[] };
+        if (saved && typeof saved.c === 'string' && saved.c.toLowerCase() === q.class.toLowerCase() && Array.isArray(saved.n)) {
+          pre = saved.n.filter((x) => Number.isInteger(x)).map(Number);
+        }
+      } catch { /* битый LS — не падаем, просто без префилла */ }
+      state.tree = {
+        class: q.class,
+        allocated: pre,
+        ...(q.ascendancy ? { ascendancy: q.ascendancy } : {}),
+      };
+    }
+    saveState(state);
+  }
+
   btn?.addEventListener('click', () => {
-    if (rendered) return;
+    // очередь импорта из карточек билдов/гайдов — приоритетнее обычного открытия
+    const q = readImportQueue();
+    const mountTree = (): void => { if (!treeUI) void ensureTreeUI(); };
+    if (q) {
+      void applyImport(q).then(() => { rendered = true; persistAndRender(); mountTree(); });
+      return;
+    }
+    if (rendered) {
+      // возврат после unmount-on-leave: дерево монтируем заново (данные в module-кэше — быстро)
+      mountTree();
+      return;
+    }
     rendered = true;
     persistAndRender();
-    setStatus('Планнер открыт: клик по ячейке — выбор гема/саппорта, рекомендованные сверху. Сохраняется локально.');
+    mountTree();
+    setStatus('Планнер открыт: клик по ячейке — выбор гема/саппорта, рекомендованные сверху. Дерево пассивных внизу вкладки. Сохраняется локально.');
 
     const el0 = out();
     el0?.addEventListener('click', (ev) => {

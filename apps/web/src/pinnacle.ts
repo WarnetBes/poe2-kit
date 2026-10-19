@@ -76,9 +76,44 @@ function lastBuildCode(): string {
   }
 }
 
+// ─── Боссы: карточки из core.bosses (готовые мозги №143/№112, web раньше не показывал) ──
+
+function bossCard(b: (typeof core.bosses.PINNACLE_BOSSES)[number]): string {
+  const li = (xs: string[] | undefined, cls: string): string =>
+    xs?.length
+      ? `<ul class="mp-mods ${cls}">${xs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`
+      : '';
+  return `<details class="pg-card2 sb-bosscard">
+    <summary><b>${esc(b.name)}</b>${b.zone ? ` <span class="dim">· ${esc(b.zone)}</span>` : ''}</summary>
+    <div class="pg-body">
+      ${b.access ? `<p class="note"><b>Доступ:</b> ${esc(b.access)}</p>` : ''}
+      ${li(b.weaknesses, 'sb-boss-weak')}
+      ${li(b.strengths, 'sb-boss-strong')}
+      ${li(b.tips, '')}
+      ${li(b.farm, '')}
+      ${b.reward ? `<p class="dim">Награда: ${esc(b.reward)}</p>` : ''}
+    </div>
+  </details>`;
+}
+
+function renderBosses(): void {
+  const out = document.getElementById('out-pinnacle');
+  if (!out) return;
+  const panel = document.getElementById('pinnacle-bosses');
+  if (panel) return; // уже отрендерено
+  const div = document.createElement('div');
+  div.id = 'pinnacle-bosses';
+  div.innerHTML = `
+    <h3>👑 Пиннакл-боссы: доступ и матчап</h3>
+    <p class="hint">Факты из ядра (bosses.ts, verified 0.5): ключи доступа, уязвимости, фазы, дроп. Чек-лист ниже — универсальный для всех боссов; матчап по урону смотри в «Слабостях».</p>
+    ${core.bosses.PINNACLE_BOSSES.map(bossCard).join('')}`;
+  out.before(div);
+}
+
 // ─── Вкладка: init ───────────────────────────────────────────────────────────
 
 export function initPinnacleTab(): void {
+  renderBosses();
   document.querySelector('#btn-pinnacle-last')?.addEventListener('click', () => {
     void runPinnacle(lastBuildCode());
   });

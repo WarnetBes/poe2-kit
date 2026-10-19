@@ -11,6 +11,7 @@
  */
 
 import { setStatus } from './ui';
+import { queuePlannerImport } from './planner';
 import classBgDefault from './classBgAssets';
 
 // ─── Типы датасета (mirror gen-poeshop-guides.mjs) ───────────────────────────
@@ -131,6 +132,7 @@ function cardHtml(g: Guide): string {
       <p class="dim pg-src">Источник: <a href="${esc(g.url)}" target="_blank" rel="noreferrer">poeshop.ru — оригинал гайда</a>${g.date ? ` · ${esc(g.date)}` : ''}</p>
     </div>
     ${skills ? `<button type="button" class="pg-toggle" data-pg-toggle aria-expanded="false">Связки ▾</button>` : ''}
+    <button type="button" class="pg-toggle sb-open2plan" data-pg-open="${esc(g.slug)}" title="Гемы связок и уники — в Планнер">→ 🛠 Открыть в Планнере</button>
   </article>`;
 }
 
@@ -252,8 +254,31 @@ export function initPoeguidesTab(): void {
             doRender(ds);
           });
         }
-        // делегированный аккордеон карточек
+        // делегированный аккордеон карточек + «→ в Планнер»
         out()?.addEventListener('click', (ev) => {
+          const plan = (ev.target as HTMLElement).closest('[data-pg-open]') as HTMLButtonElement | null;
+          if (plan) {
+            const g = ds.guides.find((x) => x.slug === plan.dataset.pgOpen);
+            if (g) {
+              const cap = (s: string | null | undefined): string | undefined =>
+                s ? s.charAt(0).toUpperCase() + s.slice(1) : undefined;
+              const groups = g.skills
+                .map((s) => ({
+                  gem: (s.main ?? s.gems[0]?.name ?? '').trim(),
+                  supports: s.gems.map((x) => x.name.trim()).filter((n) => n && n !== (s.main ?? '')),
+                }))
+                .filter((x) => x.gem)
+                .slice(0, 12);
+              queuePlannerImport({
+                title: g.title,
+                class: cap(g.class_en),
+                ascendancy: cap(g.asc_en),
+                groups,
+                uniques: g.uniques.map((u) => u.name),
+              });
+            }
+            return;
+          }
           const t = (ev.target as HTMLElement).closest('[data-pg-toggle]') as HTMLButtonElement | null;
           if (!t) return;
           const card = t.closest('[data-pgcard]') as HTMLElement | null;

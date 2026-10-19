@@ -16,6 +16,7 @@
  */
 
 import { setStatus } from './ui';
+import { queuePlannerImport } from './planner';
 import classBgDefault from './classBgAssets';
 import {
   listStarterBuildGuides,
@@ -130,6 +131,7 @@ function buildCard(b: StarterBuildGuide): string {
       <p class="dim pg-src">${esc(b.id)}${b.title_en ? ` · ${esc(b.title_en)}` : ''}</p>
     </div>
     <button type="button" class="pg-toggle" data-sb-toggle aria-expanded="false">Подробнее ▾</button>
+    <button type="button" class="pg-toggle sb-open2plan" data-sb-open="${esc(b.id)}" title="Гемы+саппорты, ключевые уники по слотам, класс и стартовое кольцо дерева — в Планнере">→ 🛠 Открыть в Планнере</button>
   </article>`;
 }
 
@@ -240,8 +242,24 @@ export function initStarterBuildsTab(): void {
         doRender();
       });
     }
-    // делегированный аккордеон (та же схема, что в «Гайдах»)
+    // делегированный аккордеон (та же схема, что в «Гайдах») + «→ в Планнер»
     out()?.addEventListener('click', (ev) => {
+      const plan = (ev.target as HTMLElement).closest('[data-sb-open]') as HTMLButtonElement | null;
+      if (plan) {
+        const b = listStarterBuildGuides().find((x) => x.id === plan.dataset.sbOpen);
+        if (b) {
+          const cap = (s: string | undefined | null): string | undefined =>
+            s ? s.charAt(0).toUpperCase() + s.slice(1) : undefined;
+          queuePlannerImport({
+            title: b.title_ru || b.title_en || b.id,
+            class: cap(b.class_en),
+            ascendancy: cap(b.ascendancy_en),
+            groups: [{ gem: b.main_skill.en ?? '', supports: (b.supports ?? []).map((s) => s.en ?? '').filter(Boolean) }],
+            uniques: (b.key_uniques ?? []).map((u) => u.en ?? u.ru ?? '').filter(Boolean),
+          });
+        }
+        return;
+      }
       const t = (ev.target as HTMLElement).closest('[data-sb-toggle]') as HTMLButtonElement | null;
       if (!t) return;
       const card = t.closest('[data-sbcard]') as HTMLElement | null;

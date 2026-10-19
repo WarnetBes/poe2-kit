@@ -22,6 +22,8 @@ import {
   essenceSuggestions,
   parseItemText,
   itemDisplayName,
+  resolveModTiers,
+  tiersBadgeText,
 } from '@poe2-kit/core';
 
 function esc(s: string): string {
@@ -98,7 +100,7 @@ function renderPriceCatalog(): string {
 
 // ── Персональный план по предмету ───────────────────────────────────────────
 
-function runCraftPlan(text: string): void {
+async function runCraftPlan(text: string): Promise<void> {
   const el = document.getElementById('out-craft')!;
   const trimmed = text.trim();
   if (!looksLikeItemText(trimmed)) {
@@ -116,8 +118,26 @@ function runCraftPlan(text: string): void {
       rarity: parsed.rarity,
       parsed,
     });
-    const ess = essenceSuggestions(parsed.itemClass, parsed.baseType);    el.innerHTML = `
+    const ess = essenceSuggestions(parsed.itemClass, parsed.baseType);
+    // Тир-досье по RePoE (№ P2/W1): тир каждого мода, совершенство ролла, свободные слоты.
+    let dossierHtml = '';
+    try {
+      const d = await resolveModTiers(trimmed);
+      if (d.modTiers.length || d.unmatchedExplicits.length) {
+        dossierHtml = `<h4>📋 Тир-досье (RePoE)</h4>
+          <p class="hint">Префиксы ${d.prefixCount}/${d.maxPrefixes} (свободно ${Math.max(0, d.openPrefix)}), суффиксы ${d.suffixCount}/${d.maxSuffixes} (свободно ${Math.max(0, d.openSuffix)}).</p>
+          <ul class="mp-mods">
+            ${d.modTiers.map((m) => {
+              const roll = m.rollPct === null ? '' : ` · ролл ${Math.round(m.rollPct)}%`;
+              return `<li><b>${tiersBadgeText(m)}</b> <span class="dim">(${esc(m.affixName)}, ${esc(m.prefixSuffix)})</span> ${esc(m.modText)}${roll}</li>`;
+            }).join('')}
+            ${d.unmatchedExplicits.map((u) => `<li class="dim">${esc(u)} — тир не найден (unique/гибрид)</li>`).join('')}
+          </ul>`;
+      }
+    } catch { /* досье опционально: без него план всё равно валиден */ }
+    el.innerHTML = `
       <h3>🧾 План для «${esc(name)}» <span class="dim">(${esc(parsed.itemClass)}, ilvl ${parsed.itemLevel ?? '?'}, ${esc(parsed.rarity)})</span></h3>
+      ${dossierHtml}
       <ol class="sim-steps">
         ${plan.map((s) => `<li><b>${esc(s.step)}</b><br>${esc(s.detail)}</li>`).join('')}
       </ol>
@@ -134,6 +154,18 @@ function runCraftPlan(text: string): void {
 
 export function initCraftTab(): void {
   let rendered = false;
+  const CRAFT_LS = 'poe2k.craftItem';
+  const ta = document.querySelector('#craft-item-input') as HTMLTextAreaElement | null;
+  // персональный предмет переживает перезагрузку (вкладка была единственной без LS)
+  if (ta) {
+    try { ta.value = localStorage.getItem(CRAFT_LS) ?? ''; } catch { /* ignore */ }
+    ta.addEventListener('input', () => {
+      try {
+        if (ta.value.trim()) localStorage.setItem(CRAFT_LS, ta.value);
+        else localStorage.removeItem(CRAFT_LS);
+      } catch { /* quota — молча */ }
+    });
+  }
 
   document.querySelector('#btn-craft-plan')?.addEventListener('click', () => {
     if (!rendered) {
@@ -141,7 +173,7 @@ export function initCraftTab(): void {
       // Каталог показываем сразу: план перепишет зону каталога целиком (внутри out-craft).
     }
     const ta = document.querySelector('#craft-item-input') as HTMLTextAreaElement | null;
-    runCraftPlan(ta?.value ?? '');
+    void runCraftPlan(ta?.value ?? '');
   });
 
   document.querySelector('#btn-craft-clipboard')?.addEventListener('click', () => {
@@ -150,7 +182,7 @@ export function initCraftTab(): void {
       ?.readText()
       .then((t) => {
         if (ta) ta.value = t;
-        runCraftPlan(t);
+        return runCraftPlan(t);
       })
       .catch(() =>
         setStatus('Clipboard недоступен (нужен https/localhost) — вставь предмет в поле вручную (Ctrl+V).'),
@@ -165,7 +197,7 @@ export function initCraftTab(): void {
     if (!el) return;
     const anyPlan = (document.querySelector('#craft-item-input') as HTMLTextAreaElement | null)?.value.trim();
     if (anyPlan) {
-      runCraftPlan(anyPlan);
+      void runCraftPlan(anyPlan);
     } else {
       el.innerHTML = `<p class="hint">План по предмету: Ctrl+C по предмету в игре → кнопка «Из буфера». Или вставь текст предмета в поле и нажми «План по предмету».</p>${renderRecipes()}${renderEssenceTable()}${renderPriceCatalog()}`;
       setStatus('Каталог крафта открыт (рецепты/эссенции/омены из ядра poe2-kit).');

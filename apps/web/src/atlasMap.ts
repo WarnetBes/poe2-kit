@@ -32,6 +32,7 @@ import {
   tagRows,
 } from './calcSummary';
 import { setStatus } from './ui';
+import { SIM_ATLAS_NODES, SIM_ATLAS_NOTE } from '@poe2-kit/core';
 
 const STORE_KEY = 'poe2k.atlasPlan';
 
@@ -202,6 +203,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
         <div class="tree-search-drop" hidden></div>
       </div>
       <span class="plan-badge" title="Взято очков атласа: клик по узлу берёт/снимает очко">Очки: <b class="atlas-pts">0</b> / ${MAX_POINTS}</span>
+      <select class="atlas-mech" title="Советник механик: подсветить ветку на карте, показать очки и порядок узлов из базы знаний">${'<option value="">⚔ советник механик…</option>'}${subtreeNames.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}</select>
       <button type="button" class="btn-fit atlas-fit" title="Вписать карту в окно">⟳ Вписать</button>
       <button type="button" class="btn-fit atlas-link" title="Скопировать ссылку с планом атласа — открывающий увидит ту же раскладку">🔗 Ссылка</button>
       <button type="button" class="btn-fit atlas-clear" title="Снять все взятые узлы атласа">🧹 Очистить</button>
@@ -212,6 +214,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
       </div>
       <aside class="tree-detail">
         <div class="atlas-calc" hidden><div class="atlas-calc-title">Сводка взятых умений <span class="atlas-calc-n"></span></div><ul class="atlas-calc-list"></ul></div>
+        <div class="atlas-mech-panel" hidden></div>
         <div class="atlas-node-detail"><em>Клик по узлу — статы; клик берёт/снимает очко атласа.</em></div>
       </aside>
     </div>`;
@@ -395,6 +398,7 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     syncHash(ids);
     applyAllocation();
     updateCalc();
+    renderMech(); // советник: пересчитать «очков в ветке» и ✅ у взятых приоритетов
   };
 
   const reachable = (id: number): boolean => {
@@ -464,6 +468,52 @@ async function buildAtlas(container: HTMLElement): Promise<void> {
     ty = H / 2 - sk * y;
     apply();
   };
+
+  // ── советник механик (волна «осмысленный помощник»): подсветить ветку,
+  //    посчитать очки в ней и показать верифицированный порядок узлов ─────────
+  const mechSel = wrap.querySelector<HTMLSelectElement>('.atlas-mech')!;
+  const mechPanel = wrap.querySelector<HTMLElement>('.atlas-mech-panel')!;
+  const PRIO: Record<string, [string, string]> = {
+    mandatory: ['обязательно', '#d05555'],
+    high: ['важно', '#d6b36a'],
+    nice: ['по остатку', '#7e8fb3'],
+  };
+  const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  const renderMech = (): void => {
+    const st = mechSel.value;
+    for (const [id, els] of nodeEls) {
+      const hit = !!st && nodes.get(id)?.subtree === st;
+      for (const el of els) if (el.tagName !== 'image') el.classList.toggle('mech-hl', hit);
+    }
+    if (!st) {
+      mechPanel.hidden = true;
+      return;
+    }
+    const branchIds = [...nodes.entries()].filter(([, n]) => n.subtree === st).map(([id]) => id);
+    const taken = branchIds.filter((id) => allocated.has(id)).length;
+    const namedBranch = [...nodes.entries()].filter(([, n]) => n.subtree === st && n.name);
+    // совет-лист из базы знаний: имена SIM_ATLAS_NODES матчатся с узлами ветки
+    const advice = SIM_ATLAS_NODES.filter((s) => namedBranch.some(([, n]) => sameName(n.name, s.name))).map((s) => {
+      const nid = namedBranch.find(([, n]) => sameName(n.name, s.name))![0];
+      const done = allocated.has(nid);
+      const [label, color] = PRIO[s.priority] ?? ['—', '#7e8fb3'];
+      return done
+        ? `<li class="dim">✅ ${esc(s.name)}</li>`
+        : `<li><b style="color:${color}">${esc(label)}</b> · <b>${esc(s.name)}</b> — ${esc(s.effect)} <span class="dim">(нужно: ${esc(s.req)})</span></li>`;
+    });
+    mechPanel.hidden = false;
+    mechPanel.innerHTML = `
+      <div class="atlas-calc-title">Советник: ${esc(st)}</div>
+      <p class="hint">Очков в ветке: <b>${taken}</b> / ${branchIds.length} узлов · всего взято ${allocated.size}/${MAX_POINTS}.</p>
+      ${advice.length
+        ? `<ul class="mp-mods">${advice.join('')}</ul><p class="dim">${esc(SIM_ATLAS_NOTE)}</p>`
+        : '<p class="dim">Для этой ветки верифицированных приоритетов в базе знаний пока нет — подсветка и счётчик очков работают, порядок узлов не подсказываю.</p>'}`;
+    const xs = branchIds.map((id) => wx(nodes.get(id)!));
+    const ys = branchIds.map((id) => wy(nodes.get(id)!));
+    if (xs.length) focusAt(xs.reduce((a, b) => a + b, 0) / xs.length, ys.reduce((a, b) => a + b, 0) / ys.length);
+  };
+  mechSel.addEventListener('change', renderMech);
 
   // ── пан/зум (pointer capture, колесо вокруг курсора, dblclick) ─────────────
   // ── пан/зум (pointer capture, dblclick) ──────────────

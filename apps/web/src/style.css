@@ -1469,3 +1469,29 @@ table.pob-stats th:first-child, table.pob-stats td:first-child { text-align: lef
 .pl-picker-item .pl-tile-img { width: 26px; height: 26px; flex: none; box-shadow: none; }
 
 
+
+/* ── Планнер D1: дерево пассивных (WebGL host + панель управления) ── */
+.pl-tree-ui{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+.pl-tree-ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;font-size:13px}
+.pl-tree-ctl select{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:4px 6px}
+.pl-tree-pts{color:var(--gold);font-weight:600}
+.pl-tree-mount{position:relative;height:640px;border-radius:8px;overflow:hidden;background:var(--bg)}
+
+/* ── Волна «осмысленный помощник»: карточки/кнопки-связки (kit-UI, агент-аудит 19.10) ── */
+.pg-cover-meta{display:flex;justify-content:flex-end;margin-top:4px}
+.pg-toggle + .pg-toggle{margin-top:0;border-top:0}
+.sb-open2plan{background:rgba(214,179,106,.08);font-weight:600}
+.sb-open2plan:hover{background:rgba(214,179,106,.16)}
+.sb-bosscard{margin-bottom:10px}
+.sb-bosscard summary{cursor:pointer;padding:10px 12px;font-size:15px}
+.sb-bosscard summary:hover{background:rgba(214,179,106,.06)}
+.sb-bosscard .pg-body{padding:8px 12px 12px}
+.sb-boss-weak li{color:var(--ok)}
+.sb-boss-strong li{color:#e08f6f}
+
+/* ── Атлас-советник: подсветка ветки механики + панель приоритетов ── */
+.atlas-svg .anode.mech-hl{stroke:var(--gold-hi,#f0d190) !important;stroke-width:3px}
+.atlas-mech{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px}
+.atlas-mech-panel{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--panel-2,var(--panel))}
+.atlas-mech-panel .atlas-calc-title{font-size:13px;color:var(--gold);margin-bottom:6px}
+.atlas-mech-panel .mp-mods{margin:6px 0;font-size:13px}
