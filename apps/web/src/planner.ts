@@ -51,6 +51,29 @@ const GEAR_SLOTS: Array<{ id: string; label: string; cats: string[] }> = [
 
 interface UniquesByCategory { [cat: string]: string[] }
 
+// ─── Каталог базовых предметов (rare-основа, трек B: bases_catalog.json) ──────
+
+interface BaseItem { name: string; ruName?: string | null; itemClass?: string | null; slot?: string | null }
+let basesCache: BaseItem[] | null = null;
+async function ensureBases(): Promise<BaseItem[]> {
+  if (basesCache) return basesCache;
+  try {
+    const base = import.meta.env.BASE_URL ?? '/';
+    const raw = (await fetch(base + 'datasets/bases_catalog.json').then((r) => r.json())) as { bases?: BaseItem[] };
+    basesCache = (raw.bases ?? []).filter((b) => b && b.name);
+  } catch {
+    basesCache = []; // офлайн/нет датасета — секция баз просто не показывается
+  }
+  return basesCache;
+}
+
+/** Слот гира → slot-ключи bases_catalog (сингулярные, из «slot» базы). */
+const GEAR_BASE_SLOTS: Record<string, string[]> = {
+  weapon: ['weapon'], offhand: ['shield', 'quiver'], helmet: ['helmet'], body: ['body'],
+  gloves: ['gloves'], boots: ['boots'], belt: ['belt'], ring1: ['ring'], ring2: ['ring'],
+  amulet: ['amulet'], flask: ['flask'],
+};
+
 // ─── Импорт билда из «Билдов»/«Гайдов» (одноразовая очередь через sessionStorage) ──
 
 export interface PlannerImport {
@@ -547,21 +570,29 @@ function gearHtml(state: PlannerState): string {
   return `<div class="pl-gear2">${slots}</div>`;
 }
 
-function gearPickerHtml(slotId: string, state: PlannerState, byCategory: UniquesByCategory): string {
+function gearPickerHtml(slotId: string, state: PlannerState, byCategory: UniquesByCategory, bases: BaseItem[]): string {
   const slot = GEAR_SLOTS.find((s) => s.id === slotId);
   if (!slot) return '';
   const names = [...new Set(slot.cats.flatMap((c) => byCategory[c] ?? []))].sort((a, b) => a.localeCompare(b));
+  const baseSlots = GEAR_BASE_SLOTS[slotId] ?? [];
+  const baseItems = [...new Set(bases.filter((b) => b.slot && baseSlots.includes(b.slot)))]
+    .sort((a, b) => a.name.localeCompare(b.name));
   return `<div class="pl-picker" data-gear-picker data-slot="${esc(slotId)}">
     <div class="pl-picker-top">
       <b>${esc(slot.label)}: выбор предмета</b>
       <button type="button" class="pl-picker-close" data-picker-close>✕</button>
     </div>
-    <input class="pl-picker-search" placeholder="поиск уника…" data-picker-search autocomplete="off" />
+    <input class="pl-picker-search" placeholder="поиск уника/базы (EN/RU)…" data-picker-search autocomplete="off" />
     ${itemIconImg(state.gear[slotId] ?? '', 'pl-item-ico pl-item-cur')}
     <div class="pl-picker-list">
       ${names.map((n) =>
         `<button type="button" class="pl-picker-item" data-gear-pick="${esc(n)}" data-search="${esc(n).toLowerCase()}">
            ${itemIconImg(n, 'pl-item-ico') || `<span class="pl-item-ph pl-item-ph-mini">${esc(n.slice(0, 2))}</span>`}<span>${esc(n)}</span>
+         </button>`).join('')}
+      ${baseItems.length ? `<div class="pl-bases-head dim">базовые предметы (rare-основа):</div>` : ''}
+      ${baseItems.map((b) =>
+        `<button type="button" class="pl-picker-item pl-item-base" data-gear-pick="${esc(b.name)}" data-search="${esc(((b.ruName ?? '') + ' ' + b.name + ' ' + (b.itemClass ?? '')).toLowerCase())}">
+           <span class="pl-item-ph pl-item-ph-mini">${esc(b.name.slice(0, 2))}</span><span>${esc(b.name)}${b.ruName ? ` <span class="dim">· ${esc(b.ruName)}</span>` : ''}</span>
          </button>`).join('')}
     </div>
     <div class="pl-gear-custom">
@@ -731,6 +762,7 @@ export function initPlannerTab(): void {
     if (!el) return;
     const box = await ensureSupports();
     const { byCategory } = await ensureUniques();
+    const bases = await ensureBases();
     const colors = await ensureGemColors();
     const unlocks = await ensureUnlocks();
     iconMap = await ensureIconUrls();
@@ -774,7 +806,7 @@ export function initPlannerTab(): void {
       <p class="hint">Клик по слоту — выбор уника (пикер, иконки = poe2db-арт GGG); внизу пикера — своё имя/Rare. ✕ на hover — очистить. Иконки догружаются фоном (харвест волне №565).</p>
       ${unplacedUniques.length ? `<p class="note">⚠ Не разложено по слотам: ${unplacedUniques.map(esc).join(', ')} — имени нет в каталоге уников (проверь вручную в пикере).</p>` : ''}
       ${gearHtml(state)}
-      ${gearPicker ? gearPickerHtml(gearPicker.slot, state, byCategory) : ''}
+      ${gearPicker ? gearPickerHtml(gearPicker.slot, state, byCategory, bases) : ''}
       <div class="lvset" style="margin-top:12px"><button id="pl-copy" class="tab">📋 Копировать сводку</button> <button id="pl-share" class="tab">🔗 Поделиться планом</button></div>
       <p class="dim" id="pl-summary-note"></p>`;
     // стаб-узел дерева переживает innerHTML: appendChild переносит тот же DOM (+WebGL-контекст)

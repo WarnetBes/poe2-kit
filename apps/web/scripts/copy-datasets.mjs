@@ -33,6 +33,8 @@ const files = [
   { dir: 'uniques', rel: 'item_index.json', minBytes: 10 },
   // иконки валют (poe2db): манифест norm→true (вкладка «Курсы валют»)
   { dir: 'currency', rel: 'currency_index.json', minBytes: 10 },
+  // каталог базовых предметов (rare-основа пикера гира, трек B: gen-base-catalog.mjs)
+  { dir: 'base_catalog', rel: 'bases_catalog.json', minBytes: 50_000 },
 ];
 
 for (const { dir, rel, minBytes } of files) {

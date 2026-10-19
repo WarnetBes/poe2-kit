@@ -28,14 +28,16 @@
  *
  * Запуск: node scripts/gen-base-catalog.mjs
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'packages/core/data/game/base_items.json');
 const RU = path.join(ROOT, 'packages/core/data/game/i18n/items_ru.json');
-const OUT = path.join(ROOT, 'apps/web/public/datasets/bases_catalog.json');
+const OUT = path.join(ROOT, 'packages/core/data/game/base_catalog/bases_catalog.json');
+// Канон датасета — в core/data (как uniques_catalog); в public/datasets зеркалит
+// apps/web/scripts/copy-datasets.mjs (запускать gen → copy → build).
 
 // item_class (RePoE) -> слот планнера
 const SLOT_MAP = {
@@ -124,6 +126,7 @@ const out = {
 const ruHit = bases.filter((b) => b.ruName).length;
 out.metadata.ru_match_rate = `${ruHit}/${bases.length} (${((ruHit / bases.length) * 100).toFixed(1)}%)`;
 
+await mkdir(path.dirname(OUT), { recursive: true });
 await writeFile(OUT, JSON.stringify(out), 'utf8');
 console.log('base_items:', Object.values(raw.base_items).length, '→ bases:', bases.length);
 console.log('rag slots:', JSON.stringify(slotCount));

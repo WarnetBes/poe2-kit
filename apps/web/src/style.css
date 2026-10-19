@@ -1538,6 +1538,10 @@ table.pob-stats th:first-child, table.pob-stats td:first-child { text-align: lef
 /* ── Планнер: 🧭 план прокачки из гайда ── */
 .pl-leveling{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin:6px 0 10px}
 .pl-leveling .tbl{width:100%}
+/* ── Планнер: базы в пикере гира (трек B) ── */
+.pl-bases-head{margin:8px 0 4px;font-size:12px;letter-spacing:.4px}
+.pl-item-base .pl-item-ph-mini{background:transparent;border-color:var(--border);color:var(--fg);opacity:.7}
+.pl-item-base span:last-child{font-size:12px}
 
 /* mapprep: endgame-связка (waystone-тир + советы + sekhemas) */
 .mp-waystone-tier{margin:4px 0;color:var(--gold)}
