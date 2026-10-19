@@ -31,6 +31,8 @@ const files = [
   { dir: 'skill_gems', rel: 'icon_index.json', minBytes: 100 }, // манифест norm→true
   // иконки уников (poe2db): манифест norm→true (слоты гира планнера)
   { dir: 'uniques', rel: 'item_index.json', minBytes: 10 },
+  // иконки валют (poe2db): манифест norm→true (вкладка «Курсы валют»)
+  { dir: 'currency', rel: 'currency_index.json', minBytes: 10 },
 ];
 
 for (const { dir, rel, minBytes } of files) {
@@ -76,5 +78,22 @@ for (const { dir, rel, minBytes } of files) {
       n++;
     }
     console.log(`datasets: item_icons/ → public/datasets (${n} файлов)`);
+  }
+}
+
+// currency_icons/ — зеркалим иконки валют (fetch = datasets/currency_icons/*)
+{
+  const src = join(gameDir, 'currency', 'icons');
+  const dst = join(here, '..', 'public', 'datasets', 'currency_icons');
+  rmSync(dst, { recursive: true, force: true });
+  if (existsSync(src)) {
+    mkdirSync(dst, { recursive: true });
+    let n = 0;
+    for (const f of readdirSync(src)) {
+      if (!f.endsWith('.webp') && !f.endsWith('.png')) continue;
+      copyFileSync(join(src, f), join(dst, f));
+      n++;
+    }
+    console.log(`datasets: currency_icons/ → public/datasets (${n} файлов)`);
   }
 }
