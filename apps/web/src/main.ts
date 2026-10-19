@@ -37,6 +37,8 @@ import { initPinnacleTab } from './pinnacle';
 import { initSlangTab } from './slang';
 import { initPobOracleTab } from './pobOracle';
 import { initStarterBuildsTab } from './starterBuilds';
+import { initPoeguidesTab } from './poeguides';
+import { initPlannerTab } from './planner';
 
 // Определяем глобальный API для элементов интерфейса
 declare global {
@@ -83,6 +85,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button data-tab="map" data-group="build" class="tab">Дерево (полное)</button>
           <button data-tab="craft" data-group="build" class="tab">🔨 Крафт</button>
           <button data-tab="starterbuilds" data-group="build" class="tab" title="Курируемые стартовые билды 0.5.5: стадии, цены, уники, PoB">🧬 Билды</button>
+          <button data-tab="poeguides" data-group="build" class="tab" title="База билд-гайдов poeshop.ru: тир-лист S/A/B/C, связки скиллов, 298 карточек">📚 Гайды</button>
+          <button data-tab="planner" data-group="build" class="tab" title="Сборка билда: скилл-группы (гем + до 5 саппортов) и слоты гира с подсказками уников">🛠 Планнер</button>
           <button data-tab="atlas" data-group="endgame" class="tab">Атлас</button>
           <button data-tab="mapprep" data-group="endgame" class="tab">🗺 Карты</button>
           <button data-tab="simulacrum" data-group="endgame" class="tab">🌀 Simulacrum</button>
@@ -157,6 +161,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="aitools">
           <button id="btn-build" class="primary">Разобрать</button>
           <button id="btn-build-price" class="ghost">Оценить снаряжение</button>
+          <button id="btn-build-paste" class="ghost" title="Вставить PoB-код из системного буфера и разобрать">📋 Из буфера</button>
           <button id="btn-build-decant" class="ghost" hidden title="Конвертировать в официальный *.build и записать в папку Build Planner игры (нужен браузер с File System Access)">Перелить в игру (.build)</button>
         </div>
         <div id="out-build" class="out"></div>
@@ -181,6 +186,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           </select>
           <button id="btn-keybinds" class="primary">Подобрать раскладку</button>
           <button id="btn-keybinds-last" class="ghost">Из поля «Импорт билда»</button>
+          <button id="btn-keybinds-paste" class="ghost" title="Вставить PoB-код из буфера и подобрать раскладку">📋 Из буфера</button>
         </div>
         <div id="out-keybinds" class="out"></div>
       </section>
@@ -193,6 +199,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <input id="compare-slug" type="text" value="forbiddenrites" placeholder="слаг снапшот-лиги poe.ninja" title="Например: forbiddenrites, wraeclast-hardcore, ssf-… (см. poe2_ladder_leagues)" />
           <button id="btn-compare" class="primary">Сравнить</button>
           <button id="btn-compare-last" class="ghost" title="Взять PoB-код из поля «Импорт билда»">Из поля «Импорт билда»</button>
+          <button id="btn-compare-paste" class="ghost" title="Вставить PoB-код из буфера и сравнить">📋 Из буфера</button>
         </div>
         <div id="out-compare" class="out"></div>
       </section>
@@ -205,6 +212,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="btn-pob-status" class="ghost">⟳ Состояние</button>
           <button id="btn-pob-load" class="primary">Загрузить билд</button>
           <button id="btn-pob-load-last" class="ghost" title="Взять PoB-код из поля «Импорт билда»">Из поля «Импорт билда»</button>
+          <button id="btn-pob-paste" class="ghost" title="Вставить PoB-код из буфера и загрузить в оракул">📋 Из буфера</button>
         </div>
         <textarea id="pob-code-input" rows="6" placeholder="Вставь share-код PoB (AA…) — или XML билда…"></textarea>
         <div id="out-pob" class="out"></div>
@@ -246,7 +254,26 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <h2>🧬 Билды <small>стартовые билды 0.5.5 · стадии · цены гайдов · PoB</small></h2>
         <p class="hint">Курируемые стартовые билды PoE2 0.5.x (ресёрч-волны №471-№477: lootkeeper/maxroll/poe.ninja): что покупать на старте/миде/мейне/максе, ключевые уники, порядок узлов асценденси. Цены — срез гайдов, не Live-курс. ⚠-карточки — фейк-связки/предостережения, ❓ — данные не сверены. Неопубликованные цены честно пустые.</p>
         <div class="lvset"><input id="starterbuilds-filter" type="text" placeholder="поиск: класс, асценденси, скилл, id…" /></div>
+        <div id="starterbuilds-class-chips" class="pg-chips" title="Классы"></div>
+        <div id="starterbuilds-price-chips" class="pg-chips" title="Наличие цен"></div>
         <div id="out-starterbuilds" class="out"></div>
+      </section>
+
+      <section id="pane-poeguides" class="pane">
+        <h2>📚 Гайды <small>база билд-гайдов poeshop.ru: тир-лист · связки скиллов · 298 карточек</small></h2>
+        <p class="hint">Все PoE2-билд-гайды poeshop.ru как фактура: класс, асценданси, тир S/A/B/C, связки скиллов с уровнями/качеством, уники. Прозаические тексты и ассеты poeshop не копируются — полная статья по ссылке «оригинал гайда» на каждой карточке. Датасет офлайн (запечён в билд), срез указан в шапке.</p>
+        <div class="lvset">
+          <input id="poeguides-search" type="text" placeholder="поиск: скилл, уник, асценданси…" />
+        </div>
+        <div id="poeguides-tier-chips" class="pg-chips" title="Тир-лист"></div>
+        <div id="poeguides-class-chips" class="pg-chips" title="Классы"></div>
+        <div id="out-poeguides" class="out"></div>
+      </section>
+
+      <section id="pane-planner" class="pane">
+        <h2>🛠 Планнер <small>клик по ячейке → выбор гема/саппорта · слоты гира · офлайн</small></h2>
+        <p class="hint">Сборка билда в раскладке poeshop-планнера на наших датасетах: 3 скилл-группы (большая ячейка главного гема + 6 круглых), клик по пустой ячейке → пикер с поиском (рекомендованные саппорты сверху: мета-эталон, затем base-ранги), клик по заполненной — замена, ✕ на hover — удалить. Слоты экипировки/фляг с подсказками 433 уников. Активные гемы EN (poe2db-слаги), саппорты RU. План живёт локально и в URL: «🔗 Поделиться планом» копирует ссылку, открывшуюся с этим билдом (план в ссылке приоритетнее локального). Дерево пассивок — во вкладке «Древо».</p>
+        <div id="out-planner" class="out"></div>
       </section>
 
       <section id="pane-atlas" class="pane">
@@ -397,6 +424,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 // ── Табы ───────────────────────────────────────────────
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab'));
+const tabBtn = (name: string) => document.querySelector<HTMLButtonElement>(`[data-tab="${name}"]`);
+
+/** Синхронизировать hash-сегмент t=<вкладка>, сохраняя чужие сегменты (a=, pl=). */
+function syncTabHash(tabName: string | null): void {
+  try {
+    const segs = location.hash.replace(/^#/, '').split('&').filter((x) => x && !x.startsWith('t='));
+    if (tabName) segs.unshift(`t=${tabName}`);
+    const base = location.pathname + location.search;
+    history.replaceState(null, '', segs.length ? `${base}#${segs.join('&')}` : base);
+  } catch { /* file:// — молча */ }
+}
+
 tabs.forEach((tab) => {
   tab.addEventListener('click', () => {
     const target = tab.dataset.tab!;
@@ -404,6 +443,7 @@ tabs.forEach((tab) => {
     document.querySelectorAll<HTMLElement>('.pane').forEach((p) => {
       p.classList.toggle('active', p.id === `pane-${target}`);
     });
+    syncTabHash(target);
   });
 });
 
@@ -412,7 +452,16 @@ tabs.forEach((tab) => {
 // подстроки вкладок, а не быть «ещё одним рядом кнопок».
 const groupBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.tg'));
 /** Последняя активная вкладка внутри группы — чтобы возврат в группу возвращал туда же. */
-const lastTabInGroup: Record<string, string> = {};
+const LS_TABS_KEY = 'poe2kit_last_tabs';
+function loadLastTabs(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_TABS_KEY) ?? '{}') as Record<string, string>; }
+  catch { return {}; }
+}
+let lastTabInGroup: Record<string, string> = loadLastTabs();
+
+function saveLastTabs(): void {
+  try { localStorage.setItem(LS_TABS_KEY, JSON.stringify(lastTabInGroup)); } catch { /* quota */ }
+}
 
 function showTabsOfGroup(group: string): void {
   tabs.forEach((t) => {
@@ -428,6 +477,7 @@ function selectGroup(group: string): void {
   groupBtns.forEach((b) => b.classList.toggle('active', b.dataset.group === group));
   if (group === 'now') {
     // Лендинг: подстрока пустая, панель — pane-now.
+    syncTabHash(null);
     tabs.forEach((t) => t.classList.add('grp-hidden'));
     document.querySelectorAll<HTMLElement>('.pane').forEach((p) => {
       p.classList.toggle('active', p.id === 'pane-now');
@@ -447,11 +497,16 @@ groupBtns.forEach((btn) => {
   btn.addEventListener('click', () => selectGroup(btn.dataset.group!));
 });
 
-// Запоминаем последнюю вкладку группы при её выборе (для возврата).
+// Запоминаем последнюю вкладку группы при её выборе (для возврата; между сессиями — в LS).
 tabs.forEach((tab) => {
   tab.addEventListener('click', () => {
     const g = tab.dataset.group;
-    if (g) lastTabInGroup[g] = tab.dataset.tab!;
+    if (g) {
+      if (lastTabInGroup[g] !== tab.dataset.tab) {
+        lastTabInGroup[g] = tab.dataset.tab!;
+        saveLastTabs();
+      }
+    }
   });
 });
 
@@ -531,6 +586,8 @@ initPinnacleTab();
 initSlangTab();
 initPobOracleTab();
 initStarterBuildsTab();
+initPoeguidesTab();
+initPlannerTab();
 
 // ── Раскладка (№221) ─────────────────────────────────────
 document.querySelector('#btn-keybinds')!.addEventListener('click', () => keybindsFromInputs());
@@ -574,6 +631,29 @@ document.querySelector('#ai-send-ctx')!.addEventListener('click', () => {
 });
 document.querySelector('#ai-clear')!.addEventListener('click', () => clearAIChat());
 
+// ── Вставка PoB-кода из буфера в поле + запуск основного действия ──
+async function pasteIntoBuildField(fieldSel: string, actionBtnSel: string | null): Promise<void> {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text.trim()) throw new Error('буфер пуст');
+    const field = document.querySelector<HTMLTextAreaElement>(fieldSel);
+    if (!field) return;
+    field.value = text;
+    setStatus('Вставлено из буфера.');
+    if (actionBtnSel) document.querySelector<HTMLButtonElement>(actionBtnSel)?.click();
+  } catch (e) {
+    setStatus(`Не удалось прочитать буфер: ${e instanceof Error ? e.message : String(e)} — вставь вручную (Ctrl+V).`);
+  }
+}
+document.querySelector('#btn-build-paste')?.addEventListener('click', () =>
+  void pasteIntoBuildField('#build-input', '#btn-build'));
+document.querySelector('#btn-keybinds-paste')?.addEventListener('click', () =>
+  void pasteIntoBuildField('#keybinds-input', '#btn-keybinds'));
+document.querySelector('#btn-compare-paste')?.addEventListener('click', () =>
+  void pasteIntoBuildField('#compare-input', '#btn-compare'));
+document.querySelector('#btn-pob-paste')?.addEventListener('click', () =>
+  void pasteIntoBuildField('#pob-code-input', '#btn-pob-load'));
+
 // Глобализация для возможного внешнего расширения
 window.poe2k = {
   currencies: showCurrencyRates,
@@ -590,6 +670,17 @@ window.poe2k = {
 };
 
 setStatus('Загружено. Выбери раздел.');
+
+// ── Deep-link #t=<вкладка>: применяем ПОСЛЕ init-обработчиков ленивых вкладок ──
+(function restoreTabFromHash(): void {
+  const m = /(?:^|[#&])t=([a-z]+)/.exec(location.hash);
+  const name = m?.[1] ?? '';
+  const btn = name ? tabBtn(name) : null;
+  if (!btn) return;
+  const g = btn.dataset.group;
+  groupBtns.forEach((b) => b.classList.toggle('active', b.dataset.group === g));
+  btn.click(); // откроет вкладку; ленивые init-хендлеры уже навешаны выше
+})();
 
 // ── Дисклеймер (модалка) ─────────────────────────────
 const modalAbout = document.querySelector<HTMLElement>('#modal-about');

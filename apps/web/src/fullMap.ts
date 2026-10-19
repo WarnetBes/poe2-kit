@@ -854,13 +854,14 @@ export async function renderFullMap(host: HTMLElement): Promise<void> {
     else localStorage.removeItem(PLAN_STORE);
   };
   const syncPlanHash = (): void => {
-    // Вкладки не используют hash (проверено), конфликтов нет.
+    // Чужие сегменты hash сохраняем (atlas `a=`, планнер `pl=` — №565).
     const base = `${location.pathname}${location.search}`;
-    history.replaceState(
-      null,
-      '',
-      planIds.length ? `${base}#p=${encodeURIComponent(`${planClass}:${planAsc}:${planIds.join('.')}`)}` : base,
-    );
+    const parts = location.hash
+      .replace(/^#/, '')
+      .split('&')
+      .filter((seg) => seg && !seg.startsWith('p='));
+    if (planIds.length) parts.push(`p=${encodeURIComponent(`${planClass}:${planAsc}:${planIds.join('.')}`)}`);
+    history.replaceState(null, '', parts.length ? `${base}#${parts.join('&')}` : base);
   };
 
   /** SVG-метки плана (лёгкий вид): класс mplan — синий контур. */
