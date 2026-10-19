@@ -1458,6 +1458,21 @@ table.pob-stats th:first-child, table.pob-stats td:first-child { text-align: lef
 .pl-picker-item i {
   font-style: normal; margin-left: auto; font-size: 10px; color: var(--gold, #d6b36a);
 }
+/* ── Планнер: гейт гемов по уровню персонажа (unlock; live-тоггл из инпута) ── */
+.pl-lvl-fact { align-items: center; justify-content: center; }
+.pl-lvl-fact .pl-lvl { display: flex; align-items: center; gap: 7px; font-size: 12.5px; }
+.pl-lvl input {
+  width: 62px; font: inherit; font-size: 15px; text-align: center;
+  color: var(--fg, #e8dcc0); background: var(--bg, #1b150e);
+  border: 1px solid var(--border, #5a4a30); border-radius: 6px; padding: 3px 6px;
+}
+.pl-picker-item .pl-lock { display: none; }
+.pl-picker-item.pl-locked { opacity: .42; cursor: not-allowed; }
+.pl-picker-item.pl-locked:hover { background: none; }
+.pl-picker-item.pl-locked .pl-tile, .pl-picker-item.pl-locked .pl-tile-img { filter: grayscale(.8); }
+.pl-picker-item.pl-locked .pl-lock {
+  display: flex; align-items: center; gap: 3px; font-size: 10px; color: #c58a4a; flex: none;
+}
 .pl-tile-img {
   width: 100%; height: 100%; object-fit: cover;
   border-radius: 50%; border: 2px solid rgba(214,179,106,.55);
@@ -1495,3 +1510,40 @@ table.pob-stats th:first-child, table.pob-stats td:first-child { text-align: lef
 .atlas-mech-panel{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--panel-2,var(--panel))}
 .atlas-mech-panel .atlas-calc-title{font-size:13px;color:var(--gold);margin-bottom:6px}
 .atlas-mech-panel .mp-mods{margin:6px 0;font-size:13px}
+
+/* ── Курсы валют: тулбар, таблица, тренды, деталь ── */
+.cur-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.cur-search,.cur-sort{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13px}
+.cur-search{min-width:180px}
+.cur-count{font-size:12px}
+.cur-wrap{max-height:60vh;overflow:auto;border:1px solid var(--border);border-radius:8px}
+.cur-table{width:100%}
+.cur-table .cur-row{cursor:pointer}
+.cur-table .cur-row:hover td{background:var(--panel-2,var(--panel))}
+.cur-row.cur-sel td{background:var(--panel-2,var(--panel));box-shadow:inset 2px 0 0 var(--gold)}
+.cur-up{color:var(--ok)}
+.cur-down{color:#e08f6f}
+.cur-detail{margin-top:10px}
+.cur-detail-card{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.cur-detail-head{font-weight:600;color:var(--gold);margin-bottom:4px}
+.cur-svg{width:100%;max-width:640px;height:auto;display:block;margin:6px 0}
+.cur-line{fill:none;stroke:var(--gold-hi,#f0d190);stroke-width:1.8}
+.cur-vol{fill:var(--border);opacity:.7}
+.cur-axis{stroke:var(--border);stroke-width:1}
+.cur-lbl{fill:var(--fg);opacity:.6;font-size:10px}
+.cur-detail-stats{font-size:13px;color:var(--fg);opacity:.85}
+.cur-icoWrap{position:relative;display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;vertical-align:middle}
+.cur-tok{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--fg);opacity:.45;background:var(--panel-2,var(--panel));border-radius:6px;letter-spacing:.5px}
+.cur-ico{position:relative;width:32px;height:32px;object-fit:contain;border-radius:6px}
+/* ── Планнер: 🧭 план прокачки из гайда ── */
+.pl-leveling{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin:6px 0 10px}
+.pl-leveling .tbl{width:100%}
+
+/* mapprep: endgame-связка (waystone-тир + советы + sekhemas) */
+.mp-waystone-tier{margin:4px 0;color:var(--gold)}
+.mp-waystone-tier b{color:var(--fg)}
+.mp-waystone-tips{margin:10px 0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
+.mp-waystone-tips summary{cursor:pointer;color:var(--gold);font-size:13px}
+.mp-waystone-tips .mp-mods{margin:6px 0 0;font-size:13px}
+.mp-sekhemas-floors{margin:6px 0;font-size:13px}
+.mp-sekhemas-floors b{color:var(--gold)}

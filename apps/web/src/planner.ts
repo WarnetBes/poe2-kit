@@ -26,6 +26,8 @@ interface TreePlan { class: string; allocated: number[]; ascendancy?: string }
 interface PlannerState { groups: PlannerGroup[]; gear: Record<string, string>; tree?: TreePlan }
 
 const LS_KEY = 'poe2kit-planner-v1';
+/** Уровень персонажа (гейт гемов): локальная Viewing-настройка, паттерн poe2k.league (ui.ts). В #pl= НЕ кодируется — это не часть билда. */
+const PLVL_KEY = 'poe2k.plvl';
 const MAX_SUPPORTS = 5;
 /** Потолок скилл-групп (как у зрелых планнеров — независимо от оружия/сетов). */
 const MAX_GROUPS = 12;
@@ -62,9 +64,17 @@ export interface PlannerImport {
   groups?: Array<{ gem: string; supports: string[] }>;
   /** Ключевые уники (EN) — раскладка по слотам через uniques_catalog. */
   uniques?: string[];
+  /** План прокачки гайдом: гемы по уровню взятия (RU-имена из гайда). */
+  leveling?: Array<{ level: number; name: string; cat?: string }>;
 }
 
 const IMPORT_KEY = 'poe2kit-planner-import';
+
+// 🧭 План прокачки из гайда: гемы по уровням взятия (RU-имена как в гайде).
+// Модульный уровень (не state): viewing-данные импорта — в LS/share не кодируются.
+let importedLeveling: Array<{ level: number; name: string; cat?: string }> = [];
+/** Уники, не разложившиеся по слотам (диагностика для юзера, честно). */
+let unplacedUniques: string[] = [];
 
 /** Из карточки билда/гайда: положить билд в очередь и открыть Планнер. */
 export function queuePlannerImport(q: PlannerImport): void {
@@ -191,6 +201,19 @@ function saveState(s: PlannerState): void {
   } catch { /* replaceState недоступен (file://) — молча */ }
 }
 
+// ─── Уровень персонажа (гейт гемов по требованию ступени) ──────────────────────
+
+function loadCharLevel(): number {
+  const n = Number(localStorage.getItem(PLVL_KEY));
+  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : 100;
+}
+
+let charLevel = loadCharLevel();
+
+function saveCharLevel(n: number): void {
+  try { localStorage.setItem(PLVL_KEY, String(n)); } catch { /* quota — молча */ }
+}
+
 // ─── Датасеты (лениво, один раз) ──────────────────────────────────────────────
 
 interface Box {
@@ -268,6 +291,58 @@ async function ensureGemColors(): Promise<Record<string, string>> {
   const raw = (await fetchJson(base + 'datasets/gem_colors.json')) as { map?: Record<string, string> };
   gemColorsBox = raw.map ?? {};
   return gemColorsBox;
+}
+
+// ─── Гейт гемов: unlock-уровень из skill_gems_v2 (levels[].levelRequirement) ──
+
+/**
+ * Ключ имени гема для сопоставления с датасетом: пул планнера — слаги poe2db
+ * ('wind serpents fury', 'companion%3a %7b0%7d'), датасет — display-имена
+ * ('Wind Serpent's Fury', 'Companion: {0}'). Нормализация: lower + снятие
+ * апострофов + URL-decode слэгов.
+ */
+function gemNameKey(s: string): string {
+  const norm = (x: string): string => x.trim().toLowerCase().replace(/[’']/g, '').replace(/\s+/g, ' ');
+  let n = norm(s);
+  try {
+    const d = decodeURIComponent(n);
+    if (d) n = norm(d);
+  } catch { /* '%' без кодирования — оставляем как есть */ }
+  return n;
+}
+
+interface RawGemLevel { levelRequirement?: number }
+interface RawGemV2 { name?: string; levels?: Array<RawGemLevel> | Record<string, RawGemLevel> }
+
+let unlocksBox: Map<string, number | null> | null = null;
+
+/**
+ * unlock-уровень гема. Поля unlockLevel в датасетах НЕТ — только ступени
+ * levels[].levelRequirement; канон проекта = core dataset.ts (GemSource.unlockLevel):
+ * первая ступень с требованием > 0, иначе ступень 1, иначе null (не гейтим:
+ * саппорт-записи без ступеней, внутренние гемы, слаги вне датасета).
+ */
+async function ensureUnlocks(): Promise<Map<string, number | null>> {
+  if (unlocksBox) return unlocksBox;
+  const byName = new Map<string, number | null>();
+  try {
+    const base = import.meta.env.BASE_URL ?? '/';
+    const raw = await fetchJson(base + 'datasets/skill_gems_v2.json') as { skills?: Record<string, RawGemV2> };
+    core.dataset.installBrowserDataset('skill_gems/skill_gems_v2.json', raw);
+    for (const g of Object.values(raw.skills ?? {})) {
+      if (!g?.name || !g.levels) continue;
+      // levels бывает и массивом, и объектом {lvl: {...}} (Cast on Melee Stun) — как в core rawGems
+      const rawLevels: unknown = g.levels;
+      const stages: RawGemLevel[] = Array.isArray(rawLevels)
+        ? (rawLevels as RawGemLevel[])
+        : Object.entries((rawLevels as Record<string, RawGemLevel>)
+            ).sort(([a], [b]) => Number(a) - Number(b)).map(([, lv]) => lv);
+      const reqs = stages.map((l) => l?.levelRequirement).filter((x): x is number => typeof x === 'number');
+      byName.set(gemNameKey(g.name), reqs.find((x) => x > 0) ?? reqs[0] ?? null);
+    }
+  } catch { /* офлайн/датасета нет — гейт не активен, пикер работает как раньше */ }
+  unlocksBox = byName;
+  return byName;
 }
 
 const HEX_BY_ATTR: Record<string, string> = { red: '#d05555', blue: '#5588d0', green: '#55a066' };
@@ -398,19 +473,33 @@ function pickerHtml(
   colors: Record<string, string>,
   box: Box,
   recos: RecoLite[],
+  unlocks: Map<string, number | null>,
 ): string {
   const isGem = t.kind === 'gem';
   const pool: Array<{ en: string; ru: string | null; meta?: boolean }> = isGem
     ? box.activeList.map((en) => ({ en, ru: null }))
     : box.allSupports.map((s) => ({ ...s }));
+  /** Замок по unlock-уровню: attrs = data-unlock для живого тоггла (без ререндера), badge показывается CSS-ом только у залоченных. */
+  const lockOf = (en: string): { cls: string; attrs: string; badge: string } => {
+    const un = unlocks.get(gemNameKey(en));
+    if (un == null) return { cls: '', attrs: '', badge: '' };
+    const locked = un > charLevel;
+    return {
+      cls: locked ? ' pl-locked' : '',
+      attrs: ` data-unlock="${un}"`,
+      badge: `<i class="pl-lock" title="требуется ур. ${un}">🔒 ур. ${un}</i>`,
+    };
+  };
   // для саппортов: рекомендованные первым блоком
   const recoByEn = new Map(recos.map((r) => [r.en, r]));
   const recosPart = !isGem
     ? `<div class="pl-picker-sec">Рекомендованные для ${esc(state.groups[t.group]?.gem ?? '')}</div>` +
-      recos.map((r) =>
-        `<button type="button" class="pl-picker-item${r.tier === 'meta' ? ' pl-reco-meta' : ''}" data-pick="${esc(r.en)}" data-pick-ru="${esc(box.ruByEn.get(r.en) ?? '')}">
-           ${gemIcon(r.en, colors, '')}<span>${esc(box.ruByEn.get(r.en) ?? r.en)}</span><i>${r.tier === 'meta' ? 'мета' : `ранг ${r.rank ?? '?'}`}</i>
-         </button>`).join('')
+      recos.map((r) => {
+        const l = lockOf(r.en);
+        return `<button type="button" class="pl-picker-item${r.tier === 'meta' ? ' pl-reco-meta' : ''}${l.cls}" data-pick="${esc(r.en)}" data-pick-ru="${esc(box.ruByEn.get(r.en) ?? '')}"${l.attrs}>
+           ${gemIcon(r.en, colors, '')}<span>${esc(box.ruByEn.get(r.en) ?? r.en)}</span><i>${r.tier === 'meta' ? 'мета' : `ранг ${r.rank ?? '?'}`}</i>${l.badge}
+         </button>`;
+      }).join('')
     : '';
   return `<div class="pl-picker" data-picker>
     <div class="pl-picker-top">
@@ -419,12 +508,14 @@ function pickerHtml(
     </div>
     <input class="pl-picker-search" placeholder="поиск (EN/RU)…" data-picker-search autocomplete="off" />
     ${recosPart}
-    <div class="pl-picker-sec">Все (${pool.length})</div>
+    <div class="pl-picker-sec">Все (${pool.length}${charLevel < 100 ? ` · ур. перса ${charLevel}` : ''})</div>
     <div class="pl-picker-list">
-      ${pool.map((p) =>
-        `<button type="button" class="pl-picker-item" data-pick="${esc(p.en)}" data-pick-ru="${esc(p.ru ?? '')}" data-search="${esc((p.ru ?? '') + ' ' + p.en).toLowerCase()}">
-           ${gemIcon(p.en, colors, '')}<span>${esc(p.ru ?? p.en)}${p.ru ? ` <em>${esc(p.en)}</em>` : ''}</span>
-         </button>`).join('')}
+      ${pool.map((p) => {
+        const l = lockOf(p.en);
+        return `<button type="button" class="pl-picker-item${l.cls}" data-pick="${esc(p.en)}" data-pick-ru="${esc(p.ru ?? '')}"${l.attrs} data-search="${esc((p.ru ?? '') + ' ' + p.en).toLowerCase()}">
+           ${gemIcon(p.en, colors, '')}<span>${esc(p.ru ?? p.en)}${p.ru ? ` <em>${esc(p.en)}</em>` : ''}</span>${l.badge}
+         </button>`;
+      }).join('')}
     </div>
   </div>`;
 }
@@ -641,6 +732,7 @@ export function initPlannerTab(): void {
     const box = await ensureSupports();
     const { byCategory } = await ensureUniques();
     const colors = await ensureGemColors();
+    const unlocks = await ensureUnlocks();
     iconMap = await ensureIconUrls();
     await ensureItemIcons();
 
@@ -660,7 +752,7 @@ export function initPlannerTab(): void {
       const recos: RecoLite[] = picker.kind === 'support' && state.groups[picker.group]?.gem
         ? core.gemSupports.supportsForActive(state.groups[picker.group].gem)
         : [];
-      pickerPart = pickerHtml(picker, state, colors, box, recos);
+      pickerPart = pickerHtml(picker, state, colors, box, recos, unlocks);
     }
 
     el.innerHTML = `
@@ -670,17 +762,38 @@ export function initPlannerTab(): void {
         <div class="sim-fact"><b>${state.groups.filter((g) => g.gem).length}/${MAX_GROUPS}</b><span>скилл-групп занято</span></div>
         <div class="sim-fact"><b>${GEAR_SLOTS.filter((s) => state.gear[s.id]).length}/${GEAR_SLOTS.length}</b><span>слотов гира заполнено</span></div>
         <div class="sim-fact"><b id="pl-fact-tree">${state.tree?.allocated.length ?? 0}</b><span>очков дерева взято</span></div>
+        <div class="sim-fact pl-lvl-fact">
+          <label class="pl-lvl">ур. перса <input type="number" min="1" max="100" step="1" value="${charLevel}" data-pl-lvl autocomplete="off" /></label>
+          <span>гейт гемов по unlock (уровень локальный, в ссылку не входит)</span>
+        </div>
       </div>
       <div class="pl-groups">${groupHtmls.join('')}</div>
+      ${levelingHtml()}
       ${pickerPart}
       <h3>Экипировка</h3>
       <p class="hint">Клик по слоту — выбор уника (пикер, иконки = poe2db-арт GGG); внизу пикера — своё имя/Rare. ✕ на hover — очистить. Иконки догружаются фоном (харвест волне №565).</p>
+      ${unplacedUniques.length ? `<p class="note">⚠ Не разложено по слотам: ${unplacedUniques.map(esc).join(', ')} — имени нет в каталоге уников (проверь вручную в пикере).</p>` : ''}
       ${gearHtml(state)}
       ${gearPicker ? gearPickerHtml(gearPicker.slot, state, byCategory) : ''}
       <div class="lvset" style="margin-top:12px"><button id="pl-copy" class="tab">📋 Копировать сводку</button> <button id="pl-share" class="tab">🔗 Поделиться планом</button></div>
       <p class="dim" id="pl-summary-note"></p>`;
     // стаб-узел дерева переживает innerHTML: appendChild переносит тот же DOM (+WebGL-контекст)
     if (treeUI) el.appendChild(treeUI);
+  }
+
+  /** 🧭 Блок «Как прокачиваться» — план по уровням из импортированного гайда. */
+  function levelingHtml(): string {
+    if (!importedLeveling.length) return '';
+    const rows = importedLeveling
+      .map(
+        (s) =>
+          `<tr><td class="num">ур. ${s.level}</td><td>${esc(s.name)}${s.cat ? ` <span class="dim">· ${esc(s.cat)}</span>` : ''}</td></tr>`,
+      )
+      .join('');
+    return `
+      <h3>🧭 Как прокачиваться (план из гайда)</h3>
+      <p class="hint">Гемы по уровню взятия — из датасета гайда (как в его скилл-таблице). Дерево планнера — под твой класс${state.tree?.ascendancy ? `/${esc(state.tree.ascendancy)}` : ''}; авто-узлов из гайда нет (у карточек нет PoB-кода) — ветку берись по приоритету скиллов ниже.</p>
+      <div class="pl-leveling"><table class="tbl"><thead><tr><th>Уровень</th><th>Гем</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   function persistAndRender(): void {
@@ -752,6 +865,7 @@ export function initPlannerTab(): void {
     while (groups.length < BASE_GROUPS) groups.push({ gem: '', supports: [] });
     state.groups = groups;
     state.gear = {};
+    unplacedUniques = [];
     if (q.uniques?.length) {
       const { byCategory } = await ensureUniques();
       const occupied = new Set<string>();
@@ -761,8 +875,14 @@ export function initPlannerTab(): void {
         const en = slotForUnique(n, byCategory, occupied) ? n : ruToEnName(n) ?? '';
         const slot = en ? slotForUnique(en, byCategory, occupied) : null;
         if (slot) { state.gear[slot.id] = en; occupied.add(slot.id); }
+        else unplacedUniques.push(n);
       }
     }
+    // 🧭 план прокачки: гемы гайда по уровню взятия (сортировка по возрастанию)
+    importedLeveling = (q.leveling ?? [])
+      .filter((s) => Number.isFinite(s.level) && s.name)
+      .slice()
+      .sort((a, b) => a.level - b.level);
     // класс/асценданси: дерево сразу показывает стартовое кольцо и диск ветки
     if (q.class) {
       // если ранее через вкладку «Древо» импортировался PoB этого же класса —
@@ -850,6 +970,12 @@ export function initPlannerTab(): void {
         const gi = picker.group;
         const en = pick.dataset.pick!;
         const ru = pick.dataset.pickRu || null;
+        // гейт: gem unlock > текущего уровня персонажа — выбор запрещён, пикер жив (пользователь видит, что откроется)
+        const un = Number(pick.dataset.unlock);
+        if (pick.dataset.unlock !== undefined && Number.isFinite(un) && un > charLevel) {
+          setStatus(`«${ru || en}» открывается с ур. ${un} (твой уровень: ${charLevel}) — подними уровень в панели счетчиков.`);
+          return;
+        }
         if (picker.kind === 'gem') pickGem(gi, en, ru);
         else if (picker.index == null) pickSupport(gi, null, en, ru);
         else pickSupport(gi, picker.index, en, ru);
@@ -941,6 +1067,20 @@ export function initPlannerTab(): void {
           const s = (item.dataset.search ?? '') + ' ' + name.toLowerCase();
           item.style.display = q && !s.includes(q) ? 'none' : '';
         });
+        return;
+      }
+      // уровень персонажа: живой тоггл замков пикера без ререндера (фокус/поиск не теряются)
+      const lvlIn = t.closest<HTMLInputElement>('[data-pl-lvl]');
+      if (lvlIn) {
+        const n = Math.max(1, Math.min(100, Math.round(Number(lvlIn.value) || 1)));
+        lvlIn.value = String(n);
+        if (n !== charLevel) {
+          charLevel = n;
+          saveCharLevel(n);
+          el0.querySelectorAll<HTMLElement>('.pl-picker-item[data-unlock]').forEach((item) => {
+            item.classList.toggle('pl-locked', Number(item.dataset.unlock) > charLevel);
+          });
+        }
         return;
       }
       if ('gearCustom' in ((t as HTMLInputElement).dataset ?? {})) return; // сохранение по OK/Enter

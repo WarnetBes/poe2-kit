@@ -269,12 +269,21 @@ export function initPoeguidesTab(): void {
                 }))
                 .filter((x) => x.gem)
                 .slice(0, 12);
+              // 🧭 план прокачки: уровни взятия гемов из скилл-таблицы гайда (RU-имена)
+              const leveling = g.skills
+                .flatMap((s) =>
+                  (s.gems ?? [])
+                    .filter((x) => x.level != null && x.name)
+                    .map((x) => ({ level: Number(x.level), name: x.name, cat: s.category ?? undefined })),
+                )
+                .sort((a, b) => a.level - b.level);
               queuePlannerImport({
                 title: g.title,
                 class: cap(g.class_en),
                 ascendancy: cap(g.asc_en),
                 groups,
                 uniques: g.uniques.map((u) => u.name),
+                leveling,
               });
             }
             return;

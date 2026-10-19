@@ -15,6 +15,7 @@
  */
 import { core, currentBuildContext, setStatus } from './ui';
 import type { DefensiveStats, MapPrepCheck, MapThreat } from '@poe2-kit/core';
+import { sekhemasFloorsForLevel, waystoneAreaLevel, waystoneTips } from '@poe2-kit/core';
 
 function esc(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) =>
@@ -96,7 +97,13 @@ function threatIcon(t: MapThreat, mod: MapThreat['matchedMods'][number]): string
   return th.element === 'fire' ? '🔥' : th.element === 'cold' ? '❄' : th.element === 'lightning' ? '⚡' : th.element === 'chaos' ? '☠' : '⚔';
 }
 
-function renderVerdict(el: HTMLElement, threat: MapThreat, checks: MapPrepCheck[], statsNote: string): void {
+function renderVerdict(
+  el: HTMLElement,
+  threat: MapThreat,
+  checks: MapPrepCheck[],
+  statsNote: string,
+  tier?: number,
+): void {
   const parts: string[] = [];
 
   // Заголовок: уровень + босс + резисты монстров.
@@ -154,6 +161,39 @@ function renderVerdict(el: HTMLElement, threat: MapThreat, checks: MapPrepCheck[
       `<details class="mp-unver-box" open><summary>⚠️ Unverified-пометки (${threat.unverifiedNotes.length})</summary><ul>${threat.unverifiedNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></details>`,
     );
   }
+  // Endgame-данные core (№112): тир → уровень зоны + советы по Waystone-крафту.
+  const tierArea = tier != null ? waystoneAreaLevel(tier) : null;
+  if (tierArea != null) {
+    parts.unshift(
+      `<p class="mp-waystone-tier">💎 Waystone T${tier} → зона уровня <b>${tierArea}</b>` +
+        (tierArea !== threat.area_level
+          ? ` <span class="dim">(у карты в базе area level ${threat.area_level})</span>`
+          : '') +
+        `</p>`,
+    );
+  }
+
+  const tips = waystoneTips();
+  if (tips.length) {
+    parts.push(
+      `<details class="mp-waystone-tips"><summary>💎 Советы по Waystone-крафту (${tips.length})</summary><ul class="mp-mods">${tips
+        .map(
+          (t) =>
+            `<li>${t.verified ? '' : '<b class="mp-unver" title="цифры/пороги не верифицированы в игре">unverified</b> '}${esc(t.text_ru)}</li>`,
+        )
+        .join('')}</ul></details>`,
+    );
+  }
+
+  // Sekhemas: этажность зависит от уровня зоны — актуально, если на карте триал.
+  const effLevel = tierArea ?? threat.area_level;
+  const sekhemas = core.endgame.mechanicById('trial-of-the-sekhemas');
+  if (sekhemas) {
+    parts.push(
+      `<p class="mp-sekhemas-floors dim">🏛 Trial of the Sekhemas на этом уровне зоны (${effLevel}): <b>${sekhemasFloorsForLevel(effLevel)}</b> этаж. (этажность по таблице Sekhemas из core)</p>`,
+    );
+  }
+
   el.innerHTML = parts.join('');
 }
 
@@ -221,7 +261,7 @@ async function runMapPrep(): Promise<void> {
       : b.life == null
         ? 'Билд не импортирован: пул жизни учтён как 3000 (условно), резисты — по полям выше.'
         : 'Статы обороны из последнего разобранного билда (вкладка «Импорт билда»).';
-    renderVerdict(el, threat, checks, statsNote);
+    renderVerdict(el, threat, checks, statsNote, tier);
     setStatus('Вердикт по карте готов.');
   } catch (e) {
     el.innerHTML = `<p class="err">Ошибка: ${esc(e instanceof Error ? e.message : String(e))}</p>`;

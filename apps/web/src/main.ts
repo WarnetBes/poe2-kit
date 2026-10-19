@@ -6,7 +6,6 @@ import {
   getActiveLeague,
   initActiveLeague,
   refreshLeagueData,
-  showCurrencyRates,
   showPriceCheck,
   showLevelingPlan,
   showBuildImport,
@@ -21,6 +20,7 @@ import {
   currentBuildContext,
   setStatus,
 } from './ui';
+import { initCurrencyTab, renderCurrencyTab } from './currency';
 import { showChecklist } from './checklist';
 import { showBuildCompare, DEFAULT_LADDER_SLUG } from './compare';
 import { pasteFromClipboard } from './clipboard';
@@ -544,7 +544,7 @@ void initActiveLeague();
 void initLeagueSelector();
 
 // ── Обработчики ────────────────────────────────────────
-document.querySelector('#btn-currencies')!.addEventListener('click', () => showCurrencyRates());
+document.querySelector('#btn-currencies')!.addEventListener('click', () => renderCurrencyTab());
 document.querySelector('#btn-price')!.addEventListener('click', () =>
   showPriceCheck((document.querySelector('#price-input') as HTMLTextAreaElement).value),
 );
@@ -656,7 +656,7 @@ document.querySelector('#btn-pob-paste')?.addEventListener('click', () =>
 
 // Глобализация для возможного внешнего расширения
 window.poe2k = {
-  currencies: showCurrencyRates,
+  currencies: renderCurrencyTab,
   priceCheck: () =>
     showPriceCheck((document.querySelector('#price-input') as HTMLTextAreaElement).value),
   leveling: showLevelingPlan,

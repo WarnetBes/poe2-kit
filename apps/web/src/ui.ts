@@ -253,36 +253,6 @@ function esc(s: string): string {
   );
 }
 
-export async function showCurrencyRates(): Promise<void> {
-  const el = out('out-currency');
-  el.innerHTML = '<em>Загрузка курсов…</em>';
-  setStatus(`Запрос курсов (лига «${activeLeague}»)…`);
-  try {
-    core.trade.setLeague(activeLeague);
-    const league = activeLeague ?? undefined;
-    const rates = await core.trade.fetchBestCurrencyRates(league);
-    if (!rates.length) {
-      el.innerHTML = '<p class="err">Нет данных о валютах. Проверь сеть/лигу.</p>';
-      setStatus('Нет данных.');
-      return;
-    }
-    const rows = rates
-      .filter((r) => r.chaosValue != null)
-      .sort((a, b) => (b.chaosValue ?? 0) - (a.chaosValue ?? 0))
-      .slice(0, 25)
-      .map(
-        (r) =>
-          `<tr><td>${esc(r.name)}</td><td class="num">${r.chaosValue!.toFixed(2)}</td></tr>`,
-      );
-    el.innerHTML = `<table class="tbl"><thead><tr><th>Валюта</th><th>chaos</th></tr></thead><tbody>${rows.join('')}</tbody></table>
-      <p class="note">Источник: poe2scout + poe.ninja · лига «${esc(activeLeague ?? '')}».</p>`;
-    setStatus(`Показано валют: ${rows.length}.`);
-  } catch (e) {
-    el.innerHTML = `<p class="err">Ошибка: ${esc(e instanceof Error ? e.message : String(e))}</p>`;
-    setStatus('Ошибка запроса.');
-  }
-}
-
 export async function showPriceCheck(text: string): Promise<void> {
   const el = out('out-price');
   if (!text?.trim()) {
