@@ -38,8 +38,25 @@ function nodePos(g, p) {
 
 function iconUrl(art) {
   if (!art) return '';
-  return 'https://cdn.poe2db.tw/image/' + art.replace(/^Art\//, 'Art/').replace(/\.dds$/, '.webp');
+  const url = 'https://cdn.poe2db.tw/image/' + art.replace(/^Art\//, 'Art/').replace(/\.dds$/, '.webp');
+  // REMAP (0.5.5): артов нет на CDN (GET 403 стабильно, дважды проверено) —
+  // подставляем существующие арты той же серии AtlasTrees (GGG CDN).
+  return ICON_FIX[url] ?? url;
 }
+
+// Проверено 19.10.2026: оригиналы 403 при GET; замены — 200.
+const ICON_FIX = {
+  'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StrongboxNode1.webp':
+    'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/StrongboxNotable1.webp',
+  'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExceptionalItemsBoots.webp':
+    'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossMapDrops.webp',
+  'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExceptionalItemsGloves.webp':
+    'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossMapDrops.webp',
+  'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ExceptionalItemsHelmets.webp':
+    'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/BossMapDrops.webp',
+  'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/MountainBiomeNode.webp':
+    'https://cdn.poe2db.tw/image/Art/2DArt/SkillIcons/passives/AtlasTrees/ForestBiomeNode.webp',
+};
 
 const nodes = {};
 const edgeSet = new Set();
