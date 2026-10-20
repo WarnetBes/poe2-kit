@@ -195,6 +195,19 @@ export function initPoeguidesTab(): void {
 
   const state: Filters = { query: '', cls: '', tier: '' };
 
+  // Деревья пассивок гайдов (№582): poeshop RSC code → {a?, n: GGG node ids}.
+  // Грузим лениво при первом «→ в Планнер» (один fetch, кэш на сессии).
+  let treesBox: Record<string, { a?: string; n: number[]; n1?: number[]; n2?: number[] }> | null = null;
+  const ensureTrees = async (): Promise<Record<string, { a?: string; n: number[]; n1?: number[]; n2?: number[] }>> => {
+    if (treesBox) return treesBox;
+    try {
+      const base = import.meta.env.BASE_URL ?? '/';
+      const raw = (await (await fetch(base + 'datasets/guides/guide_trees.json')).json()) as { trees?: Record<string, { a?: string; n: number[]; n1?: number[]; n2?: number[] }> };
+      treesBox = raw.trees ?? {};
+    } catch { treesBox = {}; } // офлайн/нет датасета — дерево гайда просто не переносится
+    return treesBox;
+  };
+
   const chip = (label: string, value: string, count: number, icon = ''): string =>
     `<button type="button" class="pg-chip2${'' === value ? ' pg-chip2-on' : ''}" data-v="${esc(value)}">${icon}${esc(label)}<i>${count}</i></button>`;
 
@@ -260,6 +273,8 @@ export function initPoeguidesTab(): void {
           if (plan) {
             const g = ds.guides.find((x) => x.slug === plan.dataset.pgOpen);
             if (g) {
+              // дерево пассивок гайда — грузим лениво (однократный fetch, №582)
+              void ensureTrees().then((trees) => {
               const cap = (s: string | null | undefined): string | undefined =>
                 s ? s.charAt(0).toUpperCase() + s.slice(1) : undefined;
               const groups = g.skills
@@ -284,6 +299,9 @@ export function initPoeguidesTab(): void {
                 groups,
                 uniques: g.uniques.map((u) => u.name),
                 leveling,
+                // дерево пассивок гайда, если harvested (№582)
+                ...(trees[g.slug] ? { tree: trees[g.slug] } : {}),
+              });
               });
             }
             return;

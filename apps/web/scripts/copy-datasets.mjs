@@ -4,7 +4,7 @@
  * гемов («Раскладка»: HasReservation/Cooldown/Spirit-cost).
  * Файл НЕ хранится в git — копия из core при каждом build/dev.
  */
-import { mkdirSync, copyFileSync, statSync, readdirSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, copyFileSync, statSync, readdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -25,6 +25,8 @@ const files = [
   { dir: 'maps', rel: 'waystone_mods.json', minBytes: 25_000 }, // ~32 КБ
   // poeshop-волна: гайды/билды poeshop.ru (фактура + атрибуция, ленивый fetch poeguides.ts)
   { dir: 'guides', rel: 'poeshop_guides.json', minBytes: 30_000 },
+  // №582: деревья пассивок poeshop-гайдов (RSC code, ленивый fetch poeguides.ts)
+  { dir: 'guides', rel: 'guide_trees.json', minBytes: 1_000 },
   // planner-волна: каталог уников (имена по категориям — datalist слотов гира планнера)
   { dir: 'uniques', rel: 'uniques_catalog.json', minBytes: 50_000 },
   // иконки гемов (poe2db CC BY-NC-SA, игровой арт GGG; fetch = datasets/gem_icons/*.webp)
@@ -98,4 +100,44 @@ for (const { dir, rel, minBytes } of files) {
     }
     console.log(`datasets: currency_icons/ → public/datasets (${n} файлов)`);
   }
+}
+
+// ru_en_uniques.json — браузерный RU→EN-словарь (№581).
+// core.ruToEnName читает items_ru.json через node:fs — в браузере HAS_DISK=false,
+// карты пустые, RU-имена уников из карточек гайдов не резолвятся («Не разложено»).
+// Здесь словарь компилируется в аккуратный JSON: ключ = normRuEnKey(ru), значение = en.
+{
+  const src = join(gameDir, 'i18n', 'items_ru.json');
+  const dst = join(here, '..', 'public', 'datasets', 'ru_en_uniques.json');
+  if (!existsSync(src)) throw new Error('нет packages/core/data/game/i18n/items_ru.json');
+  const raw = JSON.parse(readFileSync(src, 'utf8'));
+  /** Идентична core normRuEnKey (ruLocale.ts) — ключ должен сворачиваться одинаково. */
+  const norm = (s) => String(s ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/ё/g, 'е')
+    .replace(/й/g, 'и')
+    .replace(/['’`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const build = (rows) => {
+    const map = {};
+    for (const r of rows ?? []) {
+      if (!Array.isArray(r) || r.length < 2) continue;
+      const ru = String(r[0]), en = String(r[1]);
+      if (!ru.trim() || !en.trim() || ru === en) continue;
+      map[norm(ru)] = en;
+    }
+    return map;
+  };
+  const payload = {
+    built: raw.built, source: raw.source,
+    uniques: build(raw.names?.unique),
+    gems: build(raw.names?.gem),
+    items: build(raw.names?.item),
+  };
+  if (Object.keys(payload.uniques).length < 400) throw new Error(`ru_en_uniques: уников подозрительно мало: ${Object.keys(payload.uniques).length} (норм-ключи схлопывают дубликаты RU-имён — 766 строк → ~460 ключей)`);
+  writeFileSync(dst, JSON.stringify(payload));
+  console.log(`datasets: ru_en_uniques.json → public/datasets (${statSync(dst).size} Б, уников: ${Object.keys(payload.uniques).length})`);
 }

@@ -15,7 +15,7 @@
  */
 
 import { core, setStatus } from './ui';
-import { ruToEnName } from '@poe2-kit/core';
+import { ruToEnName, normRuEnKey } from '@poe2-kit/core';
 
 // ─── Типы ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +89,9 @@ export interface PlannerImport {
   uniques?: string[];
   /** План прокачки гайдом: гемы по уровню взятия (RU-имена из гайда). */
   leveling?: Array<{ level: number; name: string; cat?: string }>;
+  /** Дерево пассивок гайда (poeshop RSC code, №582): n — базовые GGG node ids,
+   *  n1/n2 — узлы наборов оружия (weapon set 1/2; на сцены уходит merge всех). */
+  tree?: { a?: string; n: number[]; n1?: number[]; n2?: number[] };
 }
 
 const IMPORT_KEY = 'poe2kit-planner-import';
@@ -104,7 +107,7 @@ export function queuePlannerImport(q: PlannerImport): void {
   try { sessionStorage.setItem(IMPORT_KEY, JSON.stringify(q)); } catch { /* очередь недоступна — молча */ }
   const tab = document.querySelector<HTMLButtonElement>('[data-tab="planner"]');
   tab?.click();
-  setStatus(`«${q.title}» → Планнер: гемы, уники по слотам${q.class ? ', класс и стартовое кольцо дерева' : ''}. Качай узлы кликами.`);
+  setStatus(`«${q.title}» → Планнер: гемы, уники по слотам${q.class ? ', класс' : ''}${q.tree?.n?.length ? ` и дерево гайда (${q.tree.n.length} узлов)` : q.class ? ' и стартовое кольцо дерева' : ''}. Качай узлы кликами.`);
 }
 
 function readImportQueue(): PlannerImport | null {
@@ -306,6 +309,23 @@ async function ensureUniques(): Promise<{ byCategory: UniquesByCategory }> {
   if (!raw.byCategory) throw new Error('в датасете нет byCategory');
   uniquesBox = { byCategory: raw.byCategory };
   return uniquesBox;
+}
+
+// Браузерный RU→EN-словарь уников (№581): core.ruToEnName читает items_ru.json
+// через node:fs, в браузере HAS_DISK=false → карты пустые → RU-имена из карточек
+// гайдов не резолвятся. Компактный JSON (ключи уже нормализованы как normRuEnKey)
+// кладёт copy-datasets.mjs → datasets/ru_en_uniques.json.
+let ruEnDictBox: Map<string, string> | null = null;
+async function ensureRuEnDict(): Promise<Map<string, string>> {
+  if (ruEnDictBox) return ruEnDictBox;
+  try {
+    const base = import.meta.env.BASE_URL ?? '/';
+    const raw = (await fetchJson(base + 'datasets/ru_en_uniques.json')) as { uniques?: Record<string, string> };
+    ruEnDictBox = new Map(Object.entries(raw.uniques ?? {}));
+  } catch {
+    ruEnDictBox = new Map(); // офлайн/нет датасета — фолбэк молчит, уники честно в «Не разложено»
+  }
+  return ruEnDictBox;
 }
 
 async function ensureGemColors(): Promise<Record<string, string>> {
@@ -899,12 +919,12 @@ export function initPlannerTab(): void {
     state.gear = {};
     unplacedUniques = [];
     if (q.uniques?.length) {
-      const { byCategory } = await ensureUniques();
+      const [{ byCategory }, ruEnDict] = await Promise.all([ensureUniques(), ensureRuEnDict()]);
       const occupied = new Set<string>();
       for (const n of q.uniques) {
-        // карточки гайдов дают RU-имена уников — резолвим в EN (core ruLocale)
-        // и кладём в слот каноничное EN-имя (оно же уходит в пикер/uniques_catalog)
-        const en = slotForUnique(n, byCategory, occupied) ? n : ruToEnName(n) ?? '';
+        // карточки гайдов дают RU-имена уников — резолвим в EN (core ruLocale);
+        // в браузере FS недоступна → fallback на браузерный словарь ru_en_uniques.json
+        const en = slotForUnique(n, byCategory, occupied) ? n : ruToEnName(n) || (ruEnDict.get(normRuEnKey(n)) ?? '');
         const slot = en ? slotForUnique(en, byCategory, occupied) : null;
         if (slot) { state.gear[slot.id] = en; occupied.add(slot.id); }
         else unplacedUniques.push(n);
@@ -915,10 +935,11 @@ export function initPlannerTab(): void {
       .filter((s) => Number.isFinite(s.level) && s.name)
       .slice()
       .sort((a, b) => a.level - b.level);
-    // класс/асценданси: дерево сразу показывает стартовое кольцо и диск ветки
+    // класс/асценданси: дерево гайда (poeshop RSC code, №582) — приоритетный
+    // источник узлов; если у гайда дерева нет — прежний префилл из PoB того же
+    // класса, который ранее импортировался через вкладку «Древо» (честно: без
+    // PoB/дерева гайда узлов нет, только стартовое кольцо)
     if (q.class) {
-      // если ранее через вкладку «Древо» импортировался PoB этого же класса —
-      // переносим его узлы в план (честно: у карточек нет своих PoB-кодов)
       let pre: number[] = [];
       try {
         const saved = JSON.parse(localStorage.getItem('poe2k.plan') ?? '') as { c?: string; n?: number[] };
@@ -926,9 +947,17 @@ export function initPlannerTab(): void {
           pre = saved.n.filter((x) => Number.isInteger(x)).map(Number);
         }
       } catch { /* битый LS — не падаем, просто без префилла */ }
+      // дерево гайда: базовые узлы + наборы оружия (n/n1/n2 merge, dedupe);
+      // привязка узлов к наборам (weaponSets-подсветка) — отдельная волна, №582+
+      const tn = q.tree;
+      const guideNodes = tn
+        ? [...new Set([...(Array.isArray(tn.n) ? tn.n : []), ...(Array.isArray(tn.n1) ? tn.n1 : []), ...(Array.isArray(tn.n2) ? tn.n2 : [])])]
+            .filter((x) => Number.isInteger(x))
+            .map(Number)
+        : [];
       state.tree = {
         class: q.class,
-        allocated: pre,
+        allocated: guideNodes.length ? guideNodes : pre,
         ...(q.ascendancy ? { ascendancy: q.ascendancy } : {}),
       };
     }
