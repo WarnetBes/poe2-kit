@@ -89,6 +89,7 @@ import * as mapPrepMod from './mapPrep.js';
 export * from './questRewards.js';
 export * from './cache.js';
 export * from './gameConfig.js';
+export * from './ritual.js';
 // ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
 // чтобы не конфликтовать с evaluate-слоем estimate.ts (там свои calculateEhp и
 // calculateAllEhp от гира). Доступен как core.ehp.

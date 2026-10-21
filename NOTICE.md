@@ -26,6 +26,19 @@
   RU→EN значения «Класс предмета:» PoE2-клиента. Регенерация тем же скриптом.
 
 
+## packages/core/data/game/ritual/ (датасет Ritual №584)
+
+- **github.com/saxe78/poe2pricer** — лицензия **MIT** © 2026 saxe78
+  (релиз 1.1.2, SHA256 zip `67A1AEE17CBFF80AAC9BC52EEE5C0086ADB8C6B5039C75B25C009335554F4110`):
+  каталог `catalog.json`, learned-модель `recognition-model.json`,
+  эталоны `official-references.json`, иконки `catalog/images/`, `catalog/official-images/`,
+  якоря `ui/*.png`. Константы `Tuning.cs` портированы дословно в `src/ritual.ts`.
+- **github.com/Dev-Jahn/poe2-ritual-checker** — лицензия **MIT** © 2026 (commit 7c16291):
+  исходная модель распознавания Favours (gray 0.70 / edge 0.30 / penalty), прототипы 24×48.
+- **Арт GGG** (через poe2db.tw, web.poecdn.com): изображения предметов, якоря UI и artwork —
+  материал Grinding Gear Games, НЕ покрывается MIT; использование — CC BY-NC-SA практики
+  poe2db, только для некоммерческого SSF-инструмента. Тексты/JSON — факт данных игры.
+
 ## Прочие портированные модули (MIT, указано в шапках файлов)
 
 - `livefilter/injector.ts` и др. — порт Go-донора (см. комментария в файлах).
