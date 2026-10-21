@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { decodePng } from '../src/png.js';
 import {
   CellMemory,
@@ -33,7 +35,7 @@ import {
   resetRitualCaches,
   ritualLabelSpot,
 } from '../src/ritualReferences.js';
-import { FAVOURS_TUNING, getOfficialReferences, getRitualCatalog, ritualAssetPath } from '../src/ritual.js';
+import { FAVOURS_TUNING, getOfficialReferences, getRitualCatalog, ritualAssetPath, ritualDatasetStatus } from '../src/ritual.js';
 
 // №584 этапы 1–3: порт poe2pricer (MIT saxe78) — математика распознавания.
 // Пороги донора перенесены дословно; замены OpenCV (INTER_AREA→box-фильтр,
@@ -504,4 +506,35 @@ describe('ritualReferences: каталог → референсы → recognize'
       expect(selfScore).toBeGreaterThan(otherScore);
     }
   }, 120_000);
+});
+
+
+// ─── ritualDatasetStatus: докачка датасета в portable (№584) ─────────────────
+describe('ritualDatasetStatus (№584: portable без датасета — деградация с подсказкой)', () => {
+  it('в репо данные есть → ready', () => {
+    const st = ritualDatasetStatus();
+    expect(st.ready).toBe(true);
+  });
+
+  it('пустой каталог (portable до докачки) → not ready + подсказка про start-overlay.bat', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'poe2k-ritual-ds-'));
+    try {
+      const st = ritualDatasetStatus({ dataDirOverride: empty });
+      expect(st.ready).toBe(false);
+      if (!st.ready) expect(st.reason).toContain('start-overlay.bat');
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('каталог с catalog/catalog.json → ready', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'poe2k-ritual-ds-'));
+    try {
+      mkdirSync(join(dir, 'catalog'), { recursive: true });
+      writeFileSync(join(dir, 'catalog', 'catalog.json'), '{}');
+      expect(ritualDatasetStatus({ dataDirOverride: dir }).ready).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

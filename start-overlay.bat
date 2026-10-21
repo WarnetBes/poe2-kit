@@ -166,6 +166,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM --- Portable: ritual dataset (~49 MB) — отдельный релиз-ассет, докачка один раз ---
+if exist "packages\core\data\game\ritual\catalog\catalog.json" goto portstart
+echo.
+echo First run: downloading the Ritual price-check dataset (~49 MB, one time only).
+call :bootritual
+if errorlevel 1 (
+  echo [WARN] Ritual dataset not downloaded - the overlay itself works,
+  echo        but the Ritual tab ^(Ctrl+F8^) will only show a hint.
+  echo        Re-run this script with internet access to retry.
+)
+goto portstart
+
 :portstart
 echo.
 echo Starting the overlay...
@@ -215,6 +227,50 @@ if not exist "%ELDIR%\electron.exe" (
 echo   [3/3] done - removing the temporary zip.
 del "%ELZIP%"
 exit /b 0
+
+REM --- докачка ритуал-датасета: URL и SHA256 из ritual-data.manifest.json ---
+REM (Node в portable не обязателен — JSON читает powershell, SHA256 — Get-FileHash)
+:bootritual
+if not exist "ritual-data.manifest.json" (
+  echo   [!] ritual-data.manifest.json not found - cannot download.
+  exit /b 1
+)
+for /f "usebackq delims=" %%u in (`powershell -NoProfile -Command "(Get-Content 'ritual-data.manifest.json' -Raw | ConvertFrom-Json).urls -join ';'"`) do set "RDURLS=%%u"
+for /f "usebackq delims=" %%h in (`powershell -NoProfile -Command "(Get-Content 'ritual-data.manifest.json' -Raw | ConvertFrom-Json).sha256"`) do set "RDSHA=%%h"
+set "RDTARGET=packages\core\data\game"
+if not exist "%RDTARGET%" mkdir "%RDTARGET%"
+set "RDZIP=%TEMP%\ritual-data-dl.zip"
+del "%RDZIP%" 2>nul
+for /f "tokens=1,2 delims=;" %%a in ("%RDURLS%") do (set "RDURL1=%%a" & set "RDURL2=%%b")
+echo   [1/3] downloading the Ritual dataset...
+curl.exe -L --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL1%"
+if not errorlevel 1 goto rdverify
+if not defined RDURL2 goto rdfail
+echo   [1/3] primary failed - trying the fallback URL...
+curl.exe -L --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL2%"
+if errorlevel 1 goto rdfail
+:rdverify
+echo   [2/3] verifying SHA256...
+for /f "usebackq delims=" %%a in (`powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 '%RDZIP%').Hash.ToLower()"`) do set "RDGOT=%%a"
+if not "%RDGOT%"=="%RDSHA%" (
+  echo   [!] SHA256 mismatch: expected %RDSHA%, got %RDGOT% - file removed, retry later.
+  del "%RDZIP%" 2>nul
+  goto rdfail
+)
+echo   [3/3] unpacking...
+tar -xf "%RDZIP%" -C "%RDTARGET%"
+if errorlevel 1 goto rdfail
+if not exist "%RDTARGET%\ritual\catalog\catalog.json" (
+  echo   [!] unpacked archive does not contain the dataset.
+  del "%RDZIP%" 2>nul
+  goto rdfail
+)
+del "%RDZIP%" 2>nul
+echo   done - Ritual data installed.
+exit /b 0
+:rdfail
+del "%RDZIP%" 2>nul
+exit /b 1
 
 :end
 echo.

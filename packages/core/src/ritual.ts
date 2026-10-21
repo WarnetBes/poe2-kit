@@ -225,6 +225,27 @@ export function ritualAssetPath(rel: string): string {
   return pathMod!.join(dataDir(), rel);
 }
 
+/**
+ * Статус ритуал-датасета. В portable-сборках каталог data/game/ritual вырезен
+ * из base-zip и докачивается start-overlay.bat с релиза (лимит ассетов ~100 МБ
+ * меньше несжимаемого датасета ~49 МБ + база). catalog.json — необходимый
+ * файл датасета: нет его → ритуал нерабоч, считаем датасет отсутствующим.
+ */
+export function ritualDatasetStatus(opts?: { dataDirOverride?: string }): { ready: true } | { ready: false; reason: string } {
+  if (!HAS_DISK) return { ready: false, reason: 'датасет ритуала доступен только в Node (overlay main/MCP/тесты)' };
+  const dir = opts?.dataDirOverride ?? dataDir();
+  if (!fsMod!.existsSync(pathMod!.join(dir, 'catalog', 'catalog.json'))) {
+    return {
+      ready: false,
+      reason:
+        'Датасет ритуала не найден. Запустите start-overlay.bat — при первом старте он скачает данные ' +
+        '(~49 МБ, один раз, дальше офлайн). Если вы запускаете не из portable и видите это — ' +
+        'выполните npm ci / восстановите packages/core/data/game/ritual из репозитория.',
+    };
+  }
+  return { ready: true };
+}
+
 /** Карта catalogId → предмет (ленивая). */
 let byIdCache: Map<string, RitualCatalogItem> | null = null;
 export function ritualItemById(id: string): RitualCatalogItem | undefined {

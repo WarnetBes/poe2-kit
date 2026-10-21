@@ -23,7 +23,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { core, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours } from '@poe2-kit/core';
+import { core, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground } from './win32.js';
@@ -3518,6 +3518,11 @@ function ritualFail(error: string): { available: false; error: string } {
 }
 
 async function runRitualScan(): Promise<unknown> {
+  // Датасет докачивается start-overlay.bat (portable без ~49 МБ данных):
+  // проверка до всего остального — без данных GDI-захват бессмыслен.
+  const ds = ritualDatasetStatus();
+  if (!ds.ready) return ritualFail(ds.reason);
+
   if (busy) {
     console.warn('[overlay] ritual scan skipped: busy=true');
     return null;

@@ -18,6 +18,7 @@
  * Запуск: node make-portable.mjs [--full]   (из корня репо, Node 20+)
  */
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,6 +110,54 @@ function copyDir(src, dst) {
 }
 copyDir(ROOT, STAGE);
 
+// 2.5 Вынос ритуал-датасета в отдельный архив с докачкой (№584).
+//     Причина: релизный лимит ассетов ~100 МБ не вместит base + несжимаемые
+//     49.4 МБ датасета (PNG/webp). Схема: base-zip без данных + датасет-zip
+//     как ВТОРОЙ ассет релиза; start-overlay.bat докачивает его при первом
+//     старте (curl + SHA256-проверка + tar), оверлей без него не падает —
+//     core/ritual.ts:ritualDatasetStatus() даёт подсказку.
+//     apps/web/public — дубль dist/datasets (нужен только vite dev) — тоже вырезаем.
+console.log('[portable] 2.5 carve-out: ritual dataset + web/public...');
+const RITUAL_SRC = path.join(ROOT, 'packages', 'core', 'data', 'game', 'ritual');
+const ritualDirStat = { files: 0, bytes: 0 };
+(function walk(d) {
+  for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, ent.name);
+    if (ent.isDirectory()) walk(p);
+    else { ritualDirStat.files += 1; ritualDirStat.bytes += fs.statSync(p).size; }
+  }
+})(RITUAL_SRC);
+const DATA_ZIP = path.join(OUT_DIR, `ritual-data-${ver}.zip`);
+fs.rmSync(path.join(STAGE, 'packages', 'core', 'data', 'game', 'ritual'), { recursive: true, force: true });
+fs.rmSync(path.join(STAGE, 'apps', 'web', 'public'), { recursive: true, force: true });
+fs.rmSync(DATA_ZIP, { force: true });
+// Внутри архива верхний каталог — "ritual": распаковка в data/game даёт data/game/ritual.
+execSync(`tar -a -c -f "${DATA_ZIP}" -C "${path.dirname(RITUAL_SRC)}" ritual`, { stdio: 'inherit' });
+const dataSha = createHash('sha256').update(fs.readFileSync(DATA_ZIP)).digest('hex');
+const DATA_URLS = [
+  `https://github.com/WarnetBes/poe2-kit/releases/download/ritual-data-v${ver}/ritual-data-${ver}.zip`,
+  ...(process.env.POE2K_RITUAL_DATA_URLS ?? '').split(';').filter(Boolean),
+];
+// Манифест в корне base-zip: bat читает его через powershell (Node в portable не обязателен).
+fs.writeFileSync(
+  path.join(STAGE, 'ritual-data.manifest.json'),
+  JSON.stringify(
+    {
+      dataset: 'ritual',
+      version: ver,
+      sha256: dataSha,
+      zipBytes: fs.statSync(DATA_ZIP).size,
+      files: ritualDirStat.files,
+      dataBytes: ritualDirStat.bytes,
+      install: { zipRoot: 'ritual', targetDir: 'packages/core/data/game' },
+      urls: DATA_URLS,
+    },
+    null,
+    2,
+  ),
+  'utf8',
+);
+
 // 3. Рантайм-зависимости (npm ci в монорепо честно линкует воркспейсы;
 //    prune по копии падает 404 на локальном @poe2-kit/core — не используем).
 //    --omit=dev: typescript/vite/esbuild в архив не идут, electron/koffi остаются.
@@ -185,7 +234,7 @@ fs.writeFileSync(
 КАК ЗАПУСТИТЬ (Windows):
   1. Дважды щёлкните start-overlay.bat
   2. ПРИ ПЕРВОМ ЗАПУСКЕ скрипт один раз скачает движок Electron
-     (~110 МБ; дальше работает офлайн, этого требует только первый старт).
+     (~110 МБ) и датасет Ритуала (~49 МБ) — дальше работает офлайн.
   3. Запустите Path of Exile 2.
 
 КАК ПОЛЬЗОВАТЬСЯ В ИГРЕ:
@@ -194,15 +243,18 @@ fs.writeFileSync(
   - Ctrl+F2 — список покупок билда; Ctrl+F3 — импорт билда (PoB-код);
   - Ctrl+F4 — подсказки по прокачке;  Ctrl+F5 — передвинуть оверлей;
   - Ctrl+F6 — настройки (прозрачность, размер, горячие клавиши,
-    opt-in «журнал обучения» и кнопка «поделиться предметами»).
+    opt-in «журнал обучения» и кнопка «поделиться предметами»);
+  - Ctrl+F8 — цены дани Ритуала (нужен датасет, см. выше).
 
 ОТЗЫВЫ/БАГИ/ИДЕИ:
   https://sourcecraft.dev/volkovpartilaholin/poe2-kit/issues
   Лицензия MIT. Дополнительно: README.md (по-русски) / README.en.md (English).
 
 HOW TO LAUNCH (English): double-click start-overlay.bat.
-On first run it downloads the Electron runtime (~110 MB, one time only).
+On first run it downloads the Electron runtime (~110 MB) and the Ritual
+price-check dataset (~49 MB) - one time each, then fully offline.
 In game: hover an item, Ctrl+C, then Ctrl+F1 = price check. Ctrl+F6 = settings.
+Ctrl+F8 = Ritual favours price check (needs the one-time dataset download).
 `,
   'utf8',
 );
@@ -213,5 +265,8 @@ fs.rmSync(ZIP, { force: true });
 execSync(`tar -a -c -f "${ZIP}" "${STAGE_NAME}"`, { stdio: 'inherit', cwd: OUT_DIR });
 
 const sizeMb = (fs.statSync(ZIP).size / 1024 / 1024).toFixed(1);
+const dataMb = (fs.statSync(DATA_ZIP).size / 1024 / 1024).toFixed(1);
 console.log(`[portable] ГОТОВО: ${ZIP} (${sizeMb} MB)`);
-console.log(`[portable] Раскатка: распаковать → start-overlay.bat (${FULL ? 'офлайн, Electron внутри' : 'первый старт скачает Electron ~110 MB'}).`);
+console.log(`[portable] ГОТОВО: ${DATA_ZIP} (${dataMb} MB, sha256 ${dataSha.slice(0, 12)}…) — датасет ритуала, отдельный релиз-ассет`);
+if (+sizeMb > 100 || +dataMb > 100) console.warn('[portable] WARN: один из архивов > 100 MB — лимит релизных ассетов может не пропустить.');
+console.log(`[portable] Раскатка: распаковать → start-overlay.bat (первый старт скачает Electron ~110 MB и ритуал-датасет ${dataMb} MB).`);
