@@ -23,10 +23,11 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { core } from '@poe2-kit/core';
+import { core, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground } from './win32.js';
+import { captureClient, type ClientFrame } from './gdiCapture.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -141,6 +142,9 @@ const BUILD_PANEL_HOTKEY = 'Control+F2';
 const SETTINGS_HOTKEY = 'Control+F6';
 // №111: чекап перед пиннаклом — F7 свободна (заняты F1–F6, F5-варианты не пересекаются).
 const PINNACLE_HOTKEY = 'Control+F7';
+
+// №584: Ritual-прайсинг (порт Poe2Pricer, MIT saxe78) — Ctrl+F8.
+const RITUAL_HOTKEY = 'Control+F8';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 /** Смещение оверлея относительно «закреплённой» позиции (угол окна игры). */
@@ -208,7 +212,7 @@ interface OverlaySettings {
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
-const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'slang', 'craft', 'rates', 'gen', 'starterbuilds', 'radar', 'settings'] as const;
+const PANEL_TABS = ['price', 'build', 'gems', 'import', 'level', 'maps', 'pinnacle', 'ritual', 'slang', 'craft', 'rates', 'gen', 'starterbuilds', 'radar', 'settings'] as const;
 
 type HotkeyAction =
   | 'price'
@@ -217,7 +221,8 @@ type HotkeyAction =
   | 'buildImport'
   | 'buildPanel'
   | 'settings'
-  | 'pinnacle';
+  | 'pinnacle'
+  | 'ritual';
 
 const DEFAULT_SETTINGS: OverlaySettings = {
   corner: 'top-right',
@@ -244,6 +249,7 @@ const DEFAULT_HOTKEYS: Record<HotkeyAction, string> = {
   buildPanel: BUILD_PANEL_HOTKEY,
   settings: SETTINGS_HOTKEY,
   pinnacle: PINNACLE_HOTKEY,
+  ritual: RITUAL_HOTKEY,
 };
 
 /** Активные настройки оверлея. */
@@ -3497,6 +3503,96 @@ function mapPrepVerdict(raw: unknown): Record<string, unknown> {
   }
 }
 
+// ─── №584: Ritual-прайсинг — распознавание окна дани (Ctrl+F8) ────────────────
+// Порт Poe2Pricer.Core (MIT saxe78): GDI-кадр client area (gdiCapture.ts) →
+// GameView → reference-картинка (высота 1440) → якорь/сетка favours →
+// recognizeFavours (core). Цены: распознанные currency-предметы матчятся по
+// nameEn с kursами fetchBestCurrencyRates (poe2scout + poe.ninja, тот же
+// источник, что вкладка «💱 Курс»). Уникалии/невалюта — без цены (MVP, без OCR).
+const RITUAL_CAPTURE_BUDGET_MS = 50; // гейт донора: медленный захват → ручной хоткей
+
+function ritualFail(error: string): { available: false; error: string } {
+  const out = { available: false as const, error };
+  overlayWindow?.webContents.send('ritual:result', out);
+  return out;
+}
+
+async function runRitualScan(): Promise<unknown> {
+  if (busy) {
+    console.warn('[overlay] ritual scan skipped: busy=true');
+    return null;
+  }
+  busy = true;
+  const t0 = Date.now();
+  try {
+    const game = findGameWindow();
+    if (!game) return ritualFail('Окно Path of Exile 2 не найдено.');
+    if (!isGameForeground(game)) return ritualFail('Окно игры не на переднем плане — откройте окно дани и повторите.');
+
+    const tCap = Date.now();
+    const frame: ClientFrame | null = captureClient(game);
+    const captureMs = Date.now() - tCap;
+    if (!frame) return ritualFail('Не удалось захватить экран окна (GDI).');
+    if (captureMs > RITUAL_CAPTURE_BUDGET_MS) console.warn(`[overlay] ritual: захват ${captureMs} мс > ${RITUAL_CAPTURE_BUDGET_MS} мс — надёжен только ручной хоткей.`);
+
+    const view = gameViewOf(frame.width, frame.height);
+    const ref = gameViewReadWhole(frame, view);
+
+    const grid = locateFavoursGrid(ref, loadRitualAnchor());
+    if (!grid) return ritualFail('Окно дани не найдено: якорь tribute-bar не совпал. Откройте вкладку Ritual (обмен дани) и повторите.');
+
+    const rec = recognizeFavours(ref, grid);
+    console.log(`[overlay] ritual: ${rec.items.length} предметов, unassigned=${rec.unassigned}, за ${rec.durationMs} мс (режим ${grid.mode})`);
+    statEvent('ritualScan', `${rec.items.length} items`);
+
+    // Цены currency-kind: матч по имени с курсами лиги (кэш общий с фи «Курс»).
+    let rates: Map<string, { chaos: number | null; divine: number | null; source: string }> | null = null;
+    try {
+      const list = await core.trade.fetchBestCurrencyRates(activeLeague ?? undefined);
+      rates = new Map(list.map((r) => [r.name, { chaos: r.chaosValue, divine: r.divineValue, source: r.source }]));
+    } catch (err) {
+      console.warn('[overlay] ritual: курсы не получены (офлайн?):', (err as Error).message);
+    }
+
+    const items = rec.items.map((it) => {
+      const rate = rates?.get(it.nameEn) ?? null;
+      return {
+        column: it.column,
+        row: it.row,
+        width: it.width,
+        height: it.height,
+        id: it.id,
+        nameEn: it.nameEn,
+        score: Math.round(it.score * 1000) / 1000,
+        doubtful: it.doubtful,
+        price: rate ? { chaos: rate.chaos, divine: rate.divine, source: rate.source } : null,
+        candidates: it.candidates.slice(0, 3).map((c) => ({ id: c.id, nameEn: c.nameEn, score: Math.round(c.score * 1000) / 1000 })),
+      };
+    });
+    items.sort((a, b) => (b.price?.chaos ?? -1) - (a.price?.chaos ?? -1) || a.row - b.row || a.column - b.column);
+    const total = items.reduce((s, it) => s + (it.price?.chaos ?? 0), 0);
+
+    const out = {
+      available: true as const,
+      mode: grid.mode,
+      anchorScore: grid.anchorScore,
+      items,
+      unassigned: rec.unassigned,
+      totalChaos: total > 0 ? Math.round(total * 100) / 100 : null,
+      captureMs,
+      durationMs: rec.durationMs,
+      elapsedMs: Date.now() - t0,
+    };
+    overlayWindow?.webContents.send('ritual:result', out);
+    return out;
+  } catch (err) {
+    console.warn('[overlay] ritual scan failed:', err instanceof Error ? err.message : err);
+    return ritualFail(`Ошибка распознавания: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    busy = false;
+  }
+}
+
 function registerHotkeys(): void {
   const ok = globalShortcut.register(hotkeyFor('price'), hotkeyAction);
   const okL = globalShortcut.register(hotkeyFor('leveling'), hotkeyLevelAction);
@@ -3534,6 +3630,11 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: чекап перед пиннаклом');
     void runPinnacleCheck();
   });
+  // №584: Ritual-прайсинг (Ctrl+F8) — скан окна дани + цены.
+  const okRit = globalShortcut.register(hotkeyFor('ritual'), () => {
+    console.log('[overlay] hotkey fired: ритуал-скан');
+    void runRitualScan();
+  });
   console.log(`[overlay] hotkey ${hotkeyFor('price')} registered=${ok}`);
   console.log(`[overlay] hotkey ${hotkeyFor('leveling')} registered=${okL}`);
   console.log(`[overlay] hotkey ${hotkeyFor('move')} registered=${okM}`);
@@ -3542,6 +3643,7 @@ function registerHotkeys(): void {
   console.log(`[overlay] hotkey ${hotkeyFor('buildPanel')} registered=${okBP}`);
   console.log(`[overlay] hotkey ${hotkeyFor('settings')} registered=${okS}`);
   console.log(`[overlay] hotkey ${hotkeyFor('pinnacle')} registered=${okP}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('ritual')} registered=${okRit}`);
 }
 
 // ─── Диагностика (кнопка «Отправить диагностику» в панели настроек) ──────────
@@ -3867,6 +3969,11 @@ function setupIPC(): void {
       case 'pinnacle':
         console.log('[overlay] tab: чекап перед пиннаклом (Ctrl+F7)');
         void runPinnacleCheck();
+        break;
+      // №584: тот же ритуал-скан по клику таба, что и по Ctrl+F8.
+      case 'ritual':
+        console.log('[overlay] tab: ритуал-скан (Ctrl+F8)');
+        void runRitualScan();
         break;
       default:
         return { ok: false, error: 'unknown action' };

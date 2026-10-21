@@ -266,6 +266,7 @@ ${OVERLAY_SHELL}<script>
     $('gemsWrap').classList.toggle('hide', mode !== 'gems');
     $('mapsWrap').classList.toggle('hide', mode !== 'maps');
     $('pinnacleWrap').classList.toggle('hide', mode !== 'pinnacle');
+    $('ritualWrap').classList.toggle('hide', mode !== 'ritual');
     $('slangWrap').classList.toggle('hide', mode !== 'slang');
     $('craftWrap').classList.toggle('hide', mode !== 'craft');
     $('ratesWrap').classList.toggle('hide', mode !== 'rates');
@@ -281,7 +282,7 @@ ${OVERLAY_SHELL}<script>
   // Живой репорт: колесо над оверлеем не прокручивает панель Билда —
   // окно нефокусируемое/click-through, доставка wheel-событий не гарантирована.
   // Кнопки работают во ВСЕХ режимах с локальным скроллом и не зависят от фокуса.
-  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap', 'radarWrap', 'starterbuildsWrap'];
+  var SCROLL_WRAPS = ['buildWrap', 'listWrap', 'lvlWrap', 'gemsWrap', 'mapsWrap', 'pinnacleWrap', 'ritualWrap', 'slangWrap', 'craftWrap', 'ratesWrap', 'genWrap', 'importWrap', 'suppadvWrap', 'radarWrap', 'starterbuildsWrap'];
   function activeScrollWrap() {
     for (var i = 0; i < SCROLL_WRAPS.length; i++) {
       var el = $(SCROLL_WRAPS[i]);
@@ -2877,6 +2878,87 @@ ${OVERLAY_SHELL}<script>
     sec.appendChild(note);
     wrap.appendChild(sec);
   }
+
+  // №584 «Ритуал-скан» (Ctrl+F8 / таб «🕯 Ритуал»).
+  window.poe2k.onRitualResult(function (p) {
+    if (!p) return;
+    setBusy(false);
+    $('idle').classList.add('hide');
+    $('body').classList.remove('hide');
+    renderRitual(p);
+    showMode('ritual');
+    setActiveTab('ritual');
+  });
+
+  /** №584: отрисовать распознанные предметы окна дани Ritual. */
+  function renderRitual(p) {
+    var wrap = $('ritualContent');
+    wrap.innerHTML = '';
+    var sec = document.createElement('div');
+    sec.className = 'boss-sec';
+    var head = document.createElement('div');
+    head.className = 'camp-head';
+    sec.appendChild(head);
+
+    if (p.available === false) {
+      head.textContent = '🕯 Ритуал';
+      var errRow = document.createElement('div');
+      errRow.className = 'boss-entry boss-unverified';
+      var et = document.createElement('div');
+      et.className = 'boss-sub';
+      et.textContent = '⚠ ' + (p.error || 'Скан окна дани не удался.');
+      errRow.appendChild(et);
+      sec.appendChild(errRow);
+      wrap.appendChild(sec);
+      return;
+    }
+
+    var headTxt = '🕯 Дань Ritual · предметов: ' + (p.items || []).length;
+    if (p.totalChaos != null) headTxt += ' · всего ~' + p.totalChaos + ' chaos';
+    if (p.elapsedMs != null) headTxt += ' · ' + p.elapsedMs + ' мс';
+    head.textContent = headTxt;
+
+    var items = p.items || [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var row = document.createElement('div');
+      row.className = 'batch-item';
+      var priceTxt;
+      if (it.price && it.price.chaos != null) {
+        priceTxt = '<span class="value">≈' + it.price.chaos + ' chaos</span>';
+        if (it.price.divine != null && it.price.divine >= 0.01) priceTxt += '<span class="conf">(' + it.price.divine + ' div)</span>';
+      } else {
+        priceTxt = '<span class="muted">н/д</span>';
+      }
+      var nameHtml = '<div class="bi-name">' + esc(it.nameEn || it.id) + (it.doubtful ? ' <span class="muted" title="score ' + it.score + ' — ниже порога">⚠</span>' : '') + '</div>';
+      var noteHtml = '<div class="bi-note"><span class="muted">' +
+        'ячейка ' + (it.column + 1) + '×' + (it.row + 1) +
+        (it.width > 1 || it.height > 1 ? ' · ' + it.width + '×' + it.height + ' яч.' : '') +
+        ' · score ' + it.score + '</span>' +
+        (it.candidates && it.candidates.length > 1 ? '<span class="muted"> · 2-й: ' + esc(it.candidates[1].nameEn) + ' (' + it.candidates[1].score + ')</span>' : '') +
+        '</div>';
+      // Сборка строки innerHTML (стиль батч-вью прайса):
+      row.innerHTML = nameHtml + '<div class="bi-est">' + priceTxt + '</div>' + noteHtml;
+      sec.appendChild(row);
+    }
+    if (!items.length) {
+      var empty = document.createElement('div');
+      empty.className = 'boss-tip';
+      empty.textContent = 'Клетки пусты — откройте окно дани Ritual (вкладка обмена) и повторите Ctrl+F8.';
+      sec.appendChild(empty);
+    }
+    if (p.unassigned > 0) {
+      var un = document.createElement('div');
+      un.className = 'boss-tip';
+      un.textContent = '⚠ Не распознано занятых ячеек: ' + p.unassigned + ' (MVP без OCR: часть предметов не идентифицируется по арту).';
+      sec.appendChild(un);
+    }
+    var note = document.createElement('div');
+    note.className = 'boss-tip';
+    note.textContent = 'Цены — только для валюты (poe2scout + poe.ninja, кэш 10 мин). Уники без цены: MVP без OCR. Скан вручную Ctrl+F8, окно дани должно быть открыто.';
+    sec.appendChild(note);
+    wrap.appendChild(sec);
+  }
 // ─── Панель настроек (Ctrl+F6) ─────────────────────────────────────────────
   var setDirty = {};
   var HK_ACTIONS = [
@@ -2886,6 +2968,7 @@ ${OVERLAY_SHELL}<script>
     ['buildImport', 'Импорт билда'],
     ['buildPanel', 'Панель билда'],
     ['pinnacle', 'Чекап перед пиннаклом'],
+    ['ritual', 'Ритуал-скан'],
     ['settings', 'Настройки']
   ];
   var hkInputs = {};
@@ -2905,6 +2988,7 @@ ${OVERLAY_SHELL}<script>
     ['gen', '🧬 Билды'],
     ['starterbuilds', '🧬 Стартовые'],
     ['pinnacle', '🛡 Пиннакл'],
+    ['ritual', '🕯 Ритуал'],
     ['radar', '🛡 Радар'],
     ['settings', '⚙ Настройки'],
   ];

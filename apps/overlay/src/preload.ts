@@ -15,6 +15,8 @@ export interface OverlayAPI {
   levelReset(): Promise<unknown>;
   /** №111: результат чекапа перед пиннаклом (Ctrl+F7). */
   onPinnacleResult(cb: (payload: unknown) => void): () => void;
+  /** №584: результат ритуал-скана окна дани (Ctrl+F8). */
+  onRitualResult(cb: (payload: unknown) => void): () => void;
   setLeague(league: string): Promise<string>;
   /** Список действующих лиг для селекта настроек: { current, leagues: [{name, isCurrent}] }. */
   leaguesList(): Promise<unknown>;
@@ -118,6 +120,12 @@ const api: OverlayAPI = {
     const listener = (_evt: unknown, data: unknown) => cb(data);
     ipcRenderer.on('pinnacle:result', listener);
     return () => ipcRenderer.removeListener('pinnacle:result', listener);
+  },
+
+  onRitualResult: (cb) => {
+    const listener = (_evt: unknown, data: unknown) => cb(data);
+    ipcRenderer.on('ritual:result', listener);
+    return () => ipcRenderer.removeListener('ritual:result', listener);
   },
 
   onPriceBatch: (cb) => {

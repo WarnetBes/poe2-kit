@@ -27,6 +27,7 @@ export const OVERLAY_SHELL = `<body>
       <button data-tab="gen" title="Генератор билдов: живые билды топ-игроков poe.ninja по всем классам — скиллы, узлы, DPS/EHP">🧬 Билды</button>
       <button data-tab="starterbuilds" title="Стартовые билды 0.5.5: готовые сборки для новичка — механика, стадии-бюджеты, ключевые уники, PoB (офлайн)">🧬 Стартовые</button>
       <button data-tab="pinnacle" title="Чекап перед пиннаклом: резисты/EHP/стан (Ctrl+F7)">🛡 Пиннакл</button>
+      <button data-tab="ritual" title="Окно дани Ritual: распознавание предметов и цены (Ctrl+F8)">🕯 Ритуал</button>
       <button data-tab="radar" title="Радар: live-баги патча с воркараундами и трюки механик (офлайн)">🛡 Радар</button>
       <button data-tab="settings" title="Настройки (Ctrl+F6)">⚙</button>
       <button class="info-btn" id="tabInfoBtn" title="Что делает активная вкладка — окно с описанием функции и хоткеями">ℹ ?</button>
@@ -97,6 +98,9 @@ export const OVERLAY_SHELL = `<body>
       <div id="pinnacleWrap" class="hide">
         <div id="pinnacleContent"></div>
       </div>
+      <div id="ritualWrap" class="hide">
+        <div id="ritualContent"></div>
+      </div>
       <div id="radarWrap" class="hide">
         <div id="radarContent"></div>
       </div>
@@ -116,7 +120,7 @@ export const OVERLAY_SHELL = `<body>
       <div id="importWrap" class="hide">
         <div id="importContent"></div>
       </div>
-      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6 · Пиннакл: Ctrl+F7</div>
+      <div id="hint">Прайс: Ctrl+F1 · Билд: Ctrl+F2 · Импорт: Ctrl+F3 · Прокачка: Ctrl+F4 · Двигать: Ctrl+F5 · Настройки: Ctrl+F6 · Пиннакл: Ctrl+F7 · Ритуал: Ctrl+F8</div>
     </div>
     <div id="settingsPanel" class="hide">
       <h3>⚙ Настройки
