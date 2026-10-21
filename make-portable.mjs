@@ -99,7 +99,8 @@ function copyDir(src, dst) {
       if (/\.(log|zip)$/i.test(ent.name)) continue;
       if (ent.name === 'WORK_LOG.md' || ent.name === 'README-netfix.md') continue; // внутренние
       // чек-листы публикации владельца + разовый мусор истории — не для публичного архива
-      if (/^(POST_REDDIT|attach_resp|e2e_code|portable_out|HANDOFF|_extract_|_smoke)/i.test(ent.name)) continue;
+      // ninja_ldr/_tmp_ — локальные probe-файлы рабочих сессий (чужие, НЕ удалять в репо, только исключать)
+      if (/^(POST_REDDIT|attach_resp|e2e_code|portable_out|HANDOFF|_extract_|_smoke|ninja_ldr|_tmp_)/i.test(ent.name)) continue;
       fs.copyFileSync(path.join(src, ent.name), path.join(dst, ent.name));
     } else if (ent.isDirectory()) {
       copyDir(path.join(src, ent.name), path.join(dst, ent.name));
@@ -156,6 +157,24 @@ if (!FULL && fs.existsSync(elDist)) {
   console.log('[portable] electron.exe восстановлен из кэша.');
 }
 if (FULL) fs.writeFileSync(path.join(path.dirname(elDist), 'path.txt'), 'electron.exe', 'utf8');
+
+// 4.6 Вырезаем веб-фронтенд-зависимости: npm ci --omit=dev ставит их, потому что
+//     они runtime-deps apps/web, но portable-веб работает СТАТИКОЙ: vite уже
+//     забандлил pixi/@poe2-toolkit/react в apps/web/dist, а serve-dist.mjs
+//     импортирует только node-builtin + @poe2-kit/core (воркспейс-симлинк).
+//     overlay (electron/koffi) и mcp (MCP-SDK/zod) на них не ссылаются
+//     (проверено по dependencies всех package.json, №584).
+//     Экономия ~95 MB (pixi.js 72.7 MB — главный).
+const PRUNE_FRONTEND = [
+  'pixi.js', '@pixi', '@poe2-toolkit', 'react', 'react-dom',
+  'gifuct-js', 'js-binary-schema-parser', '@types',
+];
+for (const dep of PRUNE_FRONTEND) {
+  const p = path.join(STAGE, 'node_modules', dep);
+  if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
+}
+console.log(`[portable] 4.6 вырезаны фронтенд-пакеты из node_modules: ${PRUNE_FRONTEND.join(', ')}`);
+
 
 // 4.7 README-FIRST.txt — инструкция для не-программиста с первого взгляда.
 fs.writeFileSync(
