@@ -200,14 +200,22 @@ export function findGameWindow(options: FindGameOptions = {}): GameWindowInfo | 
     (matches.filter((m) => !m.minimized).sort((a, b) => area(b.rect) - area(a.rect))[0] ??
       matches.find((m) => !m.minimized)) ??
       matches[0];
+  // Приглушение спама: секундный poll давал строку на каждый тик при >1 матче.
+  // Пишем только когда набор окон или выбор реально изменился.
   if (matches.length > 1) {
-    console.log(
-      `[win32] ${matches.length} окон-матчей «${keyword}»: выбрано "${pick.title}" (class=${pick.className}, pid=${pick.pid}, ${pick.rect.right - pick.rect.left}x${pick.rect.bottom - pick.rect.top}); остальные: ` +
-        matches.filter((m) => m !== pick).map((m) => `"${m.title}" class=${m.className} pid=${m.pid} min=${m.minimized}`).join('; '),
-    );
+    const sig = [pick.hwnd, ...matches.map((m) => `${m.hwnd}:${m.pid}`)].join('|');
+    if (sig !== lastMatchSig) {
+      lastMatchSig = sig;
+      console.log(
+        `[win32] ${matches.length} окон-матчей «${keyword}»: выбрано "${pick.title}" (class=${pick.className}, pid=${pick.pid}, ${pick.rect.right - pick.rect.left}x${pick.rect.bottom - pick.rect.top}); остальные: ` +
+          matches.filter((m) => m !== pick).map((m) => `"${m.title}" class=${m.className} pid=${m.pid} min=${m.minimized}`).join('; '),
+      );
+    }
   }
   return pick;
 }
+
+let lastMatchSig = '';
 
 const area = (r: Rect): number => Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top);
 
