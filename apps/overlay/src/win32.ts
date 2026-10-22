@@ -252,11 +252,15 @@ export function isGameForeground(
     if (!fg) return false;
     if (fg === found.hwnd) return true;
     // фокус в другом hwnd: валидно, если его root-окно принадлежит тому же
-    // процессу (child-окно игры ИЛИ второй top-level Steam-клиента)
+    // процессу (child-окно игры ИЛИ второй top-level Steam-клиента),
+    // ЛИБО нашему собственному процессу (хоткей жмётся из окна оверлея —
+    // №585: Electron-окно держит фокус после клика/move-режима; GDI-захват
+    // идёт по hwnd игры и от фокуса не зависит, кандидаты выбирает якорь).
     const root = lib.GetAncestor(fg, 2 /* GA_ROOT */) || fg;
     const pidOut = new Uint32Array(1);
     lib.GetWindowThreadProcessId(root, pidOut);
-    return pidOut[0] === found.pid;
+    if (!pidOut[0]) return false;
+    return pidOut[0] === found.pid || pidOut[0] === process.pid;
   } catch {
     return false;
   }
