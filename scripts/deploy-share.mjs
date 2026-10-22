@@ -34,6 +34,10 @@ if (!['--all', '--core', '--overlay', '--mcp'].includes(mode)) {
 
 const PREFLIGHT_TIMEOUT_MS = 5_000;
 const COPY_TIMEOUT_MS = 60_000;
+// №585-оптимизация: латентность SMB (~0.1 c/файл) — главный тормоз последовательного
+// деплоя (замер 21.10: --all = 932 c при ~9400 операций). Воркеры перекрывают латентность.
+// 16 — эмпирический выбор для SMB; настройка: env POE2K_DEPLOY_CONCURRENCY.
+const CONCURRENCY = Math.max(1, parseInt(process.env.POE2K_DEPLOY_CONCURRENCY ?? '16', 10) || 16);
 
 /** Доступность каталога с таймаутом (robocopyasthanovka-style guard). */
 async function probeDir(dir, label, timeoutMs) {
@@ -54,18 +58,52 @@ async function probeDir(dir, label, timeoutMs) {
 const sha = (p) =>
   crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex').toUpperCase();
 
-async function copyVerified(src, dst) {
+/** SHA удалённого файла (с таймаутом — шара может умереть посреди деплоя). */
+async function shaRemote(p) {
+  return await Promise.race([
+    fs.promises.readFile(p).then((buf) =>
+      crypto.createHash('sha256').update(buf).digest('hex').toUpperCase(),
+    ),
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error(`sha-read timeout ${COPY_TIMEOUT_MS}ms`)), COPY_TIMEOUT_MS).unref?.(),
+    ),
+  ]);
+}
+
+/** Размер удалённого файла или null (с таймаутом от мёртвой шары). */
+async function sizeRemote(p) {
   try {
-    await Promise.race([
-      fs.promises.copyFile(src, dst),
+    return await Promise.race([
+      fs.promises.stat(p).then((st) => st.size),
       new Promise((_, rej) =>
-        setTimeout(() => rej(new Error(`copy timeout ${COPY_TIMEOUT_MS}ms`)), COPY_TIMEOUT_MS).unref?.(),
+        setTimeout(() => rej(new Error(`stat timeout ${COPY_TIMEOUT_MS}ms`)), COPY_TIMEOUT_MS).unref?.(),
       ),
     ]);
-  } catch (e) {
-    throw new Error(`copy ${path.basename(dst)}: ${e instanceof Error ? e.message : e}`);
+  } catch {
+    return null; // нет файла / таймаут — просто копируем как раньше
   }
-  if (sha(src) !== sha(dst)) throw new Error(`SHA mismatch: ${path.basename(dst)}`);
+}
+
+/**
+ * Синхронизация одного файла. Возвращает true, если копировали; false, если файл
+ * на шаре уже байт-экзактен (перезапись не нужна — экономим ~50% трафика).
+ * Гарантия прежняя: после завершения dst == src байт-в-байт (SHA256), иначе throw.
+ */
+async function syncFile(src, dst) {
+  const srcSha = sha(src); // локально — быстро, кэш ОС
+  const remoteSize = await sizeRemote(dst);
+  if (remoteSize === fs.statSync(src).size) {
+    const remoteSha = await shaRemote(dst).catch(() => null);
+    if (remoteSha === srcSha) return false; // уже байт-экзакт — не трогаем
+  }
+  await Promise.race([
+    fs.promises.copyFile(src, dst),
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error(`copy timeout ${COPY_TIMEOUT_MS}ms`)), COPY_TIMEOUT_MS).unref?.(),
+    ),
+  ]);
+  if ((await shaRemote(dst)) !== srcSha) throw new Error(`SHA mismatch: ${path.basename(dst)}`);
+  return true;
 }
 
 /** Рекурсивный список файлов каталога. */
@@ -79,21 +117,43 @@ function listFiles(dir, base = dir) {
   return out;
 }
 
-/** Копирует все файлы srcDir → dstDir (включая подкаталоги), слово сбоя — в лог. */
+/**
+ * Копирует все файлы srcDir → dstDir (включая подкаталоги), слово сбоя — в лог.
+ * №585-оптимизация: конкурентный пул (CONCURRENCY) вместо последовательного
+ * цикла; неизменённые файлы пропускаются после SHA-сверки (не пишутся повторно).
+ * Семантика прежняя: любое расхождение байтов = throw (цель помечается ✖).
+ */
 async function deployTree(srcDir, dstDir) {
-  let n = 0;
-  fs.mkdirSync(dstDir, { recursive: true });
-  for (const rel of listFiles(srcDir)) {
-    const src = path.join(srcDir, rel);
-    const dst = path.join(dstDir, rel);
-    fs.mkdirSync(path.dirname(dst), { recursive: true });
-    await copyVerified(src, dst);
-    n++;
+  const rels = listFiles(srcDir);
+  // все родительские каталоги — заранее (воркеры не борются за mkdir)
+  const dirs = new Set(rels.map((rel) => path.dirname(path.join(dstDir, rel))));
+  for (const d of dirs) fs.mkdirSync(d, { recursive: true });
+
+  let copied = 0;
+  let skipped = 0;
+  const errors = [];
+  let idx = 0;
+  const workerCount = Math.min(CONCURRENCY, Math.max(1, rels.length));
+  const worker = async () => {
+    while (idx < rels.length) {
+      const rel = rels[idx++];
+      try {
+        if (await syncFile(path.join(srcDir, rel), path.join(dstDir, rel))) copied += 1;
+        else skipped += 1;
+      } catch (e) {
+        errors.push(`${path.basename(rel)}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  if (errors.length) {
+    throw new Error(`${errors.length} файл(ов) не доехали; первый: ${errors[0]}`);
   }
-  return n;
+  return { total: rels.length, copied, skipped };
 }
 
 // ── 0. Preflight: шара включена? ─────────────────────────────────────────────
+const T0 = Date.now();
 console.log(`[deploy-share] preflight: ${SHARE} (таймаут ${PREFLIGHT_TIMEOUT_MS / 1000}с)`);
 if (!(await probeDir(SHARE, 'Шара', PREFLIGHT_TIMEOUT_MS))) {
   console.error('DEPLOY SKIPPED: шару не трогали. Включите игровой ПК и повторите.');
@@ -121,12 +181,14 @@ if (wantMcp && !distExists(mcpDist)) {
 
 // ── 2. Деплой ───────────────────────────────────────────────────────────────
 let fail = 0;
-const report = (label, n, err) => {
+const report = (label, res, err) => {
   if (err) {
     console.error(`✖ ${label}: ${err.message}`);
     fail++;
   } else {
-    console.log(`OK  ${label}: ${n} файлов, SHA256 байт-в-байт`);
+    console.log(
+      `OK  ${label}: ${res.total} файлов (скопировано ${res.copied}, уже совпадали ${res.skipped}), SHA256 байт-в-байт`,
+    );
   }
 };
 
@@ -178,7 +240,7 @@ const manifests = [
 let manifestFail = 0;
 for (const rel of manifests) {
   try {
-    await copyVerified(path.join(ROOT, rel), path.join(SHARE, rel));
+    await syncFile(path.join(ROOT, rel), path.join(SHARE, rel));
     console.log(`OK  package.json: ${rel} (${JSON.parse(fs.readFileSync(path.join(ROOT, rel))).version})`);
   } catch (e) {
     console.error(`✖ package.json ${rel}: ${e instanceof Error ? e.message : e}`);
@@ -187,5 +249,6 @@ for (const rel of manifests) {
 }
 fail += manifestFail;
 
-console.log(fail ? `DEPLOY FAILED (${fail} ошибок)` : 'DEPLOY OK');
+const elapsed = ((Date.now() - T0) / 1000).toFixed(1);
+console.log(fail ? `DEPLOY FAILED (${fail} ошибок, ${elapsed}с)` : `DEPLOY OK (${elapsed}с, concurrency ${CONCURRENCY})`);
 process.exit(fail ? 1 : 0);
