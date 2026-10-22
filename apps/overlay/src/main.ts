@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { core, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
-import { findGameWindow, isGameForeground } from './win32.js';
+import { findGameWindow, isGameForeground, describeWindow, fgHwnd } from './win32.js';
 import { captureClient, type ClientFrame } from './gdiCapture.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -3539,7 +3539,10 @@ async function runRitualScan(): Promise<unknown> {
   try {
     const game = findGameWindow();
     if (!game) return ritualFail('Окно Path of Exile 2 не найдено.');
-    if (!isGameForeground(game)) return ritualFail('Окно игры не на переднем плане — откройте окно дани и повторите.');
+    if (!isGameForeground(game)) return ritualFail(
+      `Окно игры не на переднем плане (найдено "${game.title}" pid=${game.pid}${game.minimized ? ', свёрнуто' : ''}; ` +
+        `сейчас в фокусе: ${describeWindow(fgHwnd())}). Откройте окно дани и повторите.`,
+    );
 
     const tCap = Date.now();
     const frame: ClientFrame | null = captureClient(game);
