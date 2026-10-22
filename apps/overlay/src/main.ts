@@ -3512,10 +3512,16 @@ function mapPrepVerdict(raw: unknown): Record<string, unknown> {
 const RITUAL_CAPTURE_BUDGET_MS = 50; // гейт донора: медленный захват → ручной хоткей
 
 function ritualFail(error: string): { available: false; error: string } {
+  // №585-диагностика: до этого ветки отказа писали только в панель —
+  // overlay.log молчал (грабля «hotkey fired ×N без единой строки после»).
+  console.warn(`[overlay] ritual: ОТКАЗ — ${error} (t=${Date.now() - (ritualT0 ?? Date.now())} мс)`);
   const out = { available: false as const, error };
   overlayWindow?.webContents.send('ritual:result', out);
   return out;
 }
+
+/** Метка начала скана для честного t= в ritualFail (0 = ещё не стартовал). */
+let ritualT0 = 0;
 
 async function runRitualScan(): Promise<unknown> {
   // Датасет докачивается start-overlay.bat (portable без ~49 МБ данных):
@@ -3529,6 +3535,7 @@ async function runRitualScan(): Promise<unknown> {
   }
   busy = true;
   const t0 = Date.now();
+  ritualT0 = t0;
   try {
     const game = findGameWindow();
     if (!game) return ritualFail('Окно Path of Exile 2 не найдено.');
@@ -3538,13 +3545,19 @@ async function runRitualScan(): Promise<unknown> {
     const frame: ClientFrame | null = captureClient(game);
     const captureMs = Date.now() - tCap;
     if (!frame) return ritualFail('Не удалось захватить экран окна (GDI).');
-    if (captureMs > RITUAL_CAPTURE_BUDGET_MS) console.warn(`[overlay] ritual: захват ${captureMs} мс > ${RITUAL_CAPTURE_BUDGET_MS} мс — надёжен только ручной хоткей.`);
 
     const view = gameViewOf(frame.width, frame.height);
+    console.log(
+      `[overlay] ritual: кадр ${frame.width}x${frame.height} (client origin ${frame.originX},${frame.originY}), захват ${captureMs} мс, масштаб up/down=${view.up}/${view.down}, reference ${view.reference.width}x${view.reference.height}`,
+    );
     const ref = gameViewReadWhole(frame, view);
 
-    const grid = locateFavoursGrid(ref, loadRitualAnchor());
-    if (!grid) return ritualFail('Окно дани не найдено: якорь tribute-bar не совпал. Откройте вкладку Ritual (обмен дани) и повторите.');
+    const anchor = loadRitualAnchor();
+    const grid = locateFavoursGrid(ref, anchor);
+    if (!grid) return ritualFail(
+      `Окно дани не найдено: якорь tribute-bar не совпал (якорь ${anchor.width}x${anchor.height}, reference ${ref.width}x${ref.height}). ` +
+        'Откройте вкладку Ritual (обмен дани) и повторите.',
+    );
 
     const rec = recognizeFavours(ref, grid);
     console.log(`[overlay] ritual: ${rec.items.length} предметов, unassigned=${rec.unassigned}, за ${rec.durationMs} мс (режим ${grid.mode})`);
@@ -3595,6 +3608,7 @@ async function runRitualScan(): Promise<unknown> {
     return ritualFail(`Ошибка распознавания: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     busy = false;
+    ritualT0 = 0;
   }
 }
 
