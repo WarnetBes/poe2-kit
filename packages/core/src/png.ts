@@ -12,7 +12,7 @@
  * Выход всегда RGBA32 (даже gray/palette), чтобы потребитель имел один формат.
  */
 
-import { unzlibSync } from 'fflate';
+import { unzlibSync, zlibSync } from 'fflate';
 
 export interface RgbaImage {
   width: number;
@@ -76,7 +76,7 @@ export function decodePng(bytes: Uint8Array): RgbaImage {
   for (let y = 0; y < height; y++) {
     const f = raw[y * (1 + stride)];
     const rowOff = y * stride;
-    const src = (y + 1) * (1 + stride);
+    const src = y * (1 + stride) + 1; // ❗ №585: было (y+1)*(1+stride) — каждая строка читалась как следующая, сдвинутая на байт, последняя — за границей (нули). Тесты якоря были self-referential (кадр строился тем же битым decode) и баг маскировался; живой GDI-кадр не совпадал с шаблоном никогда.
     for (let x = 0; x < stride; x++) {
       const cur = raw[src + x];
       const left = x >= bpp ? lines[rowOff + x - bpp] : 0;
@@ -163,4 +163,70 @@ export function rgbaToBgra(img: RgbaImage): RgbaImage {
     d[i + 2] = r;
   }
   return img;
+}
+
+// ─── Минимальный энкодер (№585-диагностика: дамп кадра при отказе якоря) ──────
+
+/** BGRA-кадр (GetDIBits/раскладка core) → PNG (colorType 6, filter 0). */
+export function encodePngBgra(width: number, height: number, bgra: Uint8Array): Uint8Array {
+  const stride = width * 4;
+  const raw = new Uint8Array(height * (1 + stride));
+  // построчная копия с BGRA→RGBA
+  for (let y = 0; y < height; y++) {
+    const src = y * stride;
+    const dst = y * (1 + stride) + 1;
+    for (let x = 0; x < width; x++) {
+      raw[dst + x * 4] = bgra[src + x * 4 + 2];
+      raw[dst + x * 4 + 1] = bgra[src + x * 4 + 1];
+      raw[dst + x * 4 + 2] = bgra[src + x * 4];
+      raw[dst + x * 4 + 3] = bgra[src + x * 4 + 3];
+    }
+  }
+  const ihdr = new Uint8Array(13);
+  writeU32(ihdr, 0, width);
+  writeU32(ihdr, 4, height);
+  ihdr[8] = 8; // bitDepth
+  ihdr[9] = 6; // RGBA
+  const idat = zlibSync(raw);
+  const out = new Uint8Array(8 + 25 + 12 + idat.length + 12 + 12);
+  let p = 0;
+  out.set(SIGNATURE, p);
+  p += 8;
+  p = chunk(out, p, 'IHDR', ihdr);
+  p = chunk(out, p, 'IDAT', idat);
+  p = chunk(out, p, 'IEND', new Uint8Array(0));
+  return out.subarray(0, p);
+}
+
+function chunk(out: Uint8Array, p: number, type: string, data: Uint8Array): number {
+  writeU32(out, p, data.length);
+  for (let i = 0; i < 4; i++) out[p + 4 + i] = type.charCodeAt(i);
+  out.set(data, p + 8);
+  const crc = crc32(type.charCodeAt(0), type.charCodeAt(1), type.charCodeAt(2), type.charCodeAt(3), data);
+  writeU32(out, p + 8 + data.length, crc);
+  return p + 12 + data.length;
+}
+
+function writeU32(b: Uint8Array, o: number, v: number): void {
+  b[o] = (v >>> 24) & 0xff;
+  b[o + 1] = (v >>> 16) & 0xff;
+  b[o + 2] = (v >>> 8) & 0xff;
+  b[o + 3] = v & 0xff;
+}
+
+let crcTable: Uint32Array | null = null;
+
+function crc32(a: number, b: number, c: number, d: number, data: Uint8Array): number {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let v = n;
+      for (let k = 0; k < 8; k++) v = v & 1 ? 0xedb88320 ^ (v >>> 1) : v >>> 1;
+      crcTable[n] = v >>> 0;
+    }
+  }
+  let crc = 0xffffffff;
+  for (const v of [a, b, c, d]) crc = crcTable[(crc ^ v) & 0xff]! ^ (crc >>> 8);
+  for (let i = 0; i < data.length; i++) crc = crcTable[(crc ^ data[i]) & 0xff]! ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
 }

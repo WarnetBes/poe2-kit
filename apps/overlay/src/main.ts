@@ -23,7 +23,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { core, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
+import { core, encodePngBgra, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground, describeWindow, fgHwnd } from './win32.js';
@@ -3557,10 +3557,26 @@ async function runRitualScan(): Promise<unknown> {
 
     const anchor = loadRitualAnchor();
     const grid = locateFavoursGrid(ref, anchor);
-    if (!grid) return ritualFail(
-      `Окно дани не найдено: якорь tribute-bar не совпал (якорь ${anchor.width}x${anchor.height}, reference ${ref.width}x${ref.height}). ` +
-        'Откройте вкладку Ritual (обмен дани) и повторите.',
-    );
+    if (!grid) {
+      // №585-диагностика: без реального кадра причины отказа не различимы
+      // (дана не открыта / апскейл-искажение / другая версия UI). Дампим
+      // reference-кадр рядом с overlay.log для офлайн-разбора.
+      let dumpNote = '';
+      try {
+        const dir = path.join(app.getPath('userData'), 'ritual-debug');
+        fs.mkdirSync(dir, { recursive: true });
+        const file = path.join(dir, `ritual-${Date.now()}.png`);
+        fs.writeFileSync(file, encodePngBgra(ref.width, ref.height, ref.data));
+        dumpNote = ` Кадр сохранён: ${file}`;
+        console.log(`[overlay] ritual: диагностический дамп кадра → ${file}`);
+      } catch (e) {
+        console.warn('[overlay] ritual: дамп кадра не удался:', (e as Error).message);
+      }
+      return ritualFail(
+        `Окно дани не найдено: якорь tribute-bar не совпал (якорь ${anchor.width}x${anchor.height}, reference ${ref.width}x${ref.height}). ` +
+        'Откройте вкладку Ritual (обмен дани) и повторите.' + dumpNote,
+      );
+    }
 
     const rec = recognizeFavours(ref, grid);
     console.log(`[overlay] ritual: ${rec.items.length} предметов, unassigned=${rec.unassigned}, за ${rec.durationMs} мс (режим ${grid.mode})`);
