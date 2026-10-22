@@ -77,10 +77,17 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
 1. **Download**: [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-   the latest release:
-   - **`poe2-kit-portable-…-win64.zip`** (36 MB) — recommended: unzip → run
+   the latest release (v1.0.33):
+   - **`poe2-kit-portable-…-win64.zip`** (~92 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
+   - **`ritual-data-…zip`** (~46 MB) — optional, for offline installs:
+     the Ritual price-check dataset (overlay “🕯 Ritual” window, Ctrl+F8).
+     On first run `start-overlay.bat` downloads it automatically (~49 MB,
+     once); for an offline install, unpack the archive so that
+     `packages\core\data\game\ritual\catalog\catalog.json` appears. Without
+     the dataset the rest of the kit works as usual — the Ritual window
+     will show a hint.
    - (Or **“Source code (zip)”** — the “build it yourself” route: needs
      Node.js ≥ 20 and internet on first launch.)
 2. For the “Source code” route only: if Node.js is missing, run
@@ -88,7 +95,9 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
 3. **Launch what you need**:
    - **`start-overlay.bat`** — overlay over the game (Windows). In game: hover
      an item → Ctrl+C → **Ctrl+F1** — price. Ctrl+F3 — build import;
-     Ctrl+F6 — settings. Log: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
+     **Ctrl+F8 — “🕯 Ritual” panel** (tribute price check: window snapshot →
+     item recognition → total tribute value). Ctrl+F6 — settings.
+     Log: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
    - **`start-web.bat`** — dashboard in the browser: http://localhost:5173
    - **`start-mcp.bat`** — MCP server for AI assistants (stdio).
 
@@ -103,6 +112,7 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
 | Ctrl+F5 / Ctrl+Shift+F5 | Move / pin the overlay |
 | Ctrl+F6 | Settings |
 | Ctrl+F7 | Pinnacle readiness checklist |
+| Ctrl+F8 | “🕯 Ritual” panel (tribute window price check) |
 
 ## Rules & disclaimer
 
@@ -123,6 +133,16 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
   process; no hooks; no input. Prefer zero user32 calls at all? Overlay →
   **Ctrl+F6** → untick “Bind to game window”: the overlay pins to a screen
   corner and learns nothing about the game window (“cautious mode”).
+- **“🕯 Ritual” window (Ctrl+F8) — screen snapshot.** The tribute price check
+  works like this: on hotkey it takes a **snapshot of the game window's
+  client area** with standard GDI (`BitBlt`/`GetDIBits` via the same koffi —
+  read-only, like a manual screenshot; no memory reads, no injection, no
+  input), then items in the frame are recognized against an offline dataset
+  (a port of Poe2Pricer, MIT saxe78) and priced via the public price APIs.
+  If the game's capture protection (`setContentProtection`) is enabled, the
+  frame may come out blank — the grid won't be recognized and the Ritual
+  window will report a recognition error. The snapshot is processed locally
+  and is never sent anywhere.
 - **PoB oracle (headless engine).** The “🧮 PoB oracle” tab computes build
   stats with the real PathOfBuilding-PoE2 engine in a separate local offline
   process. The engine is an unpatched clone of the official community
