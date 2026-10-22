@@ -23,7 +23,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { core, encodePngBgra, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
+import { core, currencyIconsDir, encodePngBgra, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground, describeWindow, fgHwnd } from './win32.js';
@@ -845,6 +845,37 @@ function saveSavedLeague(league: string | null): void {
   }
 }
 
+/**
+ * №586: иконки валют userData/currency_icons — рядом с overlay.html, чтобы
+ * renderer (file://) мог грузить их по относительному src при CSP
+ * img-src 'self'. Пробелы в именах заменяем на '_' (url-safe без кодирования).
+ * Копия только при изменении размера (обычно — один раз, дальше no-op).
+ */
+function syncCurrencyIcons(): void {
+  try {
+    const src = currencyIconsDir();
+    if (!fs.existsSync(src)) return; // датасет недоступен (браерны не касается) — иконки просто не покажутся
+    const dst = path.join(app.getPath('userData'), 'currency_icons');
+    fs.mkdirSync(dst, { recursive: true });
+    let copied = 0;
+    for (const f of fs.readdirSync(src)) {
+      if (!f.endsWith('.webp')) continue;
+      const from = path.join(src, f);
+      const to = path.join(dst, f.replace(/\s+/g, '_'));
+      try {
+        if (fs.existsSync(to) && fs.statSync(to).size === fs.statSync(from).size) continue;
+        fs.copyFileSync(from, to);
+        copied++;
+      } catch {
+        // одна иконка не критична — остальные пробуем дальше
+      }
+    }
+    if (copied) console.log(`[overlay] currency icons: скопировано ${copied} в ${dst}`);
+  } catch (err) {
+    console.warn('[overlay] currency icons sync failed:', (err as Error).message);
+  }
+}
+
 /** Записываем встроенный HTML-рендерер в userData и возвращаем путь для loadFile. */
 function writtenRendererPath(): string {
   const dir = app.getPath('userData');
@@ -852,6 +883,7 @@ function writtenRendererPath(): string {
   try {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, rendererHtml, 'utf8');
+    syncCurrencyIcons();
   } catch (err) {
     console.warn('[overlay] failed to write renderer:', err);
   }

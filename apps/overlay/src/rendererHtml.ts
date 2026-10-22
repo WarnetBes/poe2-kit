@@ -14,7 +14,7 @@ export const rendererHtml = `<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'" />
 <title>PoE2 Kit — оверлей</title>
 <style>${OVERLAY_CSS}</style>
 </head>
@@ -835,13 +835,13 @@ ${OVERLAY_SHELL}<script>
       var tr = r.trend == null ? '' :
         ' <span style="color:' + (r.trend > 0 ? '#e08080' : '#7fc97f') + '">' +
         (r.trend > 0 ? '▲+' : r.trend < 0 ? '▼' : '') + r.trend.toFixed(1) + '%</span>';
-      var dv = r.divine != null ? ' <span style="color:var(--dim)">' + r.divine.toFixed(1) + ' div</span>' : '';
+      var dv = r.divine != null ? ' <span style="color:var(--dim)">' + curIcon('div', 14) + r.divine.toFixed(1) + ' div</span>' : '';
       // №138-ter: RU-имя (из словаря poe2db) + EN рядом приглушённо; нет RU — только EN.
       var nm = r.ru && r.ru.toLowerCase() !== String(r.name).toLowerCase()
         ? esc(r.ru) + ' <span style="color:#9aa4b0">' + esc(r.name) + '</span>'
         : esc(r.name);
       return '<div class="slang-row"><div class="slang-term">' + nm + '</div>' +
-        '<div class="slang-def">' + fmtChaos(r.chaos) + ' chaos' + dv + tr + '</div></div>';
+        '<div class="slang-def">' + curIcon('chaos', 14) + fmtChaos(r.chaos) + ' chaos' + dv + tr + '</div></div>';
     }).join('');
     host.innerHTML = chips +
       '<div class="slang-hint">Лига: <b>' + esc(ratesData.league) + '</b> · ' +
@@ -1635,6 +1635,26 @@ ${OVERLAY_SHELL}<script>
       : fmtChaosNum(v) + ' chaos';
   }
 
+  // ─── №586: иконки валют рядом с ценой ────────────────────────────────────────
+  // Иконки — userData/currency_icons/<key>.webp (main синхронизирует из датасета
+  // core, пробелы → '_'). Ключ строго [a-z_]: попадание чужих символов → нет
+  // иконки (безопасность src), цена остаётся текстом без поломки.
+  var CUR_ALIASES = {
+    chaos: 'chaos orb', div: 'divine orb', divine: 'divine orb',
+    exalted: 'exalted orb', ex: 'exalted orb', exalt: 'exalted orb',
+    mirror: 'mirror of kalandra', vaal: 'vaal orb', regal: 'regal orb',
+    alch: 'orb of alchemy', annul: 'orb of annulment',
+    augmentation: 'orb of augmentation', aug: 'orb of augmentation',
+    transmute: 'orb of transmutation', chance: 'orb of chance'
+  };
+  function curIcon(name, size) {
+    var k = String(name == null ? '' : name).toLowerCase().replace(/\s+/g, ' ').trim();
+    if (CUR_ALIASES[k]) k = CUR_ALIASES[k];
+    if (!/^[a-z][a-z\s'\-]*$/.test(k)) return '';
+    return '<img class="cur-ico" src="currency_icons/' + k.replace(/\s+/g, '_') + '.webp" alt="" width="' +
+      (size || 18) + '" height="' + (size || 18) + '" />';
+  }
+
   // ── Помощник по пассивному дереву: кейнстоуны/нотабли PoB-билда + поиск нод ──
   var treeSearchTimer = null;
   function treeNodeRow(n) {
@@ -1791,7 +1811,7 @@ ${OVERLAY_SHELL}<script>
         '<td>' + icon + '</td>' +
         '<td class="slot">' + esc(slotRu(s.slot)) + '</td>' +
         '<td class="nm" title="' + esc(s.name) + (s.note ? ' — искать: ' + esc(s.note) : '') + '">' + esc(s.name) + '</td>' +
-        '<td class="num">' + esc(price) + '</td>' +
+        '<td class="num">' + (s.median != null ? curIcon('chaos', 14) : '') + esc(price) + '</td>' +
         '</tr>';
       // №92-бис: подсказка «что искать» видима строкой (тултип никто не найдёт),
       // не только в title.
@@ -2586,7 +2606,7 @@ ${OVERLAY_SHELL}<script>
       var range = (res.estimate.min != null && res.estimate.max != null)
         ? ' ~' + fmtChaosNum(res.estimate.min) + '–' + fmtChaosNum(res.estimate.max) + ' chaos'
         : '';
-      est.innerHTML = '<span class="value">' + fmtChaosNum(res.estimate.median) + ' chaos</span>' +
+      est.innerHTML = '<span class="value">' + curIcon('chaos') + fmtChaosNum(res.estimate.median) + ' chaos</span>' +
         '<span class="range">' + esc(range) + '</span>' +
         '<span class="conf">(' + esc(conf) + ')</span>';
       est.querySelector('.range').textContent = '';
@@ -2710,9 +2730,9 @@ ${OVERLAY_SHELL}<script>
         }
         chVals.sort(function (a, b) { return a - b; });
         var chMid = chVals.length
-          ? ' · ≈<b style="color:var(--accent)">' + fmtChaosNum(chVals[Math.floor(chVals.length / 2)]) + '</b> chaos'
+          ? ' · ≈<b style="color:var(--accent)">' + curIcon('chaos', 14) + fmtChaosNum(chVals[Math.floor(chVals.length / 2)]) + '</b> chaos'
           : '';
-        rows += '<tr><td colspan="3" class="grp">' + esc(curNames[gi]) +
+        rows += '<tr><td colspan="3" class="grp">' + curIcon(curNames[gi], 14) + esc(curNames[gi]) +
           ' · предложений: ' + g.length + ' · медиана: <b>' + esc(String(gmid)) + '</b>' + chMid + '</td></tr>';
         for (var gj = 0; gj < g.length; gj++) {
           var l = g[gj];
@@ -2762,7 +2782,7 @@ ${OVERLAY_SHELL}<script>
     var head = $('priceBatchHead');
     var total = payload.totalEstimate;
     var headTxt = '📦 Предметов: ' + items.length;
-    if (total != null) headTxt += ' · сумма ~' + fmtChaosNum(total) + ' chaos';
+    if (total != null) headTxt += ' · сумма ~' + curIcon('chaos') + fmtChaosNum(total) + ' chaos';
     if (payload.elapsedMs != null) headTxt += ' · ' + Math.round(payload.elapsedMs / 1000) + 'с';
     head.textContent = headTxt;
 
@@ -2771,7 +2791,7 @@ ${OVERLAY_SHELL}<script>
       var estTxt;
       if (res.estimate && res.estimate.median != null) {
         var conf = res.estimate.confidence === 'exact' ? '' : (res.estimate.confidence === 'approx' ? ' ~' : ' грубо');
-        estTxt = '<span class="value">≈' + fmtChaosNum(res.estimate.median) + ' chaos</span>' + '<span class="conf">(' + esc(conf) + ')</span>';
+        estTxt = '<span class="value">≈' + curIcon('chaos') + fmtChaosNum(res.estimate.median) + ' chaos</span>' + '<span class="conf">(' + esc(conf) + ')</span>';
       } else {
         estTxt = '<span class="muted">н/д</span>';
       }
@@ -2914,7 +2934,7 @@ ${OVERLAY_SHELL}<script>
     }
 
     var headTxt = '🕯 Дань Ritual · предметов: ' + (p.items || []).length;
-    if (p.totalChaos != null) headTxt += ' · всего ~' + p.totalChaos + ' chaos';
+    if (p.totalChaos != null) headTxt += ' · всего ~' + curIcon('chaos', 14) + p.totalChaos + ' chaos';
     if (p.elapsedMs != null) headTxt += ' · ' + p.elapsedMs + ' мс';
     head.textContent = headTxt;
 
@@ -2925,8 +2945,8 @@ ${OVERLAY_SHELL}<script>
       row.className = 'batch-item';
       var priceTxt;
       if (it.price && it.price.chaos != null) {
-        priceTxt = '<span class="value">≈' + it.price.chaos + ' chaos</span>';
-        if (it.price.divine != null && it.price.divine >= 0.01) priceTxt += '<span class="conf">(' + it.price.divine + ' div)</span>';
+        priceTxt = '<span class="value">≈' + curIcon('chaos') + it.price.chaos + ' chaos</span>';
+        if (it.price.divine != null && it.price.divine >= 0.01) priceTxt += '<span class="conf">(' + curIcon('div', 14) + it.price.divine + ' div)</span>';
       } else {
         priceTxt = '<span class="muted">н/д</span>';
       }

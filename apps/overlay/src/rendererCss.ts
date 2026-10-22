@@ -98,6 +98,10 @@ export const OVERLAY_CSS = `
   .est .range { font-size: 12px; color: var(--dim); }
   .est .conf { font-size: 11px; color: var(--dim); }
 
+  /* №586: иконки валют рядом с ценой (userData/currency_icons, webp 38 шт.) */
+  img.cur-ico { width: 18px; height: 18px; vertical-align: -4px; margin-right: 3px; }
+  .est img.cur-ico { vertical-align: -3px; }
+
   .status-busy { color: var(--dim); font-size: 12px; }
   .err-box { color: var(--warn); font-size: 12px; }
 

@@ -91,6 +91,7 @@ export * from './cache.js';
 export * from './gameConfig.js';
 export * from './ritual.js';
 export * from './png.js';
+export * from './currency.js';
 export * from './ritualVision.js';
 export * from './ritualReferences.js';
 // ehp.ts — расширенный standalone-порт hivemind-калькуляторов; не star-export,
