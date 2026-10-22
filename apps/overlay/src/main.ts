@@ -4483,12 +4483,20 @@ function setupIPC(): void {
     h = Math.min(h, wa.height - 2 * MARGIN);
     h = Math.max(h, OVERLAY_MIN_HEIGHT);
     const b = win.getBounds();
-    if (h !== b.height) {
-      overlayHeight = h;
-      win.setBounds({ x: b.x, y: b.y, width: overlayWidth, height: h });
-      console.log(`[overlay] autosize: height=${h}`);
+    // №586-фаза-2: анти-прыжки высоты (жалоба №63: 531↔1016↔632). Гистерезис
+    // по направлению: расти — сразу (контент не должен обрезаться), сжиматься —
+    // только при Δ≥40px. Без этого каждый price-check/смена панели дёргал окно.
+    const grow = h > b.height;
+    if (manual || grow || b.height - h >= 40) {
+      if (h !== b.height) {
+        overlayHeight = h;
+        win.setBounds({ x: b.x, y: b.y, width: overlayWidth, height: h });
+        console.log(`[overlay] autosize: height=${h}`);
+      }
+    } else {
+      h = b.height; // окно остаётся прежним — renderer клэмпит панель по нему
     }
-    return overlayHeight;
+    return h;
   });
 
   // Диагностика: собрать хвост overlay.log + конфиг машины, скопировать в буфер

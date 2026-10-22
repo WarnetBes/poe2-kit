@@ -90,7 +90,7 @@ export const OVERLAY_CSS = `
   .rarity-normal, .rarity-common { color: #e6edf3; }
 
   .est {
-    display: flex; align-items: baseline; gap: 8px;
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
     padding: 8px 10px; border-radius: 8px;
     background: rgba(198,154,82,0.10); border: 1px solid rgba(198,154,82,0.3);
   }

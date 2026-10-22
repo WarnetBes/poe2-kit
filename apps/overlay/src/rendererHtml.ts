@@ -2609,7 +2609,8 @@ ${OVERLAY_SHELL}<script>
       est.innerHTML = '<span class="value">' + curIcon('chaos') + fmtChaosNum(res.estimate.median) + ' chaos</span>' +
         '<span class="range">' + esc(range) + '</span>' +
         '<span class="conf">(' + esc(conf) + ')</span>';
-      est.querySelector('.range').textContent = '';
+      // №586-фаза-2: range (min–max) снова показывается; прежнее затирание
+      // .range (труп-строка) удаляло полезный сигнал оценки.
     } else {
       est.classList.add('hide');
     }
