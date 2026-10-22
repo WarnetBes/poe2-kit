@@ -1314,7 +1314,7 @@ function buildPayload(status: 'ready' | 'importing' | 'empty' = 'ready'): Record
       importedAt: buildState.importedAt,
       slots: slots.map((s) => ({
         slot: s.slot,
-        name: s.name,
+name: s.name ?? '',
         rarity: s.rarity,
         median: s.median,
         confidence: s.confidence,
@@ -2343,7 +2343,7 @@ async function refreshBuildEstimate(): Promise<void> {
   if (!buildState) return;
   try {
     const est = await withTimeout(
-      core.estimate.estimateBuild(buildState.slots.map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText }))),
+      core.estimate.estimateBuild(buildState.slots.map((s) => ({ slot: s.slot, name: s.name ?? '', itemText: s.itemText }))),
       30_000,
       'estimateBuild',
     );
@@ -2946,7 +2946,7 @@ function attachVerdict(result: Record<string, unknown>, itemText: string): void 
   try {
     const gear = buildState.slots
       .filter((s) => s.itemText && s.itemText.trim().length > 0)
-      .map((s) => ({ slot: s.slot, name: s.name, itemText: s.itemText as string }));
+      .map((s) => ({ slot: s.slot, name: s.name ?? '', itemText: s.itemText as string }));
     if (gear.length === 0) return;
     const v = core.itemVerdict.itemVerdict({
       candidateText: itemText,

@@ -128,6 +128,14 @@ export const OVERLAY_CSS = `
   .batch-item .bi-note { font-size: 11px; color: var(--dim); }
   .batch-item .bi-note .err-inline { color: var(--err); }
   .muted { color: var(--dim); font-size: 11px; }
+  /* №586-фаза-4: классы вместо inline-стилей (гигиена JS-строк) */
+  .src-note { color: #9aa4b0; margin-top: 6px; }
+  .tag-dim { color: var(--dim); font-size: 10px; }
+  .dim-note { color: var(--dim); }
+  .clickable { cursor: pointer; }
+  .warn-inline { color: #d05555; }
+  .trend-up { color: #e08080; }
+  .trend-down { color: #7fc97f; }
   .batch-ww { cursor: pointer; background: none; border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 6px; margin-top: 3px;
     transition: color .15s, border-color .15s; }

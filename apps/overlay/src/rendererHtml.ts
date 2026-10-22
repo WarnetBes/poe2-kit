@@ -383,7 +383,7 @@ ${OVERLAY_SHELL}<script>
       '</table>' +
       '<div class="lvl-hint">🎯 Персональный план: скопируйте Waystone-плитку в игре (Ctrl+C) и нажмите Ctrl+F1 — ' +
       'кит покажет крафт-план под её тир (3:1 перековка / коррупция Т15→Т16 омены/качество).</div>' +
-      '<div class="sub" style="color:#9aa4b0;margin-top:6px">Источник: poe2wiki.net «Waystone» (проверено 30.09.2026). ' +
+      '<div class="sub src-note">Источник: poe2wiki.net «Waystone» (проверено 30.09.2026). ' +
       'Механики меняются патчами — панель обновляется в ките.</div>';
   }
   function showMapsView() {
@@ -469,10 +469,10 @@ ${OVERLAY_SHELL}<script>
       } else {
         html += RADAR_LIVE.map(function (i) {
           return '<div class="slang-row"><div class="slang-term">' + esc(i.title) +
-            (i.severity ? ' <span style="color:var(--dim);font-size:10px">(' + esc(i.severity) + ')</span>' : '') + '</div>' +
+            (i.severity ? ' <span class="tag-dim">(' + esc(i.severity) + ')</span>' : '') + '</div>' +
             '<div class="slang-def">' + esc(i.mechanism) +
             (i.workaround ? '<br><b>Воркараунд:</b> ' + esc(i.workaround) : '') +
-            (i.unverified ? '<br><span style="color:var(--dim)">unverified: ' + esc(i.unverified) + '</span>' : '') +
+            (i.unverified ? '<br><span class="dim-note">unverified: ' + esc(i.unverified) + '</span>' : '') +
             '</div></div>';
         }).join('');
       }
@@ -482,11 +482,11 @@ ${OVERLAY_SHELL}<script>
       } else {
         html += RADAR_TRICKS.map(function (t) {
           return '<div class="slang-row"><div class="slang-term">' + esc(t.title) +
-            (t.category ? ' <span style="color:var(--dim);font-size:10px">' + esc(t.category) + '</span>' : '') + '</div>' +
+            (t.category ? ' <span class="tag-dim">' + esc(t.category) + '</span>' : '') + '</div>' +
             '<div class="slang-def"><b>Как:</b> ' + esc(t.usage) +
             '<br><b>Механизм:</b> ' + esc(t.mechanism) +
             (t.risk ? '<br><b>Риск:</b> ' + esc(t.risk) : '') +
-            (t.unverified ? '<br><span style="color:var(--dim)">unverified: ' + esc(t.unverified) + '</span>' : '') +
+            (t.unverified ? '<br><span class="dim-note">unverified: ' + esc(t.unverified) + '</span>' : '') +
             '</div></div>';
         }).join('');
       }
@@ -587,8 +587,8 @@ ${OVERLAY_SHELL}<script>
         shown++;
         var anyCost = null;
         for (var ci = 0; ci < b.stages.length; ci++) if (b.stages[ci].cost) { anyCost = b.stages[ci].cost; break; }
-        html += '<div class="slang-row" data-sbi="' + esc(b.id) + '" style="cursor:pointer">' +
-          '<div class="slang-term">' + esc(b.t) + (b.warn ? ' <span style="color:#d05555">⚠</span>' : '') + '</div>' +
+        html += '<div class="slang-row clickable" data-sbi="' + esc(b.id) + '">' +
+          '<div class="slang-term">' + esc(b.t) + (b.warn ? ' <span class="warn-inline">⚠</span>' : '') + '</div>' +
           '<div class="slang-def">' + esc(b.cls) + (b.asc ? ' · ' + esc(b.asc) : '') +
           ' · <b>' + esc(b.main) + '</b>' +
           (anyCost ? ' · от <b>' + esc(anyCost) + '</b>' : '') + '</div></div>';
@@ -833,7 +833,7 @@ ${OVERLAY_SHELL}<script>
     }).join('') + '</div>';
     var rows = (ratesData.rates || []).map(function (r) {
       var tr = r.trend == null ? '' :
-        ' <span style="color:' + (r.trend > 0 ? '#e08080' : '#7fc97f') + '">' +
+        ' <span class="' + (r.trend > 0 ? 'trend-up' : 'trend-down') + '">' +
         (r.trend > 0 ? '▲+' : r.trend < 0 ? '▼' : '') + r.trend.toFixed(1) + '%</span>';
       var dv = r.divine != null ? ' <span style="color:var(--dim)">' + curIcon('div', 14) + r.divine.toFixed(1) + ' div</span>' : '';
       // №138-ter: RU-имя (из словаря poe2db) + EN рядом приглушённо; нет RU — только EN.
@@ -2592,7 +2592,7 @@ ${OVERLAY_SHELL}<script>
       vdEl.innerHTML =
         '<b style="color:' + (V_COLOR[vk] || 'inherit') + '">' + (V_ICON[vk] || '') + ' ' +
         esc(res.verdict.headline || vk) + '</b>' +
-        (res.verdict.slot ? ' <span style="font-size:10px;color:var(--dim)">[' + esc(res.verdict.slot) + ']</span>' : '');
+        (res.verdict.slot ? ' <span class="tag-dim">[' + esc(res.verdict.slot) + ']</span>' : '');
       vdEl.title = (res.verdict.reasons || []).join(' · ');
     } else {
       vdEl.classList.add('hide');
