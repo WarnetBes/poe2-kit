@@ -117,6 +117,11 @@ export const OVERLAY_CSS = `
   #priceBatchList { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
   .batch-item { border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 8px;
     background: rgba(255,255,255,0.03); }
+  /* №586-фаза-3: цветная кромка по редкости — мгновенно читается «уник vs рар». */
+  .batch-item.rar-unique { border-left: 3px solid #e6b422; }
+  .batch-item.rar-rare { border-left: 3px solid #f7c873; }
+  .batch-item.rar-magic { border-left: 3px solid #60a5fa; }
+  .batch-item.rar-currency { border-left: 3px solid #e6b422; }
   .batch-item .bi-name { font-size: 14px; font-weight: 700;
     font-family: var(--font-display); letter-spacing: 0.3px; }
   .batch-item .bi-est { font-size: 16px; font-weight: 800; color: var(--accent); }
@@ -124,19 +129,30 @@ export const OVERLAY_CSS = `
   .batch-item .bi-note .err-inline { color: var(--err); }
   .muted { color: var(--dim); font-size: 11px; }
   .batch-ww { cursor: pointer; background: none; border: 1px solid rgba(255,255,255,0.15);
-    color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 6px; margin-top: 3px; }
+    color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 6px; margin-top: 3px;
+    transition: color .15s, border-color .15s; }
   .batch-ww:hover { color: var(--accent); border-color: var(--accent); }
 
   .watch-btn { display: block; width: 100%; margin-top: 6px; cursor: pointer;
     background: rgba(198,154,82,0.14); border: 1px solid var(--accent); color: var(--accent);
-    border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
+    border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
+    transition: background-color .15s; }
   .watch-btn:hover { background: rgba(198,154,82,0.24); }
 
   .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     background: rgba(20,26,34,0.96); border: 1px solid var(--warn); color: #ffe9c2;
     border-radius: 10px; padding: 8px 12px; font-size: 12px; line-height: 1.4;
-    box-shadow: 0 6px 20px rgba(0,0,0,.5); z-index: 50; max-width: 90%; }
+    box-shadow: 0 6px 20px rgba(0,0,0,.5); z-index: 50; max-width: 90%;
+    animation: toast-in .18s ease-out; }
   .toast b { color: var(--warn); }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* №586-фаза-3: мягкий пульс «Оценка цены…» вместо мёртвой строки. */
+  .status-busy { color: var(--dim); font-size: 12px; animation: busy-pulse 1.4s ease-in-out infinite; }
+  @keyframes busy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
   .watch-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px;
     overflow-y: auto; }
@@ -373,7 +389,8 @@ export const OVERLAY_CSS = `
   .tabrow button { font-size: 10px; padding: 5px 4px; cursor: pointer; white-space: nowrap;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; }
+    overflow: hidden; text-overflow: ellipsis;
+    transition: color .15s, border-color .15s, background-color .15s; }
   .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
   .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
   .tabrow button.info-btn { margin-top: 6px; border-style: dashed; color: #9aa4b0; }

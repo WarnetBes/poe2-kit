@@ -2816,7 +2816,7 @@ ${OVERLAY_SHELL}<script>
       if (res.itemText) {
         note = note + '<button class="batch-ww" data-idx="' + i + '">👁 Следить</button>';
       }
-      return '<div class="batch-item">' +
+      return '<div class="batch-item rar-' + (rar || 'common') + '">' +
         '<div class="bi-name rarity-' + rar + '">' + esc(res.itemName || ('Предмет ' + (i + 1))) + '</div>' +
         '<div class="bi-est">' + estTxt + '</div>' +
         '<div class="bi-note">' + note + '</div>' +
