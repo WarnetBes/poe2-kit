@@ -158,6 +158,21 @@ fs.writeFileSync(
   'utf8',
 );
 
+// 2.6 Fallback-гейт (паттерн Sidekick «живой fetch → локальный файл из релиза»):
+//     до дорогого npm ci убеждаемся, что staging несёт ПОЛНЫЙ набор офлайн-слоёв
+//     фолбэка (trade_stats/learned/ru-словари/repoe-срезы + web dist-датасеты).
+//     Без этого при патче GGG/лежащей сети релиз деградирует молча.
+console.log('[portable] 2.6 verify fallback datasets (staging)...');
+try {
+  execSync(`"${process.execPath}" "${path.join(ROOT, 'scripts', 'verify-fallback-datasets.mjs')}" "${STAGE}"`, {
+    stdio: 'inherit',
+    cwd: ROOT,
+  });
+} catch {
+  console.error('[portable] FATAL: packaged-fallback датасеты неполны — сборка прервана (см. список выше).');
+  process.exit(1);
+}
+
 // 3. Рантайм-зависимости (npm ci в монорепо честно линкует воркспейсы;
 //    prune по копии падает 404 на локальном @poe2-kit/core — не используем).
 //    --omit=dev: typescript/vite/esbuild в архив не идут, electron/koffi остаются.
