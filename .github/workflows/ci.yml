@@ -87,11 +87,13 @@ jobs:
       - name: Install (npm ci, workspaces)
         run: npm ci
 
-      # Смоки читают packages/core/dist и apps/overlay/dist — нужны оба build.
-      - name: Build core + overlay
+      # Смоки читают packages/core/dist, apps/overlay/dist и apps/mcp/dist
+      # (n236/n239/n256 импортируют mcp-тулы) — нужны все три build.
+      - name: Build core + overlay + mcp
         run: |
           npm run build -w @poe2-kit/core
           npm run build -w @poe2-kit/overlay
+          npm run build -w @poe2-kit/mcp
 
       - name: Smoke run-all (offline, existence-only)
         run: node tests/smoke/run-all.mjs

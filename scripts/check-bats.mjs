@@ -40,7 +40,7 @@ for (const f of walk(ROOT, [])) {
   if (badChar)
     problems.push(`${rel}: невалидный UTF-8 (cp1251/ANSI?) — неверно отображается при chcp 65001`);
   // 4. `cd /d` — молчаливый провал на UNC-путях (REM-комментарии не считаются)
-  const cdIdx = text.split(/\r?\n/).findIndex((l) => /^\s*(?i:rem)(?!\S)/.test(l) === false && /(^|[\s&|(])cd\s+\/d(\s|$)/i.test(l));
+  const cdIdx = text.split(/\r?\n/).findIndex((l) => !/^\s*rem(?!\S)/i.test(l) && /(^|[\s&|(])cd\s+\/d(\s|$)/i.test(l));
   if (cdIdx >= 0)
     problems.push(`${rel}:${cdIdx + 1}: "cd /d" — на UNC путях молча проваливается, используй pushd (№587)`);
 }
