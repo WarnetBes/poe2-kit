@@ -14,6 +14,7 @@
 import { parseItemText } from './parse.js';
 import { httpJson } from './http.js';
 import { resolveLeague } from './trade.js';
+import { ruToEnBase, ruToEnName } from './ruLocale.js';
 
 // ─── Типы запроса trade2 ────────────────────────────────────────────────────
 
@@ -47,6 +48,12 @@ export interface TradeQueryPayload {
     stats?: StatFilterGroup[];
   };
   sort?: Record<string, 'asc' | 'desc'>;
+  /**
+   * Служебное поле (НЕ отправляется в trade2 — вырезается в searchTradeQuery):
+   * true — RU-база успешно канонизирована в EN; false — RU-база осталась сырой
+   * (словарь промахнулся); отсутствует — RU не было / baseType не задан.
+   */
+  baseTypeResolved?: boolean;
 }
 
 /** Высокоуровневые фильтры для сборки запроса. */
@@ -326,8 +333,26 @@ const NUMERIC_FILTER_KEYS: Record<string, 'ar' | 'ev' | 'es' | 'dps' | 'pdps' | 
 export function buildTradeQueryFromItem(itemText: string, opts: BuildTradeQueryFromItemOptions = {}): TradeQueryPayload {
   const parsed = parseItemText(itemText);
   const input: TradeQueryInput = {};
-  if (parsed.name && parsed.rarity === 'Unique') input.name = parsed.name;
-  if (parsed.baseType) input.type = parsed.baseType;
+
+  // №620: RU-клиент Ctrl+C отдаёт кириллические name/baseType, trade2 принимает
+  // только EN («Unknown item base type»). Канонизируем офлайн-словарём руЛокали
+  // ДО query.type; EN-входы не содержат кириллицу и проходят без изменений.
+  // Промах словаря — прежнее поведение (сырая база), флаг baseTypeResolved=false.
+  const isRu = (s: string) => /[\u0400-\u04FF]/.test(s);
+
+  if (parsed.name && parsed.rarity === 'Unique') {
+    input.name = isRu(parsed.name) ? (ruToEnName(parsed.name) || parsed.name) : parsed.name;
+  }
+  let ruBaseKeptRaw = false;
+  if (parsed.baseType) {
+    if (isRu(parsed.baseType)) {
+      const en = ruToEnBase(parsed.baseType);
+      if (en) input.type = en;
+      else { input.type = parsed.baseType; ruBaseKeptRaw = true; }
+    } else {
+      input.type = parsed.baseType;
+    }
+  }
 
   // Автозаполнение numeric-фильтров: процентная нормализация вместо хардкода.
   const tolPct = Math.min(Math.max(opts.tolerancePct ?? 20, 0), 50);
@@ -407,7 +432,10 @@ export function buildTradeQueryFromItem(itemText: string, opts: BuildTradeQueryF
     .filter((p): p is { id: string; min?: number; max?: number } => p != null);
   if (patched.length) input.stats = patched;
 
-  return buildTradeQuery(input);
+  const payload = buildTradeQuery(input);
+  if (ruBaseKeptRaw) payload.baseTypeResolved = false;
+  else if (parsed.baseType && input.type && input.type !== parsed.baseType) payload.baseTypeResolved = true;
+  return payload;
 }
 
 // ─── Выполнение запроса ─────────────────────────────────────────────────────
@@ -440,9 +468,11 @@ export async function searchTradeQuery(
   }
   const limit = Math.min(opts.limit ?? 10, 20);
   try {
+    // baseTypeResolved — метаданные для вызывающего, trade2 о нём не знает.
+    const { baseTypeResolved: _meta, ...body } = payload;
     const search = await httpJson<{ id?: string; total?: number; result?: string[]; error?: string }>(
       `https://www.pathofexile.com/api/trade2/search/poe2/${encodeURIComponent(league)}`,
-      { method: 'POST', body: payload as unknown as Record<string, unknown> },
+      { method: 'POST', body: body as unknown as Record<string, unknown> },
     );
     if (!search?.id) {
       return { queryId: null, listings: [], error: search ? (search as { error?: string }).error ?? 'нет результатов' : 'нет ответа' };
