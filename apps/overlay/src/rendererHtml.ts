@@ -892,6 +892,8 @@ ${OVERLAY_SHELL}<script>
     if (!host) return;
     // №139: два режима — мета ладдера и конструктор связок.
     if (genMode === 'combo') { renderComboView(); return; }
+    // №497: третий режим — синтез скелета билда (composeBuild).
+    if (genMode === 'compose') { renderComposeView(); return; }
     if (!genData || !genData.ok) {
       host.innerHTML = '<div class="lvl-hint">' +
         (genData && genData.error ? genData.error : 'Загружаю мета билдов…') + '</div>';
@@ -932,7 +934,12 @@ ${OVERLAY_SHELL}<script>
     host.innerHTML =
       genModeChips() +
       '<div class="tree-chips">' + lc + '</div>' +
-      '<div class="slang-hint">Выборка: ' + genData.sample + ' билдов · ' + (genData.cached ? 'кэш' : 'свежие данные') + ' · poe.ninja</div>' +
+      '<div class="slang-hint">Выборка: ' + genData.sample + ' билдов · ' + (genData.cached ? 'кэш' : 'свежие данные') + ' · poe.ninja' +
+      (genData.userBuild && genData.userBuild.skill
+        ? ' · <span style="color:#7fc97f">твой скилл «' + esc(genData.userBuild.skill) + '» в мете: ' +
+          genData.userBuild.sharePercent + '% (' + genData.userBuild.count + '/' + genData.userBuild.total + ')</span>'
+        : '') +
+      '</div>' +
       '<div class="tree-chips">' + cc + '</div>' + body;
     var s1 = host.querySelectorAll('[data-genslug]');
     for (var i = 0; i < s1.length; i++) {
@@ -1025,8 +1032,137 @@ ${OVERLAY_SHELL}<script>
   function genModeChips() {
     return '<div class="tree-chips">' +
       '<button class="tree-chip' + (genMode === 'meta' ? ' on' : '') + '" data-genmode="meta">🏆 Мета ладдера</button>' +
+      '<button class="tree-chip' + (genMode === 'compose' ? ' on' : '') + '" data-genmode="compose">⚙ Синтез билда</button>' +
       '<button class="tree-chip' + (genMode === 'combo' ? ' on' : '') + '" data-genmode="combo">🔗 Конструктор связок</button>' +
       '</div>';
+  }
+  // ─── №497: «⚙ Синтез билда» — composeBuild с числами движка ────────────────
+  var composeClass = null;     // выбранный класс-чипсcompose (label из genData.classes)
+  var composeLevel = 90;       // уровень целей
+  var composeBudget = 'ssf';  // ssf | budget | mid | rich
+  var composeRes = null;       // последний ответ buildgen:compose
+  var composeBusy = false;
+  var COMPOSE_BUDGETS = [
+    ['ssf', 'SSF (starter)'], ['budget', 'Бюджет (mid)'], ['mid', 'Средний (main)'], ['rich', 'Богатый (max)'],
+  ];
+  function runCompose() {
+    if (composeBusy) return;
+    composeBusy = true;
+    composeRes = null;
+    var host = $('genContent');
+    if (host) {
+      // Сохраняем введённые значения ДО перерисовки (input исчезает).
+      var lv = $('cmpLevel'), hh = $('cmpHint');
+      if (lv) composeLevel = Math.max(1, Math.min(100, parseInt(lv.value, 10) || 90));
+      if (hh) composeHintTail = hh.value;
+      host.innerHTML = genModeChips() + '<div class="lvl-hint">Собираю скелет билда…</div>';
+      bindGenMode(host);
+    }
+    var payload = {
+      classQuery: composeClass || genClass,
+      level: composeLevel,
+      budget: composeBudget,
+      skillHint: (composeHintTail || '').trim() || undefined,
+      league: genLeague || undefined,
+    };
+    window.poe2k.buildgenCompose(payload).then(function (res) {
+      composeRes = res;
+      composeBusy = false;
+      renderGenView();
+    }).catch(function (err) {
+      composeRes = { ok: false, error: 'IPC error: ' + err };
+      composeBusy = false;
+      renderGenView();
+    });
+  }
+  var composeHintTail = ''; // значение поля «скилл-хинт» между перерисовками
+  function verdictColor(v) {
+    return v === 'pass' ? '#7fc97f' : v === 'fail' ? '#e0b060' : 'var(--dim)';
+  }
+  function renderComposeView() {
+    var host = $('genContent');
+    if (!host) return;
+    if (!genData || !genData.ok) { loadGen(); return; } // классы-чипсы берём из мета-выборки
+    var cc = (genData.classes || []).map(function (c) {
+      return '<button class="tree-chip' + (composeClass === c.label ? ' on' : '') +
+        '" data-cmpclass="' + esc(c.label) + '">' + esc(c.label) + '</button>';
+    }).join('');
+    var bc = COMPOSE_BUDGETS.map(function (b) {
+      return '<button class="tree-chip' + (composeBudget === b[0] ? ' on' : '') +
+        '" data-cmpbudget="' + b[0] + '">' + b[1] + '</button>';
+    }).join('');
+    var out = genModeChips() +
+      '<div class="slang-hint">Синтез скелета: класс → оружие → main-скилл → саппорты → цели с числами движка (poe2-build-mcp паттерн).</div>' +
+      '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Класс</div>' +
+      '<div class="tree-chips">' + cc + '</div></div>' +
+      '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Уровень целей · бюджет · скилл-хинт (EN, опционально)</div>' +
+      '<input id="cmpLevel" placeholder="уровень (1-100)"' +
+      ' style="width:44%;box-sizing:border-box;margin:2px 0;padding:3px 6px;border:1px solid #2a3344;border-radius:4px;background:rgba(0,0,0,0.35);color:var(--fg);font-size:11px" value="' + composeLevel + '"/>' +
+      '<input id="cmpHint" placeholder="скилл-хинт (напр. Ice Strike)"' +
+      ' style="width:54%;box-sizing:border-box;margin:2px 0 2px 4px;padding:3px 6px;border:1px solid #2a3344;border-radius:4px;background:rgba(0,0,0,0.35);color:var(--fg);font-size:11px" value="' + esc(composeHintTail) + '"/>' +
+      '<div class="tree-chips" style="margin-top:3px">' + bc + '</div>' +
+      '<button class="tree-chip on" id="cmpGo">⚙ Собрать скелет</button></div>';
+    if (composeRes && !composeRes.ok) {
+      out += '<div class="lvl-hint" style="color:#e0b060">' + (composeRes.error ? esc(composeRes.error) : 'Синтез не удался.') + '</div>';
+    }
+    if (composeRes && composeRes.ok && composeRes.compose) {
+      var C = composeRes.compose;
+      var srcLabel = { hint: 'хинт', user: 'твой билд', ladder: 'ладдер', guide: 'гайд', starter: 'старт-камни' }[C.mainSkillSource] || '—';
+      out += '<div class="lvl-group" style="margin:4px 0"><div class="lvl-title" style="color:#c88">Скелет · ' + esc(C.className) +
+        (C.classQuery !== C.className ? ' (' + esc(C.classQuery) + ')' : '') + ' · ур.' + C.level + '</div>' +
+        '<div class="slang-row"><div class="slang-term">Main-скилл</div><div class="slang-def">' +
+        (C.mainSkill ? esc(C.mainSkill) : '—') + ' <span style="color:var(--dim)">источник: ' + srcLabel +
+        (C.skillSharePercent != null ? ' · в мете ' + C.skillSharePercent + '%' : '') + '</span></div></div>';
+      for (var si = 0; si < (C.supports || []).length; si++) {
+        out += '<div class="slang-row"><div class="slang-term">+' + esc(C.supports[si].en) + '</div>' +
+          '<div class="slang-def">' + (C.supports[si].tier === 'meta' ? 'эталон меты' : 'base-ранг ' + (C.supports[si].rank || '')) + '</div></div>';
+      }
+      out += '<div class="slang-row"><div class="slang-term">Оружие</div><div class="slang-def">' +
+        (C.weapon.weapon ? esc(C.weapon.weapon) : '—') + (C.weapon.offhand ? ' + ' + esc(C.weapon.offhand) : '') + '</div></div>';
+      out += '<div class="slang-row"><div class="slang-term">Слоты</div><div class="slang-def">' +
+        (C.slots || []).length + ' · белые базы (шопинг-лист как в «📈»)</div></div>';
+      if (C.budgetStage) {
+        out += '<div class="slang-row"><div class="slang-term">Бюджет-стадия</div><div class="slang-def">' + C.budgetStage +
+          (C.budgetCost ? ' · ' + esc(C.budgetCost) : ' · цена не опубликована') + '</div></div>';
+      }
+      var T = C.capTargets || {};
+      out += '<div class="slang-row"><div class="slang-term">Цели (канон)</div><div class="slang-def">' +
+        'резисты ' + (T.resistCap != null ? T.resistCap : '—') + '% · база жизни ур.' + C.level + ': ' +
+        (T.baseLifePool != null ? T.baseLifePool : '—') + ' · EHP ≥ ' + (T.ehpGoal != null ? T.ehpGoal : '—') +
+        ' · DPS ≥ ' + (T.dpsGoal != null ? T.dpsGoal : 'не выводится') + '</div></div>';
+      for (var gi = 0; gi < (C.goalChecks || []).length; gi++) {
+        var G = C.goalChecks[gi];
+        out += '<div class="slang-row"><div class="slang-term">' + esc(G.metric) + '</div><div class="slang-def" style="color:' +
+          verdictColor(G.verdict) + '">' + G.verdict + ' · ' + (G.current == null ? 'нет данных' : G.current) +
+          ' / ' + G.goal + ' <span style="color:var(--dim)">' + (G.kind === 'computed' ? 'PoB' : 'оценка') + '</span></div></div>';
+      }
+      for (var ui = 0; ui < (C.unverified || []).length; ui++) {
+        out += '<div style="color:var(--dim);font-size:10px;margin:1px 0">⚠ ' + esc(C.unverified[ui]) + '</div>';
+      }
+    }
+    host.innerHTML = out;
+    var s1 = host.querySelectorAll('[data-cmpclass]');
+    for (var i = 0; i < s1.length; i++) {
+      s1[i].addEventListener('click', function () {
+        composeClass = this.getAttribute('data-cmpclass');
+        renderGenView();
+      });
+    }
+    var s2 = host.querySelectorAll('[data-cmpbudget]');
+    for (var j = 0; j < s2.length; j++) {
+      s2[j].addEventListener('click', function () {
+        composeBudget = this.getAttribute('data-cmpbudget');
+        // поле хинта живёт в DOM — сохраняем до перерисовки
+        var hh = $('cmpHint');
+        if (hh) composeHintTail = hh.value;
+        var lv = $('cmpLevel');
+        if (lv) composeLevel = Math.max(1, Math.min(100, parseInt(lv.value, 10) || composeLevel));
+        renderGenView();
+      });
+    }
+    var go = $('cmpGo');
+    if (go) go.addEventListener('click', runCompose);
+    bindGenMode(host);
   }
   function loadCombo() {
     var host = $('genContent');
@@ -1476,10 +1612,14 @@ ${OVERLAY_SHELL}<script>
     if (h) h.classList.remove('hide');
     $('itemName').textContent = genMode === 'combo'
       ? '🧬 Конструктор связок (датасет PoE2)'
-      : '🧬 Генератор билдов (ладдер poe.ninja)';
+      : genMode === 'compose'
+        ? '🧬 Синтез билда (числа движка)'
+        : '🧬 Генератор билдов (ладдер poe.ninja)';
     showMode('gen');
     if (genMode === 'combo') {
       if (comboData) renderGenView(); else loadCombo();
+    } else if (genMode === 'compose') {
+      renderGenView();
     } else if (genData) renderGenView();
     else loadGen();
     requestSize();

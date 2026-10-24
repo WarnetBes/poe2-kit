@@ -81,6 +81,8 @@ export interface OverlayAPI {
   currencyRates(league?: string): Promise<unknown>;
   /** №136: мета-генератор билдов ({ league, slugs, sample, classes: [...] }). */
   buildgenMeta(leagueSlug?: string): Promise<unknown>;
+  /** №497: синтез скелета билда (classQuery/level/budget/skillHint → compose-результат с числами движка). */
+  buildgenCompose(payload: unknown): Promise<unknown>;
   /** №139: данные гемов для конструктора связок ({ actives, supports }) — офлайн-датасет. */
   /** №141: чанковая загрузка датасета гемов ( offset..offset+limit ). */
   buildgenGemData(chunk?: { offset: number; limit?: number }): Promise<unknown>;
@@ -241,6 +243,8 @@ const api: OverlayAPI = {
   currencyRates: (league) => ipcRenderer.invoke('currency:rates', league),
 
   buildgenMeta: (leagueSlug) => ipcRenderer.invoke('buildgen:meta', leagueSlug),
+  // №497: синтез скелета билда (compose-результат с вердиктами движка).
+  buildgenCompose: (payload) => ipcRenderer.invoke('buildgen:compose', payload),
   buildgenGemData: (chunk) => ipcRenderer.invoke('buildgen:gemdata', chunk),
   // №141: импорт-код связки конструктора (вернёт ok+code, main кладёт в буфер).
   buildgenComboCode: (payload) => ipcRenderer.invoke('buildgen:combocode', payload),

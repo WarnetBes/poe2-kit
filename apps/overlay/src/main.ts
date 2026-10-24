@@ -4237,8 +4237,32 @@ function setupIPC(): void {
   // Один запрос searchLadderBuilds(slug) → группировка по классам в main:
   // скиллы/ключевые узлы по частоте, медианные DPS/EHP, топ-3 примера.
   // Это честный «генератор»: каждый совет = живой билд топ-игрока.
-  const buildgenCache = new Map<string, { at: number; payload: unknown }>();
+  const buildgenCache = new Map<string, { at: number; payload: unknown; rowSkills?: string[][] }>();
   const BUILDGEN_TTL_MS = 30 * 60 * 1000;
+  // №497: контекст билда юзера поверх кэша (лёгкая арифметика по rowSkills).
+  // НЕ кладётся в кэшируемый payload — билд юзера меняется независимо.
+  function buildgenUserContext(rowSkills: string[][]): unknown {
+    if (!buildState) return null;
+    const setups = buildState.gemSetups ?? [];
+    const socket = setups.find((s) => s.source === 'socket') ?? setups[0];
+    const skill = socket?.active ?? null;
+    if (!skill) return null;
+    const needle = skill.toLowerCase();
+    let count = 0;
+    for (const arr of rowSkills) {
+      if (arr.some((s2) => s2.toLowerCase().includes(needle))) count++;
+    }
+    const total = rowSkills.length;
+    return {
+      skill,
+      count,
+      total,
+      sharePercent: total ? Math.round((count / total) * 1000) / 10 : 0,
+      className: buildState.className ?? null,
+      ascendancy: buildState.ascendancy ?? null,
+      keystones: (buildState.tree?.keystones ?? []).map((k) => k.name).slice(0, 5),
+    };
+  }
   ipcMain.handle('buildgen:meta', async (_evt, leagueSlug?: string) => {
     try {
       const all = await core.ladder.listLadderLeagues();
@@ -4247,7 +4271,7 @@ function setupIPC(): void {
       const slug = wanted && slugs.includes(wanted) ? wanted : (slugs[0] ?? (wanted || 'standard'));
       const cached = buildgenCache.get(slug);
       if (cached && Date.now() - cached.at < BUILDGEN_TTL_MS) {
-        return { ok: true, ...(cached.payload as object), cached: true };
+        return { ok: true, ...(cached.payload as object), cached: true, userBuild: buildgenUserContext(cached.rowSkills ?? []) };
       }
       const res = await core.ladder.searchLadderBuilds(slug, { sort: 'level' });
       if (!res || !res.rows.length) {
@@ -4293,12 +4317,70 @@ function setupIPC(): void {
         }))
         .sort((a, b) => b.count - a.count);
       const payload = { league: slug, slugs, sample: res.rows.length, classes };
-      buildgenCache.set(slug, { at: Date.now(), payload });
+      const rowSkills: string[][] = res.rows.map((r) =>
+        Array.isArray(r.skills) ? (r.skills as unknown[]).filter((s): s is string => typeof s === 'string') : [],
+      );
+      buildgenCache.set(slug, { at: Date.now(), payload, rowSkills });
       console.log(`[overlay] buildgen:meta: ${slug} — ${res.rows.length} билдов, ${classes.length} классов (кэш 30 мин)`);
-      return { ok: true, ...payload };
+      return { ok: true, ...payload, userBuild: buildgenUserContext(rowSkills) };
     } catch (err) {
       console.warn('[overlay] buildgen:meta failed:', (err as Error).message);
       return { ok: false, error: `Генератор недоступен: ${(err as Error).message}` };
+    }
+  });
+
+  // ─── №497: «⚙ Синтез билда» — composeBuild (core.buildComposer) ───────────
+  // Форма (класс/уровень/бюджет/скилл-хинт) → скелет с проверяемыми числами:
+  // цепочка main-skill (hint → билд юзера → ладдер → гайд → стартовые камни),
+  // capTargets из таблиц канона, вердикты движка по userBuildCode (если билд
+  // юзера уже импортирован). Ладдер-строки качаются здесь (сеть — не в core).
+  ipcMain.handle('buildgen:compose', async (_evt, p: {
+    classQuery?: string; level?: number; budget?: string; skillHint?: string; enemyLevel?: number; league?: string;
+  }) => {
+    try {
+      const classQuery = String(p?.classQuery ?? '').trim();
+      if (!classQuery) return { ok: false, error: 'Укажи класс — чипсом или первой строкой запроса.' };
+      const level = typeof p?.level === 'number' && p.level > 0 ? Math.round(p.level) : undefined;
+      const budget = (['ssf', 'budget', 'mid', 'rich'] as const).includes(p?.budget as never)
+        ? (p!.budget as 'ssf' | 'budget' | 'mid' | 'rich')
+        : undefined;
+      const skillHint = typeof p?.skillHint === 'string' && p.skillHint.trim() ? p.skillHint.trim() : undefined;
+      const enemyLevel = typeof p?.enemyLevel === 'number' && p.enemyLevel > 0 ? Math.round(p.enemyLevel) : undefined;
+      // Ладдер-строки класса — свежие (не из 30-мин кэша: выборка узкая и лёгкая);
+      // оффлайн-режим: недоступен ладдер → compose работает без него.
+      let ladderRows: import('@poe2-kit/core').LadderRow[] = [];
+      try {
+        const slug = String(p?.league ?? '').trim();
+        if (slug) {
+          const res = await core.ladder.searchLadderBuilds(slug, { class: classQuery, sort: 'level' });
+          ladderRows = res?.rows ?? [];
+        }
+      } catch {
+        ladderRows = []; // сеть/ладдер недоступен — переходим в офлайн-режим
+      }
+      // Билд юзера (если импортирован) — источник main-скилла и верификация целей.
+      const userBuildCode =
+        buildState && buildState.rawInput && !buildState.rawInput.startsWith('starter:')
+          ? buildState.rawInput
+          : undefined;
+      const compose = await core.buildComposer.composeBuild({
+        classQuery,
+        level,
+        budget,
+        skillHint,
+        enemyLevel,
+        ladderRows,
+        userBuildCode,
+      });
+      if (!compose) {
+        return { ok: false, error: `Класс «${classQuery}» не резолвится — нет в датасете PoE2 (проверь написание).` };
+      }
+      const hasUser = userBuildCode ? ' + верификация билда юзера' : '';
+      console.log(`[overlay] buildgen:compose: ${classQuery} → main=${compose.mainSkill ?? '—'} (${compose.mainSkillSource ?? '—'}), ладдер ${ladderRows.length} строк${hasUser}`);
+      return { ok: true, compose, ladderRows: ladderRows.length };
+    } catch (err) {
+      console.warn('[overlay] buildgen:compose failed:', (err as Error).message);
+      return { ok: false, error: `Синтез не удался: ${(err as Error).message}` };
     }
   });
 
