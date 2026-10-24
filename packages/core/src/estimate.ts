@@ -356,8 +356,12 @@ export function calculateEhp(d: EstimatedDefenses, damageType: DamageTypeKind, t
     : damageType === 'lightning' ? d.lightningRes
     : damageType === 'chaos' ? d.chaosRes
     : 0;
-  // Отрицательный резист УСИЛИВАЕТ урон: DR отрицательный.
-  const res = resValue / 100;
+  // Отрицательный резист УСИЛИВАЕТ урон: DR отрицательный. Эффективный
+  // резист клампится к капу канона (PoE2/PoB: resist выше 75% НЕ снижает
+  // урон дальше — overcap только буфер): гир-сумма может дать >75/100%,
+  // неотлампленная она раздувала слой EHP (при >100% — множитель урона
+  // уходит в минус и слой «улетал в бесконечность» вместо клампа).
+  const res = Math.min(resValue, DEFENSE_CONSTANTS.RESISTANCE_CAP) / 100;
   const mult = (1 - evade) * (1 - block) * (1 - armor) * (1 - res);
   const totalMitigation = 1 - mult;
   const effectiveHp = mult > 0 ? rawHp / mult : Infinity;
@@ -713,9 +717,16 @@ export async function estimateBuild(input: string | BuildGearItem[], threat: Thr
     const pobFull = pobStats['FullDPS'];
     if (typeof pobFull === 'number' || fullDpsSkills.length > 0) {
       const sum = fullDpsSkills.reduce((s, x) => s + x.value, 0);
+      // PoB пишет FullDPS=0, пока ни один скилл не включён в Full DPS-агрегат
+      // (includeInFullDPS): ноль — «нет данных», а не факт билда. Отдаём его
+      // как combinedDPS=0 только суммой панельных скиллов, чтобы оптимизатор
+      // честно ушёл в fallback на PlayerStat TotalDPS (панельный главный скилл).
+      const combined = typeof pobFull === 'number' && (pobFull > 0 || fullDpsSkills.length === 0)
+        ? pobFull
+        : sum;
       fullDps = {
         skills: fullDpsSkills,
-        combinedDps: typeof pobFull === 'number' ? pobFull : sum,
+        combinedDps: combined > 0 ? combined : null,
       };
     }
   }
