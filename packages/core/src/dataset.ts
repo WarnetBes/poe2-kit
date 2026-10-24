@@ -1073,6 +1073,8 @@ export function getVendorRegexPatterns(): VendorRegexEntry[] {
  */
 export interface FilterConditionCatalog {
   numeric: string[];
+  /** Числовые условия 3.26-3.29 (появятся после патчей). */
+  numeric_optional?: string[];
   boolean: string[];
   boolean_optional?: string[];
   list: Array<{ name: string; exact: boolean; loose: boolean; values?: string[] }>;
@@ -1097,7 +1099,7 @@ export function getFilterConditionCatalog(): FilterConditionCatalog {
   const raw = loadJson<Raw>('livefilter/conditions.json');
   conditionCatalogCache = {
     ...raw,
-    _numericSet: new Set(raw.numeric),
+    _numericSet: new Set([...raw.numeric, ...(raw.numeric_optional ?? [])]),
     _booleanSet: new Set([...raw.boolean, ...(raw.boolean_optional ?? [])]),
     _listMeta: new Map(raw.list.map((l) => [l.name, { loose: l.loose, values: l.values }])),
     _actionSet: new Set(raw.actions),

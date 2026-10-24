@@ -32,7 +32,28 @@
   RU→EN значения «Класс предмета:» PoE2-клиента. Регенерация тем же скриптом.
 
 
+## packages/core/data/game/livefilter/ + packages/core/src/livefilter/
+
+- **mrw-overlay-poe2** — https://github.com/kadircelebi/mrw-overlay-poe2 — лицензия **MIT**;
+  подход (инжект динамического блока, SelfCheck, guardrails, FilterKey) портирован
+  Go→TS с адаптацией, атрибуция в шапках перенесённых файлов
+  («Adapted from kadircelebi/mrw-overlay-poe2 (MIT)»).
+- **Filtration-Fork** — GPL-2.0 (`Filtration.ObjectModel/BlockItemTypes/*.cs`,
+  `Enums/BlockItemOrdering.cs`): из донора взяты ТОЛЬКО факты — имена условий
+  лут-фильтра PoE2 и SortOrder-числа (модель BlockItemOrdering); код НЕ копируется,
+  датасет и реализация — собственные (`data/game/livefilter/conditions.json`,
+  `src/livefilter/conditions.ts`).
+- **divine-view** — LICENSE-файла НЕТ: ТОЛЬКО факты (`src/utils/filterValidator.ts:12-56`
+  — списки NUMERIC/ALL_CONDITIONS и операторы; `:109-111` — shorthand «GemLevel 19» = «>= 19»).
+  Код НЕ копируется.
+- Канон истины — гайд GGG Item Filters
+  (https://www.pathofexile.com/item-filter/about), live-сверка 2026-10-24:
+  HasImplicitMod→boolean, HasInfluence→list, MemoryStrands→numeric,
+  +BaseDefencePercentile/Exceptional/TransfiguredGem (PoE2-only),
+  GemQualityType помечен Deleted.
+
 ## packages/core/data/game/ritual/ (датасет Ritual №584)
+
 
 - **github.com/saxe78/poe2pricer** — лицензия **MIT** © 2026 saxe78
   (релиз 1.1.2, SHA256 zip `67A1AEE17CBFF80AAC9BC52EEE5C0086ADB8C6B5039C75B25C009335554F4110`):

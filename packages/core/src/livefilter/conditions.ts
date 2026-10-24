@@ -170,7 +170,7 @@ export function parseConditionLine(line: string): FilterCondition | null {
   const listMeta: Map<string, { loose: boolean; values?: string[] }> = cat._listMeta;
 
   const nm = NUMERIC_RE.exec(t);
-  if (nm && (numericNames.has(nm[1]!) || nm[1] === 'UnidentifiedItemTier')) {
+  if (nm && numericNames.has(nm[1]!)) {
     return { kind: 'numeric', name: nm[1]!, op: (nm[2] as FilterOperator) ?? '>=', value: Number(nm[3]) };
   }
   const bm = /^([A-Za-z]+)\s+(True|False)$/.exec(t);

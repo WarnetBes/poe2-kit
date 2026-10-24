@@ -16,10 +16,16 @@ import { getFilterConditionCatalog } from '../src/dataset.js';
 describe('каталог условий лут-фильтра (этап A, P3)', () => {
   const cat = getFilterConditionCatalog();
 
-  it('загружен из JSON: 18 числовых, ordering покрывает все условия каталога', () => {
+  it('загружен из JSON: числовые (+optional), ordering покрывает все условия каталога', () => {
     expect(cat.numeric.length).toBeGreaterThanOrEqual(17);
     const inOrdering = new Set(cat.ordering);
-    for (const n of [...cat.numeric, ...cat.boolean, ...cat.list.map((l) => l.name)]) {
+    const allConditions = [
+      ...cat.numeric,
+      ...(cat.numeric_optional ?? []),
+      ...cat.boolean,
+      ...cat.list.map((l) => l.name),
+    ];
+    for (const n of allConditions) {
       expect(inOrdering.has(n), `«${n}» отсутствует в ordering`).toBe(true);
     }
   });
@@ -27,6 +33,7 @@ describe('каталог условий лут-фильтра (этап A, P3)',
   it('PoE1-мусор исключён навсегда (ElderItem/ShaperItem/Prophecy/SynthesisedItem/BaseWard…)', () => {
     const all = [
       ...cat.numeric,
+      ...(cat.numeric_optional ?? []),
       ...cat.boolean,
       ...(cat.boolean_optional ?? []),
       ...cat.list.map((l) => l.name),
@@ -35,6 +42,7 @@ describe('каталог условий лут-фильтра (этап A, P3)',
       'ElderItem', 'ShaperItem', 'Prophecy', 'SynthesisedItem', 'FracturedItem',
       'BlightedMap', 'BaseWard', 'Replica', 'Scourged', 'ZanaMemory',
       'HasCruciblePassiveTree', 'HasSearingExarchImplicit', 'HasEaterOfWorldsImplicit',
+      'AlternateQuality', 'GemQualityType', 'ArchnemesisMod',
     ]) {
       expect(all).not.toContain(poe1);
     }
@@ -42,9 +50,29 @@ describe('каталог условий лут-фильтра (этап A, P3)',
 
   it('3.29-типы присутствуют как optional (Foulborn/Vestigial/Imbued/MirageMap/MemoryStrands)', () => {
     const opt = cat.boolean_optional ?? [];
-    for (const fr of ['Foulborn', 'Vestigial', 'Imbued', 'MirageMap', 'MemoryStrands', 'HasVaalUniqueMod', 'IsVaalUnique', 'AlwaysShow']) {
+    for (const fr of ['Foulborn', 'Vestigial', 'Imbued', 'MirageMap', 'HasVaalUniqueMod', 'IsVaalUnique', 'AlwaysShow', 'TransfiguredGem']) {
       expect(opt).toContain(fr);
     }
+    // MemoryStrands — числовое условие по канону GGG («MemoryStrands > 0»)
+    expect(cat.numeric_optional ?? []).toContain('MemoryStrands');
+  });
+
+  it('свежесть против канона GGG (item-filter/about, 24.10.2026): kinds сверены', () => {
+    // HasImplicitMod — парное (True/False), НЕ списочное
+    expect(parseConditionLine('HasImplicitMod True')).toEqual({ kind: 'boolean', name: 'HasImplicitMod', value: true });
+    // HasInfluence — списочное (имена влияний), НЕ парное
+    const infl = parseConditionLine('HasInfluence == "Shaper"');
+    expect((infl as ListCondition)?.kind).toBe('list');
+    expect(parseConditionLine('HasInfluence True')).toBeNull();
+    // BaseDefencePercentile — числовое
+    expect(parseConditionLine('BaseDefencePercentile >= 90')).toEqual({ kind: 'numeric', name: 'BaseDefencePercentile', op: '>=', value: 90 });
+    // Exceptional — парное (uncut gems)
+    expect(cat.boolean).toContain('Exceptional');
+    // MemoryStrands — числовое optional
+    expect(parseConditionLine('MemoryStrands > 0')).toEqual({ kind: 'numeric', name: 'MemoryStrands', op: '>', value: 0 });
+    // CustomAlertSound — действие, не условие (в Каталоге actions по канону)
+    expect((cat.actions as string[])).toContain('CustomAlertSound');
+    expect(parseConditionLine('CustomAlertSound "a.mp3"')).toBeNull();
   });
 
   it('Rarity — замкнутое множество значений', () => {
