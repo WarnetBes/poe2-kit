@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { normRuEnKey, ruEnLocaleMeta, ruModsMeta, ruToEnBase, ruToEnItemClass, ruToEnName, translateRuModLine, translateRuMods } from '../src/ruLocale.js';
+import { normRuEnKey, ruEnExtras, ruEnLocaleMeta, ruModsMeta, ruToEnBase, ruToEnItemClass, ruToEnName, translateRuModLine, translateRuMods } from '../src/ruLocale.js';
 import { defenseForItem } from '../src/estimate.js';
 
 describe('ruLocale (items_ru.json, Exiled Exchange 2 MIT)', () => {
   it('датасет загружен и метаданные на месте', () => {
     const meta = ruEnLocaleMeta();
-    // Датасет (built 2026-10-08): 2287 item / 766 unique / 861 gem строк.
-    // В map меньше: пустые и ru===en (в RU-клиенте часть имён не переведена) отфильтрованы.
-    expect(meta.items).toBeGreaterThan(2200);
+    // Датасет (built 2026-10-08): 2287 item / 766 unique / 861 gem строк
+    // + 929 Sidekick-баз (merged 2026-10-24) = 3216 строк. В map меньше
+    // (dedup по normKey + ru===en отфильтрованы): ~3197.
+    expect(meta.items).toBeGreaterThan(3100);
     expect(meta.uniques).toBeGreaterThan(400);
     expect(meta.gems).toBeGreaterThan(800);
     expect(meta.source).toContain('Exiled-Exchange-2');
@@ -45,6 +46,31 @@ describe('ruLocale (items_ru.json, Exiled Exchange 2 MIT)', () => {
 
   it('EN-имена как вход — не ломают API (возвращают пусто, не мусор)', () => {
     expect(ruToEnName('Cutlass')).toBe('');
+  });
+
+  // ── Additive-слой Sidekick (MIT, merged 2026-10-24): +929 RU-баз ──────────
+
+  it('новые RU-базы из донора Sidekick резолвятся (ruToEnName/ruToEnBase)', () => {
+    // До слияния этих RU-имён в датасете не было; EN — из repoe base_items
+    // по Metadata-ID донора (см. scripts/_merge_sidekick_ru.mjs).
+    expect(ruToEnName('Баклер эгиды')).toBe('Aegis Buckler');
+    expect(ruToEnBase('Баклер эгиды')).toBe('Aegis Buckler');
+    expect(ruToEnName('Богатая корона')).toBe('Lavish Crown');
+    expect(ruToEnName('Такого предмета нет')).toBe(''); // старый промах не сломан
+  });
+
+  it('донор даёт metadataId/tradeCat по точному RU-имени (ruEnExtras)', () => {
+    // Существующая база, обогащённая Sidekick-baseItemIds.
+    expect(ruEnExtras('Абордажная сабля')?.metadataId).toBe(
+      'Metadata/Items/Weapons/OneHandWeapons/OneHandSwords/FourOneHandSword9',
+    );
+    expect(ruEnExtras('Абордажная сабля')?.tradeCat).toBe('weapon');
+    // Гем тоже обогащён.
+    expect(ruEnExtras('Авангард I')?.metadataId).toBe('Metadata/Items/Gem/SupportGemVanguard');
+    // Новая строка донора несёт оба поля.
+    const ex = ruEnExtras('Баклер эгиды');
+    expect(ex?.metadataId).toBe('Metadata/Items/Armours/Shields/FourShieldDex13');
+    expect(ruEnExtras('Нет такого предмета')).toBeUndefined();
   });
 });
 

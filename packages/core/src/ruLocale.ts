@@ -10,6 +10,10 @@
  * Атрибуция: NOTICE.md в корне репо. Файл — только данные (JSON), читается
  * через JSON.parse, никогда не исполняется (см. SECURITY.md).
  *
+ * Additive-слой 2026-10-24 (поле `merged`): RU-базы и metadataId/tradeCat из
+ * Sidekick (Sidekick-Poe/Sidekick, MIT): +929 строк names.item, extras в
+ * хвосте строк (RuEnExtras). Существующие записи не переопределялись.
+ *
  * Контракт тот же, что у overlay-словаря: ключ — normName (NFD, без
  * диакритики, ё→е, й→и, без апострофов, lowercase — так poe2db RU-слаги),
  * lookup: точный → strip-affix (суперлативы/exalted/prefix «Улучшенный …»).
@@ -18,8 +22,18 @@
 
 import { HAS_DISK, fsMod, pathMod, urlMod } from './nodeenv.js';
 
-/** [ru, en, itemClass?] — формат строк в names.item / names.unique / names.gem. */
-export type RuEnEntry = [ru: string, en: string, extra?: string];
+/**
+ * [ru, en, itemClass?, extras?] — формат строк в names.item / names.unique /
+ * names.gem. extras (индекс 3) — донор Sidekick (MIT), только где был:
+ * metadataId — первый Metadata/Items/* из baseItemIds; tradeCat — ru-файл
+ * донора локализован, поэтому tradeItems[].type там = само RU-имя, несём
+ * только категорию (weapon/gem/currency/jewel/...).
+ */
+export interface RuEnExtras {
+  metadataId?: string;
+  tradeCat?: string;
+}
+export type RuEnEntry = [ru: string, en: string, extra?: string, extras?: RuEnExtras];
 
 interface RuLocaleFile {
   lang?: string;
@@ -53,22 +67,44 @@ export function normRuEnKey(s: string | null | undefined): string {
 }
 
 // ~/.local… / browser — файл просто недоступен (HAS_DISK=false): карты пустые.
-type RuEnMaps = { items: Map<string, string>; uniques: Map<string, string>; gems: Map<string, string> };
+type RuEnMaps = {
+  items: Map<string, string>;
+  uniques: Map<string, string>;
+  gems: Map<string, string>;
+  /** normKey → Sidekick-extras (metadataId/tradeCat) одной строкой на все секции. */
+  extras: Map<string, RuEnExtras>;
+};
 
 let cache: (RuLocaleFile & { maps: RuEnMaps }) | null = null;
 
 function load(): RuLocaleFile & { maps: RuEnMaps } {
   const empty: RuLocaleFile & { maps: RuEnMaps } = {
-    maps: { items: new Map(), uniques: new Map(), gems: new Map() },
+    maps: { items: new Map(), uniques: new Map(), gems: new Map(), extras: new Map() },
   };
   if (!HAS_DISK) return empty;
   if (cache) return cache;
   try {
     const raw = JSON.parse(fsMod!.readFileSync(localePath(), 'utf8')) as RuLocaleFile;
-    const maps: RuEnMaps = { items: new Map(), uniques: new Map(), gems: new Map() };
+    const maps: RuEnMaps = {
+      items: new Map(),
+      uniques: new Map(),
+      gems: new Map(),
+      extras: new Map(),
+    };
     fill(maps.items, raw.names?.item);
     fill(maps.uniques, raw.names?.unique);
     fill(maps.gems, raw.names?.gem);
+    for (const rows of [raw.names?.item, raw.names?.unique, raw.names?.gem]) {
+      for (const row of rows ?? []) {
+        if (!Array.isArray(row) || row.length < 2) continue;
+        const ex = row[3];
+        if (!ex || typeof ex !== 'object' || Array.isArray(ex)) continue;
+        if (ex.metadataId == null && ex.tradeCat == null) continue;
+        const key = normRuEnKey(row[0]);
+        if (!key || maps.extras.has(key)) continue;
+        maps.extras.set(key, { metadataId: ex.metadataId, tradeCat: ex.tradeCat });
+      }
+    }
     cache = { ...raw, maps };
     return cache;
   } catch {
@@ -127,6 +163,16 @@ export function ruEnMap(
   kind: 'items' | 'uniques' | 'gems',
 ): ReadonlyMap<string, string> {
   return new Map(load().maps[kind]);
+}
+
+/**
+ * Sidekick-extras (MIT-донор, additive-слой `merged`): metadataId — EN Metadata
+ * ID базового предмета, tradeCat — trade-категория (weapon/gem/currency/...).
+ * Есть не у всех строк; промах → undefined.
+ */
+export function ruEnExtras(name: string | null | undefined): RuEnExtras | undefined {
+  const ex = load().maps.extras.get(normRuEnKey(name));
+  return ex ? { ...ex } : undefined;
 }
 
 // ═══ RU-моды и классы (§5, RU mod-patterns) ═════════════════════════════════

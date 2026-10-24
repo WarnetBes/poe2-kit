@@ -12,6 +12,12 @@
 - Поле `built` в JSON — дата сборки донором (2026-10-08). Содержимое: только данные
   (имена предметов/уникалей/гемов RU→EN + лейблы/паттерны клир-текста),
   исполняется только через JSON.parse, никогда не eval (см. packages/core/SECURITY.md).
+- Additive-слой RU-баз (поле `merged: 2026-10-24`): RU base-item names adapted
+  from Sidekick-Poe/Sidekick (MIT) — https://github.com/Sidekick-Poe/Sidekick
+  (`data/poe2/ru/items.json`: RU-имена, baseItemIds → `metadataId`,
+  tradeItems.cat → `tradeCat`; EN-канон новых строк — из repoe base_items.json).
+  Слияние — `poe2-kit/scripts/_merge_sidekick_ru.mjs`, копия донора —
+  `poe2-kit/scripts/data-raw/sidekick_ru_items.json` (в portable-архив не входит).
 
 ## packages/core/data/game/i18n/mods_ru.json
 
