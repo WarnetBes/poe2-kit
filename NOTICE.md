@@ -71,3 +71,17 @@
 - `livefilter/injector.ts` и др. — порт Go-донора (см. комментария в файлах).
 - Паттерны гвардов вердикт-слоя — ExileLens (MIT); реализация своя
   (`packages/core/src/itemVerdict.ts`).
+
+## packages/core/src/treeRoute.ts (пробел №3: маршрут по пассивке)
+
+- Данные дерева — уже имевшийся в репо экстракт официального GGG skill tree
+  export (`packages/core/data/game/passive_tree/layout.json`,
+  `build_planner/map.json` slugs): формат-факт игры, в данных источниках не нуждается
+  (см. metadata файлов).
+- **poe2-toolkit/tree-core** (https://github.com/poe2-toolkit, copyright © 2026
+  Vladislav Rajtmajer, **MIT**) — эталон сверки BFS-слоя `buildTreeGraph` /
+  `pathToNode`; код не копировался (вход у них — GGG TreeData, у нас свой layout),
+  использован как канон «BFS на невзвешенном графе узлов+рёбер».
+- JayRichh/poe2.dev (`skill-tree/utils/pathFinding.ts`) — **LICENSE отсутствует**:
+  заимствована только идея мульти-стартового фронта A*/BFS от любого
+  аллоцированного узла (pattern-by, ни одной строки кода).

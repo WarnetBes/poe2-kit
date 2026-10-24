@@ -69,6 +69,7 @@ export * from './ladder.js';
 export * from './advice.js';
 export * from './runes.js';
 export * from './starterBuilds.js';
+export * from './buildComposer.js';
 export * from './ssf.js';
 export * from './craftGuide.js';
 export * from './endgame.js';
@@ -80,12 +81,14 @@ export * from './slang.js';
 export * from './gemSupports.js';
 export * from './mapPrep.js';
 export * from './simulacrum.js';
+export * from './treeRoute.js';
 import * as buildPlannerMod from './buildPlanner.js';
 import * as pobCompareMod from './pobCompare.js';
 import * as hideoutMod from './hideout.js';
 import * as keybindsMod from './keybinds.js';
 import * as gemSupportsMod from './gemSupports.js';
 import * as simulacrumMod from './simulacrum.js';
+import * as treeRouteMod from './treeRoute.js';
 import * as mapPrepMod from './mapPrep.js';
 export * from './questRewards.js';
 export * from './cache.js';
@@ -155,6 +158,7 @@ import * as learnmod from './learnlog.js';
 import * as learnedStatsMod from './learnedStats.js';
 import * as runesMod from './runes.js';
 import * as starterBuildsMod from './starterBuilds.js';
+import * as buildComposerMod from './buildComposer.js';
 import * as endgameMod from './endgame.js';
 import * as questRewardsMod from './questRewards.js';
 import * as craftMod from './craftGuide.js';
@@ -234,6 +238,7 @@ export const core = {
   datasetDiff: datasetDiffMod, // №248: снапшоты/diff-отчёт refresh (до/после)
   runes: runesMod,
   starterBuilds: starterBuildsMod,
+  buildComposer: buildComposerMod, // №497: синтез скелета билда с числами движка (poe2-build-mcp MIT pattern)
   endgame: endgameMod,
   questRewards: questRewardsMod,
   craft: craftMod,
@@ -245,6 +250,7 @@ export const core = {
   keybinds: keybindsMod, // №221: советчик раскладки навыков (геймпад/клавиатура)
   mapPrep: mapPrepMod, // №234: Map Prep Assistant — угроза карты + чек-лист подготовки (Этап 2)
   simulacrum: simulacrumMod, // №239: данные гайда Simulacrum (Delirium 0.5.x) + markdown для MCP-тула
+  treeRoute: treeRouteMod, // пробел №3 (sec6): маршрут по пассивке с уровневыми метками
   result: resultMod, // №196 (S9): classifyError/kinds для kind-строк в оверлее
   priceAnalysis: priceAnalysisMod, // анализ трендов/волатильности валют (порт poe2scout-mcp, MIT)
 };
