@@ -246,3 +246,148 @@ describe('statMatching: реальный датасет и интеграция 
     expect(unmatched).toEqual([]);
   });
 });
+
+// ═══ Этап 3: Sidekick StatParser-паттерн (multi-line glue + fuzzy + прозрачность) ═══
+
+const MULTI_MOCK: StatCatalogEntry[] = [
+  ...MOCK,
+  { id: 'explicit.stat_ML1', text: '#% increased Energy Shield from Equipped Focus', type: 'explicit' },
+  { id: 'explicit.stat_ML2', text: 'With # Sockets you gain #% increased Movement Speed', type: 'explicit' },
+];
+
+describe('statMatching Этап 3: multi-line склейка (Sidekick StatParser.cs:96-113)', () => {
+  it('обёрнутый игрой мод: вторая строка одна не матчится → пара склеивается', async () => {
+    const payload = await matchStatsBulk(
+      ['100% increased Energy Shield', 'from Equipped Focus'],
+      { offlineEntries: MULTI_MOCK, noLive: true },
+    );
+    expect(payload.matches[0]!.match.id).toBe('explicit.stat_ML1');
+    expect(payload.matches[0]!.match.matchedBy).toBe('multi-line');
+    expect(payload.matches[0]!.match.mergedFrom).toEqual(['from Equipped Focus']);
+    expect(payload.matches[0]!.match.min).toBeCloseTo(90, 5); // 100 × 0.9 из склеенного текста
+    expect(payload.matches[0]!.tradeReady).toBe(true);
+    // вторая строка — half того же мода: без своего фильтра, но распознана
+    expect(payload.matches[1]!.mergedInto).toBe(0);
+    expect(payload.matches[1]!.tradeReady).toBe(true);
+    expect(payload.matches[1]!.match.id).toBe('explicit.stat_ML1');
+    expect(payload.unknown).toEqual([]);
+    expect(payload.counts).toEqual({
+      matched: 2,
+      unmatchedStatic: 2, // обе строки провалили одиночный проход до склейки
+      tradeReady: 1,      // фильтр один на весь мод
+      textOnly: 1,        // primary-матч по тексту (multi-line), не по stat-id
+      unrecognized: 0,
+    });
+  });
+
+  it('обе строки пары не матчатся по отдельности → склейка спасает обе', async () => {
+    const payload = await matchStatsBulk(
+      ['With 2 Sockets', 'you gain 10% increased Movement Speed'],
+      { offlineEntries: MULTI_MOCK, noLive: true },
+    );
+    expect(payload.matches[0]!.match.id).toBe('explicit.stat_ML2');
+    expect(payload.matches[0]!.match.matchedBy).toBe('multi-line');
+    expect(payload.matches[0]!.match.min).toBeCloseTo(9, 5); // max(2,10) × 0.9
+    expect(payload.matches[1]!.mergedInto).toBe(0);
+    expect(payload.unknown).toEqual([]);
+    expect(payload.counts.unmatchedStatic).toBe(2);
+    expect(payload.counts.matched).toBe(2);
+  });
+
+  it('синглы не ломаются: две НЕЗАВИСИМЫЕ сматченные строки не склеиваются', async () => {
+    const payload = await matchStatsBulk(
+      ['Adds 5 to 9 Physical Damage', '12% to Cold Resistance'],
+      { offlineEntries: MULTI_MOCK, noLive: true },
+    );
+    expect(payload.matches[0]!.match.id).toBe('explicit.stat_A2');
+    expect(payload.matches[0]!.match.matchedBy).toBe('text');
+    expect(payload.matches[0]!.match.mergedFrom).toBeUndefined();
+    expect(payload.matches[1]!.match.id).toBe('explicit.stat_A4');
+    expect(payload.matches[1]!.mergedInto).toBeUndefined();
+  });
+});
+
+describe('statMatching Этап 3: fuzzy-дизамбиг (опечатки/склонения)', () => {
+  it('опечатка в слове («Atack») матчится последним text-тиром, matchedBy fuzzy', async () => {
+    const m = await matchStat('12% increased Atack Speed', {
+      offlineEntries: MOCK,
+      noLive: true,
+    });
+    expect(m.id).toBe('explicit.stat_A3');
+    expect(m.source).toBe('offline');
+    expect(m.matchedBy).toBe('fuzzy');
+  });
+
+  it('fuzzy не подгоняет: нераспознанный мусор остаётся unknown', async () => {
+    const payload = await matchStatsBulk(['Qwerty completly bamboozled'], {
+      offlineEntries: MULTI_MOCK,
+      noLive: true,
+    });
+    expect(payload.matches[0]!.tradeReady).toBe(false);
+    expect(payload.matches[0]!.match.id).toBeNull();
+    expect(payload.unknown).toEqual(['Qwerty completly bamboozled']);
+    expect(payload.counts.unrecognized).toBe(1);
+  });
+
+  it('точный матч бьёт fuzzy (порядок тиров не сломан)', async () => {
+    const m = await matchStat('20% increased Attack Speed', {
+      offlineEntries: MULTI_MOCK,
+      noLive: true,
+    });
+    expect(m.matchedBy).toBe('text');
+  });
+});
+
+describe('statMatching Этап 3: degraded — stale дамп + недоступный live', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      (() => {
+        throw new TypeError('network disabled in offline tests');
+      }) as unknown as typeof fetch,
+    );
+    resetStatMatchingCaches();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stale дамп (>45д) + live failed → матч по дампу, degraded:true с причиной', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.now() + 50 * 24 * 60 * 60 * 1000));
+    const payload = await matchStatsBulk(['Adds 10 to 20 Physical Damage'], {
+      fetchLive: async () => {
+        throw new TypeError('fetch failed');
+      },
+    });
+    // live-first при stale провалился — сущность падает НА дамп, матч не теряется
+    expect(payload.offlineMatches).toBe(1);
+    expect(payload.matches[0]!.match.source).toBe('offline');
+    expect(payload.degraded).toBe(true);
+    expect(payload.degradedReason).toContain('stale');
+    expect(payload.counts.tradeReady).toBe(1);
+  });
+
+  it('stale дамп + live OK → матчи по live, не degraded', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.now() + 50 * 24 * 60 * 60 * 1000));
+    const payload = await matchStatsBulk(['Adds 999 to 1000 Physical Damage'], {
+      fetchLive: async () => [
+        { id: 'explicit.stat_LIVE_OK', text: 'Adds # to # Physical Damage', type: 'explicit' },
+      ],
+    });
+    expect(payload.liveMatches).toBe(1);
+    expect(payload.degraded).toBeUndefined();
+  });
+
+  it('свежий дамп + live failed → НЕ degraded (дамп свежий, фолбэк штатный)', async () => {
+    const payload = await matchStatsBulk(['Adds 10 to 20 Physical Damage'], {
+      fetchLive: async () => {
+        throw new TypeError('fetch failed');
+      },
+    });
+    expect(payload.offlineMatches).toBe(1);
+    expect(payload.degraded).toBeUndefined();
+  });
+});

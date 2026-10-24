@@ -19,7 +19,7 @@ import { buildCodeToGear } from './build.js';
 import { scountCategoryForUnique } from './uniques.js';
 import { recordLearnedItem } from './learnlog.js';
 import { getLearnedStatTemplates } from './learnedStats.js';
-import { matchStatsBulk, type StatCatalogEntry, type StatMatchInput, type MatchStrategy } from './statMatching.js';
+import { matchStatsBulk, type StatCatalogEntry, type StatMatchInput, type MatchStrategy, type StatMatchingCounts } from './statMatching.js';
 import type {
   CurrencyRate,
   CurrencyHistoryPoint,
@@ -1013,29 +1013,47 @@ export function matchStatFilter(
  *  /api/trade2/data/stats (один запрос, кэш+мемоизация), learn-библиотека —
  *  дополнительный офлайн-слой уверенности; жуrnal записи (recordLearnedItem)
  *  остаются opt-in источником пополнения learned-датасета.
- *  Протухший дамп (>45 дней) — live-first, дамп как фолбэк. */
+ *  Протухший дамп (>45 дней) — live-first, дамп как фолбэк.
+ *  Этап 3 (Sidekick StatParser-паттерн): multi-line склейка + fuzzy-дизамбиг
+ *  внутри слоя statMatching; склеенные вторые строки (mergedInto) НЕ строят
+ *  отдельный фильтр (один фильтр на весь мод); счётчики и degraded-флаг
+ *  пробрасываются вызывающему коду для UI-прозрачности. */
 export async function matchModsToStatFilters(
   modTexts: StatMatchInput[],
   opts: { strategy?: MatchStrategy } = {},
-): Promise<{ filters: TradeStatFilter[]; unmatched: string[]; liveMatches: number }> {
+): Promise<{
+  filters: TradeStatFilter[];
+  unmatched: string[];
+  liveMatches: number;
+  /** Прозрачность Этапа 3: счётчики матчинга (payload.counts слоя). */
+  counts?: StatMatchingCounts;
+  /** true = матчинг по деградировавшим данным (протухший дамп без live). */
+  degraded?: boolean;
+  degradedReason?: string;
+}> {
   const learned = getLearnedStatTemplates() as StatCatalogEntry[];
-  const { matches, unknown, offlineMatches, liveMatches } = await matchStatsBulk(modTexts, {
-    extraOfflineEntries: learned,
-    ...(opts.strategy ? { strategy: opts.strategy } : {}),
-  });
+  const { matches, unknown, offlineMatches, liveMatches, counts, degraded, degradedReason } =
+    await matchStatsBulk(modTexts, {
+      extraOfflineEntries: learned,
+      ...(opts.strategy ? { strategy: opts.strategy } : {}),
+    });
   const filters: TradeStatFilter[] = [];
   for (const m of matches) {
+    // mergedInto: строка — вторая половина multi-line мода, её stat-id
+    // уже в фильтре primary-строки (Sidekick: one mod → one filter).
+    if (m.mergedInto !== undefined) continue;
     if (m.tradeReady && m.match.id) {
       filters.push({ id: m.match.id, min: m.match.min, text: m.text });
     }
   }
   debugLog(
     'matchModsToStatFilters (statMatching):',
-    `${filters.length} filters (${offlineMatches} offline, ${liveMatches} live), ${unknown.length} unmatched`,
+    `${filters.length} filters (${offlineMatches} offline, ${liveMatches} live), ${unknown.length} unmatched` +
+      (degraded ? `, DEGRADED: ${degradedReason}` : ''),
     filters.map((f) => `${f.id}${f.min != null ? ` min=${f.min}` : ''}`),
     unknown,
   );
-  return { filters, unmatched: unknown, liveMatches };
+  return { filters, unmatched: unknown, liveMatches, counts, degraded, degradedReason };
 }
 
 /** Поиск по trade2: базовый тип + stat-фильтры (прайс-чек раров по аффиксам).

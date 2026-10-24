@@ -67,8 +67,11 @@ export interface StatCatalogEntry {
 /** Откуда сматчился stat-id. */
 export type StatMatchSource = 'offline' | 'live' | 'unknown';
 
-/** Ключ матча (Этап 2, №246): 'stat-id' — первичный, 'text' — фолбэк. */
-export type MatchedBy = 'stat-id' | 'text';
+/** Ключ матча (Этап 2, №246): 'stat-id' — первичный, 'text' — фолбэк.
+ *  Этап 3 (Sidekick StatParser-паттерн): 'multi-line' — склейка соседних
+ *  строк одного мода (Adapted from Sidekick-Poe/Sidekick, MIT);
+ *  'fuzzy' — спасено лёгким нечётким сравнением (опечатки/склонения). */
+export type MatchedBy = 'stat-id' | 'text' | 'multi-line' | 'fuzzy';
 
 /** Стратегия матчинга пользовательской строки:
  *  - 'stat-id' (дефолт): если у входа известен stat-id — матчить по нему
@@ -97,6 +100,10 @@ export interface StatMatch {
   min?: number;
   /** Шаблон каталога, с которым сматчились (отладка/diff). */
   matchedText?: string;
+  /** Multi-line (Sidekick StatParser.cs:96-113): матч получен склейкой
+   *  соседних строк одного мода — здесь текст строк, вошедших в склейку
+   *  (без primary-строки). Adapted from Sidekick-Poe/Sidekick (MIT). */
+  mergedFrom?: string[];
 }
 
 /** per-stat разметка HasTradeSupport (Sidekick-паттерн): trade-ready | text-only. */
@@ -105,6 +112,29 @@ export interface StatMatchBulkItem {
   match: StatMatch;
   /** true = stat-id найден, фильтр trade2 строится (trade-ready). */
   tradeReady: boolean;
+  /** Multi-line: index входа-строки, к которой ЭТА строка приклеена
+   *  (second half мода). Такая строка не строит отдельный фильтр —
+   *  фильтр строит primary (mergedInto-цель). */
+  mergedInto?: number;
+}
+
+/** Счётчики прозрачности (Этап 3): UI/агент видит факты, а не null.
+ *  Инвариант: matched + unrecognized = количество входов строки
+ *  (second half склейки считается matched — она часть распознанного мода). */
+export interface StatMatchingCounts {
+  /** Входов, чей stat-id определён (включая склеенные половины). */
+  matched: number;
+  /** Строк, не сматченных одиночным проходом (спасены glue/fuzzy или unknown)
+   *  — мера загрузки фолбэк-контуров. */
+  unmatchedStatic: number;
+  /** Primary-матчей, из которых строится trade2-фильтр (склеенные
+   *  вторые строки не в счёт — фильтр один на весь мод). */
+  tradeReady: number;
+  /** Primary-матчи по ТЕКСТУ ('text' | 'multi-line' | 'fuzzy'), не по
+   *  stat-id: id входа не был известен/не сработал — доверие ниже. */
+  textOnly: number;
+  /** Нераспознанные строки (=== payload.unknown.length). */
+  unrecognized: number;
 }
 
 /** Итог матчинга списка статов. unknown = то, что неparsed нигде. */
@@ -113,6 +143,13 @@ export interface StatMatchingPayload {
   unknown: string[];
   offlineMatches: number;
   liveMatches: number;
+  /** Прозрачность (Этап 3): per-stat факты матчинга для UI/агентов. */
+  counts: StatMatchingCounts;
+  /** true = матчинг работал по деградировавшим данным (протухший дамп
+   *  при недоступном live и т.п.) — НЕ ошибка, но результат менее
+   *  надёжен; причина — в degradedReason. */
+  degraded?: boolean;
+  degradedReason?: string;
 }
 
 /** Result-совместимый исход с payload В ЛЮБОМ случае (ok и err). */
@@ -383,6 +420,104 @@ function findInIndex(
 }
 
 // ────────────────────────────────────────────────
+// Fuzzy-дизамбиг (Этап 3): лёгкий нечёткий матч как ПОСЛЕДНИЙ text-тир,
+// до honest-unknown. Числа → '#' сравниваются строго (ролл не фаззим),
+// слова — по Levenshtein ≤ len/8 (паттерн xiletrade). Скор — Dice по
+// токенам: 2·common/(|q|+|t|), порог 0.85 = максимум одна «шумная»
+// разница на ~5+ токенов. Почему токены, а не голый Levenshtein: строки
+// статов длинные, вставка/потеря слова (обрезки, переводы) слабо бьёт
+// дистанцию, но сильно меняет смысл — токен-подход это ловит, а
+// per-token len/8 внутри токена ловит опечатки/склонения.
+// Adapted from Sidekick-Poe/Sidekick (StatParser scoring, MIT).
+// ────────────────────────────────────────────────
+
+const FUZZY_MIN_SCORE = 0.85;
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (!m || !n) return m + n;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur: number[] = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(
+        prev[j]! + 1,
+        cur[j - 1]! + 1,
+        prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = cur;
+  }
+  return prev[n]!;
+}
+
+/** Токены равны «достаточно»? '#' (числовой слот) — только строгое равенство. */
+function tokenFuzzyEqual(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a === '#' || b === '#') return false;
+  const tol = Math.max(1, Math.floor(Math.min(a.length, b.length) / 8));
+  return Math.abs(a.length - b.length) <= tol && levenshtein(a, b) <= tol;
+}
+
+/** Dice-коэффициент по мультимножеству токенов (0..1). */
+function fuzzyScoreKeys(queryKey: string, indexKey: string): number {
+  const q = queryKey.split(' ');
+  const t = indexKey.split(' ');
+  if (Math.abs(q.length - t.length) > 1) return 0; // вставка/удаление ≤ 1 слова
+  let common = 0;
+  const used = new Array<boolean>(t.length).fill(false);
+  for (const qt of q) {
+    for (let j = 0; j < t.length; j++) {
+      if (!used[j] && tokenFuzzyEqual(qt, t[j]!)) {
+        used[j] = true;
+        common++;
+        break;
+      }
+    }
+  }
+  return (2 * common) / (q.length + t.length);
+}
+
+/** Последний text-тир: скан всех ключей каталога, best-скор (Sidekick
+ *  StatParser.cs:71-110: best line-count → best score → длиннейший шаблон). */
+function findFuzzyInIndex(
+  index: CatalogIndex,
+  text: string,
+  preferredType?: string,
+): { found: FoundEntry } | null {
+  const norm = normalizeStatText(text);
+  const key = norm.replace(NUM_RE, '#');
+  if (!key || !key.includes(' ')) return null; // однотокенные строки не фаззим
+  const queryKeys = [...new Set([key, stripLegacy(key)])];
+  let bestScore = 0;
+  let bestBucket: StatCatalogEntry[] | null = null;
+  for (const [k, bucket] of index) {
+    if (!bucket.length) continue;
+    let score = 0;
+    for (const q of queryKeys) {
+      score = Math.max(score, fuzzyScoreKeys(q, k));
+      if (score >= 1) break;
+    }
+    // Финал по Sidekick-критерию: лучший скор, при равенстве — «охват
+    // больше текста» (длиннейший ключ каталога, best line-count proxy).
+    if (
+      score >= FUZZY_MIN_SCORE &&
+      (bestBucket === null ||
+        score > bestScore ||
+        (score === bestScore &&
+          k.length > normalizeStatText(pickBest(bestBucket, preferredType).text).length))
+    ) {
+      bestScore = score;
+      bestBucket = bucket;
+    }
+  }
+  if (!bestBucket) return null;
+  return { found: { entry: pickBest(bestBucket, preferredType), negated: false } };
+}
+
+// ────────────────────────────────────────────────
 // Оффлайн-слой: свежий дамп каталога + learn-библиотека
 // ────────────────────────────────────────────────
 
@@ -547,6 +682,24 @@ export async function matchStat(
  * 'stat-id' матч идёт по id первично в каждом слое — локализованный/обрезанный
  * текст (DE-смеси, FR-обрезки) не влияет на результат. Текст — фолбэк
  * (matchedBy: 'text'), расширенный i18n-алиасами.
+ *
+ * Этап 3 (Sidekick StatParser-паттерн, adapted from Sidekick-Poe/Sidekick,
+ * MIT — StatParser.cs:96-113): три прохода на вызов:
+ *   1. exact: одиночные строки по слоям (fresh dump → live; stale — обратно);
+ *   2. multi-line glue: пары соседних СТРОК-входов, где вторая (или обе)
+ *      не сматчились, пробуются конкатенацией с единым пробелом — так
+ *      лечатся обёрнутые игрой длинные моды (одна строка в клире PoE2 —
+ *      два line в буфере/UI). Приоритет — best line-count (Sidekick
+ *      StatParser.cs:71-72,103-110): если пара вместе бьёт БОЛЕЕ длинный
+ *      шаблон каталога, чем одиночный матч первой строки — выигрывает
+ *      пара. Иначе одиночный матч сохраняется (синглы не ломаем).
+ *   3. fuzzy: последняя надежда для оставшихся промахов (опечатки/склонения),
+ *      matchedBy: 'fuzzy'.
+ *
+ * Прозрачность: payload.counts {matched, unmatchedStatic, tradeReady,
+ * textOnly, unrecognized} + payload.unknown с ПОЛНЫМ текстом каждой
+ * нераспознанной строки; payload.degraded=true + degradedReason — если
+ * матчинг работал по протухшему дампу без live (или дамп отсутствовал).
  */
 export async function matchStatsBulk(
   mods: StatMatchInput[],
@@ -554,10 +707,11 @@ export async function matchStatsBulk(
 ): Promise<StatMatchingPayload> {
   const preferredType = opts.preferredType ?? 'explicit';
   const strategy: MatchStrategy = opts.strategy ?? 'stat-id';
+  const injected = opts.offlineEntries !== undefined;
   let offline: Catalog;
   let offlineFresh = true;
-  if (opts.offlineEntries !== undefined) {
-    offline = buildCatalog([...opts.offlineEntries, ...(opts.extraOfflineEntries ?? [])]);
+  if (injected) {
+    offline = buildCatalog([...opts.offlineEntries!, ...(opts.extraOfflineEntries ?? [])]);
   } else {
     const o = getOfflineIndex();
     offline = opts.extraOfflineEntries
@@ -568,74 +722,176 @@ export async function matchStatsBulk(
   }
 
   const liveNeeded = async (): Promise<Catalog | null> => getLiveIndex(opts);
-
-  const matches: StatMatchBulkItem[] = [];
-  const unknown: string[] = [];
-  let offlineMatches = 0;
-  let liveMatches = 0;
-
   // Кэш индексов на вызов: live тянем лениво и не больше одного раза.
   let live: Catalog | null | undefined;
+  const resolveLive = async (): Promise<Catalog | null> => {
+    if (live === undefined) live = await liveNeeded();
+    return live;
+  };
 
-  for (const input of mods) {
-    const text = typeof input === 'string' ? input : input.text;
-    const knownId = typeof input === 'string' ? null : input.id ?? null;
-    // Первичный ключ — stat-id, если он известен входу и не отключён стратегией.
+  const isString = mods.map((m) => typeof m === 'string');
+  const texts = mods.map((m) => (typeof m === 'string' ? m : m.text));
+  const knownIds = mods.map((m) => (typeof m === 'string' ? null : m.id ?? null));
+
+  const layerOrder: Array<'offline' | 'live'> = offlineFresh
+    ? ['offline', 'live']
+    : ['live', 'offline'];
+
+  /** Точный lookup (stat-id первичен при стратегии) в ОДНОМ слое. */
+  const lookupExact = (
+    cat: Catalog,
+    text: string,
+    source: StatMatchSource,
+    knownId: string | null,
+  ): StatMatch | null => {
     const useStatId = strategy === 'stat-id' && !!knownId;
-    const item = async (): Promise<StatMatchBulkItem> => {
-      // Порядок: fresh dump → live; stale dump → live → dump.
-      const order: Array<'offline' | 'live'> = offlineFresh
-        ? ['offline', 'live']
-        : ['live', 'offline'];
-      for (const layer of order) {
-        if (layer === 'offline') {
-          if (useStatId) {
-            const entry = findById(offline, knownId!);
-            if (entry) {
-              return {
-                text,
-                match: toStatMatch({ entry, negated: false }, text, 'offline', preferredType, 'stat-id'),
-                tradeReady: true,
-              };
-            }
-          }
-          const found = findInIndex(offline.byText, text, preferredType);
-          if (found) {
-            return { text, match: toStatMatch(found, text, 'offline', preferredType), tradeReady: true };
-          }
-        } else {
-          if (live === undefined) live = await liveNeeded();
-          if (live) {
-            if (useStatId) {
-              const entry = findById(live, knownId!);
-              if (entry) {
-                return {
-                  text,
-                  match: toStatMatch({ entry, negated: false }, text, 'live', preferredType, 'stat-id'),
-                  tradeReady: true,
-                };
-              }
-            }
-            const found = findInIndex(live.byText, text, preferredType);
-            if (found) {
-              return { text, match: toStatMatch(found, text, 'live', preferredType), tradeReady: true };
-            }
-          }
-        }
+    if (useStatId) {
+      const entry = findById(cat, knownId!);
+      if (entry) {
+        return toStatMatch({ entry, negated: false }, text, source, preferredType, 'stat-id');
       }
-      return { text, match: { id: null, source: 'unknown', text }, tradeReady: false };
+    }
+    const found = findInIndex(cat.byText, text, preferredType);
+    if (found) return toStatMatch(found, text, source, preferredType);
+    return null;
+  };
+
+  /** Точный матч по слоям (fresh dump → live; stale — обратно). */
+  const matchThroughLayers = async (
+    text: string,
+    knownId: string | null,
+  ): Promise<StatMatch | null> => {
+    for (const layer of layerOrder) {
+      const cat = layer === 'offline' ? offline : await resolveLive();
+      if (!cat) continue;
+      const hit = lookupExact(cat, text, layer, knownId);
+      if (hit) return hit;
+    }
+    return null;
+  };
+
+  // ── Проход 1: exact-матчинг каждой строки по слоям ──
+  const matched: Array<StatMatch | null> = new Array<StatMatch | null>(mods.length).fill(null);
+  let unmatchedStatic = 0;
+  for (let i = 0; i < mods.length; i++) {
+    const hit = await matchThroughLayers(texts[i]!, knownIds[i]!);
+    matched[i] = hit;
+    if (!hit) unmatchedStatic++;
+  }
+
+  // ── Проход 2: multi-line glue (Sidekick StatParser.cs:96-113) ──
+  // Склейка пар соседних строк-входов: пробуем если вторая строка пары
+  // не сматчилась (а первая — не сматчилась тоже ИЛИ её одиночный шаблон
+  // короче склеенного: line-count приоритет Sidekick, синглы не ломаем).
+  const mergedInto = new Array<number | undefined>(mods.length).fill(undefined);
+  const mergedFrom: Array<string[] | undefined> = new Array<string[] | undefined>(
+    mods.length,
+  ).fill(undefined);
+  for (let i = 0; i + 1 < mods.length; i++) {
+    if (!isString[i] || !isString[i + 1]) continue; // id-входы склейке не подлежат
+    if (mergedInto[i] !== undefined || mergedInto[i + 1] !== undefined) continue;
+    if (matched[i + 1]) continue; // вторая строка сама сматчилась — не клеим
+    const combined = `${texts[i]} ${texts[i + 1]}`;
+    const combinedMatch = await matchThroughLayers(combined, null);
+    if (!combinedMatch) continue;
+    const singleTemplate = matched[i]?.matchedText ?? null;
+    if (singleTemplate) {
+      // Оба матча валидны: выигрывает big line-count (длиннейший шаблон
+      // каталога покрывает больше строк — Sidekick best-line-count score).
+      const singleLen = normalizeStatText(singleTemplate).length;
+      const combinedLen = normalizeStatText(combinedMatch.matchedText ?? '').length;
+      if (combinedLen <= singleLen) continue;
+    }
+    matched[i] = { ...combinedMatch, text: combined, matchedBy: 'multi-line', mergedFrom: [texts[i + 1]!] };
+    matched[i + 1] = {
+      ...combinedMatch,
+      text: texts[i + 1]!,
+      min: undefined,
+      mergedFrom: undefined,
     };
-    const r = await item();
-    matches.push(r);
-    if (r.tradeReady) {
-      if (r.match.source === 'offline') offlineMatches++;
-      else if (r.match.source === 'live') liveMatches++;
-    } else {
-      unknown.push(text);
+    mergedInto[i + 1] = i;
+    mergedFrom[i] = [texts[i + 1]!];
+  }
+
+  // ── Проход 3: fuzzy-дизамбиг для оставшихся промахов ──
+  for (let i = 0; i < mods.length; i++) {
+    if (matched[i] || !isString[i]) continue; // id-входы fuzzy не фаззим
+    for (const layer of layerOrder) {
+      const cat = layer === 'offline' ? offline : await resolveLive();
+      if (!cat) continue;
+      const fuzzy = findFuzzyInIndex(cat.byText, texts[i]!, preferredType);
+      if (fuzzy) {
+        matched[i] = toStatMatch(fuzzy.found, texts[i]!, layer, preferredType, 'fuzzy');
+        break;
+      }
     }
   }
 
-  return { matches, unknown, offlineMatches, liveMatches };
+  // ── Сборка payload: per-stat items, счётчики, degraded-диагностика ──
+  const items: StatMatchBulkItem[] = [];
+  const unknown: string[] = [];
+  let offlineMatches = 0;
+  let liveMatches = 0;
+  let primary = 0;
+  let textOnly = 0;
+  for (let i = 0; i < mods.length; i++) {
+    const m = matched[i]!;
+    if (!m) {
+      items.push({ text: texts[i]!, match: { id: null, source: 'unknown', text: texts[i]! }, tradeReady: false });
+      unknown.push(texts[i]!);
+      continue;
+    }
+    const isSecondary = mergedInto[i] !== undefined;
+    items.push(
+      isSecondary
+        ? { text: texts[i]!, match: m, tradeReady: true, mergedInto: mergedInto[i] }
+        : { text: texts[i]!, match: m, tradeReady: true },
+    );
+    if (!isSecondary) {
+      primary++;
+      if (m.matchedBy !== 'stat-id') textOnly++;
+      if (m.source === 'offline') offlineMatches++;
+      else if (m.source === 'live') liveMatches++;
+    }
+  }
+
+  const payload: StatMatchingPayload = {
+    matches: items,
+    unknown,
+    offlineMatches,
+    liveMatches,
+    counts: {
+      matched: primary + mergedFrom.filter(Boolean).length,
+      unmatchedStatic,
+      tradeReady: primary,
+      textOnly,
+      unrecognized: unknown.length,
+    },
+  };
+
+  // Degraded-диагностика (Этап 4): матчинг по протухшему/отсутствующему
+  // дампу при недоступном live — не ошибка, но пользователь обязан это
+  // видеть (раньше промах на stale-first уходил молча).
+  if (!injected) {
+    const liveUnavailable = opts.noLive || live === null;
+    const usedStale = items.some((it) => it.match.source === 'offline');
+    if (offlineFresh && liveUnavailable && getOfflineIndex().entries === 0) {
+      payload.degraded = true;
+      payload.degradedReason =
+        'stat matching degraded: no trade-stats dump and live catalog unavailable';
+    } else if (!offlineFresh && liveUnavailable) {
+      payload.degraded = true;
+      payload.degradedReason = opts.noLive
+        ? 'stat matching degraded: trade-stats dump is stale (>45d) and live fallback disabled'
+        : 'stat matching degraded: trade-stats dump is stale (>45d) and live catalog fetch failed; stale dump used as fallback';
+    } else if (!offlineFresh && usedStale) {
+      payload.degraded = true;
+      payload.degradedReason =
+        'stat matching degraded: stale trade-stats dump used as fallback (live catalog missing some stats)';
+    }
+  }
+
+  return payload;
 }
 
 function flattenIndex(catalog: Catalog): StatCatalogEntry[] {
