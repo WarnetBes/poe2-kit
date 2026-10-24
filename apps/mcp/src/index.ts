@@ -42,6 +42,8 @@ import { registerItemVerdictTools } from './tools/itemVerdict.js';
 import { registerRecomputeTools } from './tools/recompute.js';
 import { registerStarterBuildsTools } from './tools/starterBuilds.js';
 import { registerPoeshopMarketTools } from './tools/poeshopMarket.js';
+import { registerTreeRouteTools } from './tools/treeRoute.js';
+import { registerComposeBuildTools } from './tools/composeBuild.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -93,6 +95,9 @@ export function buildServer(): number {
   count += registerItemVerdictTools(server);
   count += registerRecomputeTools(server);
   count += registerStarterBuildsTools(server);
+
+  count += registerTreeRouteTools(server);
+  count += registerComposeBuildTools(server);
 
   count += registerPoeshopMarketTools(server);
 

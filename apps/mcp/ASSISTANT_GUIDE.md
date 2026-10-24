@@ -45,6 +45,7 @@
 - **poe2_build_compare** — свой билд vs топ-лестница класса (перцентиль DPS/EHP).
 - **poe2_export_build_planner** — конвертация билда PoB в официальный *.build (Build Planner PoE2, schema v1) для импорта в игре.
 - **poe2_build_guide** — скелет 9-секционного гайда по шаблону (данные подставлены, текст — заглушки).
+- **poe2_compose_build** — синтез скелета билда по классу/асценданси: main-скилл (hint/user-код/ладдер/гайд), саппорты, бюджет-стадия, числовые цели + GoalCheck-вердикты по user_build_code.
 - **poe2_evaluate_build** — билд против числовых целей (DPS/EHP/резисты/Spirit): verdict + разрыв, computed:/estimated:.
 - **poe2_rank_levers** — ранжирование рычагов апгрейда по ΔEHP (computed) и ΔDPS-оценке (estimated).
 - **poe2_pinnacle_check** — чек-лист готовности к эндгейму vs статы босса (резисты/EHP-порог/устойчивость к стану).
@@ -57,6 +58,7 @@
 - **poe2_tree_search_stats** — поиск узлов по набору статов (AND).
 - **poe2_tree_ids** — резолв узлов по ID (символьные/числовые).
 - **poe2_ascendancy_nodes** — узлы асценданси.
+- **poe2_tree_route** — маршрут по дереву от старта до keypoints (BFS, очки, метки «к L~N»).
 - **poe2_stat_explain** — объяснение стата.
 - **poe2_data_freshness** — свежесть данных всех источников.
 
