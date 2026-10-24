@@ -18,6 +18,11 @@ set "LOG=logs\live-smoke-%STAMP%.log"
 echo [%date% %time%] live-smoke: build core + run against live APIs > "%LOG%"
 
 REM --- Fresh dist (live-smoke imports from packages/core/dist) ---
+REM No588: portable-aware. Portable installs (game PC, friend zip) have no
+REM node_modules/toolchain - "tsc" is missing and the daily task would fail
+REM forever silently-uselessly. If no toolchain: skip the build, smoke the
+REM EXISTING dist (still catches live API/schema drift), log it explicitly.
+if not exist "node_modules\typescript" goto skipBuild
 call npm run build -w @poe2-kit/core >> "%LOG%" 2>&1
 if errorlevel 1 (
   echo [%date% %time%] LIVE-SMOKE FAIL: core build failed >> "%LOG%"
@@ -25,6 +30,15 @@ if errorlevel 1 (
   echo LIVE-SMOKE FAIL: core build failed. See "%LOG%"
   exit /b 1
 )
+goto buildDone
+:skipBuild
+echo [%date% %time%] build skipped - portable install, no toolchain ^(existing dist^) >> "%LOG%"
+if not exist "packages\core\dist" (
+  echo [%date% %time%] LIVE-SMOKE FAIL: no toolchain and no packages\core\dist >> "%LOG%"
+  echo NO_DIST > logs\live-smoke-LAST.txt
+  exit /b 1
+)
+:buildDone
 
 REM --- Fresh HTTP cache: remove any previous cached API responses so every
 REM --- run actually hits the LIVE APIs (otherwise the disk TTL-cache would
