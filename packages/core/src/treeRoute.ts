@@ -517,7 +517,9 @@ export function treeRoute(request: TreeRouteRequest): TreeRouteResult | null {
     let bestDist = Infinity;
     for (let i = 0; i < pending.length; i++) {
       const d = dist.get(pending[i]!.id) ?? Infinity;
-      if (d < bestDist || (d === bestDist && Number(pending[i]!.id) < Number(pending[bestIdx]!.id))) {
+      // bestIdx < 0 — патологический tie Infinity===Infinity (недостижимые цели):
+      // берём «лучшую из худших», ветка ниже честно уйдёт в unreachable.
+      if (d < bestDist || (d === bestDist && (bestIdx < 0 || Number(pending[i]!.id) < Number(pending[bestIdx]!.id)))) {
         bestIdx = i;
         bestDist = d;
       }

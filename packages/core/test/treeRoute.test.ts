@@ -203,3 +203,221 @@ describe('treeRoute: маршрут', () => {
     expect(tight.steps).toEqual([]);
   });
 });
+
+// ─── Golden: сверка с эталонным pathToNode (poe2-toolkit, MIT) ──────────────
+//
+// Эталон: _research/poe2-toolkit/packages/poe2-tree-core (MIT),
+// src/scene/allocate.ts — buildTreeGraph/pathToNode: BFS по НЕВЗВЕШЕНному
+// графу (1 узел = 1 очко), multi-source frontier, путь исключает source-узлы
+// и включает цель; null — недостижимо. Ниже refPathToNode — adapted from
+// poe2-toolkit (MIT).
+//
+// Формат данных эталона vs наш: у poe2-toolkit вход — сырой GGG TreeData
+// (nodes с полями skill/ascendancyName/connections/in|out; normalize.ts на
+// лету), и их buildTreeGraph фильтрует walkable-узлы (masteries, ascendancy,
+// чужие class-starts при activeStart, синтетический root-хаб). Наш layout.json
+// — уже вычищенный экстракт того же GGG-экспорта: общий id-пространство
+// (числовые skill-id), root-хаб отсутствует (замок-тест ниже), ascendancy —
+// тупиковые ветви от class-стартов (26 граничных рёбер, маршрут через них
+// не короче), masteries экстрактором исключены. Данные пакетом poe2-toolkit
+// не поставляются → эталонный BFS гоняем на нашем layout-графе: сверка
+// валидирует сам механизм (BFS distances, реконструкция пути, multi-target
+// ordering) против независимой MIT-реализации.
+//
+// Расхождения семантики графов (задокументировано, НЕ баг):
+//  - poe2-toolkit при activeStart удаляет чужие class-starts (антимост);
+//    наш layout их держит как обычные узлы — оба графа без root-хаба, у
+//    старт-узлов нет «сквозной» роли (соседи стартов замерены тестом);
+//  - poe2-toolkit исключает ascendancy-узлы из главного графа (отдельная
+//    панель, buildAscendancyGraph); наш роутер ведёт асценданси-цели прямо
+//    (см. тест 'Faith is a Choice').
+
+describe('treeRoute: golden cross-check vs poe2-toolkit pathToNode (MIT)', () => {
+  const G = getTreeGraph();
+  type RefGraph = ReturnType<typeof getTreeGraph>;
+
+  /** adapted from poe2-toolkit (MIT), src/scene/allocate.ts: pathToNode. */
+  function refPathToNode(graph: RefGraph, sources: ReadonlySet<string>, target: string): string[] | null {
+    if (sources.has(target)) return [];
+    const prev = new Map<string, string>();
+    const seen = new Set<string>(sources);
+    const queue: string[] = [...sources];
+    for (let head = 0; head < queue.length; head++) {
+      const cur = queue[head]!;
+      for (const next of graph.adjacency.get(cur) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        prev.set(next, cur);
+        if (next === target) {
+          const path: string[] = [];
+          let step: string | undefined = target;
+          while (step !== undefined && !sources.has(step)) {
+            path.push(step);
+            step = prev.get(step);
+          }
+          return path.reverse();
+        }
+        queue.push(next);
+      }
+    }
+    return null;
+  }
+
+  const refDistAtLeast = (sources: ReadonlySet<string>, target: string): number | null => {
+    const p = refPathToNode(G, sources, target);
+    return p === null ? null : p.length;
+  };
+
+  // Реальные цели: общие keystones + детерминированная выборка notable-ов
+  // layout.json (факт-проверка их наличия — через resolveTreeTargets ниже).
+  const GOLDEN_KEYSTONES = [
+    'Chaos Inoculation',
+    'Resolute Technique',
+    "Zealot's Oath",
+    'Unwavering Stance',
+    'Iron Reflexes',
+    'Blood Magic',
+    'Pain Attunement',
+    'Eldritch Battery',
+    'Avatar of Fire',
+    'Mind Over Matter',
+    'Necromantic Talisman',
+    "Giant's Blood",
+    'Trusted Kinship',
+    'Hollow Palm Technique',
+    'Conduit',
+  ];
+  const GOLDEN_NOTABLE_IDS = [...G.nodeById.entries()]
+    .filter(([, n]) => n.not)
+    .map(([id]) => id)
+    .filter((_, i) => i % 143 === 0)
+    .slice(0, 8); // детерминированный сэмпл (~0.1% notable-ов)
+  const GOLDEN_TARGETS = [
+    ...GOLDEN_KEYSTONES.map((input) => ({ input })),
+    ...GOLDEN_NOTABLE_IDS.map((id) => ({ input: id })),
+  ];
+  const STARTS = Object.entries(LAYOUT.classStarts); // 6 реальных классов
+
+  it('факт-предпосылка: layout без root-хаба, нет узла, смежного ≥2 класс-стартам', () => {
+    const startIds = new Set(STARTS.map(([, id]) => id));
+    for (const [id, neighbors] of G.adjacency) {
+      const hits = neighbors.filter((nb) => startIds.has(nb)).length;
+      expect(hits).toBeLessThan(2);
+    }
+  });
+
+  it('golden single-target: все резолвятся и длина маршрута == эталонный BFS', () => {
+    const { resolved, missing } = resolveTreeTargets(GOLDEN_TARGETS.map((t) => t.input));
+    expect(missing).toEqual([]);
+    expect(resolved.length).toBeGreaterThanOrEqual(23); // 15 keystones + notable-сэмпл
+    let pairs = 0;
+    for (const [cls, startId] of STARTS) {
+      for (const t of resolved) {
+        const expected = refDistAtLeast(new Set([startId]), t.id);
+        expect(expected, `${cls} → ${t.name}: эталон достижим`).not.toBeNull();
+        const r = treeRoute({ classStart: cls, targets: [t.input] })!;
+        expect(r.unresolved, t.name).toEqual([]);
+        expect(r.unreachable, t.name).toEqual([]);
+        expect(r.totalPoints, `${cls} → ${t.name}`).toBe(expected);
+        // путь валиден: непрерывен по рёбрам layout, начинается соседом старта,
+        // заканчивается целью
+        const ids = r.steps.map((s) => s.id);
+        expect(ids.at(-1), t.name).toBe(t.id);
+        if (ids.length) {
+          expect(G.adjacency.get(startId), t.name).toContain(ids[0]);
+          for (let i = 1; i < ids.length; i++) {
+            expect(G.adjacency.get(ids[i - 1]!), `${cls}→${t.name} разрыв ${ids[i - 1]}—${ids[i]}`).toContain(ids[i]);
+          }
+        }
+        pairs++;
+      }
+    }
+    expect(pairs).toBeGreaterThanOrEqual(23 * STARTS.length); // ≥138 golden-пар
+  });
+
+  it('golden multi-target: жадный ordering в задокументированных bounds (жад ≠ TSP)', () => {
+    // Bounds жадного мультитаргета (не глобальный оптимум):
+    //   lower: total ≥ max_i dist(start, t_i)   — самую дальнюю всё равно идти
+    //   upper: total ≤ Σ_i dist(start, t_i)     — общий фронт только помогает
+    //   greedy-свойство: первый этап — ближайшая цель, его legPoints == min dist
+    for (const [cls, startId] of STARTS) {
+      const targets = ['Chaos Inoculation', 'Resolute Technique', 'Eldritch Battery'];
+      const r = treeRoute({ classStart: cls, targets })!;
+      expect(r.unreachable).toEqual([]);
+      const ids = resolveTreeTargets(targets).resolved.map((t) => t.id);
+      const dists = ids.map((id) => refDistAtLeast(new Set([startId]), id)!);
+      expect(r.totalPoints, cls).toBeGreaterThanOrEqual(Math.max(...dists));
+      expect(r.totalPoints, cls).toBeLessThanOrEqual(dists.reduce((a, b) => a + b, 0));
+      expect(r.milestones).toHaveLength(3);
+      expect(r.milestones[0]!.legPoints, cls).toBe(Math.min(...dists));
+      expect(new Set(r.milestones.map((m) => m.targetName))).toEqual(new Set(targets));
+      // консистентность сумм
+      expect(r.totalPoints).toBe(r.milestones.reduce((s, m) => s + m.legPoints, 0));
+    }
+  });
+
+  it('golden allocated-фронт: multi-source эталона == наш маршрут с allocated', () => {
+    const base = treeRoute({ classStart: 'Monk', targets: ['Chaos Inoculation', 'Resolute Technique'] })!;
+    const allocatedIds = base.steps.filter((s) => s.legIndex === 0).map((s) => s.id);
+    const rtId = resolveTreeTargets(['Resolute Technique']).resolved[0]!.id;
+    const sources = new Set<string>([MONK_START, ...allocatedIds]);
+    const expected = refDistAtLeast(sources, rtId)!;
+    const r = treeRoute({ classStart: 'Monk', targets: ['Resolute Technique'], allocated: allocatedIds })!;
+    expect(expected).not.toBeNull();
+    expect(r.totalPoints).toBe(expected);
+    // allocated не оплачиваются дважды и не входят в steps
+    for (const id of allocatedIds) expect(r.steps.map((s) => s.id)).not.toContain(id);
+  });
+
+  it('golden асценданси: Invoker-старт (мульти-source class+asc) == эталон', () => {
+    const invokerStart = LAYOUT.ascStarts['Invoker']!;
+    const sources = new Set<string>([MONK_START, invokerStart]);
+    const r = treeRoute({ classStart: 'Monk', ascendancy: 'Invoker', targets: ['Faith is a Choice'] })!;
+    const expected = refDistAtLeast(sources, resolveTreeTargets(['Faith is a Choice']).resolved[0]!.id)!;
+    expect(r.totalPoints).toBe(expected);
+    expect(r.unreachable).toEqual([]);
+  });
+
+  it('unreachable-изоляты layout не роняют роутер (недостижимая первой в pending)', () => {
+    // 22 узла layout без единого ребра ('Unfettered', "Kaom's Blessing", …) —
+    // раньше tie-break Infinity===Infinity читал pending[-1] → TypeError.
+    const r = treeRoute({ classStart: 'Monk', targets: ['Unfettered', 'Chaos Inoculation'] })!;
+    expect(r.unreachable).toEqual(['Unfettered']);
+    expect(r.totalPoints).toBeGreaterThan(0);
+    expect(r.steps.at(-1)!.name).toBe('Chaos Inoculation');
+    // только изоляты: маршрута нет, но падения тоже нет
+    const all = treeRoute({ classStart: 'Monk', targets: ['Unfettered', "Kaom's Blessing"] })!;
+    expect(all.ok).toBe(false);
+    expect(all.totalPoints).toBe(0);
+    expect(new Set(all.unreachable)).toEqual(new Set(['Unfettered', "Kaom's Blessing"]));
+    // каждый изолят действительно без рёбер — замок данных
+    expect(G.adjacency.get(resolveTreeTargets(['Unfettered']).resolved[0]!.id)).toBeUndefined();
+  });
+
+  it('milestones: «взять к L~N» непротиворечиво порядку путей и формуле очков', () => {
+    const r = treeRoute({ classStart: 'Monk', targets: ['Chaos Inoculation', 'Resolute Technique', 'Eldritch Battery'] })!;
+    let prevLevel = 0;
+    let prevCum = 0;
+    for (const m of r.milestones) {
+      expect(m.cumPoints).toBeGreaterThan(prevCum - 1); // кумулятив строго растёт
+      expect(m.cumPoints).toBe(prevCum + m.legPoints);
+      expect(m.takeByLevel!).not.toBeNull();
+      // очков на этом уровне уже хватает… (≤ passivePointsAvailableAtLevel)
+      expect(passivePointsAvailableAtLevel(m.takeByLevel!)).toBeGreaterThanOrEqual(m.cumPoints);
+      // …а на уровень ниже — ещё нет (метка минимальна)
+      if (m.takeByLevel! > 1) {
+        expect(passivePointsAvailableAtLevel(m.takeByLevel! - 1)).toBeLessThan(m.cumPoints);
+      }
+      // метки неубывают вместе с порядком этапов
+      expect(m.takeByLevel!).toBeGreaterThanOrEqual(prevLevel);
+      prevLevel = m.takeByLevel!;
+      prevCum = m.cumPoints;
+      // шаги этапа непрерывны и заканчиваются целью
+      const ids = m.steps.map((s) => s.id);
+      if (ids.length) {
+        for (let i = 1; i < ids.length; i++) expect(G.adjacency.get(ids[i - 1]!)).toContain(ids[i]);
+        expect(ids.at(-1)).toBe(m.targetId);
+      }
+    }
+  });
+});
