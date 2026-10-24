@@ -3,6 +3,24 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.35] — 2026-10-24 (сессии №603—№610: Sidekick-волна + №185-остаток + L1-A/F + генератор билдов — «compute-волна»)
+
+### Added
+- **Генератор билдов = генератор (№609, `f45c748`):** core `composeBuild` — синтез скелета билда под (класс/уровень/бюджет/скилл-хинт/свой PoB-код): цепочка main-skill хинт→userBuild→ладдер→curated-гайд→starter, саппорты по совместимости из meta_supports, capTargets числами из таблиц (resist 75, EHP от enemy-таблиц, DPS=медиана ладдера), верификация estimateBuild→evaluateBuildAgainstGoals→GoalCheck (pass/warn/fail), дисциплина null+unverified без выдумок. Оверлей: третий режим ⚙ Синтез во вкладке 🧬 (IPC buildgen:compose), мета-привязка «твой скилл в мете: N% игроков» (паттерн poe2-build-mcp, MIT).
+- **treeRoute (№610, `9d31a3e`):** роутер пассивного дерева — мульти-стартовый BFS по layout-графу (4903 узла/6069 рёбер — граф уже был в репо без потребителя), жадный ordering «ближайшая цель», milestones «взять к L~N» (квест-очки из QUEST_REWARDS, метки estimated ±2 ур.). Sanity: Monk→ChaosInoculation+ResoluteTechnique = 37 очков. +16 тестов.
+- **№185-остаток PoB2-математики (`493788f`):** FullDPS-агрегат (`<FullDPSSkill>` → BuildEstimate.fullDps, PlayerStat-приоритет, эталон Calcs.lua:140-170), **Override-API** applyEstimateOverrides — иммутаемый сценарный слой с флагами what/why (паттерн CalcOverride), weapon-set среда (наборы I/II из слотов Weapon 1/2 vs *Swap), +9 coupling-тестов override→EHP→verdict.
+- **L1-F build-aware live-фильтр (`111db8c`):** фильтр знает цели билда из PoB-декодера (buildTargetsFromPob), Show-базы гира юзера после always-show до value tiers, SelfCheck-gated (unknown база → дроп правила, не фильтра), FilterKey-совместим. Ниша — ни у mrw, ни у Sidekick.
+- **L1-A канон-сверка каталога условий с GGG item-filter guide 24.10 (`38d3314`):** 8 расхождений синхронизированы (HasImplicitMod→boolean, HasInfluence→list, +PoE2-only действия).
+
+### Fixed
+- **№620: RU baseType → EN перед trade-запросом (`31148a0`):** поле baseTypeResolved, RU-предметы больше не фейлят trade-поиск.
+- **№590: equipment_filters боковых скиллов (`0b1be03`) + AutoSelect-lite.**
+- **statMatching (`4925f97`):** multi-line + fuzzy-матчинг + счётчики.
+- **Portable-fallback гейт (`a39e8a0`)** в make-portable (шаг 2.6 verify-fallback).
+
+### Changed
+- **RU-базы + metadataId (Sidekick-волна, `a752b1c`).**
+
 ## [1.0.34] — 2026-10-24 (сессии №569—№588: живая отладка ритуала + надёжность лаунчеров — «анти-молчаливые-поломки»)
 
 ### Fixed
