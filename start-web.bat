@@ -1,6 +1,14 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+REM №587: pushd вместо cd /d — cd НЕ умеет делать текущим каталог UNC-путь
+REM (\\192.168.0.200\...), при запуске bat прямо из шары cd молча падал,
+REM .portable не находился и ветка portable-сервера не запускалась.
+REM pushd сам мапит UNC на временную букву диска.
+pushd "%~dp0" || (
+  echo [ERROR] Cannot enter script directory: %~dp0
+  pause
+  exit /b 1
+)
 
 REM --- Node обязателен для веба (overlay работает без него, веб — нет).
 where node >nul 2>nul
