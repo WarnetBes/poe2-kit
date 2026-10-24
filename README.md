@@ -478,3 +478,9 @@ Kit останется бесплатным в любом случае 🙂
 
 Лицензия проекта — **MIT** (файл [LICENSE](LICENSE)); вклады данных — на тех
 же условиях. Проект развивает собственную реализацию, не копируя целиком сторонние файлы. В `_research/` находятся скачанные открытые репозитории, послужившие источниками идей/данных; их авторство сохранено и к ним даются ссылки при использовании приёмов.
+
+---
+
+## Теги
+
+`#poe2` `#PathOfExile2` `#PathOfExile` `#PoE2Kit` `#poe2tools` `#gamingtools` `#gameoverlay` `#pricecheck` `#itempricing` `#tradingtools` `#poe2trade` `#poe.ninja` `#poe2scout` `#PoB` `#PathOfBuilding` `#poe2build` `#buildplanner` `#buildgenerator` `#passivetree` `#treeRoute` `#MCP` `#ModelContextProtocol` `#mcpserver` `#aiassistant` `#AIagent` `#OpenCode` `#electronapp` `#typescript` `#opensource` `#SSF`

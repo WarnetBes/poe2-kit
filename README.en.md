@@ -209,6 +209,11 @@ npm run portable     # build the portable zip release asset
 - Version history: [CHANGELOG.md](CHANGELOG.md)
 - Roadmap & build diary: [WORK_LOG.md](WORK_LOG.md) (Russian)
 
+## Tags
+
+`#poe2` `#PathOfExile2` `#PathOfExile` `#PoE2Kit` `#poe2tools` `#gamingtools` `#gameoverlay` `#pricecheck` `#itempricing` `#tradingtools` `#poe2trade` `#poe.ninja` `#poe2scout` `#PoB` `#PathOfBuilding` `#poe2build` `#buildplanner` `#buildgenerator` `#passivetree` `#treeRoute` `#MCP` `#ModelContextProtocol` `#mcpserver` `#aiassistant` `#AIagent` `#OpenCode` `#electronapp` `#typescript` `#opensource` `#SSF`
+
+
 ## ☕ Support
 
 The kit is free and will stay free — no ads, no premium, no telemetry.
