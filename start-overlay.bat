@@ -2,7 +2,13 @@
 setlocal
 REM Консоль в UTF-8: логи оверлея пишутся по-русски.
 chcp 65001 >nul
-cd /d "%~dp0"
+REM No588: pushd instead of cd /d - cmd cannot cd to UNC paths, pushd maps a
+REM temporary drive letter. Silent cd failure meant wrong cwd for all checks.
+pushd "%~dp0" || (
+  echo [ERROR] Cannot enter script directory: %~dp0
+  pause
+  exit /b 1
+)
 
 echo ============================================
 echo   PoE2 Kit - Windows Overlay

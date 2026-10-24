@@ -14,6 +14,7 @@ if %errorlevel% == 0 goto :foundadmin
 echo Requesting administrator privileges...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs -Wait"
 echo If you cancelled the UAC prompt, the toolchain was NOT installed.
+pause
 goto :eof
 
 :foundadmin

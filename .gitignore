@@ -91,6 +91,9 @@ apps/web/public/datasets/
 deploy/*
 !deploy/poe2k-overlay-transfer-src/
 !deploy/poe2k-overlay-transfer.zip
+# No588: START-WEB.bat уезжает другу в zip-transfer — берём под git-защиту
+# (.gitattributes eol=crlf не действует на untracked файлы).
+!deploy/friend-run/
 
 oracle/oracle-output.jsonl
 # LuaJIT-рантайм ставит oracle/setup-headless.mjs (репро + SHA256-гейт); в git не идёт

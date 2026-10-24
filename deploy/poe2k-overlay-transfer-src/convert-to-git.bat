@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+pushd "%~dp0"
 
 echo ============================================
 echo   PoE2 Kit - switch this copy to git auto-update

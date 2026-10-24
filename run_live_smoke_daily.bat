@@ -7,7 +7,7 @@ REM Logs:     <root>\logs\live-smoke-YYYYMMDD_HHMM.log
 REM Status:   <root>\logs\live-smoke-LAST.txt  ("OK" or "FAIL_<rc>")
 REM Exit:     0 = all live APIs OK, schema NOT broken; 1 = provider/schema/network/build failed.
 setlocal
-cd /d "%~dp0"
+pushd "%~dp0"
 
 if not exist logs mkdir logs
 
