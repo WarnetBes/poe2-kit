@@ -18,7 +18,8 @@ export function registerTradeQueryTools(server: McpServer): number {
   - item_text (string, обяз.): клир-текст предмета (Ctrl+C в игре).
   - execute (boolean, опц., по умолч. false): выполнить запрос и вернуть живые листинги (медленнее, до ~2 сек).
   - league (string, опц.): лига (по умолчанию актуальная).
-  - tolerance (number, опц., по умолч. 0): насколько ниже значений предмета искать моды.
+  - tolerance (number, опц., 0..50, по умолч. 20): допуск вниз В ПРОЦЕНТАХ — автозаполненные минимумы (ar/ev/es/DPS) и моды ищутся не ниже floor(value×(100−tolerance)/100).
+  - stat_overrides (массив, опц.): явные фильтры ПО ИМЕНИ стата с приоритетом над автозаполнением — [{name:'es', min:500}, {name:'Evasion', disabled:true}, {name:'pseudo.pseudo_total_life', min:80}]. Имена: ar/armour, ev/evasion, es/energy shield, dps/pdps/edps, label мода ('Fire Res', 'Spirit') или готовый stat-id.
   - price_max (number, опц.): потолок цены в хаосах для фильтра запроса.
   - limit (number, опц., по умолч. 10): сколько листингов вернуть при execute=true.
 
@@ -28,16 +29,23 @@ export function registerTradeQueryTools(server: McpServer): number {
         item_text: z.string().min(5).describe('Клир-текст предмета'),
         execute: z.boolean().optional().describe('Выполнить запрос (живые листинги)'),
         league: z.string().optional().describe('Лига'),
-        tolerance: z.number().int().min(0).max(100).optional().describe('Допуск вниз для статов'),
+        tolerance: z.number().int().min(0).max(100).optional().describe('Допуск вниз для статов, % (эфф. 0..50)'),
+        stat_overrides: z.array(z.object({
+          name: z.string().min(1).describe('Имя стата: ar/ev/es/dps/pdps/edps (и алиасы), label мода или stat-id'),
+          min: z.number().optional(),
+          max: z.number().optional(),
+          disabled: z.boolean().optional().describe('Убрать фильтр из запроса'),
+        })).optional().describe('Явные min/max по имени стата (приоритет над автозаполнением)'),
         price_max: z.number().positive().optional().describe('Потолок цены (хаос)'),
         limit: z.number().int().min(1).max(20).optional().describe('Листингов'),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ item_text, execute, league, tolerance, price_max, limit }) => {
+    async ({ item_text, execute, league, tolerance, stat_overrides, price_max, limit }) => {
       try {
         const payload = core.tradeQuery.buildTradeQueryFromItem(item_text, {
-          tolerance,
+          tolerancePct: tolerance, // % (кап 50 enforced в core)
+          statOverrides: stat_overrides,
           priceMax: price_max,
         });
         const lines: string[] = ['## Trade-запрос (официальный trade2 API PoE2)', ''];

@@ -33,8 +33,8 @@ export interface StatFilterGroup {
 export interface TradeQueryFilters {
   type_filters?: { filters?: Record<string, { option?: string; min?: number; max?: number }> };
   trade_filters?: { filters?: Record<string, { option?: string; min?: number; max?: number }> };
-  weapon_filters?: { filters?: Record<string, { min?: number; max?: number }> };
-  armour_filters?: { filters?: Record<string, { min?: number; max?: number }> };
+  /** Группа обороны/урона trade2: ar, ev, es, dps, pdps, edps (живой /api/trade2/data/filters). */
+  equipment_filters?: { filters?: Record<string, { min?: number; max?: number }> };
 }
 
 export interface TradeQueryPayload {
@@ -60,14 +60,20 @@ export interface TradeQueryInput {
   itemLevelMin?: number;
   priceMin?: number;
   priceMax?: number;
-  /** Оружейные фильтры. */
-  dpsMin?: number;
-  pdpsMin?: number;
-  edpsMin?: number;
-  /** Броневые фильтры. */
+  /** Оборонные фильтры (equipment_filters). */
   armourMin?: number;
+  armourMax?: number;
   evasionMin?: number;
+  evasionMax?: number;
   esMin?: number;
+  esMax?: number;
+  /** DPS-фильтры (equipment_filters). */
+  dpsMin?: number;
+  dpsMax?: number;
+  pdpsMin?: number;
+  pdpsMax?: number;
+  edpsMin?: number;
+  edpsMax?: number;
   /** Готовые stat-фильтры (id+min/max) — добавляются группой 'and'. */
   stats?: Array<{ id: string; min?: number; max?: number }>;
   sort?: 'price_asc' | 'price_desc';
@@ -144,18 +150,20 @@ export function buildTradeQuery(input: TradeQueryInput): TradeQueryPayload {
   }
   if (Object.keys(trf).length) query.filters!.trade_filters = { filters: trf };
 
-  // ВАЖНО (trade2 PoE2): группы weapon_filters НЕ СУЩЕСТВУЕТ — API отвечает
-  // 400 "Unknown filter group: weapon_filters". Фильтры урона (dps/pdps/edps)
-  // живут в type_filters. Проверено живыми запросами ( Forbidden Rites, 0.5 ).
-  const af: Record<string, { min?: number; max?: number }> = {};
-  if (input.armourMin != null) af.ar = { min: input.armourMin };
-  if (input.evasionMin != null) af.ev = { min: input.evasionMin };
-  if (input.esMin != null) af.es = { min: input.esMin };
-  if (Object.keys(af).length) query.filters!.armour_filters = { filters: af };
+  // ВАЖНО (trade2 PoE2, проверено живым GET /api/trade2/data/filters 24.10.2026):
+  // групп weapon_filters и armour_filters НЕ СУЩЕСТВУЕТ → 400 "Unknown filter
+  // group". ВСЕ числовые фильтры предмета живут в equipment_filters:
+  // damage, aps, crit, dps, pdps, edps, ar, ev, es, ward, block, spirit, ...
+  // В type_filters остаются только category, rarity, ilvl, quality.
+  const ef: Record<string, { min?: number; max?: number }> = {};
+  if (input.armourMin != null || input.armourMax != null) ef.ar = { min: input.armourMin, max: input.armourMax };
+  if (input.evasionMin != null || input.evasionMax != null) ef.ev = { min: input.evasionMin, max: input.evasionMax };
+  if (input.esMin != null || input.esMax != null) ef.es = { min: input.esMin, max: input.esMax };
+  if (input.dpsMin != null || input.dpsMax != null) ef.dps = { min: input.dpsMin, max: input.dpsMax };
+  if (input.pdpsMin != null || input.pdpsMax != null) ef.pdps = { min: input.pdpsMin, max: input.pdpsMax };
+  if (input.edpsMin != null || input.edpsMax != null) ef.edps = { min: input.edpsMin, max: input.edpsMax };
+  if (Object.keys(ef).length) query.filters!.equipment_filters = { filters: ef };
 
-  if (input.dpsMin != null) tf.dps = { min: input.dpsMin };
-  if (input.pdpsMin != null) tf.pdps = { min: input.pdpsMin };
-  if (input.edpsMin != null) tf.edps = { min: input.edpsMin };
   if (Object.keys(tf).length) query.filters!.type_filters = { filters: { ...tf, ...(query.filters!.type_filters?.filters ?? {}) } };
 
   if (input.stats?.length) {
@@ -247,39 +255,157 @@ export function modsToStatFilters(
   return [...out.values()].map((e) => ({ id: e.id, min: e.min, label: e.label, value: e.value }));
 }
 
+// ─── AutoSelect-lite: опции автозаполнения из клир-текста ─────────────────────
+
+/** Явное переопределение одного стата по имени (паттерн Sidekick AutoSelectPreferences). */
+export interface ItemStatOverride {
+  /**
+   * Имя стата. Матчинг по нормализованному тексту (lowercase, без
+   * не-буквенно-цифровых символов) против:
+   *  - ключей numeric-фильтров и их алиасов: ar/armour, ev/evasion,
+   *    es/energy shield, dps/total dps, pdps/physical dps, edps/elemental dps;
+   *  - label-ов таблицы MOD_TEXT_TO_STAT ('Fire Res', 'Life (flat)', 'Spirit', ...);
+   *  - готовых stat-id ('pseudo.pseudo_total_life', 'explicit.stat_...').
+   */
+  name: string;
+  /** Явный минимум — имеет ПРИОРИТЕТ над tolerance-нормализацией. */
+  min?: number;
+  /** Явный максимум (для stat-модов; для ar/ev/es/dps — max numeric-фильтра). */
+  max?: number;
+  /** true — убрать фильтр из запроса совсем. */
+  disabled?: boolean;
+}
+
+export interface BuildTradeQueryFromItemOptions {
+  /**
+   * Легаси-допуск: абсолютный вычет из значения каждого распознанного мода
+   * (min = value − tolerance). Оставлен для совместимости; при заданном
+   * tolerance процентная нормализация модов НЕ применяется.
+   */
+  tolerance?: number;
+  priceMax?: number;
+  /**
+   * Процентный допуск вниз (AutoSelect-lite,Sidekick normalizeBy): автозаполненные
+   * минимумы считаются как floor(value × (100 − tolerancePct)/100).
+   * Диапазон 0..50, по умолчанию 20 → фактор 0.8 (прежний хардкод для ar/ev/es;
+   * dps/pdps/edps сохраняют исторически больший допуск: фактор − 0.1, т.е. 0.7
+   * по умолчанию). Применяется к ar/ev/es/dps всегда; к stat-модам — когда
+   * задан явно (иначе моды остаются с точным значением, как раньше).
+   */
+  tolerancePct?: number;
+  /**
+   * Явные min/max по имени стата — второй режим AutoSelect-lite (Sidekick
+   * issue #1005 исправлен заранее: оба режима совместимы — сначала применяется
+   * override, поверх — автозаполнение всего остального).
+   */
+  statOverrides?: ItemStatOverride[];
+}
+
+/** Нормализация имени для матчинга: lowercase, только [a-z0-9]. */
+function normStatName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** Алиасы numeric-фильтров → ключ equipment_filters. */
+const NUMERIC_FILTER_KEYS: Record<string, 'ar' | 'ev' | 'es' | 'dps' | 'pdps' | 'edps'> = {
+  ar: 'ar', armour: 'ar', armor: 'ar', armourrating: 'ar',
+  ev: 'ev', evasion: 'ev', evasionrating: 'ev',
+  es: 'es', energyshield: 'es', maximumenergyshield: 'es',
+  dps: 'dps', totaldps: 'dps',
+  pdps: 'pdps', physicaldps: 'pdps',
+  edps: 'edps', elementaldps: 'edps',
+};
+
 /**
  * Собрать trade-запрос из клир-текста предмета: базовый тип/категория,
- * рейтинги защиты/урона как числовые фильтры, моды как stat-фильтры.
+ * рейтинги защиты/урона как числовые фильтры (equipment_filters), моды как
+ * stat-фильтры. Режимы AutoSelect-lite:
+ *  1) нормализация: min = floor(value × (100 − tolerancePct)/100);
+ *  2) явные statOverrides по имени (приоритет над нормализацией).
  */
-export function buildTradeQueryFromItem(itemText: string, opts: { tolerance?: number; priceMax?: number } = {}): TradeQueryPayload {
+export function buildTradeQueryFromItem(itemText: string, opts: BuildTradeQueryFromItemOptions = {}): TradeQueryPayload {
   const parsed = parseItemText(itemText);
   const input: TradeQueryInput = {};
   if (parsed.name && parsed.rarity === 'Unique') input.name = parsed.name;
   if (parsed.baseType) input.type = parsed.baseType;
 
-  if (parsed.defences.armour?.value) input.armourMin = Math.round(parsed.defences.armour.value * 0.8);
-  if (parsed.defences.evasion?.value) input.evasionMin = Math.round(parsed.defences.evasion.value * 0.8);
-  if (parsed.defences.energyShield?.value) input.esMin = Math.round(parsed.defences.energyShield.value * 0.8);
+  // Автозаполнение numeric-фильтров: процентная нормализация вместо хардкода.
+  const tolPct = Math.min(Math.max(opts.tolerancePct ?? 20, 0), 50);
+  const defFactor = (100 - tolPct) / 100;
+  // dps-фильтры исторически имели допуск 0.7 против 0.8 у защитных — сохраняем пропорцию.
+  const dpsFactor = Math.max(0, defFactor - 0.1);
+
+  interface NumVal { auto: number; min?: number; max?: number; disabled?: boolean }
+  const num: Partial<Record<'ar' | 'ev' | 'es' | 'dps' | 'pdps' | 'edps', NumVal>> = {};
+  if (parsed.defences.armour?.value) num.ar = { auto: Math.floor(parsed.defences.armour.value * defFactor) };
+  if (parsed.defences.evasion?.value) num.ev = { auto: Math.floor(parsed.defences.evasion.value * defFactor) };
+  if (parsed.defences.energyShield?.value) num.es = { auto: Math.floor(parsed.defences.energyShield.value * defFactor) };
 
   if (parsed.offense.attacksPerSecond?.value && (parsed.offense.physicalDamage || parsed.offense.elementalDamage.length)) {
     const aps = parsed.offense.attacksPerSecond.value;
     const pdps = parsed.offense.physicalDamage ? ((parsed.offense.physicalDamage.min + parsed.offense.physicalDamage.max) / 2) * aps : 0;
     const edps = parsed.offense.elementalDamage.reduce((a, e) => a + ((e.min + e.max) / 2) * aps, 0);
     if (pdps + edps > 0) {
-      input.dpsMin = Math.round((pdps + edps) * 0.7);
-      input.pdpsMin = Math.round(pdps * 0.7);
-      input.edpsMin = Math.round(edps * 0.7);
+      num.dps = { auto: Math.floor((pdps + edps) * dpsFactor) };
+      if (pdps > 0) num.pdps = { auto: Math.floor(pdps * dpsFactor) };
+      if (edps > 0) num.edps = { auto: Math.floor(edps * dpsFactor) };
     }
   }
+
+  // Явные overrides: применяются ПОСЛЕ автозаполнения, ПО ИМЕНИ (режим 2).
+  const overrides = opts.statOverrides ?? [];
+  for (const o of overrides) {
+    const key = NUMERIC_FILTER_KEYS[normStatName(o.name)];
+    if (!key) continue; // не numeric — матчится ниже по модам
+    if (!num[key]) num[key] = { auto: 0, disabled: true }; // фильтра нет — создать/выключить
+    if (o.disabled) num[key]!.disabled = true;
+    else {
+      if (o.min != null) { num[key]!.min = o.min; num[key]!.disabled = false; }
+      if (o.max != null) { num[key]!.max = o.max; num[key]!.disabled = false; }
+    }
+  }
+
+  if (num.ar && !num.ar.disabled) { input.armourMin = num.ar.min ?? num.ar.auto; if (num.ar.max != null) input.armourMax = num.ar.max; }
+  if (num.ev && !num.ev.disabled) { input.evasionMin = num.ev.min ?? num.ev.auto; if (num.ev.max != null) input.evasionMax = num.ev.max; }
+  if (num.es && !num.es.disabled) { input.esMin = num.es.min ?? num.es.auto; if (num.es.max != null) input.esMax = num.es.max; }
+  if (num.dps && !num.dps.disabled) { input.dpsMin = num.dps.min ?? num.dps.auto; if (num.dps.max != null) input.dpsMax = num.dps.max; }
+  if (num.pdps && !num.pdps.disabled) { input.pdpsMin = num.pdps.min ?? num.pdps.auto; if (num.pdps.max != null) input.pdpsMax = num.pdps.max; }
+  if (num.edps && !num.edps.disabled) { input.edpsMin = num.edps.min ?? num.edps.auto; if (num.edps.max != null) input.edpsMax = num.edps.max; }
 
   if (parsed.rarity === 'Rare' || parsed.rarity === 'Magic') input.rarity = parsed.rarity.toLowerCase() as 'rare' | 'magic';
   if (opts.priceMax != null) input.priceMax = opts.priceMax;
 
   // Предмет с уроном/APS — оружие: его моды "increased Physical Damage"/"Attack Speed"
   // локальные, выбор explicit-id зависит от этого флага.
-  const isWeapon = input.dpsMin != null || input.pdpsMin != null || input.edpsMin != null;
-  const statFilters = modsToStatFilters(parsed.mods.map((m) => m.text), { tolerance: opts.tolerance, weapon: isWeapon });
-  if (statFilters.length) input.stats = statFilters.map((s) => ({ id: s.id, min: s.min }));
+  const isWeapon = !!(num.dps || num.pdps || num.edps);
+  const statFilters = modsToStatFilters(parsed.mods.map((m) => m.text), {
+    tolerance: opts.tolerance,
+    weapon: isWeapon,
+  });
+  // Процентная нормализация модов: только когда tolerancePct задан явно
+  // (легаси-вызовы без опций получают точные значения, как раньше).
+  if (opts.tolerancePct != null && opts.tolerance == null) {
+    for (const f of statFilters) f.min = Math.max(0, Math.floor((f.value ?? f.min ?? 0) * defFactor));
+  }
+  // Overrides по модам: по stat-id или label из MOD_TEXT_TO_STAT.
+  const overrideApplies = (o: ItemStatOverride, id: string, label: string): boolean => {
+    if (o.name === id) return true;
+    const n = normStatName(o.name);
+    const l = normStatName(label);
+    return !!n && (l === n || l.startsWith(n));
+  };
+  const patched = statFilters
+    .map((f) => {
+      const o = overrides.find((o) => overrideApplies(o, f.id, f.label ?? ''));
+      if (!o) return { id: f.id, min: f.min };
+      if (o.disabled) return null; // убран из запроса совсем
+      const pf: { id: string; min?: number; max?: number } = { id: f.id };
+      pf.min = o.min ?? f.min; // явный min бьёт автозаполнение; без min — прежний автозаполненный
+      if (o.max != null) pf.max = o.max;
+      return pf;
+    })
+    .filter((p): p is { id: string; min?: number; max?: number } => p != null);
+  if (patched.length) input.stats = patched;
 
   return buildTradeQuery(input);
 }
