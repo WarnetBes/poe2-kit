@@ -50,7 +50,12 @@ poe2scout, poe.ninja and trade2.*
 - **+ more tabs**: waypoint/tilestone recipes, boss-timer, RU⇄EN item/gem
   dictionaries, crafting recipes (essences, omens), currency rates, a
   “pinnacle readiness” checklist, live top-builds from poe.ninja.
-- **🤖 MCP server** — 65 poe2_* tools, so your AI assistant (OpenCode,
+- **🧬 Build generator** — the ⚙ Synthesis mode in the 🧬 Builds tab: pick
+  class / level / budget / skill hint → a build skeleton (main skill, supports,
+  target slots, numeric cap goals) with real engine verification per goal
+  (pass/warn/fail GoalCheck); the meta tab also knows your build (“your skill:
+  N% of players”).
+- **🤖 MCP server** — 79 poe2_* tools, so your AI assistant (OpenCode,
   Claude Desktop, …) can price items, decode PoB codes, pull ladders,
   rates and dataset info for you.
 - **🌐 Web dashboard** — the same core in the browser: rates, price check,
@@ -61,7 +66,7 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 | Frontend | Package | What it is |
 |---|---|---|
 | 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: hotkey pricing, build/gems/leveling tabs, watchlist alerts |
-| 🧠 MCP server for AI | `apps/mcp` | 65 `poe2_*` tools for AI assistants (stdio) |
+| 🧠 MCP server for AI | `apps/mcp` | 79 `poe2_*` tools for AI assistants (stdio) |
 | 🌐 Web app | `apps/web` | Browser dashboard: currency rates, price check, leveling guide, build import, 🛡 Radar |
 
 > **Note**: since v1.0.18 the overlay panel UI is switchable to English
@@ -77,7 +82,7 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
 1. **Download**: [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-   the latest release (v1.0.34):
+   the latest release (v1.0.35):
    - **`poe2-kit-portable-…-win64.zip`** (~92 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
@@ -149,7 +154,7 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
   repository that you download yourself; the kit never patches or modifies
   it. Without a configured clone the tab honestly refuses to work — no
   silent fallbacks.
-- **MCP tooling.** The kit ships an MCP server (77 tools) for MCP clients
+- **MCP tooling.** The kit ships an MCP server (79 tools) for MCP clients
   (OpenCode etc.): a plain local process you start yourself, talking to the
   same public APIs as the web UI. The game client is never touched: log tools
   read only the standard game log.
