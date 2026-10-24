@@ -131,12 +131,38 @@ export interface LiveFilterConfig {
   thresholdEx: number;
   /** Личный always-show (BaseTypes), НИКОГДА не скрывается (группа 3). */
   alwaysShow?: string[];
+  /**
+   * Цели билда (§3.5 плана, этап F): генератор добавляет Show-правила для
+   * нужных билду баз/модов — «что билд ищет апгрейдом, никогда не прячется».
+   * НЕ hardcoded: данные приходят снаружи (сериализуемый конфиг).
+   * Прохождение через SelfCheck обязательно (unknown база → правило дропнуто).
+   */
+  buildTargets?: LiveFilterBuildTargets;
   /** Слайдер: показывать uncut gems только >= уровня (группа 9). */
   uncutGemMinLevel?: number;
   /** Слайдер: показывать waystones только >= тира (группа 9). */
   waystoneMinTier?: number;
   /** Скрывать Normal/Magic гир-классы ниже порога (группа 10, default true). */
   hideLowRarityGear?: boolean;
+}
+
+/**
+ * Цели билда для build-aware-правил (§3.5 этап F): ничего не выдумываем —
+ * условия только из каталога conditions.json. Сопротивления (resistances)
+ * фильтр НЕ умеет выражать («resist >= X» нет в каталоге) — поле хранится
+ * как метаданные для UI/будущего sourcing, в правила НЕ транслируется.
+ */
+export interface LiveFilterBuildTargets {
+  /** Носимые/целевые базы билда: Show с exact BaseType (чанки по DEFAULT_CHUNK_SIZE). */
+  baseTypes?: string[];
+  /** Целевые моды: Show с exact HasExplicitMod. Требует проверки в игре. */
+  hasExplicitMods?: string[];
+  /** Интересные resistance-типы — метаданные (фильтром не выражаются). */
+  resistances?: Array<'fire' | 'cold' | 'lightning' | 'chaos'>;
+  /** ItemLevel-пол для целей (ItemLevel >= N в каждом build-aware Show). */
+  minIlvl?: number;
+  /** Происхождение targets — метаданные provenance (не влияют на FilterKey). */
+  source?: 'pob' | 'manual';
 }
 
 /**
@@ -160,6 +186,8 @@ export interface LiveFilterStats {
   cheapExceptional: number;
   stackRules: number;
   droppedRules: number;
+  /** Сгенерированных build-aware правил (группа 3.5, этап F). */
+  buildAwareRules: number;
   warnings: string[];
 }
 
@@ -197,6 +225,11 @@ const STYLE_GEM: RuleStyle = {
 };
 const STYLE_KEEP: RuleStyle = { font: 38, text: '235 235 235 255', border: '150 150 160 255', bg: '30 30 34 230' };
 const STYLE_DIM: RuleStyle = { font: 18, text: '120 120 120 180', bg: '0 0 0 150' };
+/** Build-aware (этап F): цели билда — зелёный луч, заметнее always-show. */
+const STYLE_BUILD: RuleStyle = {
+  font: 42, text: '150 255 200 255', border: '60 220 130 255', bg: '10 60 35 235',
+  beam: 'Green', icon: '0 Green Star',
+};
 
 /** Гир-классы (эквипмент без джевелов/флаконов), rules.go:166-170 — факты имён. */
 const GEAR_CLASSES = [
@@ -299,7 +332,7 @@ export function generateDynamicBlock(
   const stats: LiveFilterStats = {
     thresholdEx: thr, valuableCurrency: 0, cheapCurrency: 0,
     valuableUniqueBases: 0, cheapUniqueBases: 0, valuableExceptional: 0,
-    cheapExceptional: 0, stackRules: 0, droppedRules: 0, warnings: [],
+    cheapExceptional: 0, stackRules: 0, droppedRules: 0, buildAwareRules: 0, warnings: [],
   };
   const ctx: BuildCtx = { cfg, snap, known, stats, blocks: [] };
 
@@ -404,6 +437,50 @@ export function generateDynamicBlock(
       conditions: baseTypeCond(alwaysShow, DEFAULT_CHUNK_SIZE),
       actions: styleActions(STYLE_KEEP),
     });
+  }
+
+  // 3.5 Build-aware (§3.5 плана, этап F): цели билда — Show-правила для
+  // нужных билду баз/модов. До value tiers: first-match-wins, цель билда
+  // не должна быть перекрыта ценовыми группами ниже И не должна попасть
+  // в Hide-группы (гир, носимый билдом = кандидат на апгрейд).
+  // Условия — ТОЛЬКО из каталога conditions.json: BaseType exact,
+  // HasExplicitMod exact, ItemLevel >=. Resistances фильтром не выражаются.
+  const targets = cfg.buildTargets;
+  const buildMinIlvl = targets?.minIlvl && targets.minIlvl > 0 ? targets.minIlvl : null;
+  const buildBasesRaw = uniq(targets?.baseTypes ?? []);
+  const buildBases: string[] = [];
+  for (const b of buildBasesRaw) {
+    const canon = canonBase(ctx, b);
+    if (!canon) { stats.warnings.push(`build target вне known-баз (правило дропнуто): ${b}`); continue; }
+    buildBases.push(canon);
+  }
+  if (buildBases.length > 0) {
+    const conds = baseTypeCond(buildBases, DEFAULT_CHUNK_SIZE);
+    if (buildMinIlvl !== null) conds.push({ kind: 'numeric', name: 'ItemLevel', op: '>=', value: buildMinIlvl });
+    addBlock(ctx, {
+      type: 'Show',
+      comment: `build-aware bases${buildMinIlvl !== null ? ` (ilvl >= ${buildMinIlvl})` : ''}`,
+      conditions: conds,
+      actions: styleActions(STYLE_BUILD),
+    });
+    stats.buildAwareRules++;
+  }
+  const buildMods = uniq(targets?.hasExplicitMods ?? []).map(sanitizeLine);
+  if (buildMods.length > 0) {
+    const modConds = chunk(buildMods, DEFAULT_CHUNK_SIZE).map(
+      (part): FilterCondition => ({
+        kind: 'list', name: 'HasExplicitMod', op: '==', exact: true,
+        values: part,
+      }),
+    );
+    if (buildMinIlvl !== null) modConds.push({ kind: 'numeric', name: 'ItemLevel', op: '>=', value: buildMinIlvl });
+    addBlock(ctx, {
+      type: 'Show',
+      comment: `build-aware mods${buildMinIlvl !== null ? ` (ilvl >= ${buildMinIlvl})` : ''}`,
+      conditions: modConds,
+      actions: styleActions(STYLE_BUILD),
+    });
+    stats.buildAwareRules++;
   }
 
   // 4. Divine spotlight — отдельный beam.

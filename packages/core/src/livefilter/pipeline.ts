@@ -24,7 +24,7 @@
 
 import { composeLiveFilter } from './injector.js';
 import { HAS_DISK, cryptoMod } from '../nodeenv.js';
-import type { LiveFilterConfig, LiveFilterSnapshot } from './rules.js';
+import type { LiveFilterBuildTargets, LiveFilterConfig, LiveFilterSnapshot } from './rules.js';
 
 export const LIVE_TICK_MS = 30_000;
 export const LIVE_FULL_RUN_MS = 4 * 60 * 60 * 1000;
@@ -67,6 +67,22 @@ export type TickResult =
   | { kind: 'error'; error: unknown; retryAtMs: number };
 
 /**
+ * Нормализация buildTargets для ключа (config.go:380-397): только поля,
+ * влияющие на содержимое фильтра (baseTypes/hasExplicitMods/minIlvl),
+ * stable-сортировка списков; пустое/полностью-метаданное — отсутствует.
+ * `resistances`/`source` — provenance/будущий UI, в содержимое не входят.
+ */
+function normalizeBuildTargetsForKey(t: LiveFilterBuildTargets): LiveFilterBuildTargets | null {
+  const out: LiveFilterBuildTargets = {};
+  const bases = (t.baseTypes ?? []).filter((s) => s.trim().length > 0).sort();
+  const mods = (t.hasExplicitMods ?? []).filter((s) => s.trim().length > 0).sort();
+  if (bases.length > 0) out.baseTypes = bases;
+  if (mods.length > 0) out.hasExplicitMods = mods;
+  if (t.minIlvl !== undefined && t.minIlvl > 0) out.minIlvl = t.minIlvl;
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/**
  * FilterKey-нормализация конфига (config.go:380-397): только поля, влияющие
  * на содержимое фильтра; undefined/пустые-массивы эквивалентны отсутствующим;
  * стабильный порядок ключей. league входит (терм of содержимого: шапка блока).
@@ -76,6 +92,11 @@ export function filterContentKey(config: LiveFilterConfig, league: string, conte
   const entries = Object.entries(config).filter(([k]) => k in DEFAULT_CONFIG_KEYS);
   for (const [k, v] of entries) {
     if (v === undefined) continue; // отсутствует
+    if (k === 'buildTargets') {
+      const t = normalizeBuildTargetsForKey(v as LiveFilterBuildTargets);
+      if (t) norm[k] = t;
+      continue; // пустые targets == отсутствующие (config.go:390-397)
+    }
     if (Array.isArray(v) && v.length === 0) continue; // [] == отсутствует (config.go:390-397)
     norm[k] = Array.isArray(v) ? [...v].sort() : v;
   }
@@ -85,7 +106,7 @@ export function filterContentKey(config: LiveFilterConfig, league: string, conte
 
 const DEFAULT_CONFIG_KEYS: Record<string, true> = {
   thresholdEx: true, alwaysShow: true, uncutGemMinLevel: true,
-  waystoneMinTier: true, hideLowRarityGear: true,
+  waystoneMinTier: true, hideLowRarityGear: true, buildTargets: true,
 };
 
 function initialState(now: number): PipelineState {
