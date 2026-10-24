@@ -451,10 +451,44 @@ export function identifyDefenseGaps(d: EstimatedDefenses, threat: ThreatProfile 
 
 // ─── DPS оружия (грубая оценка) ──────────────────────────────────────────────
 
-/** Грубая DPS-оценка по оружию из билда (без дерева/гемов — только сам предмет). */
-export function estimateWeaponDps(gear: BuildGearItem[]): { weapon: string | null; physDps: number; elementalDps: number; attacksPerSecond: number; totalDps: number } {
+/**
+ * DPS-оценка одного оружейного набора (weapon set).
+ * Слоты PoB2 (CalcSetup.lua:706-707): "Weapon 1"/"Weapon 2" — набор I,
+ * "Weapon 1 Swap"/"Weapon 2 Swap" (или "Weapon 3"/"Weapon 4") — набор II.
+ */
+export interface WeaponSetDps {
+  /** Набор оружия: 1 (основной) или 2 (swap). */
+  set: 1 | 2;
+  weapon: string | null;
+  physDps: number;
+  elementalDps: number;
+  attacksPerSecond: number;
+  totalDps: number;
+}
+
+/** Набор оружия для слота (swap-слоты → 2, прочие оружейные → 1). */
+function weaponSetForSlot(slot: string): 1 | 2 {
+  const s = (slot ?? '').toLowerCase();
+  return /swap/.test(s) || /^weapon\s*[34]$/.test(s.trim()) ? 2 : 1;
+}
+
+/** Грубая DPS-оценка по оружию из билда (без дерева/гемов — только сам предмет).
+ * Возвращает лучшее оружие И разбивку по наборам (weapon set 1/2): PoB2 держит
+ * второй набор как отдельный env (CalcSetup.lua:2479-2508), наша оценка —
+ * по-слотовая: swap-слоты ("Weapon 1 Swap"/"Weapon 2 Swap") дают отдельную
+ * DPS-строку для набора II. adapted from PathOfBuilding-PoE2 (MIT). */
+export function estimateWeaponDps(gear: BuildGearItem[]): {
+  weapon: string | null;
+  physDps: number;
+  elementalDps: number;
+  attacksPerSecond: number;
+  totalDps: number;
+  /** Лучшее оружие каждого набора (пустые наборы не включаются). */
+  bySet: WeaponSetDps[];
+} {
   const weapons = gear.filter((g) => /weapon/i.test(g.slot ?? '') || /weapon/i.test(g.name ?? ''));
-  let best: { name: string | null; pdps: number; edps: number; aps: number } | null = null;
+  let best: { name: string | null; pdps: number; edps: number; aps: number; set: 1 | 2 } | null = null;
+  const perSet = new Map<1 | 2, { name: string | null; pdps: number; edps: number; aps: number }>();
   for (const w of weapons) {
     if (!w.itemText || w.itemText.trim().length < 10) continue;
     try {
@@ -465,8 +499,11 @@ export function estimateWeaponDps(gear: BuildGearItem[]): { weapon: string | nul
       const edps =
         p.offense.elementalDamage.reduce((acc, e) => acc + ((e.min + e.max) / 2) * (p.offense.attacksPerSecond?.value ?? 1), 0);
       const aps = p.offense.attacksPerSecond?.value ?? 0;
+      const set = weaponSetForSlot(w.slot ?? w.name ?? '');
+      const prev = perSet.get(set);
+      if (!prev || pdps + edps > prev.pdps + prev.edps) perSet.set(set, { name: p.name ?? p.baseType, pdps, edps, aps });
       if (!best || pdps + edps > best.pdps + best.edps) {
-        best = { name: p.name ?? p.baseType, pdps, edps, aps };
+        best = { name: p.name ?? p.baseType, pdps, edps, aps, set };
       }
     } catch {
       /* пропускаем непонятные предметы */
@@ -478,7 +515,119 @@ export function estimateWeaponDps(gear: BuildGearItem[]): { weapon: string | nul
     elementalDps: Math.round(best?.edps ?? 0),
     attacksPerSecond: best?.aps ?? 0,
     totalDps: Math.round((best?.pdps ?? 0) + (best?.edps ?? 0)),
+    bySet: ([1, 2] as const)
+      .filter((s) => perSet.has(s))
+      .map((s) => {
+        const v = perSet.get(s)!;
+        return {
+          set: s,
+          weapon: v.name,
+          physDps: Math.round(v.pdps),
+          elementalDps: Math.round(v.edps),
+          attacksPerSecond: v.aps,
+          totalDps: Math.round(v.pdps + v.edps),
+        };
+      }),
   };
+}
+
+// ─── Override-API: «что-если»-подмены перед оценкой (паттерн PoB CalcOverride) ──
+
+/**
+ * Override-значения: подмена stat'а перед переоценкой билда.
+ * Паттерн PoB CalcOverride (Calcs.lua:74-86): юзер задаёт виртуальные изменения,
+ * движок пересчитывает env в режиме «что-если». Наш аналог для геар-оценки:
+ * значения подменяются ДО пересчёта EHP/гэпов, оценка честно помечает
+ * подменённые поля (см. OverrideApplied). adapted from PathOfBuilding-PoE2 (MIT).
+ */
+export interface EstimateOverride {
+  life?: number;
+  energyShield?: number;
+  armour?: number;
+  evasion?: number;
+  blockChance?: number;
+  fireRes?: number;
+  coldRes?: number;
+  lightningRes?: number;
+  chaosRes?: number;
+  /** Подмена итогового DPS билда (что-если: «если бы DPS был X»). */
+  totalDps?: number;
+}
+
+/** Одна применённая подмена: поле, было → стало. */
+export interface OverrideApplied {
+  field: keyof EstimateOverride;
+  from: number;
+  to: number;
+}
+
+type OverrideDefenseKey =
+  | 'life' | 'energyShield' | 'armour' | 'evasion' | 'blockChance'
+  | 'fireRes' | 'coldRes' | 'lightningRes' | 'chaosRes';
+
+const OVERRIDE_DEFENSE_FIELDS: Array<[keyof EstimateOverride, OverrideDefenseKey]> = [
+  ['life', 'life'],
+  ['energyShield', 'energyShield'],
+  ['armour', 'armour'],
+  ['evasion', 'evasion'],
+  ['blockChance', 'blockChance'],
+  ['fireRes', 'fireRes'],
+  ['coldRes', 'coldRes'],
+  ['lightningRes', 'lightningRes'],
+  ['chaosRes', 'chaosRes'],
+];
+
+/**
+ * Применить «что-если»-подмены к готовой оценке: defenses патчатся, EHP-слои и
+ * слабые места пересчитываются каноническими формулами, каждая подмена
+ * фиксируется в est.overrides и notes (оценка НЕ выдаёт подмену за факт).
+ * Пул life не флоорится: override — авторитетное значение юзера/агента.
+ */
+export function applyEstimateOverrides(
+  est: BuildEstimate,
+  overrides: EstimateOverride,
+  threat: ThreatProfile = DEFAULT_THREAT,
+): BuildEstimate {
+  const applied: OverrideApplied[] = [];
+  const defenses: EstimatedDefenses = { ...est.defenses };
+  for (const [oKey, dKey] of OVERRIDE_DEFENSE_FIELDS) {
+    const v = overrides[oKey];
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      applied.push({ field: oKey, from: defenses[dKey], to: v });
+      defenses[dKey] = v;
+    }
+  }
+  // Блок — кап канона (PoE2 50%), подмена выше капа честно клампится
+  // (запись override отражает фактически применённое значение).
+  if (defenses.blockChance > DEFENSE_CONSTANTS.BLOCK_MAX_CHANCE) {
+    const rec = applied.find((a) => a.field === 'blockChance');
+    if (rec) rec.to = DEFENSE_CONSTANTS.BLOCK_MAX_CHANCE;
+    defenses.blockChance = DEFENSE_CONSTANTS.BLOCK_MAX_CHANCE;
+  }
+  let overrideDps = est.overrideDps;
+  if (typeof overrides.totalDps === 'number' && Number.isFinite(overrides.totalDps)) {
+    applied.push({ field: 'totalDps', from: overrideDps ?? est.pobStats['FullDPS'] ?? est.pobStats['TotalDPS'] ?? 0, to: overrides.totalDps });
+    overrideDps = overrides.totalDps;
+  }
+
+  const ehp = calculateAllEhp(defenses, threat);
+  let worstEhp: BuildEstimate['worstEhp'] = null;
+  for (const t of Object.keys(ehp) as DamageTypeKind[]) {
+    if (ehp[t].effectiveHp !== Infinity && (!worstEhp || ehp[t].effectiveHp < worstEhp.effectiveHp)) {
+      worstEhp = { damageType: t, effectiveHp: ehp[t].effectiveHp };
+    }
+  }
+  const notes = est.notes.slice();
+  if (applied.length > 0) {
+    notes.push(
+      `⚠️ Override (что-если): подменено ${applied.length} поле(й) — ${applied
+        .map((a) => `${a.field}: ${Math.round(a.from * 100) / 100} → ${Math.round(a.to * 100) / 100}`)
+        .join(', ')}. Это сценарий, а не фактические числа билда.`,
+    );
+  } else {
+    notes.push('Override применён, но ни одно поле не изменилось (пустой/нечисловой набор).');
+  }
+  return { ...est, defenses, ehp, worstEhp, gaps: identifyDefenseGaps(defenses, threat), overrides: applied, overrideDps, notes };
 }
 
 // ─── Полная оценка билда ────────────────────────────────────────────────────
@@ -497,6 +646,17 @@ export interface BuildEstimate {
   worstEhp: { damageType: DamageTypeKind; effectiveHp: number } | null;
   gaps: DefenseGap[];
   weapon: ReturnType<typeof estimateWeaponDps>;
+  /**
+   * FullDPS-агрегат билда (adapted from PathOfBuilding-PoE2 (MIT),
+   * Calcs.lua:140-170): combinedDPS = Σ TotalDPS по всем скиллам + DoT-максимумы.
+   * Источник — PoB: игрокейский PlayerStat FullDPS (приоритет) либо сумма
+   * панельных <FullDPSSkill>. null — PoB-данных нет (только оружие).
+   */
+  fullDps: { skills: Array<{ stat: string; value: number }>; combinedDps: number | null } | null;
+  /** Применённые «что-если»-подмены (applyEstimateOverrides): что и на что. */
+  overrides: OverrideApplied[];
+  /** DPS, подменённый через override (что-если) — приоритетнее PoB-чисел в оценках. */
+  overrideDps: number | null;
   /** Честные предупреждения о приближениях. */
   notes: string[];
 }
@@ -538,6 +698,28 @@ export async function estimateBuild(input: string | BuildGearItem[], threat: Thr
     gear = (input as BuildGearItem[]);
   }
 
+  // FullDPS-агрегат (adapted from PathOfBuilding-PoE2 (MIT), Calcs.lua:140-170):
+  // приоритет — PlayerStat FullDPS (готовый combinedDPS движка), иначе сумма
+  // панельных <FullDPSSkill> по скиллам (тот же тег, что и build.ts fullDps).
+  let fullDps: BuildEstimate['fullDps'] = null;
+  if (xml) {
+    const fullDpsSkills: Array<{ stat: string; value: number }> = [];
+    const fdRe = /<FullDPSSkill\s+stat="([^"]+)"\s+value="([^"]*)"[^>]*\/>/g;
+    let fm: RegExpExecArray | null;
+    while ((fm = fdRe.exec(xml))) {
+      const v = parseFloat(fm[2]!);
+      if (Number.isFinite(v)) fullDpsSkills.push({ stat: fm[1]!, value: v });
+    }
+    const pobFull = pobStats['FullDPS'];
+    if (typeof pobFull === 'number' || fullDpsSkills.length > 0) {
+      const sum = fullDpsSkills.reduce((s, x) => s + x.value, 0);
+      fullDps = {
+        skills: fullDpsSkills,
+        combinedDps: typeof pobFull === 'number' ? pobFull : sum,
+      };
+    }
+  }
+
   const defenses = mergeGearDefenses(gear);
   const ehp = calculateAllEhp(defenses, threat);
   let worstEhp: BuildEstimate['worstEhp'] = null;
@@ -555,7 +737,11 @@ export async function estimateBuild(input: string | BuildGearItem[], threat: Thr
   ];
   if (defenses.emptySlots > 0) notes.push(`Слотов без клир-текста: ${defenses.emptySlots} — их статы не вошли в оценку.`);
   if (Object.keys(pobStats).length > 0) notes.push('Найдены PlayerStat из PoB — они точнее геар-оценки (см. pobStats).');
+  if (fullDps?.combinedDps != null) {
+    notes.push(`FullDPS-агрегат PoB: ${Math.round(fullDps.combinedDps)} (все скиллы; источник — PoB, а не наша геар-оценка).`);
+  }
   if (weapon.weapon === null) notes.push('Оружие не распознано — DPS не оценён.');
+  if (weapon.bySet.length === 2) notes.push('Найдены оба оружейных набора (weapon set I/II) — DPS каждого см. weapon.bySet.');
 
   return {
     source: Object.keys(pobStats).length > 0 ? 'pob+gear' : 'gear',
@@ -568,6 +754,9 @@ export async function estimateBuild(input: string | BuildGearItem[], threat: Thr
     worstEhp,
     gaps,
     weapon,
+    fullDps,
+    overrides: [],
+    overrideDps: null,
     notes,
   };
 }

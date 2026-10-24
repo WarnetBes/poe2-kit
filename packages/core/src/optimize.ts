@@ -73,11 +73,20 @@ export function evaluateBuildAgainstGoals(est: BuildEstimate, goals: BuildGoals)
   const isCI = life !== null && life <= 10;
   const out: GoalCheck[] = [];
 
-  // DPS: PoB TotalDPS — computed; fallback — DPS оружия (estimated).
-  const pobDps = num(ps['TotalDPS']);
+  // DPS: приоритет — override «что-если» (мы помечаем его estimated, это НЕ факт),
+  // затем PoB FullDPS-агрегат (все скиллы + DoT, Calcs.lua:151-170) — computed,
+  // затем PlayerStat TotalDPS (главный скилл) — computed,
+  // fallback — DPS оружия (estimated).
   if (goals.dps != null) {
-    if (pobDps !== null) {
-      out.push(goal('dps', pobDps, goals.dps, 'computed', 'PlayerStat TotalDPS из PoB'));
+    const pobFull = est.fullDps?.combinedDps ?? null;
+    const pobDps = num(ps['TotalDPS']);
+    if (est.overrideDps != null) {
+      out.push(goal('dps', est.overrideDps, goals.dps, 'estimated',
+        'Override «что-если»: DPS подменён пользователем/агентом — сценарий, не фактический расчёт'));
+    } else if (pobFull !== null) {
+      out.push(goal('dps', pobFull, goals.dps, 'computed', 'FullDPS-агрегат PoB (все скиллы + DoT)'));
+    } else if (pobDps !== null) {
+      out.push(goal('dps', pobDps, goals.dps, 'computed', 'PlayerStat TotalDPS из PoB (главный скилл)'));
     } else {
       out.push(goal('dps', est.weapon.totalDps > 0 ? est.weapon.totalDps : null, goals.dps, 'estimated',
         'PoB-числа нет; это только DPS оружия, без умений/линков — открой в PoB для точного значения'));
