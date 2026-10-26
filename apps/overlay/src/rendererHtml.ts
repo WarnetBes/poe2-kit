@@ -14,7 +14,7 @@ export const rendererHtml = `<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' file:" />
 <title>PoE2 Kit — оверлей</title>
 <style>${OVERLAY_CSS}</style>
 </head>
