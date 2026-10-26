@@ -217,10 +217,10 @@ if not exist "%ELDIR%" mkdir "%ELDIR%"
 set "ELZIP=%TEMP%\electron-v%ELVER%-win32-x64.zip"
 if exist "%ELZIP%" del "%ELZIP%"
 echo   [1/3] downloading from github.com...
-curl.exe -L --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://github.com/electron/electron/releases/download/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
+curl.exe -L -f --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://github.com/electron/electron/releases/download/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
 if not errorlevel 1 goto bootunpack
 echo   [1/3] github failed - trying the npmmirror fallback...
-curl.exe -L --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://npmmirror.com/mirrors/electron/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
+curl.exe -L -f --retry 3 --connect-timeout 20 -o "%ELZIP%" "https://npmmirror.com/mirrors/electron/v%ELVER%/electron-v%ELVER%-win32-x64.zip"
 if errorlevel 1 exit /b 1
 :bootunpack
 echo   [2/3] unpacking...
@@ -249,11 +249,11 @@ set "RDZIP=%TEMP%\ritual-data-dl.zip"
 del "%RDZIP%" 2>nul
 for /f "tokens=1,2 delims=;" %%a in ("%RDURLS%") do (set "RDURL1=%%a" & set "RDURL2=%%b")
 echo   [1/3] downloading the Ritual dataset...
-curl.exe -L --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL1%"
+curl.exe -L -f --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL1%"
 if not errorlevel 1 goto rdverify
 if not defined RDURL2 goto rdfail
 echo   [1/3] primary failed - trying the fallback URL...
-curl.exe -L --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL2%"
+curl.exe -L -f --retry 3 --connect-timeout 20 -o "%RDZIP%" "%RDURL2%"
 if errorlevel 1 goto rdfail
 :rdverify
 echo   [2/3] verifying SHA256...

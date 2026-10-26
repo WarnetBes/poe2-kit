@@ -22,6 +22,7 @@
     "refresh-data": "node scripts/refresh-data.mjs",
     "live-smoke": "npm run build -w @poe2-kit/core && npm run live-smoke -w @poe2-kit/core",
     "portable": "node make-portable.mjs",
+    "release:check": "node scripts/release-precheck.mjs",
     "batlint": "node scripts/check-bats.mjs"
   },
   "engines": {

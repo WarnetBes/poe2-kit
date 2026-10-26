@@ -136,6 +136,9 @@ execSync(`tar -a -c -f "${DATA_ZIP}" -C "${path.dirname(RITUAL_SRC)}" ritual`, {
 const dataSha = createHash('sha256').update(fs.readFileSync(DATA_ZIP)).digest('hex');
 const DATA_URLS = [
   `https://github.com/WarnetBes/poe2-kit/releases/download/ritual-data-v${ver}/ritual-data-${ver}.zip`,
+  // Фолбэк: датазет традиционно прикладывают и к основному релизу vX.Y.Z
+  // (для v1.0.35 отдельного ritual-data-релиза не было → primary URL давал 404).
+  `https://github.com/WarnetBes/poe2-kit/releases/download/v${ver}/ritual-data-${ver}.zip`,
   ...(process.env.POE2K_RITUAL_DATA_URLS ?? '').split(';').filter(Boolean),
 ];
 // Манифест в корне base-zip: bat читает его через powershell (Node в portable не обязателен).
