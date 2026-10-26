@@ -3,6 +3,15 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.36] — 2026-10-27 (сессии №619—№622: LLM-агент билдов + анти-галлюцинации compose + camel/snake-алиасы MCP-параметров)
+
+### Fixed
+- **compose_build: алиас `skill` + валидация skillHint (`941a567`, №619/№620):** MCP-слой молча выбрасывал неизвестный zod-ключ `skill` → main-скилл тихо фолбэчил на топ-ладдерный скилл класса (скиллы вне меты подменялись без пометки). Фикс: (1) тул принимает алиас `skill` (при обоих приоритет у `skill_hint`); (2) core: hint валидируется через `dataset.getSkillGemDetails` — точное попадание канонизирует имя, мимо датасета mainSkill сохраняется + честная строка в unverified (выдуманное имя больше не выдаёт себя за верифицированный скилл, фолбэк на ладдер не срабатывает). +3 теста (739/739).
+- **camel/snake-алиасы параметров по 11 парам (`ca18678`, №622):** аудит всех 79 тулов по живому дампу zod-схем нашёл дрейф написаний ОПЦИОНАЛЬНЫХ параметров (промах = zod молча выбрасывает ключ → уверенный ответ с дефолтом). Закрыто: `hit_size`↔`hitSize` (build estimate/advice/compare, guide, compose, ehp, evaluate_build, rank_levers, pinnacle_check), `enemy_level`↔`enemyLevel` (compose, pinnacle_check, ailments), `candidate_text`↔`candidateText` (item_verdict; оба optional + громкая ошибка с обоими именами), `include_quest_skulls` (spirit), `damage_type`/`attack_type` (stun). При обоих написаниях приоритет каноничного. Required-параметры не тронуты (zod падает громко). Проверка: stdio-проба 7/7 PASS, алиасы видны в tools/list.
+
+### Added
+- **LLM-агент `poe2-builder` для opencode (№619, вне репо):** глобальный саб-агент, строит/комбинирует билды ТОЛЬКО на данных тулов poe2-kit — null/unverified-дисциплина, верификация compose→decode→recompute→evaluate, выход = PoB-XML + резюме-таблица с источниками и секцией «НЕ проверено». Баг №619 был найден его живым смоук-тестом.
+
 ## [1.0.35] — 2026-10-24 (сессии №603—№610: Sidekick-волна + №185-остаток + L1-A/F + генератор билдов — «compute-волна»)
 
 ### Added
