@@ -41,6 +41,7 @@ export function registerCalculatorTools(server: McpServer): number {
         lightningRes: z.number().optional().describe('Lightning resistance, %'),
         chaosRes: z.number().optional().describe('Chaos resistance, %'),
         hitSize: z.number().positive().optional().describe('Ожидаемый размер удара (по умолч. 1000)'),
+        hit_size: z.number().positive().optional().describe('Алиас hitSize (при задании обоих приоритет у hitSize)'),
         accuracy: z.number().positive().optional().describe('Точность атакующего (по умолч. 2000)'),
         upgrade: z.record(z.number()).optional().describe('Апгрейд-статы (те же поля) для сравнения'),
       },
@@ -48,9 +49,10 @@ export function registerCalculatorTools(server: McpServer): number {
     },
     async (args) => {
       try {
-        const { life, energyShield, armor, evasion, blockChance, fireRes, coldRes, lightningRes, chaosRes, hitSize, accuracy, upgrade } = args;
+        const { life, energyShield, armor, evasion, blockChance, fireRes, coldRes, lightningRes, chaosRes, hitSize, hit_size, accuracy, upgrade } = args;
         const stats = { life, energyShield, armor, evasion, blockChance, fireRes, coldRes, lightningRes, chaosRes };
-        const threat = { ...(hitSize ? { expectedHitSize: hitSize } : {}), ...(accuracy ? { attackerAccuracy: accuracy } : {}) };
+        const expectedHitSize = hitSize ?? hit_size;
+        const threat = { ...(expectedHitSize ? { expectedHitSize } : {}), ...(accuracy ? { attackerAccuracy: accuracy } : {}) };
         const ehp = core.ehp;
         const all = ehp.calculateAllEhp(stats, threat);
         const lines: string[] = [];
@@ -107,7 +109,8 @@ export function registerCalculatorTools(server: McpServer): number {
           amount: z.number().int().min(0),
           type: z.string().optional(),
         })).optional(),
-        includeQuestSkulls: z.boolean().optional(),
+        includeQuestSkulls: z.boolean().optional().describe('Добавить базовые квестовые +100 Spirit (по умолч. true)'),
+        include_quest_skulls: z.boolean().optional().describe('Алиас includeQuestSkulls (при задании обоих приоритет у includeQuestSkulls)'),
         reservations: z.array(z.object({
           name: z.string(),
           cost: z.number().int().min(0),
@@ -125,10 +128,10 @@ export function registerCalculatorTools(server: McpServer): number {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ sources, includeQuestSkulls, reservations, suggest, budget, candidates }) => {
+    async ({ sources, includeQuestSkulls, include_quest_skulls, reservations, suggest, budget, candidates }) => {
       try {
         const sc = new core.spirit.SpiritCalculator();
-        if (includeQuestSkulls !== false) sc.addDefaultQuestSpirit();
+        if ((includeQuestSkulls ?? include_quest_skulls) !== false) sc.addDefaultQuestSpirit();
         for (const s of sources ?? []) {
           sc.addSource(s.name, s.amount, (s.type as SpiritSourceType | undefined) ?? 'other');
         }
@@ -207,6 +210,8 @@ export function registerCalculatorTools(server: McpServer): number {
         targetMaxLife: z.number().positive().describe('Макс. HP цели'),
         damageType: z.enum(['physical', 'fire', 'cold', 'lightning', 'chaos']).optional(),
         attackType: z.enum(['melee', 'ranged', 'spell']).optional(),
+        damage_type: z.enum(['physical', 'fire', 'cold', 'lightning', 'chaos']).optional().describe('Алиас damageType'),
+        attack_type: z.enum(['melee', 'ranged', 'spell']).optional().describe('Алиас attackType'),
         increasedStunChance: z.number().optional().describe('Увеличенный шанс стана, %'),
         stunBuildupMultiplier: z.number().min(1).optional().describe('Множитель билдапа Heavy Stun (x1.5 = +50% more)'),
       },
@@ -214,8 +219,8 @@ export function registerCalculatorTools(server: McpServer): number {
     },
     async (args) => {
       try {
-        const dType = (args.damageType ?? 'physical') as StunDamageType;
-        const aType = (args.attackType ?? 'melee') as StunAttackType;
+        const dType = (args.damageType ?? args.damage_type ?? 'physical') as StunDamageType;
+        const aType = (args.attackType ?? args.attack_type ?? 'melee') as StunAttackType;
         const mods = {
           ...(args.increasedStunChance ? { increasedStunChance: args.increasedStunChance } : {}),
           ...(args.stunBuildupMultiplier ? { stunBuildupMultiplier: args.stunBuildupMultiplier } : {}),
@@ -332,6 +337,7 @@ Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / поро
         enemyPoiseThreshold: z.number().positive().optional().describe('Порог poise цели (иначе из таблиц)'),
         enemyAilmentThreshold: z.number().positive().optional().describe('Порог айлментов цели (иначе из таблиц)'),
         enemyLevel: z.number().int().min(1).max(100).optional().describe('Уровень врага для порогов из таблиц'),
+        enemy_level: z.number().int().min(1).max(100).optional().describe('Алиас enemyLevel (при задании обоих приоритет у enemyLevel)'),
         boss: z.enum(['none', 'boss', 'pinnacle', 'uber']).optional().describe('Режим босса для порога poise'),
         baseChancePercent: z.number().optional().describe('Базовый шанс айлмента от мода, %'),
         increasedChancePercent: z.number().optional().describe('Increased chance, %'),
@@ -341,6 +347,7 @@ Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / поро
     async (args) => {
       try {
         const ail = core.ailments;
+        const enemyLevel = args.enemyLevel ?? args.enemy_level; // №621: алиас camel/snake
         const lines: string[] = [];
         if (args.mode === 'dot') {
           if (!args.ailment) throw new Error('Для mode=dot укажите ailment (bleed/poison/ignite)');
@@ -360,8 +367,8 @@ Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / поро
           if (!args.type) throw new Error('Для mode=buildup укажите type (heavyStun/freeze/electrocute/pin)');
           let poise = args.enemyPoiseThreshold;
           if (poise == null) {
-            if (args.enemyLevel == null) throw new Error('Укажите enemyPoiseThreshold или enemyLevel');
-            const lvl = Math.max(args.enemyLevel, (args.boss === 'pinnacle' || args.boss === 'uber') ? 82 : 1);
+            if (enemyLevel == null) throw new Error('Укажите enemyPoiseThreshold или enemyLevel');
+            const lvl = Math.max(enemyLevel, (args.boss === 'pinnacle' || args.boss === 'uber') ? 82 : 1);
             const m = core.enemy.monsterStats(lvl);
             poise = Math.round(m.poiseThreshold * core.enemy.poiseMultiplier(args.boss ?? 'none'));
           }
@@ -379,8 +386,8 @@ Buildup: % за удар = DamageScale (0.58/2.1/1.7/4.2) × урон / поро
           if (!args.chanceType) throw new Error('Для mode=chance укажите chanceType (shock/ignite/chill/bleed/poison)');
           let threshold = args.enemyAilmentThreshold;
           if (threshold == null) {
-            if (args.enemyLevel == null) throw new Error('Укажите enemyAilmentThreshold или enemyLevel');
-            threshold = core.enemy.monsterStats(args.enemyLevel).ailmentThreshold;
+            if (enemyLevel == null) throw new Error('Укажите enemyAilmentThreshold или enemyLevel');
+            threshold = core.enemy.monsterStats(enemyLevel).ailmentThreshold;
           }
           const r = ail.ailmentChance({
             hitDamage: args.hitDamage,

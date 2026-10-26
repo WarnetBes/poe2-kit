@@ -44,11 +44,12 @@ Hint сверяется с датасетом гемов: точное имя �
           .describe('Алиас skill_hint (main-скилл, EN); при задании обоих приоритет у skill_hint'),
         user_build_code: z.string().optional().describe('PoB share-код/XML билда пользователя'),
         enemy_level: z.number().int().min(1).max(100).optional().describe('Уровень врага для EHP-цели (по умолч. 84)'),
+        enemyLevel: z.number().int().min(1).max(100).optional().describe('Алиас enemy_level (при задании обоих приоритет у enemy_level)'),
         league: z.string().optional().describe('Slug лиги poe.ninja (иначе текущая)'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async ({ class: classQuery, level, budget, skill_hint, skill, user_build_code, enemy_level, league }) => {
+    async ({ class: classQuery, level, budget, skill_hint, skill, user_build_code, enemy_level, enemyLevel, league }) => {
       try {
         // Ладдер-контекст: сеть с таймаутом, неудача — не фатальна
         // (composeBuild продолжит с пустыми rows, честно пометив хвосты).
@@ -64,7 +65,7 @@ Hint сверяется с датасетом гемов: точное имя �
         } catch {
           ladderRows = [];
         }
-        const enemyLvl = Math.max(1, Math.min(100, Math.round(enemy_level ?? 84)));
+        const enemyLvl = Math.max(1, Math.min(100, Math.round(enemy_level ?? enemyLevel ?? 84)));
         const result = await core.buildComposer.composeBuild({
           classQuery: classQuery ?? '',
           level,

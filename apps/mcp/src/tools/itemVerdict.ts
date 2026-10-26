@@ -37,7 +37,8 @@ export function registerItemVerdictTools(server: McpServer): number {
   - "Надевать этот шлем?" (после Ctrl+C предмета и Ctrl+C текущего шлема)
   - "Оцени кольцо против текущего, гир приложить"`,
       inputSchema: {
-        candidateText: z.string().min(10),
+        candidateText: z.string().min(10).optional().describe('Клир-текст Ctrl+C кандидата (EN-клиент); алиас: candidate_text'),
+        candidate_text: z.string().min(10).optional().describe('Алиас candidateText (snake_case; при задании обоих приоритет у candidateText)'),
         currentSlotText: z.string().min(5).optional(),
         gear: z.record(z.string(), z.string()).optional(),
         basePools: z.object({ life: z.number().optional(), energyShield: z.number().optional() }).optional(),
@@ -54,8 +55,10 @@ export function registerItemVerdictTools(server: McpServer): number {
     },
     async (args) => {
       try {
+        const candidateText = args.candidateText ?? args.candidate_text; // №621: алиас camel/snake
+        if (!candidateText) throw new Error('Укажите candidateText (или алиас candidate_text) — клир-текст Ctrl+C кандидата');
         const v = iv.itemVerdict({
-          candidateText: args.candidateText,
+          candidateText,
           currentSlotText: args.currentSlotText,
           gear: args.gear,
           basePools: args.basePools,

@@ -42,14 +42,15 @@ export function registerOptimizeTools(server: McpServer): number {
         lightningRes: z.number().optional().describe('Цель lightning resistance, %'),
         chaosRes: z.number().optional().describe('Цель chaos resistance, %'),
         spiritUnreserved: z.number().optional().describe('Цель свободного Spirit'),
-        hitSize: z.number().positive().optional(),
+        hitSize: z.number().positive().optional().describe('Ожидаемый размер удара'),
+        hit_size: z.number().positive().optional().describe('Алиас hitSize (при задании обоих приоритет у hitSize)'),
         accuracy: z.number().positive().optional(),
       },
       annotations: { readOnlyHint: true },
     },
     async (args) => {
       try {
-        const threat = { expectedHitSize: args.hitSize ?? 1000, attackerAccuracy: args.accuracy ?? 2000 };
+        const threat = { expectedHitSize: args.hitSize ?? args.hit_size ?? 1000, attackerAccuracy: args.accuracy ?? 2000 };
         const est = await core.estimate.estimateBuild(args.code, threat);
         const goals: BuildGoals = {};
         if (args.dps != null) goals.dps = args.dps;
@@ -100,7 +101,8 @@ _SUPPORT-множители и пассивы-роутер НЕ ранжирую
   - hitSize/accuracy: угроза (по умолч. 1000/2000).`,
       inputSchema: {
         code: CODE_SCHEMA,
-        hitSize: z.number().positive().optional(),
+        hitSize: z.number().positive().optional().describe('Ожидаемый размер удара'),
+        hit_size: z.number().positive().optional().describe('Алиас hitSize (при задании обоих приоритет у hitSize)'),
         accuracy: z.number().positive().optional(),
       },
       annotations: { readOnlyHint: true },
@@ -108,7 +110,7 @@ _SUPPORT-множители и пассивы-роутер НЕ ранжирую
     async (args) => {
       try {
         const est = await core.estimate.estimateBuild(args.code);
-        const levers = core.optimize.rankLevers(est, { expectedHitSize: args.hitSize ?? 1000, attackerAccuracy: args.accuracy ?? 2000 });
+        const levers = core.optimize.rankLevers(est, { expectedHitSize: args.hitSize ?? args.hit_size ?? 1000, attackerAccuracy: args.accuracy ?? 2000 });
         const lines: string[] = [];
         lines.push('## Рычаги по маржинальному эффекту', '');
         lines.push('| Рычаг | Ср. ΔEHP% | ΔEHP phys | ΔEHP fire/cold/light/chaos | ΔDPS (estimated) |', '|---|---|---|---|---|');
@@ -147,10 +149,12 @@ _SUPPORT-множители и пассивы-роутер НЕ ранжирую
       inputSchema: {
         code: CODE_SCHEMA,
         enemyLevel: z.number().int().min(1).max(100).optional().describe('Уровень врага (по умолчанию 84)'),
+        enemy_level: z.number().int().min(1).max(100).optional().describe('Алиас enemyLevel (при задании обоих приоритет у enemyLevel)'),
         boss: z.enum(['none', 'boss', 'pinnacle', 'uber']).optional().describe('Режим босса (по умолчанию pinnacle)'),
         ehpHits: z.number().int().min(1).max(10).optional().describe('Сколько ударов босса должен держать худший EHP (по умолчанию 3)'),
         stunHits: z.number().int().min(1).max(10).optional().describe('Минимум ударов до Heavy Stun игрока (по умолчанию 4)'),
-        hitSize: z.number().positive().optional(),
+        hitSize: z.number().positive().optional().describe('Ожидаемый размер удара (принимается для совместимости)'),
+        hit_size: z.number().positive().optional().describe('Алиас hitSize'),
         accuracy: z.number().positive().optional(),
       },
       annotations: { readOnlyHint: true },
@@ -159,7 +163,7 @@ _SUPPORT-множители и пассивы-роутер НЕ ранжирую
       try {
         const est = await core.estimate.estimateBuild(args.code);
         const r = core.optimize.pinnacleChecklist(est, {
-          ...(args.enemyLevel ? { enemyLevel: args.enemyLevel } : {}),
+          enemyLevel: args.enemyLevel ?? args.enemy_level,
           boss: args.boss ?? 'pinnacle',
           ...(args.ehpHits ? { ehpHits: args.ehpHits } : {}),
           ...(args.stunHits ? { stunHits: args.stunHits } : {}),

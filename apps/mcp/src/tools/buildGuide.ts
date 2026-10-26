@@ -297,18 +297,19 @@ export function registerBuildGuideTools(server: McpServer): number {
         code: z.string().min(5).describe('PoB share-код или XML'),
         league: z.string().optional().describe('Снапшот-лига poe.ninja (default forbiddenrites)'),
         hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        hitSize: z.number().int().positive().optional().describe('Алиас hit_size (при задании обоих приоритет у hit_size)'),
         accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ code, league, hit_size, accuracy }) => {
+    async ({ code, league, hit_size, hitSize, accuracy }) => {
       try {
         // Декодируем билд (share-код → XML → структура) для гемов/дерева.
         const xml = code.includes('<PathOfBuilding') ? code : core.build.decodeShareCode(code);
         const b = await core.build.importBuild(xml);
         // Оценка EHP/DPS/защит/оружия (без PoB-движка).
         const est = await core.estimate.estimateBuild(code, {
-          expectedHitSize: hit_size ?? 1000,
+          expectedHitSize: hit_size ?? hitSize ?? 1000,
           attackerAccuracy: accuracy ?? 2000,
         });
         const className = est.ascendancy ?? est.className;

@@ -357,6 +357,7 @@ export function registerBuildTools(server: McpServer): number {
       inputSchema: {
         code: z.string().min(5).describe('PoB share-код или XML'),
         hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        hitSize: z.number().int().positive().optional().describe('Алиас hit_size (при задании обоих приоритет у hit_size)'),
         accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
         goals: z.array(z.number().int().min(1).max(100)).max(8).optional().describe(
           'Дерево целей на ЖИВОМ движке PoB (если рантайм сетаплен): уровневые вехи, ' +
@@ -366,10 +367,10 @@ export function registerBuildTools(server: McpServer): number {
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async ({ code, hit_size, accuracy, goals }) => {
+    async ({ code, hit_size, hitSize, accuracy, goals }) => {
       try {
         const est = await core.estimate.estimateBuild(code, {
-          expectedHitSize: hit_size ?? 1000,
+          expectedHitSize: hit_size ?? hitSize ?? 1000,
           attackerAccuracy: accuracy ?? 2000,
         });
         const lines: string[] = ['## Оценка билда (приближённая, без PoB-движка)', ''];
@@ -472,15 +473,16 @@ export function registerBuildTools(server: McpServer): number {
         code: z.string().min(5).describe('PoB share-код или XML'),
         league: z.string().optional().describe('Снапшот-лига референса (default forbiddenrites)'),
         hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        hitSize: z.number().int().positive().optional().describe('Алиас hit_size (при задании обоих приоритет у hit_size)'),
         accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async ({ code, league, hit_size, accuracy }) => {
+    async ({ code, league, hit_size, hitSize, accuracy }) => {
       try {
         const leagueSlug = league?.trim() ? league.trim() : 'forbiddenrites';
         const est = await core.estimate.estimateBuild(code, {
-          expectedHitSize: hit_size ?? 1000,
+          expectedHitSize: hit_size ?? hitSize ?? 1000,
           attackerAccuracy: accuracy ?? 2000,
         });
         const className = est.ascendancy ?? est.className;
@@ -527,15 +529,16 @@ export function registerBuildTools(server: McpServer): number {
         code: z.string().min(5).describe('PoB share-код или XML'),
         league: z.string().optional().describe('Снапшот-лига референса (default forbiddenrites)'),
         hit_size: z.number().int().positive().optional().describe('Ожидаемый удар (для брони)'),
+        hitSize: z.number().int().positive().optional().describe('Алиас hit_size (при задании обоих приоритет у hit_size)'),
         accuracy: z.number().int().positive().optional().describe('Точность атакующего'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async ({ code, league, hit_size, accuracy }) => {
+    async ({ code, league, hit_size, hitSize, accuracy }) => {
       try {
         const leagueSlug = league?.trim() ? league.trim() : 'forbiddenrites';
         const est = await core.estimate.estimateBuild(code, {
-          expectedHitSize: hit_size ?? 1000,
+          expectedHitSize: hit_size ?? hitSize ?? 1000,
           attackerAccuracy: accuracy ?? 2000,
         });
         const className = est.ascendancy ?? est.className;
