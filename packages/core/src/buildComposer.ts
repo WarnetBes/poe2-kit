@@ -37,7 +37,10 @@ import {
   starterBuildGuidesByAscendancy,
 } from './starterBuildGuides.js';
 import type { StarterBuildGuide, StarterBuildStage } from './starterBuildGuides.js';
-import { getAscendanciesByClass } from './dataset.js';
+import {
+  getAscendanciesByClass,
+  getSkillGemDetails,
+} from './dataset.js';
 
 /** Бюджет пользователя → стадия curated-гайда. */
 export type ComposeBudget = 'ssf' | 'budget' | 'mid' | 'rich';
@@ -150,7 +153,20 @@ export async function composeBuild(request: ComposeRequest): Promise<ComposeResu
 
   const hint = String(request.skillHint ?? '').trim();
   if (hint) {
-    mainSkill = hint;
+    // №619: hint — выбор пользователя, но НЕ проходит молча: сверяем с датасетом
+    // гемов (dataset.ts getSkillGemDetails). Точное попадание → канонизация
+    // регистра; fuzzy-попадание (возможно иное имя гема) → не подменяем выбор;
+    // мимо датасета → используем как есть + честная строка в unverified,
+    // чтобы опечатка/выдуманное имя не выдавало себя за верифицированный скилл.
+    const gemHit = getSkillGemDetails(hint);
+    if (gemHit) {
+      mainSkill = gemHit.name.toLowerCase() === hint.toLowerCase() ? gemHit.name : hint;
+    } else {
+      mainSkill = hint;
+      unverified.push(
+        `skillHint «${hint}» не найден в датасете гемов (опечатка или имя вне skill_gems) — использован как явный выбор пользователя`,
+      );
+    }
     mainSkillSource = 'hint';
   }
 

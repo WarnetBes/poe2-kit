@@ -27,24 +27,28 @@ Main-скилл выводится цепочкой: skill_hint → user_build_c
   - class (string, обяз.): базовый класс ИЛИ асценданси (EN): "Monk", "Invoker", "Acolyte of Chayula"…
   - level (number, опц., по умолч. 90): цель по уровню (1–100).
   - budget (опц., 'ssf'|'budget'|'mid'|'rich', по умолч. 'ssf'): стадия curated-гайда.
-  - skill_hint (string, опц.): явный EN-скилл main-скилла.
+  - skill_hint (string, опц.): явный EN-скилл main-скилла. Алиас: skill.
   - user_build_code (string, опц.): PoB share-код/XML вашего билда — main-скилл + верификация целей (GoalCheck-вердикты).
   - enemy_level (number, опц., по умолч. 84): уровень врага для EHP-цели.
   - league (string, опц.): slug лиги poe.ninja для ладдер-контекста (по умолч. — текущая; при недоступности сети ладдер молча пропускается).
 
-Ладдер (частые скиллы, DPS-медиана) добывается сетью прямо в тул-слое; офлайн — цели без ладдера, честно помеченные.`,
+Hint сверяется с датасетом гемов: точное имя → канонизация регистра, неизвестное имя → честная пометка в «Не выведено», а не молчаливый фолбэк на ладдер.`,
       inputSchema: {
         class: z.string().min(2).describe('Базовый класс или асценданси (EN): Monk / Invoker / …'),
         level: z.number().int().min(1).max(100).optional().describe('Целевой уровень (по умолч. 90)'),
         budget: z.enum(['ssf', 'budget', 'mid', 'rich']).optional().describe('Бюджет → стадия гайда (по умолч. ssf)'),
         skill_hint: z.string().optional().describe('Явная подсказка main-скилла (EN)'),
+        skill: z
+          .string()
+          .optional()
+          .describe('Алиас skill_hint (main-скилл, EN); при задании обоих приоритет у skill_hint'),
         user_build_code: z.string().optional().describe('PoB share-код/XML билда пользователя'),
         enemy_level: z.number().int().min(1).max(100).optional().describe('Уровень врага для EHP-цели (по умолч. 84)'),
         league: z.string().optional().describe('Slug лиги poe.ninja (иначе текущая)'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async ({ class: classQuery, level, budget, skill_hint, user_build_code, enemy_level, league }) => {
+    async ({ class: classQuery, level, budget, skill_hint, skill, user_build_code, enemy_level, league }) => {
       try {
         // Ладдер-контекст: сеть с таймаутом, неудача — не фатальна
         // (composeBuild продолжит с пустыми rows, честно пометив хвосты).
@@ -65,7 +69,7 @@ Main-скилл выводится цепочкой: skill_hint → user_build_c
           classQuery: classQuery ?? '',
           level,
           budget,
-          skillHint: skill_hint,
+          skillHint: skill_hint ?? skill,
           userBuildCode: user_build_code,
           ladderRows,
           enemyLevel: enemyLvl,

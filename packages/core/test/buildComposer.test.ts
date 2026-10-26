@@ -94,6 +94,22 @@ describe('№497: скелет — только данные датасетов'
     expect(res!.capTargets.dpsGoal).toBeNull(); // DPS-цель не выводится из таблиц
     expect(res!.unverified.some((u) => u.includes('DPS-цель'))).toBe(true);
   });
+
+  it('№619: skillHint канонизируется по датасету гемов (регистр)', async () => {
+    const res = await composeBuild({ classQuery: 'Monk', skillHint: 'ice strike' });
+    expect(res!.mainSkill).toBe('Ice Strike'); // каноничное имя из skill_gems, не сырой hint
+    expect(res!.mainSkillSource).toBe('hint');
+    expect(res!.unverified.some((u) => u.includes('skillHint'))).toBe(false); // точное попадание — без пометки
+  });
+
+  it('№619: неизвестный skillHint не молчит — честная строка в unverified', async () => {
+    const res = await composeBuild({ classQuery: 'Monk', skillHint: 'Zzz Fake Skill' });
+    expect(res!.mainSkill).toBe('Zzz Fake Skill'); // выбор пользователя не подменяем
+    expect(res!.mainSkillSource).toBe('hint');
+    expect(res!.unverified.some((u) => u.includes('skillHint «Zzz Fake Skill»') && u.includes('не найден в датасете гемов'))).toBe(true);
+    // фолбэк на ладдер НЕ сработал: hint остался main-скиллом даже мимо датасета
+    expect(res!.mainSkill).not.toBe('Ice Strike');
+  });
 });
 
 describe('№497: числа capTargets — только из таблиц канона', () => {
