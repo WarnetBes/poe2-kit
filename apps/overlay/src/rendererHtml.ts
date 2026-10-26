@@ -1629,7 +1629,7 @@ ${OVERLAY_SHELL}<script>
   // Данные — из payload build:update (gemSetups/gemColors/gemSeen), main не менялся.
   var lastBuildState = null;
   function gemKeySh(n) {
-    return String(n || '').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim().toLowerCase();
+    return String(n || '').replace(/ё/g, 'е').replace(/\\s+/g, ' ').trim().toLowerCase();
   }
   function gemMarkSh(b, en, expLvl) {
     var sv = (b.gemSeen || {})[gemKeySh(en)];
@@ -1788,10 +1788,10 @@ ${OVERLAY_SHELL}<script>
     transmute: 'orb of transmutation', chance: 'orb of chance'
   };
   function curIcon(name, size) {
-    var k = String(name == null ? '' : name).toLowerCase().replace(/\s+/g, ' ').trim();
+    var k = String(name == null ? '' : name).toLowerCase().replace(/\\s+/g, ' ').trim();
     if (CUR_ALIASES[k]) k = CUR_ALIASES[k];
-    if (!/^[a-z][a-z\s'\-]*$/.test(k)) return '';
-    return '<img class="cur-ico" src="currency_icons/' + k.replace(/\s+/g, '_') + '.webp" alt="" width="' +
+    if (!/^[a-z][a-z\\s'\\-]*$/.test(k)) return '';
+    return '<img class="cur-ico" src="currency_icons/' + k.replace(/\\s+/g, '_') + '.webp" alt="" width="' +
       (size || 18) + '" height="' + (size || 18) + '" />';
   }
 
