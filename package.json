@@ -23,6 +23,7 @@
     "live-smoke": "npm run build -w @poe2-kit/core && npm run live-smoke -w @poe2-kit/core",
     "portable": "node make-portable.mjs",
     "release:check": "node scripts/release-precheck.mjs",
+    "check:escapes": "node scripts/check-template-escapes.mjs",
     "batlint": "node scripts/check-bats.mjs"
   },
   "engines": {

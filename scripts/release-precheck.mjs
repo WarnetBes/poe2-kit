@@ -14,6 +14,9 @@
  *      а имя аргумента у sourcecraft-тулов — release_tag, не tag.
  *   5. Сборочные гейзы: dist всех пакетов собран (portable пересоберёт сам,
  *      но деплой на шару без dist падает с путаным exit 1).
+ *   6. Template-escape-аудит (№626): файлы-гигантские template-литералы
+ *      (rendererHtml.ts) не содержат одиночных `\X`-эскейпов — они молча
+ *      деградируют (`\s`→`s`), TS не ругает; класс бага «все 38 иконок 404».
  *
  * Запуск: npm run release:check   (exit 0 = чисто, 1 = найдены проблемы)
  */
@@ -40,7 +43,7 @@ const textTargets = [
   'README.en.md',
   'scripts/release-precheck.mjs',
 ];
-console.log('[precheck] 1/4 BOM...');
+console.log('[precheck] 1/5 BOM...');
 for (const rel of textTargets) {
   const p = path.join(ROOT, rel);
   if (!fs.existsSync(p)) { bad(`${rel}: файл отсутствует`); continue; }
@@ -50,7 +53,7 @@ for (const rel of textTargets) {
 }
 
 // --- 2. Синхрон версий ---------------------------------------------------
-console.log('[precheck] 2/4 синхрон версий package.json...');
+console.log('[precheck] 2/5 синхрон версий package.json...');
 const workspaceDirs = ['packages/core', 'apps/web', 'apps/overlay', 'apps/mcp'];
 for (const dir of workspaceDirs) {
   const p = path.join(ROOT, dir, 'package.json');
@@ -61,7 +64,7 @@ for (const dir of workspaceDirs) {
 }
 
 // --- 3. CHANGELOG --------------------------------------------------------
-console.log('[precheck] 3/4 CHANGELOG...');
+console.log('[precheck] 3/5 CHANGELOG...');
 const changelogPath = path.join(ROOT, 'CHANGELOG.md');
 if (fs.existsSync(changelogPath)) {
   const cl = fs.readFileSync(changelogPath, 'utf8');
@@ -70,7 +73,7 @@ if (fs.existsSync(changelogPath)) {
 } else bad('CHANGELOG.md отсутствует');
 
 // --- 4. Git-тег + sourcecraft-грабли --------------------------------------
-console.log('[precheck] 4/4 git-тег и sourcecraft-шпаргалка...');
+console.log('[precheck] 4/5 git-тег и sourcecraft-шпаргалка...');
 let tagExists = false;
 try {
   execSync(`git rev-parse -q --verify "refs/tags/v${ver}"`, { cwd: ROOT, stdio: 'ignore' });
@@ -81,6 +84,16 @@ if (tagExists) {
   console.log('         sourcecraft: Create БЕЗ target_branch (тег уже запушен — иначе «already exists»); аргумент release_tag, не tag');
 } else {
   console.log(`  [hint] тега v${ver} нет — создайте аннотированный (git tag -a) и запушьте ДО SourceCraft Release`);
+}
+
+// --- 5. Template-escape-аудит (гейт №626) ----------------------------------
+// Скрипт сам зовёт process.exit — запускаем как дочерний процесс ради честного кода.
+console.log('[precheck] 5/5 template-escape-аудит (№626)...');
+try {
+  execSync(`node ${JSON.stringify(path.join(ROOT, 'scripts', 'check-template-escapes.mjs'))}`, { stdio: 'inherit' });
+  ok('rendererHtml.ts: одиночных \\X-деградаций нет');
+} catch {
+  bad('template-литерал содержит одиночные \\X-эскейпы (класс №626: \\s→s, все regex в html молча ломаются) — чините до релиза');
 }
 
 // --- Итог -----------------------------------------------------------------
