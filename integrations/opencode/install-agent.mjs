@@ -2,12 +2,11 @@
 // install-agent.mjs — интеграция экосистемы агентов PoE2 Kit в OpenCode.
 //
 // Что делает:
-//   1. Копирует агентов (poe2-kit.md / poe2-builder.md / poe2-trader.md) из
+//   1. Копирует агентов (poe2-builder.md / poe2-trader.md) из
 //      integrations/opencode/agents/ этого репозитория в ~/.config/opencode/agents/
-//      (или в папку проекта --project → <cwd>/.opencode/agents/).
-//   2. Кладёт тонкий скилл-шорткат poe2-kit (SKILL.md со ссылкой на живые
-//      агенты-источники) в skills-папку — для вызова из любой сессии.
-//   3. (--with-mcp) Проверит/добавит MCP-запись "poe2-kit" в opencode.json
+//      (или в папку проекта --project → <cwd>/.opencode/agents/ — так poe2-trader
+//      встраивается в конкретный проект, например BildPOE2).
+//   2. (--with-mcp) Проверит/добавит MCP-запись "poe2-kit" в opencode.json
 //      (глобальный конфиг), если её там нет. Существовавший конфиг
 //      перезаписи не видит: бэкап opencode.json.bak-<stamp> + только допись
 //      ключа mcp["poe2-kit"].
@@ -33,10 +32,8 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..', '..')
 const SRC_AGENTS = join(HERE, 'agents')
-const SRC_SKILL = join(HERE, 'skill', 'SKILL.md')
 
-const AGENT_FILES = ['poe2-kit.md', 'poe2-builder.md', 'poe2-trader.md']
-const SKILL_NAME = 'poe2-kit'
+const AGENT_FILES = ['poe2-builder.md', 'poe2-trader.md']
 const MARKER = '<!-- poe2-kit:managed -->'
 
 const args = process.argv.slice(2)
@@ -105,10 +102,8 @@ function applyCopy(item) {
 // ── 1. Агенты ────────────────────────────────────────────────────────────────
 const root = configRoot()
 const agentsDest = join(root, 'agents')
-const skillDest = join(root, 'skills', SKILL_NAME, 'SKILL.md')
 
 for (const f of AGENT_FILES) planCopy(join(SRC_AGENTS, f), join(agentsDest, f))
-planCopy(SRC_SKILL, skillDest)
 
 // ── 2. MCP-запись (опция) ────────────────────────────────────────────────────
 let mcpPlan = null
@@ -222,4 +217,4 @@ if (conflictsLeft > 0) {
   process.exit(2)
 }
 console.log('')
-console.log('Проверка: opencode agent list | должен показать poe2-kit (primary), poe2-builder, poe2-trader.')
+console.log('Проверка: opencode agent list | должны появиться poe2-builder и poe2-trader (диспетчер poe2-kit удалён по решению владельца — агенты вызываются @-упоминанием напрямую).')
