@@ -43,6 +43,11 @@ import { registerRecomputeTools } from './tools/recompute.js';
 import { registerStarterBuildsTools } from './tools/starterBuilds.js';
 import { registerPoeshopMarketTools } from './tools/poeshopMarket.js';
 import { registerTreeRouteTools } from './tools/treeRoute.js';
+import { registerItemUpgradeVerdictTools } from './tools/itemUpgradeVerdict.js';
+import { registerResistPairsTools } from './tools/resistPairs.js';
+import { registerGearscoreTools } from './tools/gearscore.js';
+import { registerMapCheckTools } from './tools/mapCheck.js';
+import { registerItemsCompareTools } from './tools/itemsCompare.js';
 import { registerComposeBuildTools } from './tools/composeBuild.js';
 
 export function buildServer(): number {
@@ -97,6 +102,11 @@ export function buildServer(): number {
   count += registerStarterBuildsTools(server);
 
   count += registerTreeRouteTools(server);
+  count += registerItemUpgradeVerdictTools(server);
+  count += registerResistPairsTools(server);
+  count += registerGearscoreTools(server);
+  count += registerMapCheckTools(server);
+  count += registerItemsCompareTools(server);
   count += registerComposeBuildTools(server);
 
   count += registerPoeshopMarketTools(server);

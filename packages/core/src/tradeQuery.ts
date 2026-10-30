@@ -106,6 +106,15 @@ export const TRADE_CATEGORY_MAP: Record<string, string> = {
   jewel: 'jewel',
   flask: 'flask',
   flasks: 'flask',
+  // W4-4: добавлены по живому /api/trade2/data/filters (30.10.2026).
+  charm: 'flask.charm',
+  charms: 'flask.charm',
+  life_flask: 'flask.life',
+  mana_flask: 'flask.mana',
+  spear: 'weapon.spear',
+  flail: 'weapon.flail',
+  focus: 'armour.focus',
+  buckler: 'armour.buckler',
   bow: 'weapon.bow',
   crossbow: 'weapon.crossbow',
   claw: 'weapon.claw',
@@ -124,6 +133,8 @@ export const TRADE_CATEGORY_MAP: Record<string, string> = {
   'one hand club': 'weapon.oneclub',
   'two hand club': 'weapon.twoclub',
   quarterstaff: 'weapon.warstaff',
+  talisman: 'weapon.talisman',
+  rod: 'weapon.rod',
 };
 
 /**
@@ -202,33 +213,46 @@ export function buildTradeQuery(input: TradeQueryInput): TradeQueryPayload {
  */
 export const MOD_TEXT_TO_STAT: Array<{
   pattern: RegExp;
-  id: string | ((weapon: boolean) => string);
+  id: string | ((ctx: { weapon: boolean; armourSlot: boolean }) => string);
   label: string;
 }> = [
   // Плоские значения → pseudo-итоги (порядок важен: сначала flat, потом процентные).
-  { pattern: /\d+ to maximum Life/, id: 'pseudo.pseudo_total_life', label: 'Life (flat)' },
-  { pattern: /\d+ to (?:maximum )?Energy Shield/, id: 'pseudo.pseudo_total_energy_shield', label: 'Energy Shield (flat)' },
-  { pattern: /to (?:Armour|Armour Rating)/, id: 'pseudo.pseudo_total_armour', label: 'Armour' },
-  { pattern: /to (?:Evasion Rating|Evasion)/, id: 'pseudo.pseudo_total_evasion_rating', label: 'Evasion' },
-  { pattern: /to Fire Resistance/, id: 'pseudo.pseudo_total_fire_resistance', label: 'Fire Res' },
-  { pattern: /to Cold Resistance/, id: 'pseudo.pseudo_total_cold_resistance', label: 'Cold Res' },
-  { pattern: /to Lightning Resistance/, id: 'pseudo.pseudo_total_lightning_resistance', label: 'Lightning Res' },
-  { pattern: /to Chaos Resistance/, id: 'pseudo.pseudo_total_chaos_resistance', label: 'Chaos Res' },
-  { pattern: /to all Elemental Resistances/, id: 'pseudo.pseudo_total_elemental_resistance', label: 'All Ele Res' },
-  { pattern: /\+\d+ to Spirit/, id: 'pseudo.pseudo_total_spirit', label: 'Spirit' },
-  { pattern: /to Strength/, id: 'pseudo.pseudo_total_strength', label: 'Strength' },
-  { pattern: /to Dexterity/, id: 'pseudo.pseudo_total_dexterity', label: 'Dexterity' },
-  { pattern: /to Intelligence/, id: 'pseudo.pseudo_total_intelligence', label: 'Intelligence' },
+  // W4-4: RU-формулировки добавлены (фикстуры parse/gearscore-тестов: «к максимуму
+  // жизни/здоровья», «к сопротивлению огню/холоду/молнии/хаосу», «к броне», «к духу», …).
+  // Живые запросы 30.10.2026 (Forbidden Rites) показали: pseudo_total_armour/
+  // evasion_rating/spirit НЕ существуют в /api/trade2/data/stats → HTTP 400.
+  // Замены: evasion/armour flat → явные explicit-id, local-вариант на армор-слотах
+  // (база уже включает локал; на jewelry — глобальный id); Spirit → stat_3981240776
+  // (10000 листингов body+amulet; stat_2704225257 = 0 живых — мёртвый дубль-текст).
+  { pattern: /\d+ to maximum Life|\d+ к максимуму (?:жизни|здоровья)/, id: 'pseudo.pseudo_total_life', label: 'Life (flat)' },
+  { pattern: /\d+ to (?:maximum )?Energy Shield|\d+ к максимуму энергетического щита/, id: 'pseudo.pseudo_total_energy_shield', label: 'Energy Shield (flat)' },
+  { pattern: /to (?:Armour|Armour Rating)|к броне/, id: (c) => (c.armourSlot ? 'explicit.stat_3484657501' : 'explicit.stat_809229260'), label: 'Armour' },
+  { pattern: /to (?:Evasion Rating|Evasion)|к (?:рейтингу )?уклонени(?:я|ю)/, id: (c) => (c.armourSlot ? 'explicit.stat_53045048' : 'explicit.stat_2144192055'), label: 'Evasion' },
+  { pattern: /to Fire Resistance|к сопротивлению огню/, id: 'pseudo.pseudo_total_fire_resistance', label: 'Fire Res' },
+  { pattern: /to Cold Resistance|к сопротивлению холоду/, id: 'pseudo.pseudo_total_cold_resistance', label: 'Cold Res' },
+  { pattern: /to Lightning Resistance|к сопротивлению молнии/, id: 'pseudo.pseudo_total_lightning_resistance', label: 'Lightning Res' },
+  { pattern: /to Chaos Resistance|к сопротивлению хаосу/, id: 'pseudo.pseudo_total_chaos_resistance', label: 'Chaos Res' },
+  { pattern: /to all Elemental Resistances|ко всем (?:стихийным )?сопротивлениям/, id: 'pseudo.pseudo_total_elemental_resistance', label: 'All Ele Res' },
+  { pattern: /\+?\d+ (?:to Spirit|к духу)/, id: 'explicit.stat_3981240776', label: 'Spirit' },
+  { pattern: /to Strength|к силе/, id: 'pseudo.pseudo_total_strength', label: 'Strength' },
+  { pattern: /to Dexterity|к ловкости/, id: 'pseudo.pseudo_total_dexterity', label: 'Dexterity' },
+  { pattern: /to Intelligence|к интеллекту/, id: 'pseudo.pseudo_total_intelligence', label: 'Intelligence' },
   // Проценты/урон/скорость — явные explicit-id (проверены живыми запросами).
-  { pattern: /% increased (?:maximum )?Energy Shield/, id: 'explicit.stat_2482852589', label: 'Energy Shield %' },
+  { pattern: /% increased (?:maximum )?Energy Shield|% (?:увеличение|повышение) (?:максимального )?энергетического щита/, id: 'explicit.stat_2482852589', label: 'Energy Shield %' },
+  // W4-4 «движение»: MS-мод отсутствовал → фильтра нет. stat_2250533757 живой
+  // (ботинки Forbidden Rites = 10000 листингов, проверено 30.10.2026).
+  { pattern: /% increased Movement Speed|% (?:повышение|увеличение) скорости передвижения/, id: 'explicit.stat_2250533757', label: 'Movement Speed' },
   { pattern: /Adds [\d.]+ to [\d.]+ Physical Damage to Attacks/, id: 'explicit.stat_3032590688', label: 'Flat Phys (Attacks)' },
-  { pattern: /Adds [\d.]+ to [\d.]+ Physical Damage/, id: (w) => (w ? 'explicit.stat_1940865751' : 'explicit.stat_3032590688'), label: 'Flat Phys' },
-  { pattern: /% increased Attack Speed/, id: (w) => (w ? 'explicit.stat_210067635' : 'explicit.stat_681332047'), label: 'Attack Speed' },
-  { pattern: /% increased Physical Damage/, id: (w) => (w ? 'explicit.stat_1509134228' : ''), label: 'Physical Damage %' },
+  { pattern: /Adds [\d.]+ to [\d.]+ Physical Damage/, id: (c) => (c.weapon ? 'explicit.stat_1940865751' : 'explicit.stat_3032590688'), label: 'Flat Phys' },
+  { pattern: /% increased Attack Speed|% повышение скорости атаки/, id: (c) => (c.weapon ? 'explicit.stat_210067635' : 'explicit.stat_681332047'), label: 'Attack Speed' },
+  { pattern: /% increased Physical Damage/, id: (c) => (c.weapon ? 'explicit.stat_1509134228' : ''), label: 'Physical Damage %' },
   { pattern: /% increased Critical Damage Bonus/, id: 'explicit.stat_3556824919', label: 'Critical Damage Bonus %' },
   { pattern: /% increased Cold Damage/, id: 'explicit.stat_3291658075', label: 'Cold Damage %' },
   { pattern: /% increased Skill Speed/, id: 'explicit.stat_970213192', label: 'Skill Speed %' },
   { pattern: /Gain additional Stun Threshold equal to [\d.]+% of maximum Energy Shield/, id: 'explicit.stat_416040624', label: 'Stun Threshold from ES' },
+  // №696 P2-8: rarity — RU-канон mods_ru.json «повышение редкости найденных
+  // предметов» / «увеличение редкости находимых (на карте) предметов».
+  { pattern: /% increased Rarity of Items found|% (?:повышение|увеличение) редкости (?:найденных|находимых)(?: на карте)? предметов/, id: 'explicit.stat_3917489142', label: 'Rarity' },
 ];
 
 /**
@@ -237,10 +261,10 @@ export const MOD_TEXT_TO_STAT: Array<{
  */
 export function modsToStatFilters(
   modTexts: string[],
-  opts: { tolerance?: number; weapon?: boolean } = {},
+  opts: { tolerance?: number; weapon?: boolean; armourSlot?: boolean } = {},
 ): Array<{ id: string; min?: number; max?: number; label?: string; value?: number }> {
   const tol = opts.tolerance ?? 0; // 0..: насколько ниже значения предмета искать
-  const weapon = opts.weapon ?? false;
+  const ctx = { weapon: opts.weapon ?? false, armourSlot: opts.armourSlot ?? false };
   const out = new Map<string, { id: string; min: number; label: string; value: number }>();
   for (const text of modTexts) {
     const num = /([+-]?\d+(?:\.\d+)?)/.exec(text);
@@ -249,7 +273,7 @@ export function modsToStatFilters(
     if (Number.isNaN(value)) continue;
     for (const entry of MOD_TEXT_TO_STAT) {
       if (entry.pattern.test(text)) {
-        const id = typeof entry.id === 'function' ? entry.id(weapon) : entry.id;
+        const id = typeof entry.id === 'function' ? entry.id(ctx) : entry.id;
         if (id && value > 0) {
           const prev = out.get(id);
           const min = Math.max(0, Math.round(value - tol));
@@ -403,9 +427,13 @@ export function buildTradeQueryFromItem(itemText: string, opts: BuildTradeQueryF
   // Предмет с уроном/APS — оружие: его моды "increased Physical Damage"/"Attack Speed"
   // локальные, выбор explicit-id зависит от этого флага.
   const isWeapon = !!(num.dps || num.pdps || num.edps);
+  // W4-4: армор-слот = предмет с колонками защиты (armour/evasion/ES): там
+  // flat-моды обороны локальные (база их уже включает) → local-id фильтры.
+  const isArmourSlot = !isWeapon && !!(num.ar || num.ev || num.es);
   const statFilters = modsToStatFilters(parsed.mods.map((m) => m.text), {
     tolerance: opts.tolerance,
     weapon: isWeapon,
+    armourSlot: isArmourSlot,
   });
   // Процентная нормализация модов: только когда tolerancePct задан явно
   // (легаси-вызовы без опций получают точные значения, как раньше).

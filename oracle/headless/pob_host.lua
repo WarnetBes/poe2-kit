@@ -181,6 +181,51 @@ function methods.set_level(p)
 	return { ok = true, level = build.characterLevel, stats = collectStats(p.keys) }
 end
 
+-- W2-2: swap предмета в слот по клир-тексту (игровой буфер / PoB raw).
+-- Движок сам парсит текст (Classes/Item.lua newClass("Item", raw); ItemsTab
+-- CreateDisplayItemFromRaw -> new("Item", itemRaw)). Слоты — канон
+-- baseSlots ItemsTab.lua: Weapon 1/2, Helmet, Body Armour, Gloves, Boots,
+-- Amulet, Ring 1/2, Belt, Charm 1-3, Flask 1/2. Примерка по нескольким слотам
+-- организуется вызывающей стороной: snapshot_build -> swap_item -> restore_build.
+function methods.swap_item(p)
+	assert(type(p) == "table" and type(p.itemText) == "string" and #p.itemText > 0,
+		"swap_item requires params.itemText")
+	local item = new("Item", p.itemText)
+	if not item.base then
+		return { ok = false, errorCode = "parse_failed", error = "движок не разобрал текст предмета (нет base)" }
+	end
+	item:NormaliseQuality()
+	build.itemsTab:AddItem(item, true) -- регистрирует id, noAutoEquip
+	local slots = build.itemsTab.slots
+	-- Слот: явный params.slot || первичный предмета.
+	local slotName
+	if type(p.slot) == "string" and #p.slot > 0 then
+		slotName = p.slot
+	else
+		slotName = item:GetPrimarySlot()
+	end
+	if not slotName or slotName == "" or not slots[slotName] then
+		return { ok = false, errorCode = "bad_slot", error = "нет такого слота: " .. tostring(slotName) }
+	end
+	if not build.itemsTab:IsItemValidForSlot(item, slotName, build.itemsTab.activeItemSet) then
+		return { ok = false, errorCode = "slot_invalid", error = "предмет не валиден для слота " .. slotName }
+	end
+	slots[slotName]:SetSelItemId(item.id)
+	build.itemsTab:PopulateSlots()
+	build.buildFlag = true
+	recalc()
+	return {
+		ok = true,
+		slot = slotName,
+		stats = collectStats(p.keys),
+		item = {
+			name = item.name and tostring(item.name) or nil,
+			base = item.baseName and tostring(item.baseName) or nil,
+			rarity = item.rarity and tostring(item.rarity) or nil,
+		},
+	}
+end
+
 -- ---------------------------------------------------------------------------
 -- Фаза 2: CAS-конфиг + валидация + босс-резисты
 -- ---------------------------------------------------------------------------

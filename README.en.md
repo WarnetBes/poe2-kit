@@ -55,9 +55,12 @@ poe2scout, poe.ninja and trade2.*
   target slots, numeric cap goals) with real engine verification per goal
   (pass/warn/fail GoalCheck); the meta tab also knows your build (“your skill:
   N% of players”).
-- **🤖 MCP server** — 79 poe2_* tools, so your AI assistant (OpenCode,
+- **🤖 MCP server** — 84 poe2_* tools, so your AI assistant (OpenCode,
   Claude Desktop, …) can price items, decode PoB codes, pull ladders,
-  rates and dataset info for you.
+  rates and dataset info for you, compare two items head-to-head
+  (`poe2_items_compare`), score gear without a build (`poe2_gearscore`),
+  plan resistance pairs (`poe2_resist_pairs`) and check map verdicts
+  against your build (`poe2_map_check`).
 - **🌐 Web dashboard** — the same core in the browser: rates, price check,
   build import, 🛡 Radar (patch timeline, live bugs, tricks).
 
@@ -66,7 +69,7 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 | Frontend | Package | What it is |
 |---|---|---|
 | 🖥️ Windows overlay | `apps/overlay` | Transparent window over the game: hotkey pricing, build/gems/leveling tabs, watchlist alerts |
-| 🧠 MCP server for AI | `apps/mcp` | 79 `poe2_*` tools for AI assistants (stdio) |
+| 🧠 MCP server for AI | `apps/mcp` | 84 `poe2_*` tools for AI assistants (stdio) |
 | 🌐 Web app | `apps/web` | Browser dashboard: currency rates, price check, leveling guide, build import, 🛡 Radar |
 
 > **Note**: since v1.0.18 the overlay panel UI is switchable to English
@@ -154,7 +157,7 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
   repository that you download yourself; the kit never patches or modifies
   it. Without a configured clone the tab honestly refuses to work — no
   silent fallbacks.
-- **MCP tooling.** The kit ships an MCP server (79 tools) for MCP clients
+- **MCP tooling.** The kit ships an MCP server (84 tools) for MCP clients
   (OpenCode etc.): a plain local process you start yourself, talking to the
   same public APIs as the web UI. The game client is never touched: log tools
   read only the standard game log.

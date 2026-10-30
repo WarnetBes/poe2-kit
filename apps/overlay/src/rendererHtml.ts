@@ -3130,6 +3130,8 @@ ${OVERLAY_SHELL}<script>
     ['buildPanel', 'Панель билда'],
     ['pinnacle', 'Чекап перед пиннаклом'],
     ['ritual', 'Ритуал-скан'],
+    ['itemVerdict', 'Вердикт предмета'],
+    ['mapCheck', 'Проверка карты'],
     ['settings', 'Настройки']
   ];
   var hkInputs = {};
@@ -3201,6 +3203,8 @@ ${OVERLAY_SHELL}<script>
       bindWindow: !!$('setBindWindow').checked,
       autoClipboard: !!$('setAutoClip').checked,
       verdictLayer: !!$('setVerdictLayer').checked,
+      // W1-1: путь PoB-.xml для watcher (пустая строка → null = выключено).
+      pobFileWatch: ($('setPobWatch').value || '').trim() || null,
       gemLang: $('gemLangEn').classList.contains('on') ? 'en' : 'ru',
       // №105: тема доступности + свои цвета (пипетки).
       theme: draftTheme,
@@ -3236,6 +3240,78 @@ ${OVERLAY_SHELL}<script>
     $('setAutoClip').checked = !!s.autoClipboard;
     $('setVerdictLayer').checked = !!s.verdictLayer;
     $('setBindWindow').checked = s.bindWindow !== false;
+    // W1-1: путь watcher-а (readonly — меняется только через «Обзор…»/«✕»).
+    $('setPobWatch').value = s.pobFileWatch || '';
+    // Кнопки watcher-а: живой диалог выбора файла + выключение. Применение —
+    // сразу (без «Сохранить»): как угол/тема — дешёвая операция с мгновенным
+    // эффектом; currentDraft() заберёт уже выставленное значение поля.
+    $('pobWatchBrowse').onclick = function () {
+      window.poe2k.pickPobFile().then(function (p) {
+        if (p) {
+          $('setPobWatch').value = p;
+          window.poe2k.settingsApply(currentDraft()).then(function () {
+            $('settingsSave').textContent = '✓ Файл отслеживается';
+            setTimeout(function () { $('settingsSave').textContent = 'Сохранить'; }, 2500);
+          }).catch(function () {});
+        }
+      }).catch(function () {});
+    };
+    $('pobWatchClear').onclick = function () {
+      $('setPobWatch').value = '';
+      window.poe2k.settingsApply(currentDraft()).then(function () {
+        $('settingsSave').textContent = '✓ Слежение выключено';
+        setTimeout(function () { $('settingsSave').textContent = 'Сохранить'; }, 2500);
+      }).catch(function () {});
+    };
+    // W1-2: апдейтер — статус из кэша (мгновенно), кнопки поверх.
+    var updateStatus = $('updateStatus');
+    var updatePageBtn = $('updatePageBtn');
+    var updateInstallBtn = $('updateInstallBtn');
+    function paintUpdateStatus(s) {
+      // s: {currentVersion, latest:{version,zipBytes,pageUrl}|null, available, checkedAt, error}
+      if (!s) { updateStatus.textContent = 'версия загрузки…'; return; }
+      var mb = s.latest && s.latest.zipBytes ? ' (~' + Math.round(s.latest.zipBytes / 1e6) + ' МБ)' : '';
+      if (s.available && s.latest) {
+        updateStatus.textContent = 'Текущая: v' + s.currentVersion + ' · доступна v' + s.latest.version + mb;
+        updatePageBtn.style.display = '';
+        updateInstallBtn.style.display = '';
+      } else if (s.latest) {
+        updateStatus.textContent = 'v' + s.currentVersion + ' — свежая версия (GitHub: v' + s.latest.version + ')';
+        updatePageBtn.style.display = '';
+        updateInstallBtn.style.display = 'none';
+      } else {
+        updateStatus.textContent = 'v' + s.currentVersion + ' · проверка недоступна (' + (s.error || 'сеть молчит') + ')';
+        updatePageBtn.style.display = 'none';
+        updateInstallBtn.style.display = 'none';
+      }
+    }
+    window.poe2k.updateCached().then(function (c) { if (c) paintUpdateStatus(c); });
+    $('updateCheckBtn').onclick = function () {
+      updateStatus.textContent = 'проверяю GitHub…';
+      window.poe2k.updateCheck().then(function (r) {
+        paintUpdateStatus(r);
+      }).catch(function () { paintUpdateStatus(null); });
+    };
+    $('updatePageBtn').onclick = function () {
+      window.poe2k.updateCached().then(function (c) {
+        var url = c && c.latest && c.latest.pageUrl;
+        if (url) window.poe2k.updateOpenPage(url);
+      }).catch(function () {});
+    };
+    $('updateInstallBtn').onclick = function () {
+      updateInstallBtn.textContent = 'Скачиваю… (~97 МБ, curl)';
+      updateInstallBtn.disabled = true;
+      window.poe2k.updateInstall().then(function (r) {
+        if (!r || !r.ok) {
+          updateInstallBtn.textContent = 'Ошибка: ' + ((r && r.error) || 'неизвестно');
+          updateInstallBtn.disabled = false;
+        }
+        // ok = окно уходит на перезапуск, этот код уже не актуален.
+      }).catch(function () {
+        updateInstallBtn.textContent = 'Скачать и установить';
+        updateInstallBtn.disabled = false;
+      });
+    };
     paintGemLang(s.gemLang === 'en' ? 'en' : 'ru');
     paintUiLang(s.lang === 'ru' || s.lang === 'en' ? s.lang : 'auto');
     // №105: тема доступности + пипетки.

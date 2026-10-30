@@ -42,6 +42,18 @@ export interface OverlayAPI {
   settingsGet(): Promise<unknown>;
   /** Применить настройки из панели. */
   settingsApply(next: unknown): Promise<unknown>;
+  /** W1-1: системный диалог выбора PoB-.xml для watcher-а (null = отмена). */
+  pickPobFile(): Promise<string | null>;
+  /** W1-2: живая проверка обновлений (GitHub-релизы). */
+  updateCheck(): Promise<unknown>;
+  /** W1-2: кэш последней проверки (без сети). */
+  updateCached(): Promise<unknown>;
+  /** W1-2: портабл-установка доступна для авто-применения? */
+  updateRootWritable(): Promise<boolean>;
+  /** W1-2: открыть страницу релиза (только наш репозиторий). */
+  updateOpenPage(url: string): Promise<boolean>;
+  /** W1-2: скачать+применить обновление (диалог подтверждения в main). */
+  updateInstall(): Promise<unknown>;
   /** Слушать переключение панели настроек (Ctrl+F6). */
   onSettingsToggle(cb: () => void): () => void;
   /** Слушать применение настроек отображения (прозрачность/масштаб/ширина/угол). */
@@ -187,6 +199,13 @@ const api: OverlayAPI = {
   settingsGet: () => ipcRenderer.invoke('settings:get'),
 
   settingsApply: (next) => ipcRenderer.invoke('settings:apply', next),
+  pickPobFile: () => ipcRenderer.invoke('settings:pickPobFile'),
+
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateCached: () => ipcRenderer.invoke('update:cached'),
+  updateRootWritable: () => ipcRenderer.invoke('update:rootWritable'),
+  updateOpenPage: (url) => ipcRenderer.invoke('update:openPage', url),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
 
   onSettingsToggle: (cb) => {
     const listener = () => cb();

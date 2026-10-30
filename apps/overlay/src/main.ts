@@ -13,6 +13,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  dialog,
   globalShortcut,
   ipcMain,
   Notification,
@@ -25,9 +26,18 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { core, currencyIconsDir, encodePngBgra, gameViewOf, gameViewReadWhole, locateFavoursGrid, loadRitualAnchor, recognizeFavours, ritualDatasetStatus } from '@poe2-kit/core';
 import { rendererHtml } from './rendererHtml.js';
+import {
+  checkForUpdate,
+  readCachedCheck,
+  stageUpdate,
+  runApplyScriptAndQuit,
+  portableInstallRoot,
+} from './updater.js';
 import { GEMS_RU_EN } from './gemsRuEn.js';
 import { findGameWindow, isGameForeground, describeWindow, fgHwnd } from './win32.js';
 import { captureClient, type ClientFrame } from './gdiCapture.js';
+// W4-3: атомарная запись (tmp→rename, .bak-ротация) + ретраи чтения JSON-стейтов.
+import { readJsonSync, writeJsonSync } from './jsonStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -145,6 +155,11 @@ const PINNACLE_HOTKEY = 'Control+F7';
 
 // №584: Ritual-прайсинг (порт Poe2Pricer, MIT saxe78) — Ctrl+F8.
 const RITUAL_HOTKEY = 'Control+F8';
+// W2-4: swap-вердикт «предмет vs билд» движком PoB2 (oracle) — Ctrl+F9
+// (F1–F8 заняты; настраивается штатно через настройки Ctrl+F6).
+const ITEM_VERDICT_HOTKEY = 'Control+F9';
+// W5-A (№696): map-check хоткей — вердикт waystone против билда без MCP.
+const MAP_CHECK_HOTKEY = 'Control+F10';
 const LEAGUE_STORAGE_KEY = 'poe2k.league';
 
 /** Смещение оверлея относительно «закреплённой» позиции (угол окна игры). */
@@ -209,6 +224,10 @@ interface OverlaySettings {
    * upgrade/sidegrade/downgrade с гвардов core.itemVerdict, поверх гира
    * импортированного билда (Ctrl+F3). Расчёт локальный, без сети. */
   verdictLayer?: boolean;
+  /** W1-1: путь к сохраняемому PoB-.xml — watcher пересохранений. Каждый сейв
+   * в Path of Building (= Ctrl+S) автоматически переимпортирует билд в оверлей,
+   * без ручного Ctrl+F3. null = слежение выключено. */
+  pobFileWatch?: string | null;
 }
 
 /** №113b: полный список вкладок панели (data-tab) — для санитайза hiddenTabs. */
@@ -222,7 +241,9 @@ type HotkeyAction =
   | 'buildPanel'
   | 'settings'
   | 'pinnacle'
-  | 'ritual';
+  | 'ritual'
+  | 'itemVerdict'
+  | 'mapCheck';
 
 const DEFAULT_SETTINGS: OverlaySettings = {
   corner: 'top-right',
@@ -250,6 +271,8 @@ const DEFAULT_HOTKEYS: Record<HotkeyAction, string> = {
   settings: SETTINGS_HOTKEY,
   pinnacle: PINNACLE_HOTKEY,
   ritual: RITUAL_HOTKEY,
+  itemVerdict: ITEM_VERDICT_HOTKEY,
+  mapCheck: MAP_CHECK_HOTKEY,
 };
 
 /** Активные настройки оверлея. */
@@ -302,7 +325,7 @@ function watchlistFile(): string {
 
 function loadWatchlist(): void {
   try {
-    const raw = JSON.parse(fs.readFileSync(watchlistFile(), 'utf8'));
+    const raw = readJsonSync(watchlistFile()); // W4-3: ретраи+BOM+.bak
     if (Array.isArray(raw)) {
       watchlist = raw
         .filter((e) => e && typeof e.itemText === 'string' && e.itemText.length > 0)
@@ -342,7 +365,7 @@ function loadWatchlist(): void {
 function saveWatchlist(): void {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    fs.writeFileSync(watchlistFile(), JSON.stringify(watchlist), 'utf8');
+    writeJsonSync(watchlistFile(), watchlist); // W4-3: атомарно + .bak
   } catch {
     /* некритично */
   }
@@ -746,11 +769,13 @@ function charSyncFile(): string {
 
 function loadCharSync(): CharSyncState | null {
   try {
-    const raw: unknown = JSON.parse(fs.readFileSync(charSyncFile(), 'utf8'));
-    const c = raw as CharSyncState;
-    if (c && c.account && c.league && c.character) {
-      charSync = { ...c, lastSyncAt: Number(c.lastSyncAt) || 0 };
-      return charSync;
+    const raw = readJsonSync(charSyncFile()); // W4-3
+    if (raw) {
+      const c = raw as CharSyncState;
+      if (c && c.account && c.league && c.character) {
+        charSync = { ...c, lastSyncAt: Number(c.lastSyncAt) || 0 };
+        return charSync;
+      }
     }
   } catch {
     /* нет файла — ок */
@@ -761,7 +786,7 @@ function loadCharSync(): CharSyncState | null {
 function saveCharSync(): void {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    fs.writeFileSync(charSyncFile(), JSON.stringify(charSync), 'utf8');
+    writeJsonSync(charSyncFile(), charSync); // W4-3: атомарно + .bak
   } catch {
     /* некритично */
   }
@@ -903,9 +928,9 @@ function loadSettings(): OverlaySettings {
     // BOM-толерантность: файл иногда правят PowerShell-ом (Set-Content -Encoding utf8
     // в Windows PowerShell = UTF-8 с BOM) — JSON.parse с '\uFEFF' падает, и overlay
     // молча уходил в дефолты. BOM срезаем перед парсингом.
-    let text = fs.readFileSync(settingsFile(), 'utf8');
-    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-    return normalizeSettings(JSON.parse(text));
+    // BOM-толерантность (№105) и ретраи/.bak — теперь в jsonStore (W4-3).
+    // normalizeSettings(undefined) сам даёт дефолты.
+    return normalizeSettings(readJsonSync(settingsFile()));
   } catch {
     /* нет файла или он битый — берём настройки по умолчанию */
     return { ...DEFAULT_SETTINGS, hotkeys: {} };
@@ -915,7 +940,7 @@ function loadSettings(): OverlaySettings {
 function saveSettings(s: OverlaySettings): void {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    fs.writeFileSync(settingsFile(), JSON.stringify(s), 'utf8');
+    writeJsonSync(settingsFile(), s); // W4-3: атомарно + .bak
   } catch {
     /* некритично */
   }
@@ -995,8 +1020,8 @@ function offsetStateFile(): string {
 
 function loadUserOffset(): OverlayOffset | null {
   try {
-    const raw = JSON.parse(fs.readFileSync(offsetStateFile(), 'utf8'));
-    if (typeof raw?.x === 'number' && typeof raw?.y === 'number') {
+    const raw = readJsonSync<{ x: number; y: number }>(offsetStateFile()); // W4-3
+    if (raw && typeof raw.x === 'number' && typeof raw.y === 'number') {
       return { x: raw.x, y: raw.y };
     }
     return null;
@@ -1008,7 +1033,7 @@ function loadUserOffset(): OverlayOffset | null {
 function saveUserOffset(offset: OverlayOffset | null): void {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    if (offset) fs.writeFileSync(offsetStateFile(), JSON.stringify(offset), 'utf8');
+    if (offset) writeJsonSync(offsetStateFile(), offset); // W4-3: атомарно + .bak
     else fs.rmSync(offsetStateFile(), { force: true });
   } catch {
     /* некритично */
@@ -1146,6 +1171,8 @@ function applySettings(next: OverlaySettings): void {
   settings = { ...next, hotkeys: { ...next.hotkeys } };
   syncLearnEnv();
   syncClipboardWatcher();
+  // W1-1: рестарт PoB-file watcher по новой настройке (включение/смена/выключение).
+  applyPobFileWatchFromSettings();
   saveSettings(settings);
   overlayWidth = settings.width;
   // №62: ручная высота применяется сразу (как ширина), включая слайдер в настройках.
@@ -1183,6 +1210,12 @@ function normalizeSettings(input: unknown): OverlaySettings {
   if (typeof raw.bindWindow === 'boolean') next.bindWindow = raw.bindWindow;
   if (typeof raw.autoClipboard === 'boolean') next.autoClipboard = raw.autoClipboard;
   if (typeof raw.verdictLayer === 'boolean') next.verdictLayer = raw.verdictLayer;
+  // W1-1: путь к PoB-.xml (watcher пересохранений). Пустая строка/null = выключено.
+  if (typeof raw.pobFileWatch === 'string' && raw.pobFileWatch.trim()) {
+    next.pobFileWatch = raw.pobFileWatch.trim();
+  } else if (raw.pobFileWatch === null || raw.pobFileWatch === '') {
+    next.pobFileWatch = null;
+  }
   if (raw.gemLang === 'en' || raw.gemLang === 'ru') next.gemLang = raw.gemLang;
   // №158: язык UI панели.
   if (raw.lang === 'ru' || raw.lang === 'en' || raw.lang === 'auto') next.lang = raw.lang;
@@ -1230,8 +1263,11 @@ function buildStateFile(): string {
 
 function loadBuildState(): void {
   try {
-    const raw = JSON.parse(fs.readFileSync(buildStateFile(), 'utf8'));
-    if (Array.isArray(raw?.slots)) {
+    // any оправдан: внешний JSON, проверка полей ниже (raw.slots Array.isArray),
+    // остальное присваивается в строгий buildState с полями-гвардов `?? null`.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = readJsonSync<any>(buildStateFile()); // W4-3
+    if (raw && Array.isArray(raw.slots)) {
       buildState = {
         rawInput: String(raw.rawInput ?? ''),
         className: raw.className,
@@ -1289,7 +1325,7 @@ function saveBuildState(): void {
   if (!buildState) return;
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    fs.writeFileSync(buildStateFile(), JSON.stringify(buildState), 'utf8');
+    writeJsonSync(buildStateFile(), buildState); // W4-3: атомарно + .bak
   } catch {
     /* некритично */
   }
@@ -2050,6 +2086,85 @@ async function syncCharacterGear(force = false): Promise<void> {
  */
 let pricingToken = 0;
 
+// ─── W1-1: PoB-файл — авто-обновление билда при пересохранении в PoB ────────
+// Idea reference: poe2-upgrade-checker (GPL-3), no code copied — их UX «link the
+// build file you save in Path of Building and the app follows it» (№686/№687).
+// Механика своя: fs.watch + debounce (PoB2 пишет XML не мгновенно), дедуп по
+// контенту, рестарт watcher-а на rename (Windows-писатели часто пишут
+// temp+rename — тогда watcher на старом inode умирает молча).
+
+const POB_WATCH_DEBOUNCE_MS = 1200;
+let pobWatch: fs.FSWatcher | null = null;
+let pobWatchTimer: NodeJS.Timeout | null = null;
+let pobWatchPath: string | null = null;
+
+function stopPobFileWatch(): void {
+  if (pobWatchTimer) {
+    clearTimeout(pobWatchTimer);
+    pobWatchTimer = null;
+  }
+  if (pobWatch) {
+    try {
+      pobWatch.close();
+    } catch {
+      /* уже закрыт */
+    }
+    pobWatch = null;
+  }
+  pobWatchPath = null;
+}
+
+function startPobFileWatch(filePath: string): void {
+  stopPobFileWatch();
+  if (!filePath || !fs.existsSync(filePath)) {
+    console.warn(`[overlay] pob-watch: файл не найден — слежение не включено: ${filePath}`);
+    return;
+  }
+  pobWatchPath = filePath;
+  try {
+    pobWatch = fs.watch(filePath, (evt) => {
+      if (pobWatchTimer) clearTimeout(pobWatchTimer);
+      // rename на Windows = возможна запись temp+rename: переживаем паузой;
+      // если файл исчез совсем — читалка ниже честно предупредит, watcher
+      // перезапустится при следующем applyPobFileWatchFromSettings.
+      if (evt === 'rename') {
+        setTimeout(() => {
+          if (pobWatchPath === filePath && !fs.existsSync(filePath)) {
+            console.warn('[overlay] pob-watch: файл переименован/удалён — слежение остановлено');
+            stopPobFileWatch();
+          }
+        }, 500);
+      }
+      pobWatchTimer = setTimeout(() => {
+        try {
+          const xml = fs.readFileSync(filePath, 'utf8').trim();
+          if (!xml) return;
+          if (buildState && xml === buildState.rawInput.trim()) {
+            console.log('[overlay] pob-watch: контент не изменился — пропускаю');
+            return;
+          }
+          console.log(`[overlay] pob-watch: пересохранение PoB-файла (${xml.length} chars) → авто-импорт`);
+          void runBuildImport(xml);
+        } catch (err) {
+          console.warn('[overlay] pob-watch: чтение не удалось', (err as Error).message);
+        }
+      }, POB_WATCH_DEBOUNCE_MS);
+    });
+    console.log(`[overlay] pob-watch: слежу за ${filePath} (пересохранение PoB = авто-обновление билда)`);
+  } catch (err) {
+    console.warn('[overlay] pob-watch: fs.watch не удался', (err as Error).message);
+    pobWatchPath = null;
+  }
+}
+
+/** Включить/выключить watcher по настройкам (вызов на старте и в settings:apply). */
+function applyPobFileWatchFromSettings(): void {
+  const p = settings.pobFileWatch;
+  if (typeof p === 'string' && p.trim()) startPobFileWatch(p.trim());
+  else stopPobFileWatch();
+}
+// ─── конец W1-1 (watcher) ────────────────────────────────────────────────────
+
 /**
  * Дерево билда: разбор пассивок PoB-импорта в кейнстоуны/нотабли.
  * Живое дерево персонажа PoE2 не экспортирует (сквозное знание, куб-4),
@@ -2085,8 +2200,13 @@ function looksLikeItemText(raw: string): boolean {
   return /^\s*(Item Class|Класс предмета|Rarity|Редкость)\s*:/im.test(raw);
 }
 
-async function runBuildImport(): Promise<void> {
-  const input = clipboard.readText().trim();
+/**
+ * W1-1: обходной путь `rawInput` — watcher PoB-файла импортирует сохранённый
+ * XML напрямую, мимо буфера обмена (все проверки ниже работают одинаково).
+ */
+async function runBuildImport(rawInput?: string): Promise<void> {
+  const fromFile = rawInput != null;
+  const input = (rawInput ?? clipboard.readText()).trim();
   if (!input) {
     sendBuildUpdate({ error: 'Буфер пуст. Скопируйте PoB share-код (Ctrl+C в PoB → «Export»), затем Ctrl+F3.' });
     return;
@@ -2131,7 +2251,11 @@ async function runBuildImport(): Promise<void> {
   // 01.10 00:51–00:53: «Main Skills…» (PoB-скрин) и «ВКЛАД В БИБЛИОТЕКУ…»
   // (123 932 симв.) дали buildImport:failed ×7 с «U+412, контекст "ВКЛАДВБИБЛИО"».
   // JSON (.build) начинается с { или [ — исключаем, чтобы не сломать его импорт.
-  if (!/^[{\[]/.test(input) && !/^[A-Za-z0-9+/=\s._-]+$/.test(input)) {
+  // W1-1: decoded XML (export PoB2 / watcher) начинается с «<?xml» или
+  // «<PathOfBuilding…» — раньше резался этим же фильтром (латентный баг и для
+  // вставки XML из буфера; core.build.toXml XML принимает, см. build.ts:135).
+  const xmlHead = /^\s*(<\?xml|<PathOfBuilding2?\b)/i.test(input);
+  if (!xmlHead && !/^[{\[]/.test(input) && !/^[A-Za-z0-9+/=\s._-]+$/.test(input)) {
     console.log('[overlay] build import skip: буфер — не PoB-код, быстрый отказ (№101c+)');
     statEvent('buildImport:rejected:notCode', `${input.length} chars`);
     sendBuildUpdate({
@@ -2145,7 +2269,7 @@ async function runBuildImport(): Promise<void> {
   if (buildPricing) console.warn('[overlay] новый импорт отменяет прайсинг предыдущего билда');
   buildPricing = true;
   try {
-    console.log(`[overlay] build import: ${input.length} chars from clipboard`);
+    console.log(`[overlay] build import: ${input.length} chars from ${fromFile ? 'pob file (watcher)' : 'clipboard'}`);
     console.log(`[overlay] build import head: ${JSON.stringify(input.slice(0, 120))}`);
     sendBuildUpdate({ status: 'importing' });
 
@@ -3167,12 +3291,8 @@ function bossTimesPath(): string {
   return path.join(app.getPath('userData'), 'boss-times.json');
 }
 function readBossTimes(): BossTimesFile {
-  try {
-    const p = JSON.parse(fs.readFileSync(bossTimesPath(), 'utf8')) as BossTimesFile;
-    if (Array.isArray(p.attempts)) return p;
-  } catch {
-    /* нет файла — норма */
-  }
+  const p = readJsonSync<BossTimesFile>(bossTimesPath()); // W4-3
+  if (p && Array.isArray(p.attempts)) return p;
   return { league: activeLeague ?? undefined, attempts: [] };
 }
 /** Записать попытку. Смена лиги = обнуление истории (время в другой лиге несравнимо). */
@@ -3187,7 +3307,7 @@ function appendBossAttempt(zoneCode: string, kind: 'kill' | 'death', ms: number)
   // Верхний предел истории: 200 последних попыток (файл не растёт бесконечно).
   if (file.attempts.length > 200) file.attempts = file.attempts.slice(-200);
   try {
-    fs.writeFileSync(bossTimesPath(), JSON.stringify(file, null, 2));
+    writeJsonSync(bossTimesPath(), file, true); // W4-3: атомарно + .bak
   } catch (e) {
     console.log(`[overlay] boss-times.json не записан: ${e instanceof Error ? e.message : e}`);
   }
@@ -3204,23 +3324,18 @@ function bossZoneStats(zoneCode: string): { kills: number; deaths: number; best:
     last: kills.length ? kills[kills.length - 1]!.ms : null,
   };
 }
+function levelingProgressFile(): string {
+  return path.join(app.getPath('userData'), 'leveling-progress.json');
+}
 function readLevelingProgressFile(): LevelingProgressFile | null {
-  try {
-    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
-    const p = JSON.parse(raw) as LevelingProgressFile;
-    if (typeof p.act === 'number' && typeof p.index === 'number') return p;
-    return null;
-  } catch {
-    return null;
-  }
+  const p = readJsonSync<LevelingProgressFile>(levelingProgressFile()); // W4-3
+  if (p && typeof p.act === 'number' && typeof p.index === 'number') return p;
+  return null;
 }
 /** №140: прямая запись (без merge) — только для сбросов прогресса. */
 function writeLevelingProgressReset(p: LevelingProgressFile): void {
   try {
-    fs.writeFileSync(
-      path.join(app.getPath('userData'), 'leveling-progress.json'),
-      JSON.stringify({ ...p, visitedCodes: p.visitedCodes ?? [], claimedRewards: p.claimedRewards ?? [] }, null, 2),
-    );
+    writeJsonSync(levelingProgressFile(), { ...p, visitedCodes: p.visitedCodes ?? [], claimedRewards: p.claimedRewards ?? [] }, true); // W4-3
   } catch (e) {
     console.log(`[overlay] leveling-progress.json не записан: ${e instanceof Error ? e.message : e}`);
   }
@@ -3249,12 +3364,7 @@ function levelingProgressForLeague(): LevelingProgressFile | null {
 function writeLevelingProgress(p: LevelingProgressFile): void {
   try {
     // №108: claimedRewards переживают запись furthest (merge с файлом).
-    let prev: LevelingProgressFile | null = null;
-    try {
-      prev = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8')) as LevelingProgressFile;
-    } catch {
-      prev = null;
-    }
+    const prev = readLevelingProgressFile(); // W4-3 (ретраи/BAK внутри)
     const prevSameLeague = prev && p.league && prev.league === p.league ? prev : null;
     const merged: LevelingProgressFile = {
       ...p,
@@ -3263,7 +3373,7 @@ function writeLevelingProgress(p: LevelingProgressFile): void {
         ? Array.from(new Set([...(p.claimedRewards ?? []), ...(prevSameLeague.claimedRewards ?? [])]))
         : (p.claimedRewards ?? []),
     };
-    fs.writeFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), JSON.stringify(merged, null, 2));
+    writeJsonSync(levelingProgressFile(), merged, true); // W4-3: атомарно + .bak
   } catch (e) {
     console.log(`[overlay] leveling-progress.json не записан: ${e instanceof Error ? e.message : e}`);
   }
@@ -3271,13 +3381,8 @@ function writeLevelingProgress(p: LevelingProgressFile): void {
 
 /** №108: прочитанные «забрал»-ключи квест-наград. */
 function readClaimedRewards(): string[] {
-  try {
-    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'leveling-progress.json'), 'utf8');
-    const p = JSON.parse(raw) as LevelingProgressFile;
-    return Array.isArray(p.claimedRewards) ? p.claimedRewards.filter((k) => typeof k === 'string') : [];
-  } catch {
-    return [];
-  }
+  const p = readJsonSync<LevelingProgressFile>(levelingProgressFile()); // W4-3
+  return p?.claimedRewards && Array.isArray(p.claimedRewards) ? p.claimedRewards.filter((k) => typeof k === 'string') : [];
 }
 
 /** №108: отметить квест-награду «забрал» (исчезает из чек-листа навсегда). */
@@ -3663,6 +3768,135 @@ async function runRitualScan(): Promise<unknown> {
   }
 }
 
+/**
+ * W2-4: swap-вердикт «предмет vs билд» (Ctrl+F9). Пайплайн: клир-текст кандидата
+ * из буфера (Ctrl+C в игре) + импортированный билд (buildState.rawInput) →
+ * core.swapItem.swapVerdictForItem (oracle PoB2, swap в каждый подходящий
+ * слот) → вердикт в панель билда. Oracle недоступен — честная ошибка с сетап-hint.
+ */
+async function runItemVerdictCheck(): Promise<void> {
+  const itemText = clipboard.readText().trim();
+  if (!itemText) {
+    sendBuildUpdate({ error: 'Буфер пуст. Наведите предмет в игре, Ctrl+C, затем Ctrl+F9.' });
+    return;
+  }
+  if (!looksLikeItemText(itemText)) {
+    sendBuildUpdate({ error: 'В буфере не текст предмета. Наведите предмет в игре, Ctrl+C (копирование), затем Ctrl+F9.' });
+    return;
+  }
+  if (!buildState || !buildState.slots.length) {
+    sendBuildUpdate({ error: 'Сначала импортируйте билд (PoB-код → Ctrl+F3): вердикт считается поверх вашего билда.' });
+    return;
+  }
+  if (busy) {
+    console.warn('[overlay] item verdict skipped: busy=true');
+    return;
+  }
+  busy = true;
+  try {
+    sendBuildUpdate({ info: `⚔ Вердикт: движок PoB2 примеряет предмет в слоты (до ${(180 / 60).toFixed(0)} мин на слот)…` });
+    // rawInput после импорта = share-код ИЛИ XML (watcher/импорт файла) —
+    // swapVerdictForItem принимает оба, различаем по head (как №101c+ xmlHead).
+    const raw = buildState.rawInput.trim();
+    const isXml = /^\s*(<\?xml|<PathOfBuilding2?\b)/i.test(raw);
+    const res = await core.swapItem.swapVerdictForItem({
+      ...(isXml ? { xml: raw } : { pobCode: raw }),
+      itemText,
+    });
+    if (!res.available) {
+      sendBuildUpdate({ error: `Вердикт недоступен: ${res.reason}${res.setupHint ? `\n${res.setupHint}` : ''}` });
+      return;
+    }
+    const b = res.best;
+    if (!b) {
+      const failLine = res.attempts.find((a) => a.failed)?.failed ?? 'слоты не подошли';
+      sendBuildUpdate({ error: `Вердикт не вынесен: ${failLine}.` });
+      return;
+    }
+    const pct = (v: number | null | undefined) => (v == null ? '?' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
+    const lines = [
+      `⚔ ${b.slot}: ${VERDICT_RU[b.verdict] ?? b.verdict} (score ${b.score})`,
+      b.headline,
+      `${b.dpsKey ? `DPS ${pct(b.dps.deltaPct)} · ` : ''}EHP ${pct(b.ehp.deltaPct)} · скорость ${(pct(b.ms.deltaPct) ?? '')}`.trim(),
+      ...b.reasons.map((r) => `${r.direction === 'gain' ? '⬆' : r.direction === 'loss' ? '⬇' : '•'} ${r.text}`),
+    ];
+    // Примерки вторым слотом (колец/фляг) — одной строкой упомянуть.
+    const other = res.attempts.filter((a) => a.verdict && a.slot !== b.slot);
+    if (other.length) {
+      lines.push(`Другие слоты: ${other.map((a) => `${a.slot} → ${a.verdict!.verdict}`).join(', ')}`);
+    }
+    sendBuildUpdate({ info: lines.join('\n') });
+    console.log(`[overlay] item verdict: ${b.slot} → ${b.verdict} (score ${b.score})`);
+  } catch (err) {
+    sendBuildUpdate({ error: `Вердикт упал: ${(err as Error).message}` });
+  } finally {
+    busy = false;
+  }
+}
+
+const VERDICT_RU: Record<string, string> = {
+  upgrade: 'UPGRADE — брать',
+  minor_upgrade: 'UPGRADE (слабый плюс)',
+  sidegrade: 'SIDEGRADE — трейд-офф',
+  loses_resistance: 'LOSES RESISTANCE — усиление за резист-кап',
+  downgrade: 'NOT AN UPGRADE — просадка',
+  not_viable: 'NOT VIABLE — надеть нельзя',
+  uncertain: 'UNCERTAIN — движок не дал чисел',
+};
+
+/**
+ * W5-A (№696): map-check по хоткею — вердикт waystone из буфера против
+ * импортированного билда, без MCP (Python не нужен). Тонкий мост: вся логика
+ * в core.mapCheck.checkMapAgainstBuild, здесь только парсинг item → mods.
+ */
+async function runMapCheckCheck(): Promise<void> {
+  const itemText = cleanGameFlavor(clipboard.readText()).trim();
+  if (!itemText) {
+    sendBuildUpdate({ error: 'Буфер пуст. Наведите waystone в игре, Ctrl+C, затем Ctrl+F10.' });
+    return;
+  }
+  if (!buildState || !buildState.slots.length) {
+    sendBuildUpdate({ error: 'Сначала импортируйте билд (PoB-код → Ctrl+F3): вердикт считается поверх вашего билда.' });
+    return;
+  }
+  if (busy) {
+    console.warn('[overlay] map check skipped: busy=true');
+    return;
+  }
+  busy = true;
+  try {
+    // Waystone-клир-текст → моды (RU/EN парсер понимает оба языка).
+    const parsed = core.parse.parseItemText(itemText);
+    const mods = parsed.mods.map((m) => m.text.trim()).filter((t) => t.length > 1);
+    if (!mods.length) {
+      sendBuildUpdate({ error: 'В буфере нет распознанных модов. Наведите WAYSTONE (камень пути), Ctrl+C, затем Ctrl+F10.' });
+      return;
+    }
+    const raw = buildState.rawInput.trim();
+    // PoB share-код ИЛИ XML — core.mapCheck принимает оба (как №101c+).
+    const r = await core.mapCheck.checkMapAgainstBuild(raw, { mods });
+    const v: Record<string, string> = {
+      danger: '⛔ DANGER — карту лучше не открывать',
+      careful: '⚠️ CAREFUL — играбельно, на грани',
+      fine: '✅ FINE — билд держит',
+    };
+    const lines = [`🗺 ${v[r.verdict] ?? r.verdict}`];
+    if (r.maxResPenaltyPct && r.worstEhpLossPct != null) {
+      lines.push(`−${r.maxResPenaltyPct}% к капу резистов; худший слой ${r.worstLayer}: −${r.worstEhpLossPct}% EHP.`);
+    }
+    for (const rsn of r.reasons.slice(0, 6)) lines.push(`• ${rsn}`);
+    if (r.unknownMods.length) {
+      lines.push(`⚠ Не распознаны: ${r.unknownMods.slice(0, 3).join(' | ')}`);
+    }
+    sendBuildUpdate({ info: lines.join('\n') });
+    console.log(`[overlay] map check: ${r.verdict} (${mods.length} модов)`);
+  } catch (err) {
+    sendBuildUpdate({ error: `Map check упал: ${err instanceof Error ? err.message : String(err)}` });
+  } finally {
+    busy = false;
+  }
+}
+
 function registerHotkeys(): void {
   const ok = globalShortcut.register(hotkeyFor('price'), hotkeyAction);
   const okL = globalShortcut.register(hotkeyFor('leveling'), hotkeyLevelAction);
@@ -3705,6 +3939,16 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: ритуал-скан');
     void runRitualScan();
   });
+  // W2-4: swap-вердикт предмета через движок PoB2 — Ctrl+F9 (настраивается).
+  const okIV = globalShortcut.register(hotkeyFor('itemVerdict'), () => {
+    console.log('[overlay] hotkey fired: swap-вердикт предмета');
+    void runItemVerdictCheck();
+  });
+  // W5-A (№696): вердикт waystone против билда — Ctrl+F10 (настраивается).
+  const okMC = globalShortcut.register(hotkeyFor('mapCheck'), () => {
+    console.log('[overlay] hotkey fired: проверка карты');
+    void runMapCheckCheck();
+  });
   console.log(`[overlay] hotkey ${hotkeyFor('price')} registered=${ok}`);
   console.log(`[overlay] hotkey ${hotkeyFor('leveling')} registered=${okL}`);
   console.log(`[overlay] hotkey ${hotkeyFor('move')} registered=${okM}`);
@@ -3714,6 +3958,7 @@ function registerHotkeys(): void {
   console.log(`[overlay] hotkey ${hotkeyFor('settings')} registered=${okS}`);
   console.log(`[overlay] hotkey ${hotkeyFor('pinnacle')} registered=${okP}`);
   console.log(`[overlay] hotkey ${hotkeyFor('ritual')} registered=${okRit}`);
+  console.log(`[overlay] hotkey ${hotkeyFor('mapCheck')} registered=${okMC}`);
 }
 
 // ─── Диагностика (кнопка «Отправить диагностику» в панели настроек) ──────────
@@ -3911,6 +4156,11 @@ function setupIPC(): void {
     learn: settings.learn ?? false,
     bindWindow: settings.bindWindow ?? true,
     autoClipboard: settings.autoClipboard ?? false,
+    // W1-bug-fix (латентный, найден при чтении): verdictLayer не возвращался
+    // из settings:get — чекбокс в настройках всегда сбрасывался в «выкл» при
+    // открытии панели, хотя галка жила в файле. Исправлено тем же коммитом.
+    verdictLayer: settings.verdictLayer ?? false,
+    pobFileWatch: settings.pobFileWatch ?? null,
     gemLang: settings.gemLang ?? 'ru',
     lang: settings.lang ?? 'auto',
     theme: settings.theme ?? 'default',
@@ -3928,6 +4178,69 @@ function setupIPC(): void {
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
+  });
+
+  // W1-1: системный диалог выбора PoB-.xml для watcher-а (путь попадает в настройки).
+  ipcMain.handle('settings:pickPobFile', () => {
+    const res = dialog.showOpenDialogSync({
+      title: 'Файл билда Path of Building (.xml) — оверлей будет следить за его пересохранением',
+      filters: [{ name: 'PoB build XML', extensions: ['xml'] }],
+      properties: ['openFile'],
+    });
+    return res && res.length ? res[0] : null;
+  });
+
+  // ─── W1-2: свой апдейтер (GitHub-релизы, детали в updater.ts) ───────────────
+  // /releases/latest НЕ годится (отдаёт ritual-data-релиз) — семвер-фильтр
+  // по ^v тегам внутри updater.fetchLatestMainRelease (живой факт 30.10).
+  ipcMain.handle('update:check', () => checkForUpdate());
+  ipcMain.handle('update:cached', () => readCachedCheck());
+  ipcMain.handle('update:rootWritable', () => portableInstallRoot() !== null);
+
+  ipcMain.handle('update:openPage', (_evt, url: unknown) => {
+    // Только страницы нашего репозитория — произвольные URL из рендерера не открываем.
+    if (typeof url === 'string' && /^https:\/\/github\.com\/WarnetBes\/poe2-kit\//.test(url)) {
+      void shell.openExternal(url);
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle('update:install', () => {
+    // Советник не исполнитель: применение Update требует явного диалога.
+    const latest = checkForUpdate().latest;
+    if (!latest) return { ok: false, error: 'проверка не нашла релиз (сеть?)' };
+    const staged = stageUpdate(latest);
+    if (!staged.ok || !staged.applyScript || !staged.version) {
+      return { ok: false, error: staged.error ?? 'staging не удался' };
+    }
+    const answer = (overlayWindow && !overlayWindow.isDestroyed()
+      ? dialog.showMessageBoxSync(overlayWindow, {
+          type: 'question',
+          title: 'Обновление PoE2 Kit',
+          message: `Применить обновление до v${staged.version}?`,
+          detail:
+            'Оверлей закроется, новые файлы скопируются поверх (старые не удаляются), затем стартует заново. Откат: файлы прежней версии остаются, update-staging можно удалить.',
+          buttons: ['Обновить и перезапустить', 'Не сейчас'],
+          defaultId: 0,
+          cancelId: 1,
+        })
+      : dialog.showMessageBoxSync({
+          type: 'question',
+          title: 'Обновление PoE2 Kit',
+          message: `Применить обновление до v${staged.version}?`,
+          detail:
+            'Оверлей закроется, новые файлы скопируются поверх (старые не удаляются), затем стартует заново. Откат: файлы прежней версии остаются, update-staging можно удалить.',
+          buttons: ['Обновить и перезапустить', 'Не сейчас'],
+          defaultId: 0,
+          cancelId: 1,
+        }));
+    if (answer !== 0) return { ok: false, error: 'отменено пользователем' };
+    if (!runApplyScriptAndQuit(staged.applyScript)) {
+      return { ok: false, error: 'apply-скрипт не запустился' };
+    }
+    app.quit();
+    return { ok: true, version: staged.version };
   });
 
   // Перемещение оверлея: режим переключается глобальным хоткеем (registerHotkeys),
@@ -4687,6 +5000,28 @@ app.whenReady().then(async () => {
   // Восстанавливаем сохранённые настройки (угол, прозрачность, масштаб, ширина,
   // хоткеи) до создания окна/трекера, чтобы геометрия сразу была правильной.
   settings = loadSettings();
+  // W1-1: включаем PoB-file watcher, если путь сохранён в настройках.
+  applyPobFileWatchFromSettings();
+  // W1-2: тихий авточек обновлений — не чаще раза в сутки, без сети не шумим;
+  // если нашлась новая версия — одно нативное уведомление (без autoplay-действий).
+  void (async () => {
+    try {
+      const cached = readCachedCheck();
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      if (cached && Date.now() - cached.checkedAt < DAY_MS) return;
+      // Через паузу: старт важнее апдейта, сеть не должна тормозить boot.
+      await new Promise((r) => setTimeout(r, 10_000));
+      const res = checkForUpdate();
+      if (res.available && res.latest) {
+        new Notification({
+          title: 'PoE2 Kit: доступно обновление',
+          body: `v${res.currentVersion} → v${res.latest.version}. Установить: настройки (Ctrl+F6) → «Обновление PoE2 Kit».`,
+        }).show();
+      }
+    } catch {
+      /* авточек фоновый — любые сбои тихие */
+    }
+  })();
   overlayWidth = settings.width;
   // №62: стартовая геометрия — ручная высота (в авто-режиме её поправит
   // первый autosize-тик рендерера после загрузки).

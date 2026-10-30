@@ -17,7 +17,7 @@
 4. **Контекст.** Если игрок дал текст предмета (Ctrl+C в игре) или импортированный билд —
    разбери его инструментами, прежде чем советовать.
 
-## Доступные действия (79 инструментов `poe2_*`)
+## Доступные действия (84 инструментов `poe2_*`)
 
 **Валюта и лиги**
 - **poe2_currency_prices** — курсы всех валют в chaos.
@@ -59,6 +59,11 @@
 - **poe2_tree_ids** — резолв узлов по ID (символьные/числовые).
 - **poe2_ascendancy_nodes** — узлы асценданси.
 - **poe2_tree_route** — маршрут по дереву от старта до keypoints (BFS, очки, метки «к L~N»).
+- **poe2_item_upgrade_verdict** — вердикт «предмет vs билд» движком PoB2: кандидат (клир-текст) примеряется в каждый подходящий слот, до/после через oracle (`UPGRADE/SIDEGRADE/LOSES RESISTANCE/…`); гварды: резист-кап, Spirit, атрибуты, hold-MS. Требует POE2K_POB2_SRC (как poe2_recompute), без движка — честный отказ.
+- **poe2_resist_pairs** — план закрытия резист-капов ПАРАМИ предметов: текущие резисты (панель) → варианты «кольцо+пояс / один предмет с двойным резом» с готовыми минимумами стихий для `poe2_trade_search` (stat_overrides); большой дефицит (>60) → сплит-пара «два предмета по половине»; chaos default off (CI).
+- **poe2_gearscore** — gearscore предмета 0–100 БЕЗ билда (SSF/левелинг): generic-профили life-res/es-caster, grade S–D, вклад статов в очках, wasted/missing; res_need обрезает вес закрытых резистов. Уники/фляги/чармы честно не оцениваются. Для вердикта «vs билд» — poe2_item_upgrade_verdict.
+- **poe2_map_check** — вердикт карты против билда (DANGER/CAREFUL/FINE): build (PoB-код|XML) + моды waystone ('of Exposure' = −до 12% к капу всех резистов, 'of Smothering', …) → elem-EHP проседание по честной механике капа (capped −12% капа = −32% EHP слоя, uncapped не задет); жёсткие моды (Stasis/Rust) поднимают вердикт до CAREFUL. Estimate-слой: гир без дерева (точный PoB-вердикт — roadmap).
+- **poe2_items_compare** — сравнение двух предметов head-to-head (текущий vs кандидат, Ctrl+C RU/EN): мод-дифф (общие суть-моды, числа нормализуются) + gearscore обеих сторон по профилю life-res/es-caster → вердикт upgrade/downgrade/sidegrade с причинами. Для swap-вердикта «vs билд» — poe2_item_upgrade_verdict.
 - **poe2_stat_explain** — объяснение стата.
 - **poe2_data_freshness** — свежесть данных всех источников.
 

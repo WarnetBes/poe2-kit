@@ -274,6 +274,31 @@ export const OVERLAY_SHELL = `<body>
         <div class="tip">Выключено по умолчанию. При включённом и импортированном билде (Ctrl+F3) каждый Ctrl+C-предмет получает вердикт upgrade/sidegrade/downgrade: EHP-оси по 5 типам урона поверх гира билда, DPS оружия; гварды: потеря резист-капа ≠ апгрейд. Сеть не используется.</div>
       </div>
 
+      <div class="set-row" id="pobWatchSection">
+        <div class="lbl">
+          <span>Следить за PoB-файлом <small>— пересохранение билда в Path of Building = авто-импорт</small></span>
+          <div style="display:flex;gap:4px;margin-top:4px;align-items:center">
+            <input type="text" id="setPobWatch" placeholder="C:\\…\\MyBuild.xml" readonly style="flex:1;font-size:10px" />
+            <button id="pobWatchBrowse" style="font-size:10px">Обзор…</button>
+            <button id="pobWatchClear" style="font-size:10px">✕</button>
+          </div>
+        </div>
+        <div class="tip">Укажите .xml, который Path of Building пересохраняет (Ctrl+S). Каждый такой сейв автоматически обновляет билд в оверлее — без ручного Ctrl+F3. «Обзор…» отмечает файл, «✕» выключает слежение. Файл читается только локально.</div>
+      </div>
+
+      <div class="set-row" id="updaterSection">
+        <div class="lbl">
+          <span>Обновление PoE2 Kit <small>— свой апдейтер поверх GitHub-релизов</small></span>
+          <div id="updateStatus" style="font-size:10px;color:var(--dim);margin-top:4px">версия загрузки…</div>
+          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+            <button id="updateCheckBtn" style="font-size:10px">Проверить обновления</button>
+            <button id="updatePageBtn" style="font-size:10px;display:none">Страница релиза</button>
+            <button id="updateInstallBtn" style="font-size:10px;display:none">Скачать и установить</button>
+          </div>
+        </div>
+        <div class="tip">Проверка — GitHub-релизы репозитория (не чаще раза в сутки авто, вручную — кнопкой). Установка: zip (~97 МБ) качается через curl (DPI-сети), копируется поверх без удаления старого, оверлей перезапускается. Отменить установку можно на диалоге подтверждения; откат — файлы прежней версии не удаляются. electron-updater/electron-builder сознательно не используется — релизный конвейер kitа не меняется.</div>
+      </div>
+
       <div class="set-row" id="learnSection">
         <div class="lbl">
           <span>Журнал обучения <small>— запоминать структуру предметов (локально)</small></span>
