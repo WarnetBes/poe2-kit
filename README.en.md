@@ -105,7 +105,8 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
      an item → Ctrl+C → **Ctrl+F1** — price. Ctrl+F3 — build import;
      **Ctrl+F8 — “🕯 Ritual” panel** (tribute price check: window snapshot →
      item recognition → total tribute value). Ctrl+F6 — settings.
-     Log: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
+     Log: `%APPDATA%\@poe2-kit\overlay\overlay.log`. The overlay **checks for updates on its own** (GitHub releases)
+      and tells you when a new version is out.
    - **`start-web.bat`** — dashboard in the browser: http://localhost:5173
    - **`start-mcp.bat`** — MCP server for AI assistants (stdio).
 
@@ -121,6 +122,8 @@ There is no .exe installer — the kit ships as a zip, but launching is automate
 | Ctrl+F6 | Settings |
 | Ctrl+F7 | Pinnacle readiness checklist |
 | Ctrl+F8 | “🕯 Ritual” panel (tribute window price check) |
+| Ctrl+F9 | ⚔ Swap verdict: try the candidate item on in your build via the local PoB2 engine (needs oracle setup; honest hint without it) |
+| Ctrl+F10 | 🗺 Waystone check: DANGER/CAREFUL/FINE against your build (local math — works even when the network is down) |
 
 ## Rules & disclaimer
 

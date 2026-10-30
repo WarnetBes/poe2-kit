@@ -3,7 +3,7 @@
 [![English](https://img.shields.io/badge/README-English-blue)](README.en.md)
 [![CI](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WarnetBes/poe2-kit/actions/workflows/ci.yml)
 
-Единый помощник для **Path of Exile 2**: гид по прокачке, AI-советы, универсальная торговля, анализ билдов и прайс-чек предметов.
+Единый помощник для **Path of Exile 2**: прайс-чек предметов, гид по прокачке, анализ и генерация билдов (включая локальный PoB2-движок), AI-советы, проверка waystone и универсальная торговля.
 
 <div align="center">
 <a href="docs/screenshots/overlay-build.png"><img src="docs/screenshots/overlay-build.png" height="420" alt="Оверлей poe2-kit: шопинг-лист билда"></a>
@@ -39,7 +39,7 @@ poe2-kit/
 │       └── index.ts        # публичный API: export const core = { … }
 ├── apps/
 │   ├── web/                # Vite + vanilla TS (Vite dev/preview reverse-proxy для обхода CORS)
-│   ├── overlay/            # Electron: хоткей Ctrl+Alt+Space → прайс-чек из буфера
+│   ├── overlay/            # Electron: хоткеи Ctrl+F1…F10 (прайс, билд, waystone)
 │   └── mcp/                # MCP-сервер (stdio), инструменты poe2_*
 └── _research/              # скачанные сторонние репозитории (авторство сохранено)
 ```
@@ -72,10 +72,18 @@ poe2-kit/
    или с https://nodejs.org/. Для portable этот шаг не нужен.
 3. **Запустить нужную форму**:
    - **`start-overlay.bat`** — оверлей поверх игры (Windows). В игре: навести на
-     предмет → Ctrl+C → **Ctrl+F1** — цена; Ctrl+F3 — импорт билда; **Ctrl+F9 — swap-вердикт предмета** (PoB2-движок, oracle-сетап); **Ctrl+F10 — проверка waystone** (DANGER/CAREFUL/FINE против билда); **Ctrl+F8 —
-     панель «🕯 Ритуал»** (прайс даны: снимок окна → распознавание предметов →
-     оценка итога дани); Ctrl+F6 —
-     настройки. Лог: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
+     предмет → Ctrl+C → хоткей (все хоткеи переназначаются в Ctrl+F6):
+     **Ctrl+F1** — цена предмета; **Ctrl+F2** — панель билда; Ctrl+F3 — импорт
+     билда (PoB share-код в буфере); Ctrl+F4 — прокачка; Ctrl+F5 — перемещение
+     оверлея; Ctrl+F6 — настройки; Ctrl+F7 — чекап перед пиннакл-боссом;
+     **Ctrl+F8 — панель «🕯 Ритуал»** (прайс даны: снимок окна → распознавание
+     предметов → оценка итога дани); **Ctrl+F9 — swap-вердикт предмета**
+     (PoB2-движок, oracle-сетап: примерка кандидата в слоты билда с гвардами
+     резист-капа); **Ctrl+F10 — проверка waystone** (DANGER/CAREFUL/FINE против
+     вашего билда, локальный расчёт — работает даже при лежащей сети).
+     Лог: `%APPDATA%\@poe2-kit\overlay\overlay.log`.
+   - Оверлей **сам проверяет обновления** (GitHub-релизы этого зеркала) и
+     подсказывает, когда вышла новая версия — качать вручную не обязательно.
    - **`start-web.bat`** — дашборд в браузере: http://localhost:5173
      (прайс-чек, дерево, чек-лист прокачки, сравнение с лестницей).
    - **`start-mcp.bat`** — MCP-сервер для ИИ-ассистентов (84 инструментов
@@ -119,7 +127,7 @@ npm run build -w @poe2-kit/overlay
 npm run test -w @poe2-kit/overlay  # --smoke: окно, хоткей, парсер
 ```
 
-- В игре скопируйте предмет (`Ctrl+C` — PoE2 кладёт клир-текст в буфер) и нажмите **`Ctrl+Alt+Space`**.
+- В игре скопируйте предмет (`Ctrl+C` — PoE2 кладёт клир-текст в буфер) и нажмите **`Ctrl+F1`** (или другой хоткей из списка выше — дефолты настраиваются в `Ctrl+F6`).
 - Прозрачное, безрамочное, always-on-top окно: клики «проходят сквозь» него в игру.
 - Оверлей **привязывается к окну Path of Exile 2**: следит за его положением и держится у правого верхнего угла игрового окна; прячется, когда игра свёрнута или не в фокусе.
 - Рядом с игрой приложение находит через Win32 (`user32.dll`) через нативный FFI-модуль `koffi` (N-API, работает и в Electron без пересборки).
