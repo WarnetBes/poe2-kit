@@ -281,6 +281,11 @@ let settings: OverlaySettings = { ...DEFAULT_SETTINGS, hotkeys: {} };
 let activeLeague: string | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let busy = false;
+// №700: map-check (Ctrl+F10) — ЛОКАЛЬНЫЙ расчёт (без сети): НЕ делит общий
+// busy с priceCheck. Живой лог 30.10: DPI-таймаут прайса 45 с держал
+// вердикт карты в заложниках («map check skipped: busy=true» ×2). Свой
+// флаг — только от double-fire спама; сетевые хоткеи остаются на busy.
+let mapCheckBusy = false;
 /** Режим перемещения оверлея (Ctrl+F5): окно кликабельно и таскается мышью. */
 let moveUnlocked = false;
 // №113e-b: true = клавиатуру сейчас держит поле ввода (keyboard:set):
@@ -3859,11 +3864,13 @@ async function runMapCheckCheck(): Promise<void> {
     sendBuildUpdate({ error: 'Сначала импортируйте билд (PoB-код → Ctrl+F3): вердикт считается поверх вашего билда.' });
     return;
   }
-  if (busy) {
-    console.warn('[overlay] map check skipped: busy=true');
+  if (mapCheckBusy) {
+    console.warn('[overlay] map check skipped: mapCheckBusy=true (предыдущий ещё считает)');
     return;
   }
-  busy = true;
+  // №700: общий busy (сетевые запросы) НЕ блокирует локальный map-check;
+  // гонок нет: буфер читается один раз, checkMapAgainstBuild стейтов не пишет.
+  mapCheckBusy = true;
   try {
     // Waystone-клир-текст → моды (RU/EN парсер понимает оба языка).
     const parsed = core.parse.parseItemText(itemText);
@@ -3893,7 +3900,7 @@ async function runMapCheckCheck(): Promise<void> {
   } catch (err) {
     sendBuildUpdate({ error: `Map check упал: ${err instanceof Error ? err.message : String(err)}` });
   } finally {
-    busy = false;
+    mapCheckBusy = false;
   }
 }
 
@@ -3944,6 +3951,9 @@ function registerHotkeys(): void {
     console.log('[overlay] hotkey fired: swap-вердикт предмета');
     void runItemVerdictCheck();
   });
+  // №700: F9 был единственным хоткеем без лог-строки регистрации — молчал бы
+  // при конфликте хоткеев (живой лог 30.10: строки про F9 нет вообще).
+  console.log(`[overlay] hotkey ${hotkeyFor('itemVerdict')} registered=${okIV}`);
   // W5-A (№696): вердикт waystone против билда — Ctrl+F10 (настраивается).
   const okMC = globalShortcut.register(hotkeyFor('mapCheck'), () => {
     console.log('[overlay] hotkey fired: проверка карты');
