@@ -85,8 +85,8 @@ One core (**`@poe2-kit/core`**) powers all three frontends:
 There is no .exe installer — the kit ships as a zip, but launching is automated.
 
 1. **Download**: [GitHub Releases](https://github.com/WarnetBes/poe2-kit/releases/latest) →
-   the latest release (v1.0.36):
-   - **`poe2-kit-portable-…-win64.zip`** (~92 MB) — recommended: unzip → run
+   the latest release (link resolves to the current one, ZIP ~93 MB):
+   - **`poe2-kit-portable-…-win64.zip`** (~93 MB) — recommended: unzip → run
      `start-overlay.bat`. No Node.js, no npm: on first run the script
      downloads the Electron runtime (~110 MB) once, then works offline.
    - **`ritual-data-…zip`** (~46 MB) — optional, for offline installs:
