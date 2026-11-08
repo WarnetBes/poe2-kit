@@ -7,6 +7,7 @@ import {
   buildPlannerFilename,
   clearBuildPlannerCache,
   validateBuildPlanner,
+  gemMetadataIdToName,
 } from '../src/buildPlanner.js';
 import { importBuild } from '../src/build.js';
 import type { BuildImport } from '../src/types.js';
@@ -223,3 +224,145 @@ describe('buildPlannerFilename', () => {
     expect(buildPlannerFilename('')).toBe('build.build');
   });
 });
+
+// ── Гейты живой сверки №717/№719/№721/№722 (игра молча отвергает файлы) ──────
+
+describe('гейты валидатора (№717-№722)', () => {
+  /** Минимальный валидный каркас *.build. */
+  const skeleton = () => ({
+    author: 'a',
+    ascendancy: 'Monk2',
+    name: 'n',
+    inventory_slots: [] as unknown[],
+    passives: [] as unknown[],
+    skills: [] as unknown[],
+  });
+
+  it('№719/№722: Charm1/Flask2 (мёртвые inventory_id) — ERROR про молчаливый отказ ВСЕГО файла', () => {
+    for (const inv of ['Charm1', 'Flask2', 'Charm3']) {
+      const v = validateBuildPlanner({ ...skeleton(), inventory_slots: [{ inventory_id: inv, additional_text: 'x' }] });
+      expect(v.valid, inv).toBe(false);
+      expect(v.errors.some((e) => e.includes(`«${inv}»`) && e.includes('мёртвый слот') && e.includes('ВЕСЬ файл')), inv).toBe(true);
+    }
+  });
+
+  it('№719/№722: неизвестный inventory_id — ERROR (не warning, как раньше)', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      inventory_slots: [{ inventory_id: 'Belt2', additional_text: 'x' }],
+    });
+    expect(v.valid).toBe(false);
+    expect(v.errors.some((e) => e.includes('Belt2') && e.includes('вне белого списка'))).toBe(true);
+  });
+
+  it('№719/№722: белый список — все 11 живых слотов валидны', () => {
+    const live = ['Weapon1', 'Weapon2', 'Helm1', 'BodyArmour1', 'Gloves1', 'Boots1', 'Amulet1', 'Ring1', 'Ring2', 'Belt1', 'Flask1'];
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      inventory_slots: live.map((inv) => ({ inventory_id: inv, additional_text: 'x' })),
+    });
+    expect(v.errors.filter((e) => e.includes('inventory_id'))).toEqual([]);
+  });
+
+  it('№719/№722: конвертер пропускает Charm/Flask2+ с warning вместо эмитта битого файла', () => {
+    clearBuildPlannerCache();
+    const res = toBuildPlanner(MONK_BUILD, {
+      gearItems: [
+        { slot: 'Charm 1', name: 'Charm X', itemText: 'Rarity: Rare\nX\nBase\n--------\n+1 Life' },
+        { slot: 'Flask 3', name: 'Flask Y', itemText: 'Rarity: Normal\nFlask Y' },
+        { slot: 'Belt', name: 'Belt Z', itemText: 'Rarity: Rare\nBelt Z\nBase\n--------\n+2 Life' },
+      ],
+    });
+    expect(res.build.inventory_slots!.map((s) => s.inventory_id)).toEqual(['Belt1']);
+    expect(res.warnings.some((w) => w.includes('Charm 1') && w.includes('НЕ принимается игрой'))).toBe(true);
+    expect(res.warnings.some((w) => w.includes('Flask 3') && w.includes('НЕ принимается игрой'))).toBe(true);
+  });
+
+  it('№721: unknown unique_name — ERROR с честным текстом (каталог неполон, RU-имена игра не принимает)', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      inventory_slots: [{ inventory_id: 'Weapon1', unique_name: 'Definitely Not A Real Unique Xyzzy' }],
+    });
+    expect(v.valid).toBe(false);
+    expect(v.errors.some((e) => e.includes('unique_name') && e.includes('ВЕСЬ файл'))).toBe(true);
+    expect(v.errors.some((e) => e.includes('каталог может быть неполным'))).toBe(true);
+    expect(v.errors.some((e) => e.includes('RU-имена'))).toBe(true);
+  });
+
+  it('№721: известный уник (The Anvil, из каталога lowercase) проходит', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      inventory_slots: [{ inventory_id: 'Amulet1', unique_name: 'The Anvil' }],
+    });
+    expect(v.errors.filter((e) => e.includes('unique_name'))).toEqual([]);
+  });
+
+  it('№721: регистр имени уника не важен (каталог lowercase)', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      inventory_slots: [{ inventory_id: 'Amulet1', unique_name: '  the anvil ' }],
+    });
+    expect(v.errors.filter((e) => e.includes('unique_name'))).toEqual([]);
+  });
+
+  it('№717: skills[].id = datasetKey с другим gameId — warning с рекомендацией канона', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      // datasetKey Skills.lua; gameId = …SkillGemSkeletalWarriorWeaponSkill
+      skills: [{ id: 'Metadata/Items/Gems/SkillGemSkeletalWarrior', support_skills: [] }],
+    });
+    expect(v.valid).toBe(true); // мягкий фейл: красные «?», файл грузится
+    expect(v.warnings.some((w) => w.includes('datasetKey') && w.includes('SkillGemSkeletalWarriorWeaponSkill'))).toBe(true);
+  });
+
+  it('№717: skills[].id вне元宇宙 gameId-канона — warning про красные «?»', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      skills: [{ id: 'Metadata/Items/Gems/SkillGemNotARealGemAtAll', support_skills: [] }],
+    });
+    expect(v.valid).toBe(true);
+    expect(v.warnings.some((w) => w.includes('SkillGemNotARealGemAtAll') && w.includes('красные «?»'))).toBe(true);
+  });
+
+  it('№717: support_skills с datasetKey — warning (саппорты — тот же канон)', () => {
+    const v = validateBuildPlanner({
+      ...skeleton(),
+      skills: [
+        {
+          id: 'Metadata/Items/Gems/SkillGemIceStrike',
+          support_skills: ['Metadata/Items/Gems/SkillGemSkeletalWarrior'],
+        },
+      ],
+    });
+    expect(v.warnings.some((w) => w.includes('support_skills[0]') && w.includes('SkillGemSkeletalWarriorWeaponSkill'))).toBe(true);
+  });
+
+  it('№717: конвертер эмиттит канонический gameId переименованного гема (Skeletal Sniper)', () => {
+    clearBuildPlannerCache();
+    const res = toBuildPlanner({
+      ...MONK_BUILD,
+      skillGroups: [{ label: 'W', enabled: true, gems: [{ name: 'Skeletal Sniper', level: 10, quality: null }] }],
+    });
+    expect(res.build.skills!.length).toBe(1);
+    expect(res.build.skills![0]!.id).toBe('Metadata/Items/Gems/SkillGemSkeletalWarriorWeaponSkill');
+    expect(res.build.skills![0]!.support_skills).toEqual([]);
+  });
+
+  it('№717 (коллизия Siege Ballista): значение, уже являющееся gameId, НЕ переписывается в чужой канон', () => {
+    clearBuildPlannerCache();
+    const res = toBuildPlanner({
+      ...MONK_BUILD,
+      skillGroups: [{ label: 'W', enabled: true, gems: [{ name: 'Siege Ballista', level: 10, quality: null }] }],
+    });
+    // map.json даёт SkillGemArtilleryBallista; это УЖЕ gameId другого гема
+    // (SkillGemSiegeBallista→ArtilleryBallista), а не datasetKey к Ripwire.
+    expect(res.build.skills![0]!.id).toBe('Metadata/Items/Gems/SkillGemArtilleryBallista');
+  });
+
+  it('№717: gemMetadataIdToName понимает gameId-путь (Gem/ vs Gems/), не только datasetKey', () => {
+    clearBuildPlannerCache();
+    // Символы (Gem-Hero) переименованы в Gem/ (без 's'): Skills.lua → Hero.
+    expect(gemMetadataIdToName('Metadata/Items/Gem/SkillGemAscendancyHollowForm')).toBe('Hollow Form');
+  });
+});
+

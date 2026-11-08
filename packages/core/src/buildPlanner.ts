@@ -124,6 +124,104 @@ function loadMap(): ConverterMap {
 /** Сбросить кэш карт (для тестов после подмены датасета). */
 export function clearBuildPlannerCache(): void {
   mapCache = null;
+  gameIdsCache = null;
+  gameIdsSetCache = null;
+  gameIdValsCache = null;
+  uniquesCache = null;
+  gemMetaToNameCache = null;
+}
+
+// ─── Канон gameId гемов (data/game/build_planner/gem_gameids.json, №717) ─────
+//
+// №717/№722 (живая сверка): игра валидирует skills[].id по gameId из
+// Gems.lua PoB2 (поле gameId), НЕ по ключу датасета. 785/966 gameId ≠ ключа
+// (0.5.x-переименования: AscendancySkillGems, Gem/ vs Gems/ и т.д.).
+// Файл опционален (браузер/нет файла → null → конвертер и валидатор честно
+// деградируют до старого поведения; имена/searches не выдумываем).
+
+interface GameIdsFile {
+  _meta?: Record<string, unknown>;
+  map: Record<string, string>;
+}
+
+let gameIdsCache: Record<string, string> | null = null;
+let gameIdsSetCache: Set<string> | null = null;
+let gameIdValsCache: Set<string> | null = null;
+
+/** datasetKey → gameId; null, если датасет недоступен (браузер/нет файла). */
+function loadGameIds(): Record<string, string> | null {
+  if (gameIdsCache) return gameIdsCache;
+  if (!HAS_DISK) return null;
+  try {
+    const dir = pathMod!.join(
+      pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)),
+      '..',
+      'data',
+      'game',
+      'build_planner',
+    );
+    const raw = JSON.parse(fsMod!.readFileSync(pathMod!.join(dir, 'gem_gameids.json'), 'utf8')) as GameIdsFile;
+    gameIdsCache = raw.map ?? null;
+    return gameIdsCache;
+  } catch {
+    return null; // опциональный канон: отсутствие — НЕ ошибка
+  }
+}
+
+/** Множество ВАЛИДНЫХ gameId (union значений словаря + ключей-тождеств). */
+function knownGameIds(): Set<string> {
+  if (gameIdsSetCache) return gameIdsSetCache;
+  const map = loadGameIds();
+  const set = new Set<string>();
+  if (map) {
+    for (const [k, v] of Object.entries(map)) {
+      set.add(v);
+      if (k === v) set.add(k);
+    }
+  }
+  gameIdsSetCache = set;
+  return set;
+}
+
+/** Множество ЗНАЧЕНИЙ словаря (только gameId, без datasetKey-тождеств). */
+function gameIdValues(): Set<string> {
+  if (gameIdValsCache) return gameIdValsCache;
+  const map = loadGameIds();
+  gameIdValsCache = map ? new Set(Object.values(map)) : new Set<string>();
+  return gameIdValsCache;
+}
+
+// ─── Каталог уников (uniques/uniques_catalog.json, №721) ──────────────────────
+//
+// №721 (живой факт): игра отвергает ВЕСЬ файл, если unique_name ей не знаком.
+// Гейт смотрит локальный каталог (lowercase-ключи); промах = error-тон, но
+// с честной оговоркой: каталог ≠ полный список игры (кейс Aul's Dominance —
+// предмет реален, в PoB2-каталоге отсутствовал), новые уники патча тоже дадут
+// промах — текст обязан это говорить, а не «такого уника нет».
+
+let uniquesCache: Set<string> | null = null;
+
+/** Множество lowercase-имён уников из каталога; null — каталог недоступен. */
+function knownUniqueNames(): Set<string> | null {
+  if (uniquesCache) return uniquesCache;
+  if (!HAS_DISK) return null;
+  try {
+    const dir = pathMod!.join(
+      pathMod!.dirname(urlMod!.fileURLToPath(import.meta.url)),
+      '..',
+      'data',
+      'game',
+      'uniques',
+    );
+    const raw = JSON.parse(fsMod!.readFileSync(pathMod!.join(dir, 'uniques_catalog.json'), 'utf8')) as {
+      uniques?: Record<string, unknown>;
+    };
+    if (!raw.uniques || typeof raw.uniques !== 'object') return null;
+    uniquesCache = new Set(Object.keys(raw.uniques));
+    return uniquesCache;
+  } catch {
+    return null; // опциональный каталог: отсутствие — гейт просто не срабатывает
+  }
 }
 
 // ─── Асценданси: display-name → код «{Class}{N}» ─────────────────────────────
@@ -243,6 +341,32 @@ function gemMetadataId(name: string): string | undefined {
   return undefined;
 }
 
+/**
+ * DatasetKey Gems.lua → канонический gameId для skills[].id (№717).
+ * Словарь gem_gameids.json опционален: нет файла → старый behavior (ключ
+ * как есть), предупредление не нужно — gameId-фейл мягкий (красные «?»).
+ *
+ * Коллизия пространств (найдена при сверке, кейс Siege Ballista):
+ * gameId одного гема может быть datasetKey другого (gameId
+ * SkillGemSiegeBallista = «SkillGemArtilleryBallista» = datasetKey гема с
+ * gameId «SkillGemRipwireBallista»). Поэтому правило rewrite НЕ «значение
+ * есть ключ → заменить», а «замена только если она безопасна»: значение
+ * само является чьим-то gameId И его словарная замена НЕ является gameId
+ * никакого гема → тогда это datasetKey-пробел, rewrite легитимен. Значение,
+ * которое уже gameId (есть среди значений словаря) и при этом ключ —
+ * оставляем как есть (оно уже канонично).
+ */
+function canonicalGemId(datasetKey: string): string {
+  const dict = loadGameIds();
+  if (!dict) return datasetKey;
+  const rewritten = dict[datasetKey];
+  if (rewritten === undefined || rewritten === datasetKey) return datasetKey;
+  // datasetKey сам — чей-то gameId? Тогда запись уже канонична, rewrite
+  // грозит переписать легитимный gameId в gameId другого гема.
+  if (gameIdValues().has(datasetKey)) return datasetKey;
+  return rewritten;
+}
+
 function isSupportName(name: string): boolean {
   const id = gemMetadataId(name);
   return id ? /SupportGem/.test(id) : /\sSupport$/i.test(name);
@@ -255,6 +379,8 @@ let gemMetaToNameCache: Map<string, string> | null = null;
  * Экспортировано для парсера .build (E6): там скиллы/саппорты заданы
  * Metadata-путями, а consumers (pobCompare, gemSupports) работают по именам.
  * Фолбэк при промахе — хвост пути,Caller решает сам.
+ * №717: путь может быть gameId (Gem/ vs Gems/, переименованный 0.5.x) —
+ * обратная карта расширена и на gameId-пространство gem_gameids.json.
  */
 export function gemMetadataIdToName(id: string): string {
   if (!gemMetaToNameCache) {
@@ -262,6 +388,16 @@ export function gemMetadataIdToName(id: string): string {
     for (const [name, meta] of Object.entries(loadMap().gem_name_to_metadata)) {
       // при дублях путей (несколько имён → один гем) держим первое имя
       if (!inv.has(meta)) inv.set(meta, name);
+    }
+    // gameId → datasetKey → имя (канон №717; не перезаписываем прямые хиты)
+    const dict = loadGameIds();
+    if (dict) {
+      for (const [datasetKey, gameId] of Object.entries(dict)) {
+        if (!inv.has(gameId)) {
+          const name = inv.get(datasetKey);
+          if (name) inv.set(gameId, name);
+        }
+      }
     }
     gemMetaToNameCache = inv;
   }
@@ -309,11 +445,12 @@ function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkil
           }
           if (!seenSup.has(sid)) {
             seenSup.add(sid);
-            sup.push(sid);
+            sup.push(canonicalGemId(sid)); // №717: саппорты — тоже gameId-канон
           }
         }
         const interval = gemLevelInterval(active.name, active.level);
-        out.push({ id, support_skills: sup, ...(interval ? { level_interval: interval as [number, number] } : {}) });
+        const cid = canonicalGemId(id); // №717: игра ждёт поле gameId из Gems.lua
+        out.push({ id: cid, support_skills: sup, ...(interval ? { level_interval: interval as [number, number] } : {}) });
       }
     }
   } else if (build.skills.length > 0) {
@@ -328,7 +465,8 @@ function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkil
       if (!seenSkill.has(id)) {
         seenSkill.add(id);
         const interval = gemLevelInterval(name, null);
-        out.push({ id, support_skills: [], ...(interval ? { level_interval: interval as [number, number] } : {}) });
+        const cid = canonicalGemId(id); // №717
+        out.push({ id: cid, support_skills: [], ...(interval ? { level_interval: interval as [number, number] } : {}) });
       }
     }
     if (build.skills.length > 0 && out.length > 0) {
@@ -347,7 +485,14 @@ function convertSkills(build: BuildImport, warnings: string[]): BuildPlannerSkil
 
 // ─── Снаряжение: PoB-слот → inventory_id, клир-текст → guidance ──────────────
 
-/** PoB-слот (ItemSet/Slot name) → inventory_id из словаря формата. */
+/**
+ * PoB-слот (ItemSet/Slot name) → inventory_id из словаря формата.
+ * №722 (живая сверка с игрой): экспортируем ТОЛЬКО принимаемые игрой слоты:
+ * Weapon1/2, Helm1, BodyArmour1, Gloves1, Boots1, Amulet1, Ring1/2, Belt1,
+ * Flask1. Мёртвые Charm1-3 и Flask2-5 игра отвергает молча (реально — ВЕСЬ
+ * файл), поэтому они здесь отсутствуют: convertInventory их честно
+ * пропускает с warning вместо эмитта гарантированно битого файла.
+ */
 const SLOT_TO_INVENTORY: Record<string, string> = {
   'Weapon 1': 'Weapon1',
   'Weapon 2': 'Weapon2',
@@ -361,14 +506,10 @@ const SLOT_TO_INVENTORY: Record<string, string> = {
   'Ring 1': 'Ring1',
   'Ring 2': 'Ring2',
   'Flask 1': 'Flask1',
-  'Flask 2': 'Flask2',
-  'Flask 3': 'Flask3',
-  'Flask 4': 'Flask4',
-  'Flask 5': 'Flask5',
-  'Charm 1': 'Charm1',
-  'Charm 2': 'Charm2',
-  'Charm 3': 'Charm3',
 };
+
+/** inventory_id, которые НЕ принимает игра (молча убивают весь файл, №719/№722). */
+const DEAD_INVENTORY_IDS = ['Charm1', 'Charm2', 'Charm3', 'Flask2', 'Flask3', 'Flask4', 'Flask5'];
 
 /** Строки клир-текста, которые НЕ являются модами (метаданные предмета). */
 const NON_MOD_LINE = /^(rarity:|--------|item level:|requirements|.+\s\d+$)/i;
@@ -379,7 +520,15 @@ function convertInventory(items: BuildGearItem[], warnings: string[]): BuildPlan
   for (const it of items) {
     const inventoryId = SLOT_TO_INVENTORY[it.slot];
     if (!inventoryId) {
-      warnings.push(`слот «${it.slot}» не входит в словарь inventory_id — предмет «${it.name}» пропущен`);
+      // №722: PoB-слоты Charm 1-3 / Flask 2-5 соответствуют мёртвым
+      // inventory_id (Charm1-3, Flask2-5) — игра отвергает ВЕСЬ файл;
+      // пропускаем предмет предупреждением, а не эмиттим битый файл.
+      const dead = /Charm\s*[123]|Flask\s*[2-5]/.test(it.slot);
+      warnings.push(
+        dead
+          ? `слот «${it.slot}» (inventory_id ${it.slot.replace(/\s/g, '')}) НЕ принимается игрой — предмет «${it.name}» пропущен (иначе игра молча отвергнет весь .build)`
+          : `слот «${it.slot}» не входит в словарь inventory_id — предмет «${it.name}» пропущен`,
+      );
       continue;
     }
     if (seen.has(inventoryId)) continue;
@@ -510,13 +659,16 @@ function isLevelInterval(v: unknown): boolean {
  * Проверить объект *.build (или его JSON-строку) против схемы v1.
  * Ошибки (errors) — то, на чём игра молча откажется грузить файл:
  * битый JSON, не-объект, отсутствие обязательных ключей, неверные типы/shape
- * слотов/пассивок/скиллов. Предупреждения (warnings) — информативное
- * (имя > 40 симв. обрежется в display, неизвестный игре код асценданси,
- * пустые секции, слот в обоих форматах сразу).
+ * слотов/пассивок/скиллов — и ГЕЙТЫ живой сверки (№717-№722):
+ *  - inventory_id вне белого списка → error (№719/№722: ВЕСЬ файл отвергается);
+ *  - unique_name вне каталога уников → error (№721), текст честно
+ *    оговаривает неполноту каталога (кейс Aul's Dominance / новые уники
+ *    патча / RU-имена клир-текста — играть можно только EN-имя);
+ *  - skills[].id вне gameId-канона → warning (№717: НЕ ломает файл — у гема
+ *    красные «?»); известный datasetKey вместо gameId — warning с рекомендацией.
  *
  * Список обязательных ключей — из Tincture SCHEMA.md:13-23 (6 ключей,
- * reverse-engineered с реальных экспортов 0.5.0); unknown-id слотов и
- * асценданси — warning, а не error (словарь донора «observed», не enum).
+ * reverse-engineered с реальных экспортов 0.5.0).
  */
 export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
   const errors: string[] = [];
@@ -584,7 +736,15 @@ export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
         if (typeof inv !== 'string' || !inv.trim()) {
           errors.push(`${label}.inventory_id — непустая строка`);
         } else if (!KNOWN_INVENTORY_IDS.has(inv)) {
-          warnings.push(`${label}.inventory_id «${inv}» вне наблюдённого словаря формата`);
+          // Гейт №719/№722 (живая сверка): неподдерживаемый inventory_id
+          // игра отвергает МОЛЧА — весь файл не грузится. Мёртвые Charm1-3 /
+          // Flask2-5 — известный подкласс с отдельным текстом.
+          errors.push(
+            `${label}.inventory_id «${inv}» НЕ поддерживается игрой — ` +
+              (DEAD_INVENTORY_IDS.includes(inv)
+                ? 'это мёртвый слот (Charm1-3/Flask2-5 не экспортируются): игра молча отвергнет ВЕСЬ файл; удалите слот'
+                : 'вне белого списка (Weapon1/2, Helm1, BodyArmour1, Gloves1, Boots1, Amulet1, Ring1/2, Belt1, Flask1): игра молча отвергнет ВЕСЬ файл'),
+          );
         }
         const hasUnique = typeof unique === 'string' && unique.trim();
         const hasText = typeof text === 'string' && text.trim();
@@ -593,6 +753,24 @@ export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
         }
         if (hasUnique && hasText) {
           warnings.push(`${label}: unique_name и additional_text вместе — конвенция: уники только имя, рары только текст`);
+        }
+        // Гейт №721 (живая сверка): незнакомое unique_name игра отвергает
+        // молча — ВЕСЬ файл. Промах по каталогу = error-тон, но текст честен:
+        // каталог kit'а ≠ полный список игры (может отставать: новые уники
+        // патча, предметы вне PoB2-каталога). Каталог недоступен →
+        // проверка пропускается (гейт — опциональный канон).
+        if (hasUnique) {
+          const catalog = knownUniqueNames();
+          const uname = String(unique);
+          if (catalog && !catalog.has(uname.trim().toLowerCase())) {
+            errors.push(
+              `${label}.unique_name «${uname}» не найден в каталоге уников kit'а — игра, вероятно, ` +
+                'молча отвергнет ВЕСЬ файл (кейс №721). Проверь EN-имя по клир-тексту предмета (RU-имена игра не ' +
+                'принимает — экспортируй на EN-клиенте); учти: каталог может быть неполным (реальные уники вне ' +
+                'каталога существовали — кейс Aul\u2019s Dominance №721) — если предмет точно есть в игре, ' +
+                'проверь точное написание имени',
+            );
+          }
         }
         if ('level_interval' in slot && !isLevelInterval(slot.level_interval)) {
           errors.push(`${label}.level_interval — пара чисел [min, max]`);
@@ -633,8 +811,26 @@ export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
         const skill = s as Record<string, unknown>;
         if (typeof skill.id !== 'string' || !skill.id.trim()) {
           errors.push(`${label}.id — непустая строка (Metadata-путь камня)`);
-        } else if (!/^Metadata\/Items\/Gem/.test(skill.id)) {
-          warnings.push(`${label}.id «${skill.id}» вне конвенции Metadata/Items/Gems/…`);
+        } else {
+          const id = skill.id;
+          // Гейт №717 (живая сверка): игра жёстко валидирует id по gameId из
+          // Gems.lua; НЕ-каноничный id НЕ убивает файл — у гема красные «?»
+          // и он не работает. Поэтому warning, не error. Идёт ДО префикс-чекa:
+          // datasetKey и gameId оба живут в Metadata/Items/Gems/…,
+          // префикс не отличает их друг от друга.
+          const known = knownGameIds();
+          const dict = loadGameIds();
+          if (known.size > 0 && !known.has(id)) {
+            const viaKey = dict && dict[id] !== undefined && !gameIdValues().has(id) ? dict[id] : undefined;
+            warnings.push(
+              viaKey
+                ? `${label}.id «${id}» — это datasetKey Gems.lua, а НЕ gameId: переименован в 0.5.x → используй «${viaKey}» (канон gem_gameids.json, №717); иначе у камня будут красные «?»`
+                : `${label}.id «${id}» не входит в gameId-канон (gem_gameids.json, №717) — у камня будут красные «?»; без канонического id (поле gameId Gems.lua PoB2-клона) игра не загрузит камень`,
+            );
+          }
+          if (!/^Metadata\/Items\/Gem/.test(id)) {
+            warnings.push(`${label}.id «${id}» вне конвенции Metadata/Items/Gems/…`);
+          }
         }
         if ('level_interval' in skill && !isLevelInterval(skill.level_interval)) {
           errors.push(`${label}.level_interval — пара чисел [min, max]`);
@@ -649,6 +845,20 @@ export function validateBuildPlanner(input: unknown): BuildPlannerValidation {
             (typeof x === 'string' && x.trim()) ||
             (typeof x === 'object' && x !== null && typeof (x as Record<string, unknown>).id === 'string');
           if (!ok) errors.push(`${label}.support_skills[${j}]: строка или {id}`);
+          else {
+            // №717: саппорты валидируются игрой по тому же gameId-канону.
+            const sid = typeof x === 'string' ? x : String((x as Record<string, unknown>).id);
+            const known = knownGameIds();
+            const dict = loadGameIds();
+            if (known.size > 0 && !known.has(sid)) {
+              const viaKey = dict && dict[sid] !== undefined ? dict[sid] : undefined;
+              warnings.push(
+                viaKey
+                  ? `${label}.support_skills[${j}] «${sid}» — datasetKey, а не gameId: используй «${viaKey}» (№717)`
+                  : `${label}.support_skills[${j}] «${sid}» вне gameId-канона (№717) — саппорт не загрузится`,
+              );
+            }
+          }
         });
       });
     }
