@@ -88,6 +88,7 @@ export * from './slang.js';
 export * from './gemSupports.js';
 export * from './mapPrep.js';
 export * from './simulacrum.js';
+export * from './delirium.js';
 export * from './treeRoute.js';
 import * as buildPlannerMod from './buildPlanner.js';
 import * as pobCompareMod from './pobCompare.js';
@@ -95,6 +96,7 @@ import * as hideoutMod from './hideout.js';
 import * as keybindsMod from './keybinds.js';
 import * as gemSupportsMod from './gemSupports.js';
 import * as simulacrumMod from './simulacrum.js';
+import * as deliriumMod from './delirium.js';
 import * as treeRouteMod from './treeRoute.js';
 import * as swapItemMod from './swapItem.js';
 import * as upgradeVerdictMod from './upgradeVerdict.js';
@@ -264,6 +266,7 @@ export const core = {
   keybinds: keybindsMod, // №221: советчик раскладки навыков (геймпад/клавиатура)
   mapPrep: mapPrepMod, // №234: Map Prep Assistant — угроза карты + чек-лист подготовки (Этап 2)
   simulacrum: simulacrumMod, // №239: данные гайда Simulacrum (Delirium 0.5.x) + markdown для MCP-тула
+  delirium: deliriumMod, // №738: делириум-анoint-рецепты (эмоции → узлы) + поиск + markdown
   treeRoute: treeRouteMod, // пробел №3 (sec6): маршрут по пассивке с уровневыми метками
   swapItem: swapItemMod, // W2 (№690): swap-примерка предмета в слоты через oracle-сессию
   upgradeVerdict: upgradeVerdictMod, // W2: вердикт до/после swap (чистая логика)

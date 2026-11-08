@@ -125,6 +125,14 @@ export const FRESHNESS_DATASETS: FreshnessSpec[] = [
     update: 'auto',
     datePath: ['_meta', 'fetchedAt'],
   },
+  {
+    // №738: делириум-анoint-рецепты (эмоции → узлы) — харвест фан-сайта poe2-biblioteka.ru.
+    rel: 'delirium/delirium_recipes.json',
+    sourceId: 'poe2-biblioteka',
+    kind: 'community',
+    update: 'manual',
+    datePath: ['_meta', 'fetchedAt'],
+  },
 ];
 
 /** Результат свежести одного датасета. */

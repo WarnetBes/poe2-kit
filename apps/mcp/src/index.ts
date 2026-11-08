@@ -49,6 +49,7 @@ import { registerGearscoreTools } from './tools/gearscore.js';
 import { registerMapCheckTools } from './tools/mapCheck.js';
 import { registerItemsCompareTools } from './tools/itemsCompare.js';
 import { registerComposeBuildTools } from './tools/composeBuild.js';
+import { registerDeliriumTools } from './tools/delirium.js';
 
 export function buildServer(): number {
   const server = new McpServer({
@@ -108,6 +109,7 @@ export function buildServer(): number {
   count += registerMapCheckTools(server);
   count += registerItemsCompareTools(server);
   count += registerComposeBuildTools(server);
+  count += registerDeliriumTools(server);
 
   count += registerPoeshopMarketTools(server);
 
