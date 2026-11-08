@@ -178,6 +178,20 @@ const SOURCES: WebSource[] = [
     notes: '❌ Проверено 29.09.2026: соединение не устанавливается (connect timeout) — сайт, вероятно, недоступен/закрыт. Если фетч падает — не retry-ть, источник считается мёртвым.',
   },
   {
+    id: 'poe2-biblioteka',
+    title: 'poe2-biblioteka.ru (RU-фэн-сайт: калькулятор Делириума, гайды)',
+    category: 'guide',
+    kind: 'community',
+    update: 'manual',
+    base: 'https://poe2-biblioteka.ru',
+    landing: 'https://poe2-biblioteka.ru/poe2-soveti.htm',
+    useFor:
+      'RU-контент для новичков: калькулятор Делириума (рецепты анointа амулета по очищенным эмоциям, в т.ч. секретные узлы — Дополненная плоть, Бастион света, Тёмная энтропия и др.), квесты с бонусами, награды лиг в кампании, лайфхаки кампании, порядок испытаний Восхождения, два набора оружия.',
+    fetchable: false,
+    notes:
+      '⚠ Проверено 08.11.2026: НЕ фетчить через poe2_sources_fetch — (1) анти-бот HostiMan по User-Agent отдаёт JS-заглушку «Checking your browser» не-браузерным клиентам; (2) страницы в windows-1251, наш httpText декодирует как UTF-8 → кракозябры. Тянуть ТОЛЬКО браузерным webfetch агента (Chrome-UA обходит проверку, 200 OK). Данные о билдах/мете — устаревают, механику сверять с poe2wiki/poe2db.',
+  },
+  {
     id: 'reddit-poe2',
     title: 'r/PathOfExile2 (сообщество)',
     category: 'community',
