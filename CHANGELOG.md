@@ -3,6 +3,25 @@
 Формат loosely по [Keep a Changelog](https://keepachangelog.com/).
 Версии совпадают с тегами релизов на SourceCraft.
 
+## [1.0.39] — 2026-11-08 (сессии №736–№739: делириум-анойнты + свежие датасеты + гейты .build-валидатора)
+
+### Added
+- **Новый MCP-тул `poe2_delirium_recipes` (счётчик 84→85):** делириум-анойнт-рецепты PoE2 — очищенные эмоции (Liquid Emotions) → пассивный узел на амулет у Увядшей Ивы (Withered Ivy, Атлас). Поиск по имени узла/стату и/или мультимножеству эмоций с кратностями («Гнев×2 + Страдание»), вкл. секретные рецепты (узлы вне дерева). Датасет — харвест фан-сайта poe2-biblioteka.ru: 946 узлов, 893 с рецептом, 18 секретных, легенда 10 эмоций + 3 секретные (Презрение/Свирепость/Меланхолия). Каждый ответ несёт честную provenance-пометку: community-данные, НЕ датамайн GGG, рецепты НЕ сверены живой игрой.
+- **Источник poe2-biblioteka.ru в реестре кита** (`poe2_sources_list`): RU-гайды + калькулятор Делириума; fetchable:false (анти-бот HostiMan + кодировка CP1251 — кит отдаёт браузерному webfetch, своими тулами не фетчит).
+
+### Changed
+- **Гейты .build-валидатора против молчаливых отказов игры (живые кейсы №717–№722):**
+  - `inventory_id` — теперь БЕЛЫЙ СПИСОК как ERROR: мёртвые Charm1-3/Flask2-5 (игра отвергает ВЕСЬ файл молча) — error с отдельным текстом; конвертер `toBuildPlanner` больше НЕ эмиттит эти слоты — честно пропускает предмет с warning.
+  - `unique_name` — проверка по каталогу уников (uniques_catalog.json, lowercase): промах = ERROR с честной оговоркой о неполноте каталога (кейс Aul's Dominance №721: предмет реален, каталог PoB2 его не знал) и подсказкой про EN-имена (RU-имена игра не принимает).
+  - `skills[].id` и `support_skills` — новый канон gem_gameids.json (966 gameId из Gems.lua PoB2-клона, 785 переименований 0.5.x): datasetKey вместо gameId или полностью неизвестный id → warning с рекомендацией (фейл мягкий: красные «?» у камня, файл грузится).
+  - Конвертер эмиттит канонический gameId (collision-safe: значение, уже являющееся чужим gameId, не переписывается — кейс Siege Ballista); `gemMetadataIdToName` понимает gameId-пространство (Gem/ vs Gems/).
+- **Свежие датасеты:** repoe base_items/mods + trade2 trade_stats (8313 статов) — fetchedAt 2026-11-08, время патча-дня.
+
+### Verified
+- Гейты: tsc core+mcp 0 · core/mcp build 0 · vitest 831/831 (+13 buildPlanner-гейты, +9 delirium) · verify-fallback 25 OK · root SMOKE ALL OK · MCP --smoke «Registered tools: 85» RC=0 · живой stdio-прогон delirium 4/4 ветки (поймал и вылечил outputSchema-баг no-args до коммита) · парсер gem_gameids верифицирован независимым line-parser'ом (mismatch=0).
+- Канон poe2-builder дополнен знанием о .build-гейтах и делириум-туле; счётчики 85 синхронизированы (README×2, ASSISTANT_GUIDE, expected-tools.mjs).
+
+
 ## [1.0.38] — 2026-10-30 (№700: живой лог игрового ПК → 2 фикса оверлея)
 
 ### Fixed
