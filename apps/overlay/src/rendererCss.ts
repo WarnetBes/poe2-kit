@@ -10,18 +10,21 @@
  */
 
 export const OVERLAY_CSS = `
+  /* №116/issue#3: заголовки — Cinzel (Google Fonts). Оверлей офлайн-первичен:
+     провал сети/загрузки шрифта тихо падает в легаси-стек --font-display. */
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap');
   :root {
-    --bg: rgba(13, 17, 23, 0.86);
-    --border: rgba(194, 154, 78, 0.75);
+    --bg: rgba(19, 15, 12, 0.88);
+    --border: rgba(200, 163, 90, 0.75);
     --fg: #f0e6d2;
     --dim: #a89a83;
     --ok: #3fb950;
     --warn: #d29922;
     --err: #f85149;
-    --accent: #c69a52;
-    /* Игровая антиква (Fontin-стиль): сериф + капитель + разрядка.
-       Palatino Linotype есть на любой Windows — офлайн, без бинарников. */
-    --font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    --accent: #c8a35a;
+    /* Игровая антиква: Cinzel (PoE2-стиль) + офлайн-fallbacks, Fontin-подобная
+       Palatino Linotype есть на любой Windows — без бинарников в репо. */
+    --font-display: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
@@ -38,9 +41,12 @@ export const OVERLAY_CSS = `
     /* HUD PoE2: тёмная сталь/пергамент с золотой окантовкой.
        var(--bg) — управляется слайдером прозрачности, оставляем базой. */
     background:
-      linear-gradient(180deg, rgba(255, 240, 205, 0.05) 0%, rgba(0,0,0,0) 12%),
+      /* issue#3: тёмное золото PoE2 — верх #1b150f, низ #0b0908 (плюс прежний
+         золотой sheen), полупрозрачная база var(--bg) сохранена (слайдер). */
+      linear-gradient(180deg, rgba(27, 21, 15, 0.55) 0%, rgba(11, 9, 8, 0.18) 100%),
+      linear-gradient(180deg, rgba(200, 163, 90, 0.07) 0%, rgba(0,0,0,0) 12%),
       var(--bg);
-    border: 1px solid rgba(194, 154, 78, 0.75);
+    border: 1px solid rgba(200, 163, 90, 0.75);
     box-shadow:
       inset 0 0 0 1px rgba(0,0,0,0.55),
       inset 0 1px 0 rgba(255, 224, 168, 0.10),
@@ -75,7 +81,7 @@ export const OVERLAY_CSS = `
 
   .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
     padding-bottom: 4px; margin-bottom: 2px;
-    border-bottom: 1px solid rgba(198,154,82,0.35); }
+    border-bottom: 1px solid rgba(200,163,90,0.35); }
   .item-name { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.25;
     font-family: var(--font-display); letter-spacing: 0.4px; }
   .item-name .rarity { font-weight: 600; font-size: 11px; }
@@ -92,7 +98,7 @@ export const OVERLAY_CSS = `
   .est {
     display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
     padding: 8px 10px; border-radius: 8px;
-    background: rgba(198,154,82,0.10); border: 1px solid rgba(198,154,82,0.3);
+    background: rgba(200,163,90,0.10); border: 1px solid rgba(200,163,90,0.3);
   }
   .est .value { font-size: 20px; font-weight: 800; color: var(--accent); }
   .est .range { font-size: 12px; color: var(--dim); }
@@ -142,10 +148,10 @@ export const OVERLAY_CSS = `
   .batch-ww:hover { color: var(--accent); border-color: var(--accent); }
 
   .watch-btn { display: block; width: 100%; margin-top: 6px; cursor: pointer;
-    background: rgba(198,154,82,0.14); border: 1px solid var(--accent); color: var(--accent);
+    background: rgba(200,163,90,0.14); border: 1px solid var(--accent); color: var(--accent);
     border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600;
     transition: background-color .15s; }
-  .watch-btn:hover { background: rgba(198,154,82,0.24); }
+  .watch-btn:hover { background: rgba(200,163,90,0.24); }
 
   .toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
     background: rgba(20,26,34,0.96); border: 1px solid var(--warn); color: #ffe9c2;
@@ -174,17 +180,17 @@ export const OVERLAY_CSS = `
     color: var(--dim); border-radius: 6px; font-size: 11px; padding: 1px 7px; }
   .wl-row button:hover { color: var(--accent); border-color: var(--accent); }
   .watch-actions { display: flex; gap: 6px; margin-top: 6px; }
-  .watch-actions button { flex: 1; cursor: pointer; background: rgba(198,154,82,0.14);
+  .watch-actions button { flex: 1; cursor: pointer; background: rgba(200,163,90,0.14);
     border: 1px solid var(--accent); color: var(--accent); border-radius: 8px;
     padding: 4px 8px; font-size: 12px; }
-  .watch-actions button:hover { background: rgba(198,154,82,0.24); }
+  .watch-actions button:hover { background: rgba(200,163,90,0.24); }
 
   #diagSection, #learnSection { border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; }
   .diag-actions { display: flex; gap: 6px; margin-top: 6px; }
-  .diag-actions button { flex: 1; cursor: pointer; background: rgba(198,154,82,0.12);
-    border: 1px solid rgba(198,154,82,0.4); color: var(--text); border-radius: 8px;
+  .diag-actions button { flex: 1; cursor: pointer; background: rgba(200,163,90,0.12);
+    border: 1px solid rgba(200,163,90,0.4); color: var(--text); border-radius: 8px;
     padding: 5px 8px; font-size: 12px; }
-  .diag-actions button:hover { background: rgba(198,154,82,0.24); }
+  .diag-actions button:hover { background: rgba(200,163,90,0.24); }
   .diag-actions button:disabled { opacity: 0.55; cursor: default; }
   #diagOut { margin-top: 6px; font-size: 10px; color: var(--dim); line-height: 1.4;
     word-break: break-all; white-space: pre-line; }
@@ -195,14 +201,15 @@ export const OVERLAY_CSS = `
     font-family: var(--font-display); letter-spacing: 0.3px; }
 
   /* №103 Campaign Companion: маршрут акта */
-  .camp-head { font-size: 13px; font-weight: 700; color: var(--accent); margin: 8px 0 2px; }
+  .camp-head { font-size: 13px; font-weight: 700; color: var(--accent); margin: 8px 0 2px;
+    font-family: var(--font-display); }
   .camp-prog { height: 5px; background: rgba(255,255,255,0.10); border-radius: 3px;
     overflow: hidden; margin: 4px 0 6px; }
   .camp-prog i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
   .camp-row { padding: 4px 6px; border-radius: 6px; margin-bottom: 3px;
     border-left: 3px solid transparent; }
   .camp-row.done { opacity: 0.55; border-left-color: #4caf7d; }
-  .camp-row.current { background: rgba(198,154,82,0.14); border-left-color: var(--accent); }
+  .camp-row.current { background: rgba(200,163,90,0.14); border-left-color: var(--accent); }
   .camp-row.todo { border-left-color: rgba(255,255,255,0.18); }
   .camp-zname { font-size: 13px; font-weight: 700; color: #fff; }
   .camp-row.done .camp-zname { color: var(--dim); text-decoration: line-through; }
@@ -266,8 +273,8 @@ export const OVERLAY_CSS = `
     padding: 6px 12px;
     font-size: 12px;
     color: var(--accent);
-    background: rgba(198,154,82,0.16);
-    border-bottom: 1px solid rgba(198,154,82,0.35);
+    background: rgba(200,163,90,0.16);
+    border-bottom: 1px solid rgba(200,163,90,0.35);
     border-radius: 10px 10px 0 0;
     text-align: center;
   }
@@ -340,7 +347,7 @@ export const OVERLAY_CSS = `
   #slangWrap::-webkit-scrollbar-thumb, #craftWrap::-webkit-scrollbar-thumb,
   #ratesWrap::-webkit-scrollbar-thumb, #genWrap::-webkit-scrollbar-thumb,
   #lvlWrap::-webkit-scrollbar-thumb, #priceBatchList::-webkit-scrollbar-thumb {
-    background: rgba(198,154,82,0.45); border-radius: 3px; }
+    background: rgba(200,163,90,0.45); border-radius: 3px; }
 
   /* Панель настроек (Ctrl+F6). */
   #settingsPanel {
@@ -354,6 +361,7 @@ export const OVERLAY_CSS = `
   }
   #settingsPanel.hide { display: none; }
   #settingsPanel h3 { margin: 0; font-size: 13px; color: #fff; display: flex;
+    font-family: var(--font-display);
     justify-content: space-between; align-items: center; }
   #settingsPanel h3 .close { color: var(--dim); cursor: pointer; font-size: 15px;
     background: none; border: none; padding: 0 4px; }
@@ -379,7 +387,7 @@ export const OVERLAY_CSS = `
   .corner-row button { flex: 1; font-size: 10px; padding: 4px 2px; cursor: pointer;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 6px; }
-  .corner-row button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  .corner-row button.on { background: rgba(200,163,90,0.22); border-color: var(--accent); color: var(--accent); }
   /* №105: пипетки цветов доступности */
   .color-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .color-row label { font-size: 11px; color: var(--dim); display: flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -399,8 +407,8 @@ export const OVERLAY_CSS = `
     color: var(--dim); border-radius: 6px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
     transition: color .15s, border-color .15s, background-color .15s; }
-  .tabrow button:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
-  .tabrow button.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  .tabrow button:hover { color: var(--fg); border-color: rgba(200,163,90,0.5); }
+  .tabrow button.on { background: rgba(200,163,90,0.22); border-color: var(--accent); color: var(--accent); }
   .tabrow button.info-btn { margin-top: 6px; border-style: dashed; color: #9aa4b0; }
   /* №128: инфоокно функции — «что делает эта вкладка» */
   #infoWin { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 60;
@@ -418,8 +426,8 @@ export const OVERLAY_CSS = `
   #scrollCtl:hover { opacity: 1; }
   #scrollCtl button { width: 20px; height: 20px; font-size: 10px; line-height: 1;
     cursor: pointer; background: rgba(20,24,32,0.85); color: var(--accent);
-    border: 1px solid rgba(198,154,82,0.5); border-radius: 4px; padding: 0; }
-  #scrollCtl button:hover { background: rgba(198,154,82,0.25); }
+    border: 1px solid rgba(200,163,90,0.5); border-radius: 4px; padding: 0; }
+  #scrollCtl button:hover { background: rgba(200,163,90,0.25); }
   /* №133: словарь слэнга */
   .slang-row { display: flex; flex-direction: column; gap: 1px; padding: 4px 2px;
     border-bottom: 1px solid rgba(255,255,255,0.07); }
@@ -431,8 +439,8 @@ export const OVERLAY_CSS = `
   .tree-chips .chip { font-size: 10px; padding: 3px 6px; cursor: pointer; white-space: nowrap;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
     color: var(--dim); border-radius: 9px; }
-  .tree-chips .chip:hover { color: var(--fg); border-color: rgba(198,154,82,0.5); }
-  .tree-chips .chip.on { background: rgba(198,154,82,0.22); border-color: var(--accent); color: var(--accent); }
+  .tree-chips .chip:hover { color: var(--fg); border-color: rgba(200,163,90,0.5); }
+  .tree-chips .chip.on { background: rgba(200,163,90,0.22); border-color: var(--accent); color: var(--accent); }
   /* №113: правая часть панели — бывшие прямые потомки #panel (grab/idle/body/settings). */
   #content { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; position: relative; }
   .hk-grid { display: flex; flex-direction: column; gap: 4px; }
