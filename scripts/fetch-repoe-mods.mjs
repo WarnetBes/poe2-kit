@@ -24,7 +24,7 @@
  * Запуск: node scripts/fetch-repoe-mods.mjs
  */
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,5 +97,5 @@ const basePath = join(outDir, 'base_items.json');
 writeFileSync(modsPath, JSON.stringify(modsSlice));
 writeFileSync(basePath, JSON.stringify(baseSlice));
 
-const mb = (p) => (fs.statSync(p).size / 1048576).toFixed(1);
+const mb = (p) => (statSync(p).size / 1048576).toFixed(1);
 console.log(`[fetch-repoe] OK: аффиксов ${kept} → mods.json (${mb(modsPath)} МБ), баз ${bases} → base_items.json (${mb(basePath)} МБ), fetchedAt=${fetchedAt}`);

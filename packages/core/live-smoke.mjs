@@ -10,6 +10,14 @@
 //
 // Выход: 0 = всё ок; 1 = какой-то живой провайдер сломался (менялась схема ИЛИ
 // сеть недоступна). Фиксируем и то и другое — CI падает на регрессе схемы.
+//
+// 403-толерантность (№762, 26.11.2026): GGG отдаёт «Forbidden» (code 6) не по
+// регрессу схемы, а по IP — дата-центровые подсети (GitHub-hosted runners) и
+// заблокированные провайдеры режутся anti-bot'ом. Это НЕ наша поломка:
+// HTTP 403 с телом error.code=6 помечается как SKIP (warn, не fail), а все
+// проверки схемы, зависящие от каталога статов, честно пропускаются вместе
+// с ним. Локальные прогоны (домашний IP) продолжают ловить реальный регресс:
+// 403 там маловероятен, а 429/5xx/сетевые ошибки по-прежнему фейлят.
 
 // --- Небольшой harness -----------------------------------------------------
 let failed = 0;
@@ -17,6 +25,11 @@ const ok = (cond, msg, extra = '') => {
   if (cond) console.log('  ✓', msg);
   else { console.error('  ✗', msg, extra); failed++; }
 };
+/** SKIP — проверка пропущена по внешней причине (GGG 403 по IP), не регресс. */
+const skipped = [];
+const skip = (msg, extra = '') => { skipped.push(msg); console.log('  ○ SKIP:', msg, extra); };
+/** HTTP 403 от trade2 с GGG-телом error.code=6 = anti-bot по IP, не регресс схемы. */
+const isGggBlocked = (e) => /\b403\b/.test(String(e?.message ?? e)) && /"code"\s*:\s*6|Forbidden/i.test(String(e?.message ?? e));
 
 // --- Импорт функций из собранного dist (как в smoke.mjs) ------------------
 import {
@@ -80,23 +93,35 @@ async function main() {
   // ═══ 4. trade2 — stat-id таблица (КЛЮЧЕВОЙ РЕГРЕСС-ГЕЙТ) ══════════════════
   console.log('\n[4] trade2 · каталог статов /data/stats (ломается на патчах)');
   let stats = [];
+  let tradeBlocked = false;
+  let statsFailed = false;
   try {
     stats = await fetchTradeStats();
   } catch (e) {
-    ok(false, 'fetchTradeStats не бросила исключение', String(e?.message ?? e));
+    if (isGggBlocked(e)) {
+      tradeBlocked = true;
+      skip('fetchTradeStats: GGG 403 (anti-bot по IP раннера) — проверки схемы [4]/[5] пропущены', '');
+    } else {
+      statsFailed = true;
+      ok(false, 'fetchTradeStats не бросила исключение', String(e?.message ?? e));
+    }
   }
-  ok(Array.isArray(stats) && stats.length >= 5000, `stat-id записей: ${stats.length} (ожидал >= 5000)`);
-  ok(stats.every((s) => typeof s?.id === 'string' && typeof s?.text === 'string'), 'каждая запись имеет id и text');
-  const knownPseudo = stats.some((s) => s.id === 'pseudo.pseudo_total_life');
-  ok(knownPseudo, 'известный псевдо-стат pseudo.pseudo_total_life присутствует (схема не изменилась)');
-  // Жизнеспособность матчинга: соберём фильтр из реального мода текста, который должен совпасть.
-  const { matchStatFilter } = await import('./dist/trade.js');
-  const matched = matchStatFilter('+62 to maximum Life', stats);
-  ok(!!matched && typeof matched.id === 'string', matched ? `match "+62 to maximum Life" → ${matched.id}` : 'не сопоставил +life: схема изменилась?');
+  if (!tradeBlocked && !statsFailed) {
+    ok(Array.isArray(stats) && stats.length >= 5000, `stat-id записей: ${stats.length} (ожидал >= 5000)`);
+    ok(stats.every((s) => typeof s?.id === 'string' && typeof s?.text === 'string'), 'каждая запись имеет id и text');
+    const knownPseudo = stats.some((s) => s.id === 'pseudo.pseudo_total_life');
+    ok(knownPseudo, 'известный псевдо-стат pseudo.pseudo_total_life присутствует (схема не изменилась)');
+    // Жизнеспособность матчинга: соберём фильтр из реального мода текста, который должен совпасть.
+    const { matchStatFilter } = await import('./dist/trade.js');
+    const matched = matchStatFilter('+62 to maximum Life', stats);
+    ok(!!matched && typeof matched.id === 'string', matched ? `match "+62 to maximum Life" → ${matched.id}` : 'не сопоставил +life: схема изменилась?');
+  }
 
   // ═══ 5. trade2 — живой поиск рара по стату ════════════════════════════════
   console.log('\n[5] trade2 · поиск рара (Ruby Ring + life)');
-  if (league) {
+  if (tradeBlocked) {
+    skip('поиск рара: trade2 заблокирован 403 для IP раннера');
+  } else if (league) {
     try {
       const listings = await searchTradeByStats(
         { type: 'Ruby Ring', filters: stats.filter((s) => s.id === 'pseudo.pseudo_total_life').slice(0, 1).map((s) => ({ id: s.id, min: 40 })) },
@@ -148,11 +173,12 @@ async function main() {
 
   // ═══ Итог ═════════════════════════════════════════════════════════════════
   const secs = ((Date.now() - started) / 1000).toFixed(1);
+  const skipNote = skipped.length ? ` · ${skipped.length} SKIP (GGG 403 по IP, см. выше)` : '';
   if (failed === 0) {
-    console.log(`\nLIVE-SMOKE: ALL OK (${secs}s) — все живые API отвечают, схема не сломана.`);
+    console.log(`\nLIVE-SMOKE: ALL OK (${secs}s) — все живые API отвечают, схема не сломана.${skipNote}`);
     process.exit(0);
   }
-  console.error(`\nLIVE-SMOKE: ${failed} FAILED (${secs}s) — живые API/схема изменились или сеть недоступна.`);
+  console.error(`\nLIVE-SMOKE: ${failed} FAILED (${secs}s) — живые API/схема изменились или сеть недоступна.${skipNote}`);
   process.exit(1);
 }
 
